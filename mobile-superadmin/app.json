@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "ALDM Súper Admin",
+    "slug": "aldm-superadmin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#132a33"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aldm.superadmin"
+    },
+    "android": {
+      "package": "com.aldm.superadmin",
+      "adaptiveIcon": {
+        "backgroundColor": "#132a33"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "apiUrl": "http://192.168.1.10:8000/api"
+    }
+  }
+}

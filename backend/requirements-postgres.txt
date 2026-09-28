@@ -1,0 +1,6 @@
+# Instala esto SOLO si decides usar PostgreSQL en vez del SQLite por
+# defecto (ver DATABASE_URL en .env.example):
+#
+#   pip install -r requirements-postgres.txt
+#
+psycopg2-binary==2.9.9

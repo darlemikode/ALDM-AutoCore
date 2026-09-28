@@ -1,0 +1,100 @@
+from datetime import date
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from .. import models, schemas
+from ..database import get_db
+from ..security import get_current_user, require_permission
+
+router = APIRouter(prefix="/api/refacciones", tags=["refacciones"])
+
+
+@router.get("/", response_model=list[schemas.RefaccionOut])
+def listar(
+    q: Optional[str] = None,
+    bajo_stock: bool = False,
+    db: Session = Depends(get_db),
+    user=Depends(require_permission("refacciones.ver")),
+):
+    query = db.query(models.Refaccion)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            (models.Refaccion.nombre_refaccion.ilike(like)) | (models.Refaccion.numero_refaccion.ilike(like))
+        )
+    if bajo_stock:
+        query = query.filter(models.Refaccion.cantidad_refaccion <= 3)
+    return query.order_by(models.Refaccion.nombre_refaccion).all()
+
+
+@router.get("/{refaccion_id}", response_model=schemas.RefaccionOut)
+def obtener(refaccion_id: int, db: Session = Depends(get_db), user=Depends(require_permission("refacciones.ver"))):
+    refaccion = db.query(models.Refaccion).filter(models.Refaccion.id_refaccion == refaccion_id).first()
+    if not refaccion:
+        raise HTTPException(status_code=404, detail="Refacción no encontrada")
+    return refaccion
+
+
+@router.post("/", response_model=schemas.RefaccionOut, status_code=201)
+def crear(payload: schemas.RefaccionIn, db: Session = Depends(get_db), user=Depends(require_permission("refacciones.crear"))):
+    data = payload.model_dump()
+    data["fecha_refaccion"] = data.get("fecha_refaccion") or date.today()
+    refaccion = models.Refaccion(**data)
+    db.add(refaccion)
+    db.commit()
+    db.refresh(refaccion)
+    return refaccion
+
+
+@router.put("/{refaccion_id}", response_model=schemas.RefaccionOut)
+def actualizar(refaccion_id: int, payload: schemas.RefaccionIn, db: Session = Depends(get_db), user=Depends(require_permission("refacciones.editar"))):
+    refaccion = db.query(models.Refaccion).filter(models.Refaccion.id_refaccion == refaccion_id).first()
+    if not refaccion:
+        raise HTTPException(status_code=404, detail="Refacción no encontrada")
+    data = payload.model_dump()
+    # No dejar que un "fecha" vacío borre la fecha de alta original
+    if not data.get("fecha_refaccion"):
+        data.pop("fecha_refaccion", None)
+    for key, value in data.items():
+        setattr(refaccion, key, value)
+    db.commit()
+    db.refresh(refaccion)
+    return refaccion
+
+
+@router.delete("/{refaccion_id}", status_code=204)
+def eliminar(refaccion_id: int, db: Session = Depends(get_db), user=Depends(require_permission("refacciones.eliminar"))):
+    refaccion = db.query(models.Refaccion).filter(models.Refaccion.id_refaccion == refaccion_id).first()
+    if not refaccion:
+        raise HTTPException(status_code=404, detail="Refacción no encontrada")
+    db.delete(refaccion)
+    db.commit()
+    return None
+
+
+@router.post("/{refaccion_id}/compatibilidades", response_model=schemas.RefaccionOut, status_code=201)
+def agregar_compatibilidad(refaccion_id: int, payload: schemas.RefaccionCompatibilidadIn, db: Session = Depends(get_db), user=Depends(require_permission("refacciones.editar"))):
+    refaccion = db.query(models.Refaccion).filter(models.Refaccion.id_refaccion == refaccion_id).first()
+    if not refaccion:
+        raise HTTPException(status_code=404, detail="Refacción no encontrada")
+    db.add(models.RefaccionCompatibilidad(id_refaccion=refaccion_id, **payload.model_dump()))
+    db.commit()
+    db.refresh(refaccion)
+    return refaccion
+
+
+@router.delete("/{refaccion_id}/compatibilidades/{compatibilidad_id}", response_model=schemas.RefaccionOut)
+def quitar_compatibilidad(refaccion_id: int, compatibilidad_id: int, db: Session = Depends(get_db), user=Depends(require_permission("refacciones.editar"))):
+    fila = (
+        db.query(models.RefaccionCompatibilidad)
+        .filter(models.RefaccionCompatibilidad.id_compatibilidad == compatibilidad_id, models.RefaccionCompatibilidad.id_refaccion == refaccion_id)
+        .first()
+    )
+    if not fila:
+        raise HTTPException(status_code=404, detail="Compatibilidad no encontrada")
+    db.delete(fila)
+    db.commit()
+    refaccion = db.query(models.Refaccion).filter(models.Refaccion.id_refaccion == refaccion_id).first()
+    return refaccion

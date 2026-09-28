@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Mi Taller",
+    "slug": "sistema-mecanico-cliente",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#132a33"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tutaller.mecanicocliente"
+    },
+    "android": {
+      "package": "com.tutaller.mecanicocliente",
+      "adaptiveIcon": {
+        "backgroundColor": "#132a33"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "apiUrl": "http://192.168.1.10:8000/api",
+      "wsUrl": "ws://192.168.1.10:8000"
+    },
+    "scheme": "aldmcliente",
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "La cámara se usa para escanear el código QR de tu taller."
+        }
+      ]
+    ]
+  }
+}

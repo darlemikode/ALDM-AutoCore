@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "ALDM AutoCore",
+    "slug": "sistema-mecanico-admin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#14181c"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tutaller.mecanicoadmin",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Usamos Face ID para proteger el acceso a tu sesión del taller."
+      }
+    },
+    "android": {
+      "package": "com.tutaller.mecanicoadmin",
+      "adaptiveIcon": {
+        "backgroundColor": "#14181c"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "name": "ALDM AutoCore",
+      "shortName": "ALDM AutoCore",
+      "themeColor": "#14181c",
+      "backgroundColor": "#14181c",
+      "display": "standalone",
+      "orientation": "portrait"
+    },
+    "extra": {
+      "apiUrl": "http://192.168.1.10:8000/api",
+      "wsUrl": "ws://192.168.1.10:8000"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-sqlite",
+      "expo-status-bar",
+      "expo-font"
+    ]
+  }
+}

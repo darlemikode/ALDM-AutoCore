@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mecanico_user
+      POSTGRES_PASSWORD: mecanico_pass
+      POSTGRES_DB: sistema_mecanico
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql+psycopg2://mecanico_user:mecanico_pass@db:5432/sistema_mecanico
+      SECRET_KEY: cambia-esta-clave-en-produccion
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin1234
+    ports:
+      - "8000:8000"
+
+volumes:
+  db_data:

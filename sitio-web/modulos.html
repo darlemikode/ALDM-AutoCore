@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Módulos del Sistema</title>
+<meta name="description" content="Catálogo completo de módulos de ALDM Garage Manager: órdenes de servicio, inventario, ventas, clientes, nómina, roles, reportes y app móvil." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    color-scheme: dark;
+    --ink-950:#0a0d12; --ink-900:#0e1218; --ink-850:#121722; --ink-800:#161d29; --ink-700:#1e2733;
+    --ink-600:#2a3644; --ink-500:#48566a; --ink-400:#8493a8; --ink-300:#aeb9c9; --ink-200:#d4dae3; --ink-100:#eef1f5;
+    --electric-500:#3f8cff; --electric-400:#6fabff; --electric-100:#e4eeff;
+    --sport-500:#ff4438; --sport-400:#ff7166;
+    --emerald-400:#34d399;
+    --font-display: "Barlow Condensed", sans-serif;
+    --font-body: "Inter", sans-serif;
+    --font-mono: "IBM Plex Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--ink-950); color: var(--ink-200); font-family: var(--font-body); -webkit-font-smoothing: antialiased; line-height: 1.65; }
+  a { color: var(--electric-400); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul, ol { padding-left: 22px; margin: 0; }
+  li { margin-bottom: 8px; }
+  h1, h2 { font-family: var(--font-display); font-weight: 800; color: #fff; text-wrap: balance; }
+  p { margin: 0; }
+
+  .navbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50; background: rgba(10,13,18,0.9); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .navbar .inner { max-width: 820px; margin: 0 auto; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; flex-direction: column; line-height: 1; }
+  .brand-name { font-family: var(--font-display); font-weight: 800; font-size: 22px; color: #fff; letter-spacing: 0.02em; }
+  .brand-name em { font-style: normal; color: var(--electric-400); }
+  .brand-sub { font-family: var(--font-display); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-400); margin-top: 2px; }
+  .back-link { font-size: 13px; font-weight: 600; color: var(--ink-300); display: flex; align-items: center; gap: 6px; }
+  .back-link:hover { color: #fff; text-decoration: none; }
+
+  main { max-width: 820px; margin: 0 auto; padding: 56px 24px 100px; }
+  .doc-head { border-bottom: 1px solid var(--ink-700); padding-bottom: 28px; margin-bottom: 40px; }
+  .eyebrow { display: inline-block; font-family: var(--font-display); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--electric-400); margin-bottom: 14px; }
+  h1 { font-size: clamp(30px, 5vw, 42px); }
+  .doc-meta { margin-top: 14px; font-size: 13px; color: var(--ink-400); font-family: var(--font-mono); }
+
+  .toc { background: var(--ink-900); border: 1px solid var(--ink-700); border-radius: 14px; padding: 22px 24px; margin-bottom: 48px; }
+  .toc h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-300); margin-bottom: 12px; }
+  .toc ol { list-style: decimal; padding-left: 20px; }
+  .toc a { color: var(--ink-200); font-size: 14px; }
+  .toc a:hover { color: var(--electric-400); }
+
+  section.clause { padding: 32px 0; border-top: 1px solid var(--ink-800); scroll-margin-top: 88px; }
+  section.clause:first-of-type { border-top: none; padding-top: 0; }
+  .clause h2 { font-size: 22px; display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .clause h2 .num { font-family: var(--font-mono); font-size: 15px; color: var(--electric-400); font-weight: 600; flex: none; }
+  .mod-ico { flex: none; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .mod-ico.blue { background: rgba(63,140,255,0.15); }
+  .mod-ico.red { background: rgba(255,68,56,0.15); }
+  .mod-ico.green { background: rgba(52,211,153,0.15); }
+  .clause p + p, .clause p + ul, .clause ul + p { margin-top: 14px; }
+  .clause p { color: var(--ink-200); font-size: 15px; }
+  .clause li { color: var(--ink-200); font-size: 15px; }
+  .clause > p:first-of-type { margin-top: 0; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .tag { font-family: var(--font-mono); font-size: 11px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--ink-700); color: var(--ink-300); background: var(--ink-900); }
+
+  .footer-note { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--ink-800); font-size: 13px; color: var(--ink-500); }
+
+  @media (max-width: 640px) {
+    main { padding: 40px 18px 80px; }
+    .clause h2 { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+
+<header class="navbar">
+  <div class="inner">
+    <span class="brand">
+      <span class="brand-name">ALDM<em>.</em></span>
+      <span class="brand-sub">Garage Manager</span>
+    </span>
+    <a class="back-link" href="index.html">← Volver al sitio</a>
+  </div>
+</header>
+
+<main>
+  <div class="doc-head">
+    <span class="eyebrow">Catálogo de módulos</span>
+    <h1>Módulos del Sistema</h1>
+    <p class="doc-meta">ALDM Garage Manager · Versión web</p>
+  </div>
+
+  <nav class="toc" aria-label="Índice">
+    <h2>Contenido</h2>
+    <ol>
+      <li><a href="#ordenes">Órdenes de servicio</a></li>
+      <li><a href="#inventario">Inventario y punto de venta</a></li>
+      <li><a href="#clientes">Clientes y vehículos</a></li>
+      <li><a href="#proveedores">Proveedores</a></li>
+      <li><a href="#nomina">Nómina</a></li>
+      <li><a href="#roles">Roles y permisos</a></li>
+      <li><a href="#reportes">Reportes</a></li>
+      <li><a href="#app">App móvil</a></li>
+    </ol>
+  </nav>
+
+  <section class="clause" id="ordenes">
+    <h2>
+      <span class="mod-ico blue"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/></svg></span>
+      Órdenes de servicio
+    </h2>
+    <p>El corazón operativo del taller. Cada vehículo que entra genera una orden digital con los conceptos, refacciones y mano de obra involucrados, con costo total calculado en automático.</p>
+    <ul>
+      <li>Captura desde el celular o la computadora, sin papel ni notas sueltas.</li>
+      <li>Estatus en tiempo real: recibido, diagnóstico, en reparación, listo para entrega.</li>
+      <li>Asignación de mecánico responsable por orden.</li>
+      <li>Historial digital del vehículo: servicios previos, refacciones usadas y kilometraje.</li>
+      <li>Evidencia fotográfica de fallas y notificaciones automáticas al cliente por cambio de estatus.</li>
+    </ul>
+  </section>
+
+  <section class="clause" id="inventario">
+    <h2>
+      <span class="mod-ico red"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><path d="M3 7l2-4h14l2 4M3 7h18M3 7v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7"/></svg></span>
+      Inventario y punto de venta
+    </h2>
+    <p>Pensado para refaccionarias y para el almacén interno del taller. Controla existencias, compatibilidad de piezas y ventas en mostrador desde una sola pantalla.</p>
+    <ul>
+      <li>Alertas automáticas de stock crítico antes de que la pieza se agote.</li>
+      <li>Venta en mostrador con generación de ticket y descuento de inventario en automático.</li>
+      <li>Compatibilidad exacta por marca, modelo y año de cada refacción.</li>
+      <li>Sin doble captura entre inventario y ventas.</li>
+    </ul>
+  </section>
+
+  <section class="clause" id="clientes">
+    <h2>
+      <span class="mod-ico blue"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="18" cy="8.5" r="2.3"/><path d="M15.8 20a4.7 4.7 0 0 1 6.2-4.4"/></svg></span>
+      Clientes y vehículos
+    </h2>
+    <p>Expediente único por cliente y por vehículo, con datos de contacto, historial de servicios y comunicación directa sobre el avance de cada orden.</p>
+    <ul>
+      <li>Alta y edición de clientes con datos de contacto y facturación.</li>
+      <li>Varios vehículos asociados a un mismo cliente.</li>
+      <li>Consulta del avance de la orden desde el celular del cliente, sin llamadas.</li>
+    </ul>
+  </section>
+
+  <section class="clause" id="proveedores">
+    <h2>
+      <span class="mod-ico red"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg></span>
+      Proveedores
+    </h2>
+    <p>Control de a quién se le compra, qué se le debe y cuándo conviene reabastecer, ligado directamente al módulo de inventario.</p>
+    <ul>
+      <li>Catálogo de proveedores con historial de compras.</li>
+      <li>Saldos y cuentas por pagar por proveedor.</li>
+      <li>Sugerencia de reabastecimiento según nivel de stock.</li>
+    </ul>
+  </section>
+
+  <section class="clause" id="nomina">
+    <h2>
+      <span class="mod-ico green"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M8 14h3"/></svg></span>
+      Nómina
+    </h2>
+    <p>Gestión de anticipos y recibos de pago del personal del taller, integrada al mismo sistema donde se registran las órdenes y la asignación de mecánicos.</p>
+    <ul>
+      <li>Registro de anticipos por empleado, con saldo y descuento automático en el siguiente pago.</li>
+      <li>Generación de recibos de pago por periodo.</li>
+      <li>Historial de pagos y anticipos por trabajador.</li>
+    </ul>
+  </section>
+
+  <section class="clause" id="roles">
+    <h2>
+      <span class="mod-ico blue"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><path d="M12 3l8 4v5c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V7z"/></svg></span>
+      Roles y permisos
+    </h2>
+    <p>Cada usuario ve y hace solo lo que le corresponde, según su función dentro del negocio.</p>
+    <ul>
+      <li>Roles predefinidos: dueño/administrador, recepción, mecánico, ventas de mostrador.</li>
+      <li>Permisos configurables por módulo y por acción.</li>
+      <li>Bitácora de accesos y cambios relevantes dentro del sistema.</li>
+    </ul>
+  </section>
+
+  <section class="clause" id="reportes">
+    <h2>
+      <span class="mod-ico green"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M4 19V9M12 19V5M20 19v-7"/></svg></span>
+      Reportes
+    </h2>
+    <p>Números claros para decidir sin depender de hojas de cálculo aparte: ingresos, órdenes cerradas, ticket promedio y estatus general del negocio.</p>
+    <ul>
+      <li>Ingresos por día, semana o mes, con comparativo contra el periodo anterior.</li>
+      <li>Distribución de órdenes por estatus (completadas, en proceso, canceladas).</li>
+      <li>Reportes exportables para revisión externa o contable.</li>
+    </ul>
+  </section>
+
+  <section class="clause" id="app">
+    <h2>
+      <span class="mod-ico red"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></span>
+      App móvil
+    </h2>
+    <p>El taller en el bolsillo del equipo y del cliente. Captura desde el piso del taller y seguimiento del servicio sin necesidad de llamar.</p>
+    <ul>
+      <li>Captura de órdenes y evidencia fotográfica desde el celular.</li>
+      <li>Notificaciones automáticas al cliente por cambio de estatus.</li>
+      <li>Consulta del avance del vehículo a pie de calle, sin instalar nada adicional.</li>
+    </ul>
+  </section>
+
+  <div class="tag-row">
+    <span class="tag">Web</span>
+    <span class="tag">App móvil</span>
+    <span class="tag">Multiusuario</span>
+    <span class="tag">Roles y permisos</span>
+    <span class="tag">Reportes en tiempo real</span>
+  </div>
+
+  <p class="footer-note">© <span id="anio"></span> ALDM Garage Manager. Todos los derechos reservados.</p>
+</main>
+
+<script>
+  document.getElementById('anio').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,111 @@
+QA Apps móviles (taller + clientes) — 27/9/2026, 10:51:38 p.m.
+
+===== ✓ Flujos E2E =====
+(corrida 3 de 3)
+✓ A. Catálogos precargados: 15/15
+✓ B. Códigos postales (León, GTO): 2/2
+✓ C. Alta de cliente, vehículo y orden: 10/10
+✓ D. Llenado de la orden (refacciones y conceptos): 9/9
+✓ E. Abonos: 3/3
+✓ F. Finalizar orden: 8/8
+✓ G. Reabrir y cancelar: 4/4
+✓ H. Garantías: 2/2
+✓ I. Estatus del servicio: 4/4
+✓ J. Inventario por vehículo: 10/10
+✓ K. Fotos, chat e inspección: 11/11
+✓ L. Panel: 5/5
+✓ M. Cotizaciones: 8/8
+✓ N. Proveedores y catálogos: 8/8
+✓ O. Usuarios, roles y permisos: 15/15
+
+TOTAL: 114/114 pruebas OK
+
+===== ✓ Cobertura de endpoints =====
+Llamadas únicas: 115
+
+SIN EQUIVALENTE LOCAL (0):
+
+
+Errores de validación esperados con cuerpo vacío (22):
+get /cotizaciones/1   (CotizacionDetalleScreen.js) -> Cotización no encontrada
+put /cotizaciones/1/detalles/1   (CotizacionDetalleScreen.js) -> Cotización no encontrada
+del /cotizaciones/1/detalles/1   (CotizacionDetalleScreen.js) -> Cotización no encontrada
+post /cotizaciones/1/detalles   (CotizacionDetalleScreen.js) -> Cotización no encontrada
+del /roles/1   (GestionRolesScreen.js) -> Los roles base del sistema no se pueden eliminar.
+post /inventario-refacciones/   (InventarioListaScreen.js) -> Elige la refacción.
+post /inventario-refacciones-compatibilidades/   (InventarioListaScreen.js) -> Ese registro de inventario no existe.
+post /auth/verificar-activacion   (LoginScreen.js) -> Para activar tu taller necesitas conexión con el servidor.
+post /auth/activar-taller   (LoginScreen.js) -> Para activar tu taller necesitas conexión con el servidor.
+put /auth/password   (MasScreen.js) -> La nueva contraseña debe tener al menos 6 caracteres
+postForm /fotos/   (NuevaOrdenScreen.js) -> No llegó ninguna foto.
+get /nomina/periodos/1   (PeriodoNominaDetalleScreen.js) -> Periodo no encontrado
+put /nomina/recibos/1   (PeriodoNominaDetalleScreen.js) -> Recibo no encontrado
+post /nomina/recibos/1/pagar   (PeriodoNominaDetalleScreen.js) -> Recibo no encontrado
+put /servicios/1/detalles/1   (ServicioDetalleScreen.js) -> Ese concepto ya no existe en la orden.
+del /servicios/1/detalles/1   (ServicioDetalleScreen.js) -> Ese concepto ya no existe en la orden.
+put /usuarios/1   (UsuariosScreen.js) -> Usuario no encontrado
+post /usuarios/   (UsuariosScreen.js) -> El rol indicado no existe
+put /auth/usuarios/1/desactivar   (UsuariosScreen.js) -> Usuario no encontrado
+del /vehiculos/1   (VehiculosScreen.js) -> No se puede eliminar: el vehículo tiene órdenes de servicio en su historial.
+put /servicios/1/etapa   (EtapaTracker.js) -> Esa etapa no existe en el catálogo.
+post /auth/seleccionar-taller   (AuthContext.js) -> Para cambiar de taller necesitas conexión con el servidor.
+
+===== ✓ Rutas y estilos — app taller =====
+App: /sessions/rcw-01f43fivq6pkaqu4shfzacbd/mnt/sistema-mecanico/mobile
+✓ Rutas de navegación revisadas: 43 (43 pantallas registradas)
+✓ APIs obsoletas revisadas en 68 archivos
+✓ Sintaxis, 326 componentes JSX y estilos usados revisados
+✓ Estilos calculados en claro y oscuro: 2126
+  Contraste bajo (3):
+   - UsuariosScreen.js.badge (claro) #84a0a8 sobre #e9f1f3: 2.42
+   - VehiculoFormScreen.js.hint (claro) #84a0a8 sobre #fbfdfe: 2.72
+   - ChatOrden.js.diaTexto (claro) #84a0a8 sobre #d3e2e5: 2.08
+
+Sin fallas
+
+===== ✓ Rutas y estilos — app clientes =====
+App: /sessions/rcw-01f43fivq6pkaqu4shfzacbd/mnt/sistema-mecanico/mobile-cliente
+✓ Rutas de navegación revisadas: 7 (9 pantallas registradas)
+✓ APIs obsoletas revisadas en 19 archivos
+✓ Sintaxis, 98 componentes JSX y estilos usados revisados
+✓ Estilos calculados en claro y oscuro: 592
+
+Sin fallas
+
+===== ✓ Rutas y estilos — app súper admin =====
+App: /sessions/rcw-01f43fivq6pkaqu4shfzacbd/mnt/sistema-mecanico/mobile-superadmin
+✓ Rutas de navegación revisadas: 13 (16 pantallas registradas)
+✓ APIs obsoletas revisadas en 20 archivos
+✓ Sintaxis, 127 componentes JSX y estilos usados revisados
+✓ Estilos calculados en claro y oscuro: 414
+
+Sin fallas
+
+===== ✓ Contrato con el backend =====
+Rutas del backend: 262 · Llamadas únicas — taller: 111 · cliente: 18 · súper admin: 24
+Sin ruta en el backend (0):
+
+===== ✓ Paridad de campos con la web =====
+✓ ../components/ClienteFormModal.jsx  16/16  -> ClienteFormScreen.js
+✓ Clientes.jsx                 0/0   -> ClienteFormScreen.js, ClientesScreen.js, ClienteDetalleScreen.js
+✓ Vehiculos.jsx               10/10  -> VehiculoFormScreen.js, VehiculosScreen.js
+✓ Servicios.jsx               12/12  -> NuevaOrdenScreen.js, ServiciosScreen.js
+✓ ServicioDetalle.jsx         11/11  -> ServicioDetalleScreen.js
+✓ Refacciones.jsx              7/7   -> RefaccionesScreen.js
+✓ Inventario.jsx              10/10  -> InventarioDetalleScreen.js, InventarioListaScreen.js
+✓ Herramientas.jsx             8/8   -> HerramientasScreen.js
+✓ Proveedores.jsx             10/10  -> ProveedoresScreen.js, ProveedorDetalleScreen.js
+✓ ProveedorDetalle.jsx         5/5   -> ProveedorDetalleScreen.js
+✓ Empleados.jsx                8/8   -> EmpleadosScreen.js
+✓ Usuarios.jsx                 7/7   -> UsuariosScreen.js
+✓ Promociones.jsx              9/9   -> PromocionesScreen.js
+✓ Comisiones.jsx               0/0   -> ComisionesScreen.js
+✓ ConfiguracionTaller.jsx      8/8   -> DatosTallerScreen.js
+✓ Citas.jsx                    0/0   -> CitasScreen.js
+✓ Catalogos.jsx               13/13  -> CatalogosScreen.js
+
+Campos de la web que la app todavía no maneja:
+
+Páginas web sin pantalla en la app del taller: Cotizaciones.jsx, CotizacionDetalle.jsx, Facturacion.jsx, Sincronizacion.jsx, AsignacionRoles.jsx, SuperAdmin.jsx, ConfiguracionInicio.jsx
+
+Paridad: 134/134 campos

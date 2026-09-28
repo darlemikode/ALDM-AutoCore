@@ -1,0 +1,11 @@
+# Instala esto SOLO si vas a usar SQL Server (ya lo tienes instalado en tu
+# máquina) en vez del SQLite por defecto:
+#
+#   pip install -r requirements-mssql.txt
+#
+# También necesitas tener instalado el "ODBC Driver for SQL Server" de
+# Microsoft (normalmente ya viene si tienes SQL Server Management Studio
+# instalado; si no, descárgalo gratis de:
+# https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server)
+#
+pyodbc==5.1.0

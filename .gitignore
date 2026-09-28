@@ -1,0 +1,35 @@
+# Python
+backend/venv/
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+*.db
+*.db-journal
+
+# Node
+node_modules/
+.expo/
+dist/
+web-admin/dist/
+
+# Entornos y secretos
+.env
+.env.local
+backend/.env
+
+# Datos y respaldos
+_respaldo_antes_multitaller/
+_qa_tmp/
+*.log
+
+# Playwright
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/.auth/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

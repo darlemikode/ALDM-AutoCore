@@ -1,0 +1,17 @@
+{
+  "name": "aldm-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Pruebas de punta a punta (Playwright) del panel web + backend de ALDM AutoCore",
+  "scripts": {
+    "instalar-navegador": "playwright install chromium",
+    "test": "playwright test",
+    "test:levantar": "cross-env E2E_LEVANTAR=1 playwright test",
+    "test:ver": "playwright test --headed",
+    "reporte": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "cross-env": "^7.0.3"
+  }
+}

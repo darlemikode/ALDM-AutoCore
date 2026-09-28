@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Términos y Condiciones</title>
+<meta name="description" content="Términos y Condiciones de uso del software ALDM AutoCore para talleres mecánicos y refaccionarias." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    color-scheme: dark;
+    --ink-950:#0a0d12; --ink-900:#0e1218; --ink-850:#121722; --ink-800:#161d29; --ink-700:#1e2733;
+    --ink-600:#2a3644; --ink-500:#48566a; --ink-400:#8493a8; --ink-300:#aeb9c9; --ink-200:#d4dae3; --ink-100:#eef1f5;
+    --electric-500:#3f8cff; --electric-400:#6fabff; --electric-100:#e4eeff;
+    --sport-500:#ff4438;
+    --font-display: "Barlow Condensed", sans-serif;
+    --font-body: "Inter", sans-serif;
+    --font-mono: "IBM Plex Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--ink-950); color: var(--ink-200); font-family: var(--font-body); -webkit-font-smoothing: antialiased; line-height: 1.65; }
+  a { color: var(--electric-400); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul, ol { padding-left: 22px; margin: 0; }
+  li { margin-bottom: 8px; }
+  h1, h2 { font-family: var(--font-display); font-weight: 800; color: #fff; text-wrap: balance; }
+  p { margin: 0; }
+
+  .navbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50; background: rgba(10,13,18,0.9); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .navbar .inner { max-width: 780px; margin: 0 auto; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; flex-direction: column; line-height: 1; }
+  .brand-name { font-family: var(--font-display); font-weight: 800; font-size: 22px; color: #fff; letter-spacing: 0.02em; }
+  .brand-name em { font-style: normal; color: var(--electric-400); }
+  .brand-sub { font-family: var(--font-display); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-400); margin-top: 2px; }
+  .back-link { font-size: 13px; font-weight: 600; color: var(--ink-300); display: flex; align-items: center; gap: 6px; }
+  .back-link:hover { color: #fff; text-decoration: none; }
+
+  main { max-width: 780px; margin: 0 auto; padding: 56px 24px 100px; }
+  .doc-head { border-bottom: 1px solid var(--ink-700); padding-bottom: 28px; margin-bottom: 40px; }
+  .eyebrow { display: inline-block; font-family: var(--font-display); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--electric-400); margin-bottom: 14px; }
+  h1 { font-size: clamp(30px, 5vw, 42px); }
+  .doc-meta { margin-top: 14px; font-size: 13px; color: var(--ink-400); font-family: var(--font-mono); }
+
+  .toc { background: var(--ink-900); border: 1px solid var(--ink-700); border-radius: 14px; padding: 22px 24px; margin-bottom: 48px; }
+  .toc h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-300); margin-bottom: 12px; }
+  .toc ol { list-style: decimal; padding-left: 20px; }
+  .toc a { color: var(--ink-200); font-size: 14px; }
+  .toc a:hover { color: var(--electric-400); }
+
+  section.clause { padding: 32px 0; border-top: 1px solid var(--ink-800); scroll-margin-top: 88px; }
+  section.clause:first-of-type { border-top: none; padding-top: 0; }
+  .clause h2 { font-size: 22px; display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .clause h2 .num { font-family: var(--font-mono); font-size: 15px; color: var(--electric-400); font-weight: 600; }
+  .clause p + p, .clause p + ul, .clause ul + p { margin-top: 14px; }
+  .clause p { color: var(--ink-200); font-size: 15px; }
+  .clause li { color: var(--ink-200); font-size: 15px; }
+  .clause h3 { font-family: var(--font-body); font-weight: 700; color: #fff; font-size: 15px; margin: 18px 0 8px; }
+
+  .plans-box { display: grid; gap: 10px; margin-top: 16px; }
+  .plans-box .row { display: flex; justify-content: space-between; gap: 12px; background: var(--ink-900); border: 1px solid var(--ink-700); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+  .plans-box .row b { color: #fff; }
+  .plans-box .row span { color: var(--ink-400); font-family: var(--font-mono); font-size: 13px; }
+
+  .contact-box { background: linear-gradient(180deg, rgba(63,140,255,0.10), rgba(63,140,255,0.03)); border: 1px solid rgba(63,140,255,0.28); border-radius: 14px; padding: 24px; margin-top: 16px; }
+  .contact-box .row { display: flex; gap: 10px; font-size: 14px; padding: 6px 0; color: var(--ink-200); }
+  .contact-box .row b { color: #fff; min-width: 110px; flex-shrink: 0; }
+
+  .footer-note { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--ink-800); font-size: 13px; color: var(--ink-500); }
+
+  @media (max-width: 640px) {
+    main { padding: 40px 18px 80px; }
+    .clause h2 { font-size: 19px; }
+    .plans-box .row { flex-direction: column; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+
+
+<header class="navbar">
+  <div class="inner">
+    <span class="brand">
+      <span class="brand-name">ALDM<em>.</em></span>
+      <span class="brand-sub">AutoCore</span>
+    </span>
+    <a class="back-link" href="index.html">← Volver al sitio</a>
+  </div>
+</header>
+
+<main>
+  <div class="doc-head">
+    <span class="eyebrow">Condiciones de uso del servicio</span>
+    <h1>Términos y Condiciones</h1>
+    <p class="doc-meta">Última actualización: 24 de septiembre de 2026 · ALDM AutoCore</p>
+  </div>
+
+  <nav class="toc" aria-label="Índice">
+    <h2>Contenido</h2>
+    <ol>
+      <li><a href="#objeto">Objeto y aceptación</a></li>
+      <li><a href="#servicio">Descripción del servicio</a></li>
+      <li><a href="#cuenta">Registro y responsabilidad de la cuenta</a></li>
+      <li><a href="#planes">Planes, precios y facturación</a></li>
+      <li><a href="#cancelacion">Cancelación y reembolsos</a></li>
+      <li><a href="#uso">Uso aceptable</a></li>
+      <li><a href="#datos-cliente">Titularidad y respaldo de la información</a></li>
+      <li><a href="#propiedad">Propiedad intelectual</a></li>
+      <li><a href="#disponibilidad">Disponibilidad y soporte</a></li>
+      <li><a href="#responsabilidad">Limitación de responsabilidad</a></li>
+      <li><a href="#privacidad">Privacidad</a></li>
+      <li><a href="#modificaciones">Modificaciones a estos términos</a></li>
+      <li><a href="#legislacion">Legislación aplicable y jurisdicción</a></li>
+      <li><a href="#contacto">Contacto</a></li>
+    </ol>
+  </nav>
+
+  <section class="clause" id="objeto">
+    <h2><span class="num">01</span> Objeto y aceptación</h2>
+    <p>Estos Términos y Condiciones regulan el acceso y uso del software <b style="color:#fff">ALDM AutoCore</b> (el "Servicio"), plataforma web y aplicación móvil para la administración de talleres mecánicos y refaccionarias, ofrecida por ALDM AutoCore ("ALDM", "nosotros").</p>
+    <p>Al crear una cuenta, contratar un plan o utilizar el Servicio, usted ("el Cliente", "usted") acepta estos términos en su totalidad. Si actúa en nombre de una empresa, declara contar con facultades suficientes para obligarla.</p>
+  </section>
+
+  <section class="clause" id="servicio">
+    <h2><span class="num">02</span> Descripción del servicio</h2>
+    <p>ALDM AutoCore permite, entre otras funciones:</p>
+    <ul>
+      <li>Crear y dar seguimiento a órdenes de servicio.</li>
+      <li>Administrar inventario, ventas y proveedores.</li>
+      <li>Gestionar clientes, vehículos e historial de servicios.</li>
+      <li>Consultar reportes y estadísticas del negocio.</li>
+      <li>Acceder desde la aplicación móvil para captura y seguimiento en campo.</li>
+    </ul>
+    <p>Nos reservamos el derecho de mejorar, modificar o descontinuar funciones del Servicio, notificando cambios relevantes con antelación razonable.</p>
+  </section>
+
+  <section class="clause" id="cuenta">
+    <h2><span class="num">03</span> Registro y responsabilidad de la cuenta</h2>
+    <p>Para usar el Servicio debe crear una cuenta con información veraz y actualizada. Usted es responsable de mantener la confidencialidad de sus credenciales y de toda actividad realizada bajo su cuenta y las de los usuarios que autorice dentro de su negocio.</p>
+    <p>Debe notificarnos de inmediato ante cualquier uso no autorizado de su cuenta.</p>
+  </section>
+
+  <section class="clause" id="planes">
+    <h2><span class="num">04</span> Planes, precios y facturación</h2>
+    <p>El Servicio se ofrece mediante suscripción mensual, en los siguientes planes de referencia:</p>
+    <div class="plans-box">
+      <div class="row"><b>Básico</b><span>$799 MXN / mes</span></div>
+      <div class="row"><b>Premium</b><span>$1,499 MXN / mes</span></div>
+      <div class="row"><b>Empresa</b><span>Cotización a la medida</span></div>
+    </div>
+    <p>Los precios pueden actualizarse; cualquier cambio se notificará al Cliente con al menos 30 días naturales de anticipación antes de aplicarse a su siguiente periodo de facturación. Los pagos se cobran de forma recurrente conforme al plan y periodicidad contratados, mediante el método de pago registrado.</p>
+  </section>
+
+  <section class="clause" id="cancelacion">
+    <h2><span class="num">05</span> Cancelación y reembolsos</h2>
+    <p>Usted puede cancelar su suscripción en cualquier momento desde el sistema o solicitándolo por escrito; la cancelación surte efecto al término del periodo ya pagado. Salvo error de cobro o disposición legal aplicable, los pagos realizados no son reembolsables de forma proporcional por periodos ya iniciados.</p>
+    <p>Podremos suspender o cancelar el acceso al Servicio por falta de pago, previa notificación, hasta regularizar la situación.</p>
+  </section>
+
+  <section class="clause" id="uso">
+    <h2><span class="num">06</span> Uso aceptable</h2>
+    <p>Al utilizar el Servicio, usted se compromete a no:</p>
+    <ul>
+      <li>Usar la plataforma para fines ilícitos o que infrinjan derechos de terceros.</li>
+      <li>Intentar vulnerar la seguridad del sistema o acceder a datos de otros clientes.</li>
+      <li>Realizar ingeniería inversa, copiar o revender el software sin autorización.</li>
+      <li>Cargar contenido difamatorio, fraudulento o que infrinja propiedad intelectual de terceros.</li>
+    </ul>
+    <p>El incumplimiento de esta sección puede resultar en la suspensión o cancelación inmediata de la cuenta.</p>
+  </section>
+
+  <section class="clause" id="datos-cliente">
+    <h2><span class="num">07</span> Titularidad y respaldo de la información</h2>
+    <p>La información que usted captura en el sistema (órdenes, inventario, clientes, ventas) es de su propiedad. ALDM únicamente la trata para prestar el Servicio, conforme a nuestro <a href="aviso-privacidad.html">Aviso de Privacidad</a>.</p>
+    <p>Realizamos respaldos periódicos como buena práctica operativa; sin embargo, recomendamos al Cliente exportar y respaldar su información con la frecuencia que considere necesaria para su negocio.</p>
+  </section>
+
+  <section class="clause" id="propiedad">
+    <h2><span class="num">08</span> Propiedad intelectual</h2>
+    <p>El software, su diseño, código, marca y demás elementos de ALDM AutoCore son propiedad de ALDM o de sus licenciantes. Estos términos no transfieren ningún derecho de propiedad intelectual al Cliente; únicamente se otorga una licencia de uso limitada, no exclusiva e intransferible, mientras la suscripción esté vigente.</p>
+  </section>
+
+  <section class="clause" id="disponibilidad">
+    <h2><span class="num">09</span> Disponibilidad y soporte</h2>
+    <p>Trabajamos para mantener el Servicio disponible de forma continua, aunque puede haber interrupciones programadas para mantenimiento o causas fuera de nuestro control (fallas de conectividad, proveedores de infraestructura, fuerza mayor). Ofrecemos soporte técnico en español por los canales indicados en la plataforma, con tiempos de atención según el plan contratado.</p>
+  </section>
+
+  <section class="clause" id="responsabilidad">
+    <h2><span class="num">10</span> Limitación de responsabilidad</h2>
+    <p>El Servicio se ofrece "tal cual" y "según disponibilidad". En la máxima medida permitida por la ley, ALDM no será responsable por daños indirectos, pérdida de ganancias o de información derivados del uso o imposibilidad de uso del Servicio. Nuestra responsabilidad total frente al Cliente, en su caso, se limita al monto pagado por el Servicio durante los tres meses previos al hecho que la origine.</p>
+  </section>
+
+  <section class="clause" id="privacidad">
+    <h2><span class="num">11</span> Privacidad</h2>
+    <p>El tratamiento de datos personales realizado a través del Servicio se rige por nuestro <a href="aviso-privacidad.html">Aviso de Privacidad</a>, el cual forma parte integral de estos Términos y Condiciones.</p>
+  </section>
+
+  <section class="clause" id="modificaciones">
+    <h2><span class="num">12</span> Modificaciones a estos términos</h2>
+    <p>Podemos actualizar estos Términos y Condiciones para reflejar cambios en el Servicio o en la normatividad aplicable. Publicaremos la versión vigente en esta misma página, indicando la fecha de última actualización. El uso continuado del Servicio después de una modificación implica su aceptación.</p>
+  </section>
+
+  <section class="clause" id="legislacion">
+    <h2><span class="num">13</span> Legislación aplicable y jurisdicción</h2>
+    <p>Estos términos se rigen por las leyes aplicables en los Estados Unidos Mexicanos. Para cualquier controversia relacionada con el Servicio, las partes se someten a los tribunales competentes del domicilio de ALDM, renunciando a cualquier otro fuero que pudiera corresponderles.</p>
+  </section>
+
+  <section class="clause" id="contacto">
+    <h2><span class="num">14</span> Contacto</h2>
+    <p>Para dudas sobre estos Términos y Condiciones, contáctenos a través de:</p>
+    <div class="contact-box">
+      <div class="row"><b>Responsable</b><span>ALDM AutoCore</span></div>
+      <div class="row"><b>Correo</b><span>contacto@aldmautocore.com</span></div>
+      <div class="row"><b>Asunto sugerido</b><span>"Términos y condiciones"</span></div>
+    </div>
+    <p style="margin-top:14px; font-size: 13px; color: var(--ink-500);">Sustituya el correo y datos de contacto anteriores por los datos reales de su empresa antes de publicar este documento.</p>
+  </section>
+
+  <p class="footer-note">© <span id="anio"></span> ALDM AutoCore. Todos los derechos reservados.</p>
+</main>
+
+<script>
+  document.getElementById('anio').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>

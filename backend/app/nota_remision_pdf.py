@@ -1,0 +1,94 @@
+"""
+Nota de remisión — el documento que se entrega al cliente cuando recoge su
+vehículo. Distinto del recibo de pago (`recibo_pdf.py`): aquí lo importante
+es dejar constancia de qué se le hizo al vehículo, en qué kilometraje entró,
+el diagnóstico y la conformidad del cliente al recibirlo. También incluye el
+total, para no obligar a manejar dos papeles.
+"""
+from io import BytesIO
+
+from reportlab.lib.units import mm
+from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
+
+from .pdf_diseno import (
+    ACCENT, E, OK, OK_SOFT, PlantillaDocumento, aviso, caja_texto, dos_columnas, esc, firmas, fmt, seccion,
+    tabla_conceptos, totales,
+)
+from .recibo_pdf import ANCHO, bloques_cliente_vehiculo, categoria_refaccion, nombre_refaccion
+from .schemas import ServicioCostos
+
+
+def generar_nota_remision_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion=None) -> bytes:
+    buffer = BytesIO()
+    entrega = f"{servicio.fecha_salida_servicio:%d/%m/%Y}" if servicio.fecha_salida_servicio else "—"
+    liquidado = costos.saldo_pendiente <= 0
+    plantilla = PlantillaDocumento(
+        taller, "Nota de remisión", f"#{servicio.id_servicio:05d}",
+        lineas_derecha=[f"Entrada: {servicio.fecha_entrada_servicio:%d/%m/%Y}", f"Entrega: {entrega}"],
+    )
+    doc = plantilla.documento(buffer)
+    story = []
+
+    if servicio.es_garantia:
+        story.append(aviso(f"Reclamación de garantía de la orden #{servicio.id_servicio_original:05d}."
+                           + (f" Motivo: {esc(servicio.motivo_garantia)}" if servicio.motivo_garantia else ""), ANCHO))
+        story.append(Spacer(1, 4 * mm))
+
+    v = servicio.vehiculo
+    story += bloques_cliente_vehiculo(servicio, extra_vehiculo=[
+        ("VIN", (v.numserie_vehiculo if v else None) or "—"),
+        ("Km de llegada", servicio.km_llegada or "—"),
+    ])
+
+    media = (ANCHO - 5 * mm) / 2
+    story.append(dos_columnas(
+        [*seccion("Diagnóstico", media), caja_texto(servicio.diagnostico or "Sin diagnóstico registrado.", media)],
+        [*seccion("Trabajos realizados", media), caja_texto(servicio.operaciones or servicio.nombre_servicio or "Sin detalle registrado.", media)],
+        ANCHO,
+    ))
+
+    story += seccion("Refacciones y mano de obra", ANCHO)
+    filas = []
+    for d in servicio.detalles:
+        refaccion = nombre_refaccion(d)
+        nombre = Paragraph(
+            esc(d.descripcion or refaccion or "—")
+            + (f"<br/><font size='7.5' color='#6b7480'>Refacción: {esc(refaccion)}</font>" if refaccion and refaccion != d.descripcion else ""),
+            E["celda"],
+        )
+        importe = (d.costo_mano_obra or 0) + (d.costo_refaccion or 0) + (d.costo_extra or 0)
+        filas.append([nombre, str(d.cantidad or 1), fmt(importe), categoria_refaccion(d) or "—"])
+    story.append(tabla_conceptos(
+        ["Nombre", "Cant.", "Precio", "Categoría"], filas,
+        [ANCHO * w for w in (0.42, 0.10, 0.18, 0.30)], alinear_derecha=(1, 2),
+    ))
+    story.append(Spacer(1, 4 * mm))
+    izquierda = []
+    if servicio.km_proximo_servicio:
+        izquierda.append(aviso(f"Próximo servicio recomendado a los {esc(servicio.km_proximo_servicio)} km.", ANCHO - 88 * mm, color=OK, fondo=OK_SOFT))
+    if servicio.comentarios_finales:
+        if izquierda:
+            izquierda.append(Spacer(1, 3 * mm))
+        izquierda += [Paragraph("COMENTARIOS", E["etiqueta"]), Spacer(1, 1.5 * mm), caja_texto(servicio.comentarios_finales, ANCHO - 88 * mm)]
+    bloque = Table([[izquierda or "", totales([
+        ("Total del servicio", fmt(costos.total)),
+        ("Pagado", fmt(costos.total_abonado)),
+        ("Liquidado" if liquidado else "Saldo pendiente", fmt(costos.saldo_pendiente)),
+    ], ANCHO, color_final=OK if liquidado else ACCENT)]], colWidths=[ANCHO - 82 * mm, 82 * mm])
+    bloque.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
+    story.append(bloque)
+
+    story.append(KeepTogether([
+        *seccion("Conformidad", ANCHO),
+        Paragraph(
+            "Declaro que recibí el vehículo arriba descrito a mi entera satisfacción, revisado y en las condiciones "
+            "convenidas con el taller.", E["parrafo"],
+        ),
+        Spacer(1, 1 * mm),
+        firmas(["Nombre y firma del cliente", "Firma / sello del taller"], ANCHO),
+    ]))
+    from .inspeccion_pdf import hoja_inspeccion
+    story += hoja_inspeccion(inspeccion, ANCHO)
+
+    doc.build(story, onFirstPage=plantilla, onLaterPages=plantilla)
+    return buffer.getvalue()
