@@ -34,3 +34,10 @@ e2e/.auth/
 .DS_Store
 Thumbs.db
 backend/nul
+
+# Cualquier variante de .env o respaldo de credenciales, en cualquier carpeta
+*.env
+*.env.*
+!**/.env.example
+*.bak
+*secrets*

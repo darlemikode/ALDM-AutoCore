@@ -11,6 +11,7 @@ from ..security import (
 )
 from ..suscripciones import contenido_qr, estado_taller, permiso_en_modulos
 from ..tenancy import MODO_SUPERADMIN, MODO_TALLER, fijar_tenant, taller_actual
+from ..rate_limit import limiter
 from .usuarios import listar as _listar_usuarios, crear as _crear_usuario, actualizar as _actualizar_usuario, usuarios_del_taller, es_compartido
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -90,6 +91,7 @@ def _elegir_taller(db: Session, user: models.Usuario, codigo: str | None) -> int
 
 
 @router.post("/login", response_model=schemas.Token)
+@limiter.limit("5/minute")
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     fijar_tenant(db, MODO_SUPERADMIN)  # usuarios y membresías son globales
     user = authenticate_user(db, form_data.username, form_data.password)
@@ -125,13 +127,15 @@ def _taller_para_activar(db: Session, codigo_taller: str, codigo_activacion: str
 
 
 @router.post("/verificar-activacion")
-def verificar_activacion(payload: schemas.VerificarActivacionIn, db: Session = Depends(get_db_global)):
+@limiter.limit("10/minute")
+def verificar_activacion(request: Request, payload: schemas.VerificarActivacionIn, db: Session = Depends(get_db_global)):
     taller = _taller_para_activar(db, payload.codigo_taller, payload.codigo_activacion)
     return {"id_taller": taller.id_taller, "nombre": taller.nombre_comercial, "codigo": taller.codigo}
 
 
 @router.post("/activar-taller", response_model=schemas.Token)
-def activar_taller(payload: schemas.ActivarTallerIn, db: Session = Depends(get_db_global)):
+@limiter.limit("10/minute")
+def activar_taller(request: Request, payload: schemas.ActivarTallerIn, db: Session = Depends(get_db_global)):
     """La primera vez que se entra a un taller recién dado de alta: el
     dueño registra su usuario (queda como Administrador General) y entra."""
     from ..seed import rol_admin_de
