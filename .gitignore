@@ -33,3 +33,4 @@ e2e/.auth/
 .idea/
 .DS_Store
 Thumbs.db
+backend/nul
