@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..database import get_db
 from ..security import get_current_user
+from ..subida_archivos import leer_y_validar_imagen, nombre_unico, guardar
 
 router = APIRouter(prefix="/api/fotos", tags=["fotos"])
 
@@ -55,14 +56,9 @@ async def subir(
     if not user.tiene_permiso(permiso):
         raise HTTPException(status_code=403, detail="Tu rol no tiene permiso para subir fotos aquí.")
 
-    extension = os.path.splitext(archivo.filename or "")[1].lower() or ".jpg"
-    if extension not in EXTENSIONES_VALIDAS:
-        raise HTTPException(status_code=400, detail="Formato de imagen no soportado (usa JPG, PNG, WEBP o HEIC).")
-
-    nombre_archivo = f"{entidad_tipo}_{entidad_id}_{uuid.uuid4().hex[:10]}{extension}"
-    ruta_completa = os.path.join(CARPETA_UPLOADS, nombre_archivo)
-    with open(ruta_completa, "wb") as destino:
-        shutil.copyfileobj(archivo.file, destino)
+    contenido, extension = await leer_y_validar_imagen(archivo)
+    nombre_archivo = nombre_unico(f"{entidad_tipo}_{entidad_id}", extension)
+    guardar(CARPETA_UPLOADS, nombre_archivo, contenido)
 
     foto = models.Foto(
         entidad_tipo=entidad_tipo,

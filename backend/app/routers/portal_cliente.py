@@ -280,7 +280,7 @@ async def enviar_foto_cliente(
     servicio = db.query(models.Servicio).filter(models.Servicio.id_servicio == servicio_id).first()
     if not servicio or servicio.id_cliente != cliente.id_cliente:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
-    nombre = guardar_foto_chat(archivo)
+    nombre = await guardar_foto_chat(archivo)
     mensaje = models.MensajeChat(
         id_servicio=servicio_id, autor_tipo="cliente", autor_nombre=cliente.nombre_cliente,
         tipo="foto", texto=(texto or "").strip() or "📷 Foto", ruta_foto=nombre,

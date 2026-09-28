@@ -136,7 +136,20 @@ app.include_router(ws_router.router)
 # disco, sin depender de ningún servicio externo de almacenamiento.
 UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
+
+class UploadsSinSniffing(StaticFiles):
+    """Le agrega X-Content-Type-Options: nosniff a cada archivo servido de
+    /uploads — así el navegador nunca intenta "adivinar" el contenido y
+    ejecutarlo como HTML/script, use el Content-Type que use."""
+
+    async def get_response(self, path, scope):
+        respuesta = await super().get_response(path, scope)
+        respuesta.headers["X-Content-Type-Options"] = "nosniff"
+        return respuesta
+
+
+app.mount("/uploads", UploadsSinSniffing(directory=UPLOADS_DIR), name="uploads")
 
 
 @app.get("/")
