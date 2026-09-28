@@ -318,7 +318,8 @@ def eliminar_rol(rol_id: int, db: Session = Depends(get_db), user=Depends(requir
 # por su cuenta (llamada, WhatsApp, en persona); el usuario debe cambiarla
 # al entrar.
 @router.post("/recuperar-password")
-def solicitar_recuperacion(payload: schemas.RecuperacionRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def solicitar_recuperacion(request: Request, payload: schemas.RecuperacionRequest, db: Session = Depends(get_db)):
     fijar_tenant(db, MODO_SUPERADMIN)  # el usuario puede estar en cualquier taller
     identificador = payload.identificador.strip()
     usuario = (
