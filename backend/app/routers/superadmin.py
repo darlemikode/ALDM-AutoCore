@@ -202,7 +202,7 @@ def _uso_por_taller(db: Session) -> dict[int, dict]:
             if tid is not None:
                 uso.setdefault(tid, {})[campo] = valor
 
-    acumular(db.query(models.UsuarioTaller.id_taller, func.count()).filter(models.UsuarioTaller.activo.is_(True)).group_by(models.UsuarioTaller.id_taller).all(), "usuarios_activos")
+    acumular(db.query(models.UsuarioTaller.id_taller, func.count()).filter(models.UsuarioTaller.activo == True).group_by(models.UsuarioTaller.id_taller).all(), "usuarios_activos")
     acumular(db.query(models.Cliente.id_taller, func.count()).group_by(models.Cliente.id_taller).all(), "clientes")
     acumular(db.query(models.Vehiculo.id_taller, func.count()).group_by(models.Vehiculo.id_taller).all(), "vehiculos")
     acumular(db.query(models.Servicio.id_taller, func.count()).group_by(models.Servicio.id_taller).all(), "ordenes_total")
@@ -661,6 +661,6 @@ def resumen(db: Session = Depends(get_db_global), user=Depends(require_superadmi
         talleres_por_paquete=por_paquete,
         ingresos_por_mes=serie,
         proximos_vencimientos=proximos[:8],
-        usuarios_totales=db.query(models.Usuario).filter(models.Usuario.activo.is_(True)).count(),
+        usuarios_totales=db.query(models.Usuario).filter(models.Usuario.activo == True).count(),
         ordenes_mes_total=db.query(models.Servicio).filter(models.Servicio.fecha_entrada_servicio >= inicio_mes).count(),
     )

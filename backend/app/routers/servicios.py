@@ -151,7 +151,7 @@ def listar(
     if id_cliente:
         query = query.filter(models.Servicio.id_cliente == id_cliente)
     if solo_sin_pagar:
-        query = query.filter(models.Servicio.pagado.is_(False))
+        query = query.filter(models.Servicio.pagado == False)
     servicios = query.order_by(models.Servicio.fecha_entrada_servicio.desc()).all()
     return [_con_costos(s) for s in servicios]
 

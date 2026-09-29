@@ -353,7 +353,7 @@ def solicitar_recuperacion(request: Request, payload: schemas.RecuperacionReques
             db.query(models.Usuario).join(models.UsuarioTaller)
             .join(models.Rol, models.Rol.id_rol == models.UsuarioTaller.id_rol)
             .filter(
-                models.UsuarioTaller.id_taller == m.id_taller, models.UsuarioTaller.activo.is_(True),
+                models.UsuarioTaller.id_taller == m.id_taller, models.UsuarioTaller.activo == True,
                 models.Rol.nombre == "Administrador General", models.Usuario.correo.isnot(None),
             ).first()
         )
@@ -369,7 +369,7 @@ def listar_solicitudes_recuperacion(
 ):
     query = db.query(models.SolicitudRecuperacion).options(joinedload(models.SolicitudRecuperacion.usuario))
     if solo_pendientes:
-        query = query.filter(models.SolicitudRecuperacion.atendida.is_(False))
+        query = query.filter(models.SolicitudRecuperacion.atendida == False)
     return query.order_by(models.SolicitudRecuperacion.fecha_solicitud.desc()).all()
 
 

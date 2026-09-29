@@ -20,7 +20,7 @@ def listar_items(db: Session = Depends(get_db), user=Depends(get_current_user)):
     consume la pantalla de captura para armar el checklist."""
     return (
         db.query(models.InspeccionItem)
-        .filter(models.InspeccionItem.activo.is_(True))
+        .filter(models.InspeccionItem.activo == True)
         .order_by(models.InspeccionItem.categoria, models.InspeccionItem.orden)
         .all()
     )

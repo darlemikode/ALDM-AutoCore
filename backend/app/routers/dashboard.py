@@ -27,7 +27,7 @@ def resumen(db: Session = Depends(get_db), user=Depends(get_current_user)):
     servicios_sin_pagar = (
         db.query(models.Servicio)
         .options(selectinload(models.Servicio.detalles), selectinload(models.Servicio.abonos))
-        .filter(models.Servicio.pagado.is_(False))
+        .filter(models.Servicio.pagado == False)
         .all()
     )
     saldo_pendiente_total = 0.0
@@ -43,7 +43,7 @@ def resumen(db: Session = Depends(get_db), user=Depends(get_current_user)):
     if user.tiene_permiso("usuarios.ver"):
         solicitudes_recuperacion_pendientes = (
             db.query(func.count(models.SolicitudRecuperacion.id_solicitud))
-            .filter(models.SolicitudRecuperacion.atendida.is_(False))
+            .filter(models.SolicitudRecuperacion.atendida == False)
             .scalar()
         )
 

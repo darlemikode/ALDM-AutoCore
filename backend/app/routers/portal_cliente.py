@@ -375,7 +375,7 @@ def promociones_vigentes(db: Session = Depends(get_db), cliente: models.Cliente 
     hoy = datetime.utcnow().date()
     promos = (
         db.query(models.Promocion)
-        .filter(models.Promocion.activa.is_(True))
+        .filter(models.Promocion.activa == True)
         .order_by(models.Promocion.orden, models.Promocion.fecha_creacion.desc())
         .all()
     )

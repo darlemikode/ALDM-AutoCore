@@ -46,7 +46,7 @@ def _validar_limite_usuarios(db: Session, tid: int):
     limite = susc.paquete.limite_usuarios if susc and susc.paquete else None
     if limite:
         activos = db.query(models.UsuarioTaller).filter(
-            models.UsuarioTaller.id_taller == tid, models.UsuarioTaller.activo.is_(True)
+            models.UsuarioTaller.id_taller == tid, models.UsuarioTaller.activo == True
         ).count()
         if activos >= limite:
             raise HTTPException(status_code=400, detail=f"Tu paquete permite hasta {limite} usuarios activos. Pide a ALDM ampliar tu paquete.")
