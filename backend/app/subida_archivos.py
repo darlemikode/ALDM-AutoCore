@@ -47,7 +47,8 @@ def nombre_unico(prefijo: str, extension: str) -> str:
     return f"{prefijo}_{uuid.uuid4().hex[:12]}{extension}"
 
 
-def guardar(carpeta: str, nombre_archivo: str, contenido: bytes) -> None:
-    os.makedirs(carpeta, exist_ok=True)
-    with open(os.path.join(carpeta, nombre_archivo), "wb") as destino:
-        destino.write(contenido)
+def guardar(carpeta, nombre_archivo: str, contenido: bytes) -> None:
+    """`carpeta` se ignora (compatibilidad): todo va a almacenamiento.py."""
+    from . import almacenamiento
+
+    almacenamiento.guardar(nombre_archivo, contenido)

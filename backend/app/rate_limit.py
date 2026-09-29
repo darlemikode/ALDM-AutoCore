@@ -1,6 +1,8 @@
 """Límite de peticiones por IP (evita fuerza bruta en /auth/login y que
 alguien sature el servidor a peticiones). Se usa como decorador en los
 endpoints sensibles y como límite global por defecto en main.py."""
+import os
+
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -21,4 +23,9 @@ def ip_del_cliente(request) -> str:
     return get_remote_address(request)
 
 
-limiter = Limiter(key_func=ip_del_cliente, default_limits=["200/minute"])
+# Con REDIS_URL los contadores se comparten entre instancias; sin ella, en memoria.
+limiter = Limiter(
+    key_func=ip_del_cliente,
+    default_limits=["200/minute"],
+    storage_uri=os.getenv("REDIS_URL") or "memory://",
+)

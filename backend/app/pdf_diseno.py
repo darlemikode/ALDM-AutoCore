@@ -9,10 +9,14 @@ y firmas — así los documentos se ven como una sola familia.
 Solo usa fuentes base de PDF (Helvetica/Courier): no depende de archivos de
 fuentes instalados en Windows ni en el servidor.
 """
+import io
 import math
 import os
 
 from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader
+
+from . import almacenamiento
 from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
@@ -86,9 +90,9 @@ def datos_taller(taller) -> dict:
     ]))
     logo = None
     if taller.ruta_logo:
-        ruta = os.path.join(CARPETA_UPLOADS, taller.ruta_logo)
-        if os.path.exists(ruta):
-            logo = ruta
+        datos = almacenamiento.leer(taller.ruta_logo)
+        if datos:
+            logo = ImageReader(io.BytesIO(datos))
     return {"nombre": taller.nombre_taller or "Mi Taller", "linea1": domicilio, "linea2": contacto, "logo": logo}
 
 

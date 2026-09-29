@@ -10,6 +10,7 @@ import os
 import shutil
 import uuid
 
+from .. import almacenamiento
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -83,9 +84,7 @@ def eliminar(foto_id: int, db: Session = Depends(get_db), user=Depends(get_curre
     if permiso and not user.tiene_permiso(permiso):
         raise HTTPException(status_code=403, detail="Tu rol no tiene permiso para eliminar esta foto.")
 
-    ruta_completa = os.path.join(CARPETA_UPLOADS, foto.ruta_archivo)
-    if os.path.exists(ruta_completa):
-        os.remove(ruta_completa)
+    almacenamiento.borrar(foto.ruta_archivo)
 
     db.delete(foto)
     db.commit()

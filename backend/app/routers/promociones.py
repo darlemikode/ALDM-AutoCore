@@ -8,6 +8,7 @@ import shutil
 import uuid
 from datetime import date
 
+from .. import almacenamiento
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -57,9 +58,7 @@ def eliminar(promocion_id: int, db: Session = Depends(get_db), user=Depends(requ
     if not promo:
         raise HTTPException(status_code=404, detail="Promoción no encontrada")
     if promo.ruta_imagen:
-        ruta = os.path.join(CARPETA_UPLOADS, promo.ruta_imagen)
-        if os.path.exists(ruta):
-            os.remove(ruta)
+        almacenamiento.borrar(promo.ruta_imagen)
     db.delete(promo)
     db.commit()
     return None
@@ -74,9 +73,7 @@ async def subir_imagen(promocion_id: int, archivo: UploadFile = File(...), db: S
     contenido, extension = await leer_y_validar_imagen(archivo)
 
     if promo.ruta_imagen:
-        ruta_vieja = os.path.join(CARPETA_UPLOADS, promo.ruta_imagen)
-        if os.path.exists(ruta_vieja):
-            os.remove(ruta_vieja)
+        almacenamiento.borrar(promo.ruta_imagen)
 
     nombre_archivo = nombre_unico(f"promocion_{promocion_id}", extension)
     guardar(CARPETA_UPLOADS, nombre_archivo, contenido)

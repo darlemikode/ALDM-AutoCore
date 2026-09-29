@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from .. import almacenamiento
 from ..facturacion_pac import RFC_GENERICO_NACIONAL, ErrorPAC, cancelar, consultar_estado, descargar_archivo, modo_pac, llave_facturapi, timbrar
 from ..security import get_current_user, require_permission
 
@@ -333,8 +334,7 @@ def _validar(payload: schemas.FacturaIn, config) -> None:
 
 
 def _guardar_archivo(nombre: str, contenido: bytes) -> str:
-    with open(os.path.join(CARPETA_FACTURAS, nombre), "wb") as f:
-        f.write(contenido)
+    almacenamiento.guardar("facturas/" + nombre, contenido)
     return nombre
 
 
@@ -345,10 +345,7 @@ def _regenerar_pdf(db: Session, factura: models.Factura, config) -> None:
 
     xml = None
     if factura.ruta_xml:
-        ruta = os.path.join(CARPETA_FACTURAS, factura.ruta_xml)
-        if os.path.exists(ruta):
-            with open(ruta, "rb") as f:
-                xml = f.read()
+        xml = almacenamiento.leer("facturas/" + factura.ruta_xml)
     taller = db.query(models.ConfiguracionTaller).first()
     nombre = factura.ruta_pdf or f"{factura.serie}{factura.folio}_{factura.uuid or factura.id_factura}.pdf"
     factura.ruta_pdf = _guardar_archivo(nombre, generar_factura_pdf(factura, config, taller, xml))
@@ -465,14 +462,13 @@ def descargar(factura_id: int, tipo: str, db: Session = Depends(get_db), user=De
     if tipo not in ("pdf", "xml"):
         raise HTTPException(status_code=404, detail="Formato no disponible")
     factura = _factura_o_404(db, factura_id)
-    if tipo == "pdf" and not (factura.ruta_pdf and os.path.exists(os.path.join(CARPETA_FACTURAS, factura.ruta_pdf))):
+    if tipo == "pdf" and not (factura.ruta_pdf and almacenamiento.existe("facturas/" + factura.ruta_pdf)):
         _regenerar_pdf(db, factura, _config(db))
         db.commit()
     ruta = factura.ruta_pdf if tipo == "pdf" else factura.ruta_xml
-    ruta_completa = os.path.join(CARPETA_FACTURAS, ruta) if ruta else None
-    if ruta_completa and os.path.exists(ruta_completa):
-        with open(ruta_completa, "rb") as f:
-            contenido = f.read()
+    contenido = almacenamiento.leer("facturas/" + ruta) if ruta else None
+    if contenido is not None:
+        pass
     elif factura.proveedor == "facturapi" and factura.pac_id:
         try:
             contenido = descargar_archivo(factura, tipo)

@@ -14,7 +14,7 @@ from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
 from . import ws_router
-from .ws_manager import manager_global
+from .ws_manager import REDIS_URL, escuchar_bus, manager_global
 
 app = FastAPI(
     title="ALDM AutoCore - API",
@@ -61,7 +61,7 @@ async def avisar_cambios_globales(request: Request, call_next):
         if (
             request.method in _METODOS_QUE_CAMBIAN
             and 200 <= response.status_code < 300
-            and manager_global.conexiones
+            and (manager_global.conexiones or REDIS_URL)
         ):
             partes = [p for p in request.url.path.split("/") if p]
             # primer segmento útil del path como "tabla" (saltando el
@@ -119,6 +119,14 @@ def _esperar_base_de_datos(intentos: int = 8, espera: int = 15):
 
 
 @app.on_event("startup")
+async def iniciar_bus_ws():
+    if REDIS_URL:
+        import asyncio
+
+        asyncio.create_task(escuchar_bus())
+
+
+@app.on_event("startup")
 def on_startup():
     _esperar_base_de_datos()
     seed.run()
@@ -160,8 +168,8 @@ app.include_router(ws_router.router)
 # disco, sin depender de ningún servicio externo de almacenamiento.
 # En Azure se apunta a /home/uploads (almacenamiento persistente): la carpeta
 # del código se reemplaza en cada despliegue y se perderían las fotos.
-UPLOADS_DIR = os.getenv("UPLOADS_DIR") or os.path.join(os.path.dirname(__file__), "uploads")
-os.makedirs(UPLOADS_DIR, exist_ok=True)
+from . import almacenamiento
+from .almacenamiento import UPLOADS_DIR
 
 
 class UploadsSinSniffing(StaticFiles):
@@ -175,7 +183,23 @@ class UploadsSinSniffing(StaticFiles):
         return respuesta
 
 
-app.mount("/uploads", UploadsSinSniffing(directory=UPLOADS_DIR), name="uploads")
+if almacenamiento.USA_BLOB:
+    import mimetypes
+
+    from fastapi import Response
+
+    @app.get("/uploads/{ruta:path}", include_in_schema=False)
+    def servir_upload(ruta: str):
+        datos = almacenamiento.leer(ruta)
+        if datos is None:
+            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        return Response(
+            content=datos,
+            media_type=mimetypes.guess_type(ruta)[0] or "application/octet-stream",
+            headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "public, max-age=86400"},
+        )
+else:
+    app.mount("/uploads", UploadsSinSniffing(directory=UPLOADS_DIR), name="uploads")
 
 # Página informativa (carpeta sitio-web del repo; el despliegue la copia a app/sitio).
 # Se entrega en /sitio y su formulario manda las solicitudes a /api/contacto.

@@ -4,6 +4,7 @@ Todo en UNA sola hoja: resumen con íconos, puntos agrupados por categoría
 en dos columnas (cada uno con su ícono y color de estado), fotos de la
 inspección y observaciones. Si no cabe, se reduce para que quepa.
 """
+import io
 import os
 
 from reportlab.lib import colors
@@ -12,6 +13,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import Image, KeepInFrame, PageBreak, Paragraph, Spacer, Table, TableStyle
 
+from . import almacenamiento
 from .pdf_diseno import (
     ACCENT, ALTO_ENCABEZADO, CARPETA_UPLOADS, E, LINE, OK, OK_SOFT, ROJO, ROJO_SOFT, WARN, WARN_SOFT,
     Sombra, caja_texto, esc, seccion,
@@ -134,14 +136,15 @@ def _resumen(conteo: dict, total: int, ancho: float):
 
 
 def _fotos(rutas, ancho: float):
-    rutas = [r for r in rutas if os.path.exists(os.path.join(CARPETA_UPLOADS, r))][:5]
+    contenidos = {r: almacenamiento.leer(r) for r in rutas[:5]}
+    rutas = [r for r in rutas[:5] if contenidos[r]]
     if not rutas:
         return None
     lado = min(34 * mm, (ancho - 4 * mm * (len(rutas) - 1)) / len(rutas))
     imagenes = []
     for r in rutas:
         try:
-            img = Image(os.path.join(CARPETA_UPLOADS, r))
+            img = Image(io.BytesIO(contenidos[r]))
             proporcion = img.imageHeight / float(img.imageWidth or 1)
             img.drawWidth, img.drawHeight = (lado, lado * proporcion) if proporcion <= 1 else (lado / proporcion, lado)
             imagenes.append(img)

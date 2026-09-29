@@ -8,6 +8,7 @@ import os
 import shutil
 import uuid
 
+from .. import almacenamiento
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
@@ -51,9 +52,7 @@ async def subir_logo(archivo: UploadFile = File(...), db: Session = Depends(get_
     contenido, extension = await leer_y_validar_imagen(archivo)
     config = _obtener_o_crear(db)
     if config.ruta_logo:
-        ruta_vieja = os.path.join(CARPETA_UPLOADS, config.ruta_logo)
-        if os.path.exists(ruta_vieja):
-            os.remove(ruta_vieja)
+        almacenamiento.borrar(config.ruta_logo)
     nombre_archivo = nombre_unico("logo_taller", extension)
     guardar(CARPETA_UPLOADS, nombre_archivo, contenido)
     config.ruta_logo = nombre_archivo

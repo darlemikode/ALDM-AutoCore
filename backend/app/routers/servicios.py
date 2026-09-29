@@ -664,7 +664,7 @@ async def guardar_foto_chat(archivo: UploadFile) -> str:
     from ..subida_archivos import leer_y_validar_imagen, nombre_unico, guardar
 
     contenido, extension = await leer_y_validar_imagen(archivo)
-    carpeta = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+    carpeta = None
     nombre = nombre_unico("chat", extension)
     guardar(carpeta, nombre, contenido)
     return nombre
