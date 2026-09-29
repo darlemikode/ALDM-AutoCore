@@ -293,6 +293,34 @@ def _ajustar_restricciones():
         conn.commit()
 
 
+def _indices_llaves_foraneas():
+    """SQL Server no crea índices para las llaves foráneas (Postgres y MySQL
+    tampoco siempre). Sin ellos cada JOIN o filtro por cliente, vehículo,
+    servicio, etc. recorre la tabla completa. Crea los que falten; en
+    arranques siguientes no hace nada."""
+    inspector = inspect(engine)
+    existentes = set(inspector.get_table_names())
+    creados = 0
+    with engine.connect() as conn:
+        for tabla in Base.metadata.sorted_tables:
+            if tabla.name not in existentes:
+                continue
+            # Columnas que ya encabezan un índice (incluye la llave primaria)
+            cubiertas = {i["column_names"][0] for i in inspector.get_indexes(tabla.name) if i.get("column_names")}
+            pk = [c.name for c in tabla.primary_key.columns]
+            if pk:
+                cubiertas.add(pk[0])
+            for col in tabla.columns:
+                if not col.foreign_keys or col.name in cubiertas:
+                    continue
+                nombre = f"ix_{tabla.name}_{col.name}"[:60]
+                conn.execute(text(f'CREATE INDEX "{nombre}" ON "{tabla.name}" ("{col.name}")'))
+                creados += 1
+        conn.commit()
+    if creados:
+        print(f"[migración automática] {creados} índice(s) creados en llaves foráneas")
+
+
 def _migrar_subcategorias_a_refacciones(id_taller: int):
     """Las 'subcategorías de refacción' (Balatas delanteras, Bujías, etc.)
     dejaron de ser un catálogo aparte — ahora son refacciones reales dentro
@@ -626,6 +654,7 @@ def run():
     Base.metadata.create_all(bind=engine)
     _sincronizar_columnas_faltantes()
     _ajustar_restricciones()
+    _indices_llaves_foraneas()
     db = sesion_global()
     try:
         sembrar_globales(db)

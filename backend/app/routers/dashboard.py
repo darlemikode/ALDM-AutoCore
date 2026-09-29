@@ -4,7 +4,7 @@ from calendar import month_abbr
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from .. import models, schemas
 from ..database import get_db
@@ -24,7 +24,12 @@ def resumen(db: Session = Depends(get_db), user=Depends(get_current_user)):
     servicios_mes = db.query(func.count(models.Servicio.id_servicio)).filter(models.Servicio.fecha_entrada_servicio >= inicio_mes).scalar()
     refacciones_bajo_stock = db.query(func.count(models.Refaccion.id_refaccion)).filter(models.Refaccion.cantidad_refaccion <= models.Refaccion.umbral_rojo).scalar()
 
-    servicios_sin_pagar = db.query(models.Servicio).filter(models.Servicio.pagado.is_(False)).all()
+    servicios_sin_pagar = (
+        db.query(models.Servicio)
+        .options(selectinload(models.Servicio.detalles), selectinload(models.Servicio.abonos))
+        .filter(models.Servicio.pagado.is_(False))
+        .all()
+    )
     saldo_pendiente_total = 0.0
     for s in servicios_sin_pagar:
         subtotal = sum((d.costo_mano_obra or 0) + (d.costo_refaccion or 0) + (d.costo_extra or 0) for d in s.detalles)
