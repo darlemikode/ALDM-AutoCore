@@ -157,3 +157,29 @@ def contenido_qr(codigo: str | None) -> str | None:
         return None
     base = (os.getenv("URL_PUBLICA") or "").strip().rstrip("/")
     return f"{base}/api/portal-cliente/qr/{codigo}" if base else f"aldmcliente://taller/{codigo}"
+
+
+def registrar_renovacion(db: Session, taller: "models.Taller", tipo: "models.TipoCobro", monto: float | None,
+                         metodo_pago: str, referencia: str | None, notas: str | None, registrado_por: str) -> "models.PagoSuscripcion":
+    """Registra un pago y recorre el vencimiento: si seguía vigente, el nuevo
+    periodo empieza al terminar el actual; si ya había vencido, empieza hoy."""
+    susc = taller.suscripcion
+    hoy = date.today()
+    desde = susc.fecha_vencimiento + timedelta(days=1) if susc.fecha_vencimiento and susc.fecha_vencimiento >= hoy and susc.estado == "activa" else hoy
+    hasta = sumar_meses(desde, tipo.meses) - timedelta(days=1)
+    if monto is None:
+        monto = precio_periodo(susc.paquete, tipo, susc.precio_pactado)
+    pago = models.PagoSuscripcion(
+        id_suscripcion=susc.id_suscripcion, id_taller=taller.id_taller, id_paquete=susc.id_paquete, id_tipo_cobro=tipo.id_tipo_cobro,
+        monto=monto, metodo_pago=metodo_pago, referencia=referencia, notas=notas,
+        periodo_desde=desde, periodo_hasta=hasta, registrado_por=registrado_por,
+    )
+    db.add(pago)
+    susc.id_tipo_cobro = tipo.id_tipo_cobro
+    susc.estado = "activa"
+    susc.fecha_vencimiento = hasta
+    susc.fecha_suspension = None
+    taller.activo = True
+    db.commit()
+    invalidar(taller.id_taller)
+    return pago

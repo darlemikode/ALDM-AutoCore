@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ChangePasswordModal from "./ChangePasswordModal";
+import PagarSuscripcion from "./PagarSuscripcion";
 import { api } from "../api";
 import { ICONOS } from "../iconos";
 import { Icono } from "./Icono";
@@ -43,6 +44,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [changingPassword, setChangingPassword] = useState(false);
+  const [pagando, setPagando] = useState(false);
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
   const [temaOscuro, setTemaOscuroLocal] = useState(temaOscuroActivo);
   const [sidebarCompacta, setSidebarCompactaLocal] = useState(sidebarCompactaActiva);
@@ -174,12 +176,14 @@ export default function Layout() {
         {estadoSuscripcion?.mensaje && !bloqueado && (
           <div className={"aviso-suscripcion" + (estadoSuscripcion.solo_lectura ? " aviso-suscripcion-grave" : "")}>
             <Icono nombre="notifications" size={18} /> {estadoSuscripcion.mensaje}
+            {hasPermission("configuracion.editar") && <button className="btn btn-primary btn-sm" style={{ marginLeft: 12 }} onClick={() => setPagando(true)}>Pagar suscripción</button>}
           </div>
         )}
         {bloqueado ? (
           <div className="bloqueo-suscripcion">
             <h2>Acceso suspendido</h2>
             <p>{estadoSuscripcion.mensaje}</p>
+            <button className="btn btn-primary" onClick={() => setPagando(true)}>Pagar suscripción</button>
             {talleres.length > 1 && <button className="btn btn-primary" onClick={() => setEligiendo(true)}>Entrar a otro taller</button>}
           </div>
         ) : (
@@ -213,6 +217,7 @@ export default function Layout() {
       )}
 
       {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
+      {pagando && <PagarSuscripcion onClose={() => setPagando(false)} />}
     </div>
   );
 }

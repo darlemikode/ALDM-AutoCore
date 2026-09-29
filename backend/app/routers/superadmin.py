@@ -20,6 +20,7 @@ from ..database import get_db_global
 from ..security import hash_password, require_superadmin
 from ..seed import _generar_codigo, rol_admin_de, sembrar_taller
 from ..suscripciones import (
+    registrar_renovacion,
     ESTADOS_MANUALES, calcular_estado, contenido_qr, invalidar, obtener_config, precio_periodo, sumar_meses,
 )
 
@@ -405,23 +406,7 @@ def renovar(taller_id: int, payload: schemas.RenovarIn, db: Session = Depends(ge
         raise HTTPException(status_code=400, detail="Elige el tipo de cobro (mensual, anual…).")
     db.flush()
     db.refresh(susc)
-    hoy = date.today()
-    desde = susc.fecha_vencimiento + timedelta(days=1) if susc.fecha_vencimiento and susc.fecha_vencimiento >= hoy and susc.estado == "activa" else hoy
-    hasta = sumar_meses(desde, tipo.meses) - timedelta(days=1)
-    monto = payload.monto if payload.monto is not None else precio_periodo(susc.paquete, tipo, susc.precio_pactado)
-    pago = models.PagoSuscripcion(
-        id_suscripcion=susc.id_suscripcion, id_taller=taller_id, id_paquete=susc.id_paquete, id_tipo_cobro=tipo.id_tipo_cobro,
-        monto=monto, metodo_pago=payload.metodo_pago, referencia=payload.referencia, notas=payload.notas,
-        periodo_desde=desde, periodo_hasta=hasta, registrado_por=user.username,
-    )
-    db.add(pago)
-    susc.id_tipo_cobro = tipo.id_tipo_cobro
-    susc.estado = "activa"
-    susc.fecha_vencimiento = hasta
-    susc.fecha_suspension = None
-    taller.activo = True
-    db.commit()
-    invalidar(taller_id)
+    pago = registrar_renovacion(db, taller, tipo, payload.monto, payload.metodo_pago, payload.referencia, payload.notas, user.username)
     return db.query(models.PagoSuscripcion).options(
         joinedload(models.PagoSuscripcion.paquete), joinedload(models.PagoSuscripcion.tipo_cobro), joinedload(models.PagoSuscripcion.taller),
     ).filter(models.PagoSuscripcion.id_pago == pago.id_pago).first()
