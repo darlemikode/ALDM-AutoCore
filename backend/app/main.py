@@ -97,8 +97,30 @@ def integrity_error_handler(request: Request, exc: IntegrityError):
     return JSONResponse(status_code=400, content={"detail": mensaje})
 
 
+def _esperar_base_de_datos(intentos: int = 8, espera: int = 15):
+    """Azure SQL Serverless se pausa cuando no se usa y tarda hasta ~1 minuto
+    en despertar: el primer intento de conexión falla con "Login timeout".
+    Reintenta en lugar de tumbar el arranque de la app."""
+    import time
+    from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError, DBAPIError
+    from .database import engine
+
+    for intento in range(1, intentos + 1):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return
+        except (OperationalError, DBAPIError) as error:
+            if intento == intentos:
+                raise
+            print(f"[arranque] base de datos no disponible (¿despertando?), reintento {intento}/{intentos - 1} en {espera}s: {error.__class__.__name__}")
+            time.sleep(espera)
+
+
 @app.on_event("startup")
 def on_startup():
+    _esperar_base_de_datos()
     seed.run()
     seed_codigos_postales.run()
     seed_marcas_modelos.run()
