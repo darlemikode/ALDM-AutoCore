@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -134,7 +134,9 @@ app.include_router(ws_router.router)
 
 # Archivos subidos (fotos de vehículos/servicios) — se sirven directo desde
 # disco, sin depender de ningún servicio externo de almacenamiento.
-UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+# En Azure se apunta a /home/uploads (almacenamiento persistente): la carpeta
+# del código se reemplaza en cada despliegue y se perderían las fotos.
+UPLOADS_DIR = os.getenv("UPLOADS_DIR") or os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 
@@ -152,11 +154,34 @@ class UploadsSinSniffing(StaticFiles):
 app.mount("/uploads", UploadsSinSniffing(directory=UPLOADS_DIR), name="uploads")
 
 
-@app.get("/")
-def root():
-    return {"status": "ok", "servicio": "ALDM AutoCore API"}
-
-
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+# Página web (web-admin compilada con `npm run build`). En producción el mismo
+# servidor entrega la web y la API, así /api, /uploads y los WebSockets quedan
+# en el mismo dominio. Si la carpeta no existe (desarrollo local con Vite),
+# "/" solo responde el estado de la API.
+WEB_DIR = os.getenv("WEB_DIR") or os.path.join(os.path.dirname(__file__), "web")
+_WEB_INDEX = os.path.join(WEB_DIR, "index.html")
+
+if os.path.isfile(_WEB_INDEX):
+    from fastapi.responses import FileResponse
+
+    _WEB_RAIZ = os.path.realpath(WEB_DIR)
+
+    @app.get("/{ruta:path}", include_in_schema=False)
+    def pagina_web(ruta: str):
+        if ruta.startswith(("api/", "uploads/")):
+            raise HTTPException(status_code=404)
+        archivo = os.path.realpath(os.path.join(_WEB_RAIZ, ruta))
+        # Nunca salir de la carpeta web (evita ../../ en la URL)
+        if ruta and archivo.startswith(_WEB_RAIZ + os.sep) and os.path.isfile(archivo):
+            return FileResponse(archivo)
+        # Rutas de React Router (/clientes, /servicios/5...) -> index.html
+        return FileResponse(_WEB_INDEX, headers={"Cache-Control": "no-cache"})
+else:
+    @app.get("/")
+    def root():
+        return {"status": "ok", "servicio": "ALDM AutoCore API"}
