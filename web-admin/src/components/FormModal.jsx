@@ -6,7 +6,7 @@ import { api } from "../api";
  * Modal con formulario genérico, dirigido por configuración.
  *
  * fields: [{ name, label, type: 'text'|'number'|'select'|'textarea'|'checkbox'|'date'|'multiselect',
- *            options?: [{value,label}], required?, full?, disabled?, icono?, grupo?,
+ *            options?: [{value,label}], required?, full?, disabled?, icono?, grupo?, hint? (texto de ayuda bajo el campo),
  *            creatable?: {                 // habilita "+ Nuevo" junto al select
  *              endpoint: '/vehiculos-marcas',   // endpoint del catálogo
  *              createField: 'nombre_marca',      // nombre del campo que espera el POST
@@ -171,7 +171,14 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
               required={f.required}
               disabled={f.disabled}
               value={values[f.name] ?? ""}
-              onChange={(e) => update(f.name, e.target.value === "" ? null : Number(e.target.value))}
+              onChange={(e) => {
+                if (e.target.value === "") return update(f.name, null);
+                // Conserva el tipo de la opción: ids numéricos como número y
+                // opciones de texto ("transferencia", "prueba"…) como texto
+                // (antes todo se pasaba a Number y los textos quedaban NaN).
+                const opcion = f.options.find((o) => String(o.value) === e.target.value);
+                update(f.name, opcion ? opcion.value : e.target.value);
+              }}
             >
               <option value="">-- Selecciona --</option>
               {f.options.map((opt) => (
@@ -264,6 +271,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
             ) : input;
           })()
         )}
+        {f.hint && <div className="field-hint">{f.hint}</div>}
       </div>
     );
   }

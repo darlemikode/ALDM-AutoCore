@@ -85,6 +85,7 @@ export default function Layout() {
   const nav = navBase
     .map((s) => ({ ...s, items: s.items.filter((item) => !item.permisoRequerido || hasPermission(item.permisoRequerido)) }))
     .filter((s) => s.items.length > 0);
+  if (user?.es_superadmin) nav.push({ group: "ALDM", items: [{ to: "/superadmin", label: "Súper admin" }] });
   const mostrarSelector = eligiendoTaller || eligiendo;
   const bloqueado = !!estadoSuscripcion?.bloqueado;
 

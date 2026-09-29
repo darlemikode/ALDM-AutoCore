@@ -25,4 +25,5 @@ export const ICONOS = {
   "/asignacion-roles": "link",
   "/roles": "shield-check",
   "/facturacion": "document",
+  "/superadmin": "shield-check",
 };

@@ -28,12 +28,19 @@ import Roles from "./pages/Roles";
 import Cotizaciones from "./pages/Cotizaciones";
 import CotizacionDetalle from "./pages/CotizacionDetalle";
 import Facturacion from "./pages/Facturacion";
+import SuperAdmin from "./pages/superadmin/SuperAdmin";
 import ScrollToTop from "./components/ScrollToTop";
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="loading-text">Cargando…</div>;
   if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function RequireSuperadmin({ children }) {
+  const { user } = useAuth();
+  if (!user?.es_superadmin) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -82,6 +89,7 @@ export default function App() {
         <Route path="configuracion" element={<ConfiguracionInicio />} />
         <Route path="usuarios" element={<RequirePermission clave="usuarios.ver"><Usuarios /></RequirePermission>} />
         <Route path="roles" element={<RequirePermission clave="roles.ver"><Roles /></RequirePermission>} />
+        <Route path="superadmin/*" element={<RequireSuperadmin><SuperAdmin /></RequireSuperadmin>} />
         <Route path="facturacion" element={<RequirePermission clave="facturacion.ver"><Facturacion /></RequirePermission>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
