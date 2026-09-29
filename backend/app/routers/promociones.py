@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from ..subida_archivos import leer_y_validar_imagen, nombre_unico, guardar
 from ..security import get_current_user, require_permission
 
 router = APIRouter(prefix="/api/promociones", tags=["promociones"])
@@ -70,18 +71,15 @@ async def subir_imagen(promocion_id: int, archivo: UploadFile = File(...), db: S
     if not promo:
         raise HTTPException(status_code=404, detail="Promoción no encontrada")
 
-    extension = os.path.splitext(archivo.filename or "")[1].lower() or ".jpg"
-    if extension not in EXTENSIONES_VALIDAS:
-        raise HTTPException(status_code=400, detail="Formato de imagen no soportado (usa JPG, PNG o WEBP).")
+    contenido, extension = await leer_y_validar_imagen(archivo)
 
     if promo.ruta_imagen:
         ruta_vieja = os.path.join(CARPETA_UPLOADS, promo.ruta_imagen)
         if os.path.exists(ruta_vieja):
             os.remove(ruta_vieja)
 
-    nombre_archivo = f"promocion_{promocion_id}_{uuid.uuid4().hex[:10]}{extension}"
-    with open(os.path.join(CARPETA_UPLOADS, nombre_archivo), "wb") as destino:
-        shutil.copyfileobj(archivo.file, destino)
+    nombre_archivo = nombre_unico(f"promocion_{promocion_id}", extension)
+    guardar(CARPETA_UPLOADS, nombre_archivo, contenido)
 
     promo.ruta_imagen = nombre_archivo
     db.commit()

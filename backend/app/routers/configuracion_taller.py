@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..database import get_db
 from ..security import get_current_user, require_permission
+from ..subida_archivos import leer_y_validar_imagen, nombre_unico, guardar
 
 router = APIRouter(prefix="/api/configuracion-taller", tags=["configuracion-taller"])
 
@@ -47,15 +48,14 @@ def actualizar(payload: schemas.ConfiguracionTallerIn, db: Session = Depends(get
 
 @router.post("/logo", response_model=schemas.ConfiguracionTallerOut)
 async def subir_logo(archivo: UploadFile = File(...), db: Session = Depends(get_db), user=Depends(require_permission("configuracion.editar"))):
+    contenido, extension = await leer_y_validar_imagen(archivo)
     config = _obtener_o_crear(db)
-    extension = os.path.splitext(archivo.filename or "")[1].lower() or ".png"
     if config.ruta_logo:
         ruta_vieja = os.path.join(CARPETA_UPLOADS, config.ruta_logo)
         if os.path.exists(ruta_vieja):
             os.remove(ruta_vieja)
-    nombre_archivo = f"logo_taller_{uuid.uuid4().hex[:10]}{extension}"
-    with open(os.path.join(CARPETA_UPLOADS, nombre_archivo), "wb") as destino:
-        shutil.copyfileobj(archivo.file, destino)
+    nombre_archivo = nombre_unico("logo_taller", extension)
+    guardar(CARPETA_UPLOADS, nombre_archivo, contenido)
     config.ruta_logo = nombre_archivo
     db.commit()
     db.refresh(config)

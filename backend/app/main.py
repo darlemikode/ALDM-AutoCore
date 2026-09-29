@@ -3,7 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import os
+
+from .rate_limit import limiter
 
 from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, superadmin, facturacion, notificaciones, nomina
 from . import seed
@@ -18,13 +22,29 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Dominios que pueden llamar a esta API — en .env, ALLOWED_ORIGINS separado
+# por comas (ej. https://tu-panel.azurestaticapps.net). Por defecto, solo
+# los puertos locales de desarrollo del panel web.
+_origenes_permitidos = [
+    o.strip() for o in (os.getenv("ALLOWED_ORIGINS") or "http://localhost:5173,http://localhost:5174").split(",") if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # en producción, restringe a los dominios del panel web y la app móvil
+    allow_origins=_origenes_permitidos,
     allow_credentials=False,  # usamos JWT Bearer, no cookies — no se necesitan credenciales de CORS
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Límite de peticiones por IP (fuerza bruta / saturación) — límite global
+# aquí, y uno más estricto directo en /auth/login (ver routers/auth.py).
+app.state.limiter = limiter
+app.add_exception_handler(
+    RateLimitExceeded,
+    lambda request, exc: JSONResponse(status_code=429, content={"detail": "Demasiadas peticiones desde esta IP. Espera un momento e intenta de nuevo."}),
+)
+app.add_middleware(SlowAPIMiddleware)
 
 
 # Métodos que cambian datos — cuando uno de estos responde 2xx, algo en la
@@ -116,7 +136,20 @@ app.include_router(ws_router.router)
 # disco, sin depender de ningún servicio externo de almacenamiento.
 UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
+
+class UploadsSinSniffing(StaticFiles):
+    """Le agrega X-Content-Type-Options: nosniff a cada archivo servido de
+    /uploads — así el navegador nunca intenta "adivinar" el contenido y
+    ejecutarlo como HTML/script, use el Content-Type que use."""
+
+    async def get_response(self, path, scope):
+        respuesta = await super().get_response(path, scope)
+        respuesta.headers["X-Content-Type-Options"] = "nosniff"
+        return respuesta
+
+
+app.mount("/uploads", UploadsSinSniffing(directory=UPLOADS_DIR), name="uploads")
 
 
 @app.get("/")

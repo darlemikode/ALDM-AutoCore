@@ -657,20 +657,16 @@ async def enviar_mensaje(servicio_id: int, payload: schemas.MensajeChatIn, db: S
 EXTENSIONES_FOTO = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".gif"}
 
 
-def guardar_foto_chat(archivo: UploadFile) -> str:
+async def guardar_foto_chat(archivo: UploadFile) -> str:
     """Guarda la foto del chat en app/uploads/ y regresa el nombre del archivo."""
     import os
-    import shutil
-    import uuid
 
-    extension = os.path.splitext(archivo.filename or "")[1].lower() or ".jpg"
-    if extension not in EXTENSIONES_FOTO:
-        raise HTTPException(status_code=400, detail="Formato de imagen no soportado (usa JPG, PNG, WEBP, GIF o HEIC).")
+    from ..subida_archivos import leer_y_validar_imagen, nombre_unico, guardar
+
+    contenido, extension = await leer_y_validar_imagen(archivo)
     carpeta = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
-    os.makedirs(carpeta, exist_ok=True)
-    nombre = f"chat_{uuid.uuid4().hex[:16]}{extension}"
-    with open(os.path.join(carpeta, nombre), "wb") as destino:
-        shutil.copyfileobj(archivo.file, destino)
+    nombre = nombre_unico("chat", extension)
+    guardar(carpeta, nombre, contenido)
     return nombre
 
 
@@ -684,7 +680,7 @@ async def enviar_foto(
 ):
     """Foto en el chat de la orden (avance del trabajo, pieza dañada…)."""
     servicio = _get_servicio_o_404(db, servicio_id)
-    nombre = guardar_foto_chat(archivo)
+    nombre = await guardar_foto_chat(archivo)
     mensaje = models.MensajeChat(
         id_servicio=servicio.id_servicio, autor_tipo="taller", autor_nombre=user.nombre_completo,
         tipo="foto", texto=(texto or "").strip() or "📷 Foto", ruta_foto=nombre,
