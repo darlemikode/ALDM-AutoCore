@@ -1,0 +1,37 @@
+# Despliegue a Azure App Service: compila la web (web-admin) dentro del
+# backend y sube la carpeta backend. Azure instala requirements.txt al
+# recibirla (SCM_DO_BUILD_DURING_DEPLOYMENT=true en la configuración).
+name: Desplegar a Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: aldm-autocore-app
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web-admin/package-lock.json
+
+      - name: Compilar web-admin
+        working-directory: web-admin
+        run: |
+          npm ci
+          npm run build
+
+      - name: Subir a Azure
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: backend
