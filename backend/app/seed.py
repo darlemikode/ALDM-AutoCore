@@ -15,6 +15,8 @@ import os
 from sqlalchemy import UniqueConstraint, inspect, text
 
 from .database import Base, engine, SessionLocal, es_sqlite, sesion_global
+
+es_mssql = engine.dialect.name == "mssql"
 from .tenancy import MODO_TALLER, TenantMixin, fijar_tenant
 from . import models
 from .security import hash_password
@@ -209,12 +211,13 @@ def _sincronizar_columnas_faltantes():
                 if columna.default is not None and getattr(columna.default, "is_scalar", False):
                     valor = columna.default.arg
                     if isinstance(valor, bool):
-                        default_sql = f" DEFAULT {int(valor)}" if es_sqlite else f" DEFAULT {'TRUE' if valor else 'FALSE'}"
+                        default_sql = f" DEFAULT {int(valor)}" if (es_sqlite or es_mssql) else f" DEFAULT {'TRUE' if valor else 'FALSE'}"
                     elif isinstance(valor, (int, float)):
                         default_sql = f" DEFAULT {valor}"
                     elif isinstance(valor, str):
                         default_sql = " DEFAULT '" + valor.replace("'", "''") + "'"
-                conn.execute(text(f'ALTER TABLE "{tabla.name}" ADD COLUMN "{columna.name}" {tipo_sql}{default_sql}'))
+                agregar = "ADD" if es_mssql else "ADD COLUMN"  # SQL Server no acepta "ADD COLUMN"
+                conn.execute(text(f'ALTER TABLE "{tabla.name}" {agregar} "{columna.name}" {tipo_sql}{default_sql}'))
                 print(f"[migración automática] agregada columna faltante: {tabla.name}.{columna.name}")
         conn.commit()
 
@@ -258,6 +261,11 @@ def _reconstruir_tabla_sqlite(conn, tabla):
 
 
 def _ajustar_restricciones():
+    # Las bases viejas (antes de multi-taller) solo existieron en SQLite/Postgres.
+    # En SQL Server la base nace nueva con las restricciones correctas, y además
+    # su dialecto no implementa get_unique_constraints().
+    if es_mssql:
+        return
     inspector = inspect(engine)
     existentes = set(inspector.get_table_names())
     pendientes = [t for t in list(_UNICOS_VIEJOS) + ["usuarios"] if t in existentes and _necesita_ajuste(inspector, t)]
