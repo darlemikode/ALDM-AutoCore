@@ -4,6 +4,6 @@
 import Constants from "expo-constants";
 
 // Cambia esto en app.json (expo.extra.apiUrl) por la IP de tu servidor
-// backend en la misma red que tu teléfono, ej: "http://192.168.1.100:8000/api"
-export const API_URL = Constants.expoConfig?.extra?.apiUrl || "http://192.168.1.100:8000/api";
-export const WS_URL = Constants.expoConfig?.extra?.wsUrl || "ws://192.168.1.100:8000";
+// backend en la misma red que tu teléfono, ej: "https://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net/api"
+export const API_URL = Constants.expoConfig?.extra?.apiUrl || "https://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net/api";
+export const WS_URL = Constants.expoConfig?.extra?.wsUrl || "wss://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net";

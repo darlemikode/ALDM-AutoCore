@@ -5,8 +5,8 @@ import { getTallerCodigo } from "./taller";
 
 // Cambia esto en app.json (expo.extra.apiUrl / wsUrl) por la IP de tu
 // servidor backend en la misma red que el teléfono del cliente.
-const API_URL = Constants.expoConfig?.extra?.apiUrl || "http://192.168.1.100:8000/api";
-const WS_URL = Constants.expoConfig?.extra?.wsUrl || "ws://192.168.1.100:8000";
+const API_URL = Constants.expoConfig?.extra?.apiUrl || "https://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net/api";
+const WS_URL = Constants.expoConfig?.extra?.wsUrl || "wss://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net";
 
 const TOKEN_KEY = "sm_cliente_token";
 
