@@ -11,7 +11,7 @@ import { crearEstilos } from "./estilos";
  *
  *   campos: [{ name, label, type, options, required, placeholder, hint, grupo, full, disabled, onElegir }]
  *            o una función (valores) => campos, para campos que dependen de otros.
- *   type: text | number | textarea | select | multiselect | checkbox | date | email | phone
+ *   type: text | number | textarea | select | multiselect | checkbox | date | email | phone | password
  *   options: [{ value, label }]   (select/multiselect)
  *   onElegir(valor, valores) -> objeto con valores a precargar (igual que la web)
  *
@@ -206,7 +206,9 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
           onChangeText={(v) => actualizar(c, v)}
           multiline={c.type === "textarea"}
           keyboardType={c.type === "number" ? "decimal-pad" : c.type === "email" ? "email-address" : c.type === "phone" ? "phone-pad" : "default"}
-          autoCapitalize={c.type === "email" ? "none" : c.autoCapitalize || "sentences"}
+          autoCapitalize={c.type === "email" || c.type === "password" ? "none" : c.autoCapitalize || "sentences"}
+          secureTextEntry={c.type === "password"}
+          autoCorrect={c.type === "password" ? false : undefined}
         />
       );
     }

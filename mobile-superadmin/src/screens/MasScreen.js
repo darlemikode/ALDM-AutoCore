@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import { useTema } from "../context/TemaContext";
-import { servidorActual } from "../api";
+import { api, servidorActual } from "../api";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { confirmar } from "../ui/comunes";
+import HojaFormulario from "../ui/HojaFormulario";
+import { alerta } from "../ui/Dialogo";
 
 const OPCIONES = [
   ["Paquetes", "layers-outline", "Paquetes y precios", "Crea planes, su precio por tipo de cobro y qué incluyen"],
@@ -18,6 +21,16 @@ const OPCIONES = [
 export default function MasScreen({ navigation }) {
   const { usuario, logout } = useAuth();
   const { preferencia, cambiarPreferencia } = useTema();
+  const [cambiandoPassword, setCambiandoPassword] = useState(false);
+
+  async function guardarPassword(v) {
+    if (v.password_nueva !== v.confirmar) throw new Error("La contraseña nueva y su confirmación no coinciden.");
+    if ((v.password_nueva || "").length < 6) throw new Error("La contraseña nueva debe tener al menos 6 caracteres.");
+    await api.put("/auth/password", { password_actual: v.password_actual, password_nueva: v.password_nueva });
+    setCambiandoPassword(false);
+    alerta("Listo", "Tu contraseña se cambió. Úsala la próxima vez que inicies sesión.");
+  }
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}>
       {OPCIONES.map(([ruta, icono, titulo, desc]) => (
@@ -43,10 +56,32 @@ export default function MasScreen({ navigation }) {
       <Text style={styles.grupo}>Sesión</Text>
       <Text style={styles.desc}>{usuario?.nombre_completo} (@{usuario?.username})</Text>
       <Text style={[styles.desc, { marginBottom: 12 }]}>Servidor: {servidorActual()}</Text>
+      <TouchableOpacity style={styles.item} onPress={() => setCambiandoPassword(true)}>
+        <View style={styles.icono}><Ionicons name="key-outline" size={20} color={colors.petrol600} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.titulo}>Cambiar mi contraseña</Text>
+          <Text style={styles.desc}>Necesitas tu contraseña actual</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.ink500} />
+      </TouchableOpacity>
       <TouchableOpacity style={styles.salir} onPress={() => confirmar("Cerrar sesión", "¿Seguro que quieres salir?", "Salir", logout)}>
         <Ionicons name="log-out-outline" size={18} color={colors.red600} />
         <Text style={styles.salirTexto}>Cerrar sesión</Text>
       </TouchableOpacity>
+
+      <HojaFormulario
+        visible={cambiandoPassword}
+        titulo="Cambiar mi contraseña"
+        icono="key-outline"
+        valoresIniciales={{ password_actual: "", password_nueva: "", confirmar: "" }}
+        campos={[
+          { name: "password_actual", label: "Contraseña actual", type: "password", required: true },
+          { name: "password_nueva", label: "Contraseña nueva", type: "password", required: true, hint: "Mínimo 6 caracteres" },
+          { name: "confirmar", label: "Confirmar contraseña nueva", type: "password", required: true },
+        ]}
+        onGuardar={guardarPassword}
+        onCerrar={() => setCambiandoPassword(false)}
+      />
     </ScrollView>
   );
 }
