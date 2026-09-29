@@ -35,7 +35,10 @@
     },
     "extra": {
       "apiUrl": "https://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net/api",
-      "wsUrl": "wss://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net"
+      "wsUrl": "wss://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net",
+      "eas": {
+        "projectId": "cde216c9-9704-48ca-8b6d-5edac3a28dd6"
+      }
     },
     "plugins": [
       "expo-secure-store",
