@@ -1,3 +1,4 @@
+import { registrarPush } from "../push";
 import { createContext, useContext, useEffect, useState } from "react";
 import { api, cargarServidor, getToken, login as apiLogin, onSesionExpirada, setToken } from "../api";
 
@@ -19,7 +20,7 @@ export function AuthProvider({ children }) {
       try {
         if (await getToken()) {
           const me = await api.get("/auth/me");
-          if (me.es_superadmin) setUsuario(me);
+          if (me.es_superadmin) { setUsuario(me); registrarPush(); }
           else await setToken(null);
         }
       } catch {
@@ -33,6 +34,7 @@ export function AuthProvider({ children }) {
   async function login(username, password) {
     await apiLogin(username, password);
     setUsuario(await api.get("/auth/me"));
+    registrarPush();
   }
 
   return <AuthContext.Provider value={{ usuario, cargando, login, logout }}>{children}</AuthContext.Provider>;

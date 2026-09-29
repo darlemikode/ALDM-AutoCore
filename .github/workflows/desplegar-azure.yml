@@ -29,6 +29,9 @@ jobs:
           npm ci
           npm run build
 
+      - name: Copiar la página informativa
+        run: cp -r sitio-web backend/app/sitio
+
       - name: Subir a Azure
         uses: azure/webapps-deploy@v3
         with:

@@ -11,6 +11,7 @@ import HojaFormulario from "../ui/HojaFormulario";
 import { alerta } from "../ui/Dialogo";
 
 const OPCIONES = [
+  ["Solicitudes", "mail-outline", "Solicitudes de información", "Quién pidió una demo desde la página"],
   ["Paquetes", "layers-outline", "Paquetes y precios", "Crea planes, su precio por tipo de cobro y qué incluyen"],
   ["TiposCobro", "repeat-outline", "Tipos de cobro", "Mensual, anual… meses y descuento"],
   ["Modulos", "apps-outline", "Módulos del sistema", "Definidos por el sistema; en qué paquetes está cada uno"],

@@ -11,10 +11,12 @@ import Usuarios from "./Usuarios";
 import UsuarioDetalle from "./UsuarioDetalle";
 import Catalogos from "./Catalogos";
 import Reglas from "./Reglas";
+import Solicitudes from "./Solicitudes";
 
 const PESTANAS = [
   ["resumen", "Resumen"],
   ["talleres", "Talleres"],
+  ["solicitudes", "Solicitudes"],
   ["cobranza", "Cobranza"],
   ["usuarios", "Usuarios"],
   ["catalogos", "Paquetes y cobros"],
@@ -42,6 +44,7 @@ export default function SuperAdmin() {
         <Route path="resumen" element={<Resumen />} />
         <Route path="talleres" element={<Talleres />} />
         <Route path="talleres/:id" element={<TallerDetalle />} />
+        <Route path="solicitudes" element={<Solicitudes />} />
         <Route path="cobranza" element={<Cobranza />} />
         <Route path="usuarios" element={<Usuarios />} />
         <Route path="usuarios/:id" element={<UsuarioDetalle />} />

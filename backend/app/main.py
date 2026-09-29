@@ -9,7 +9,7 @@ import os
 
 from .rate_limit import limiter
 
-from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, superadmin, facturacion, notificaciones, nomina, pagos_en_linea
+from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, superadmin, facturacion, notificaciones, nomina, pagos_en_linea, contacto
 from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
@@ -153,6 +153,7 @@ app.include_router(facturacion.router)
 app.include_router(notificaciones.router)
 app.include_router(nomina.router)
 app.include_router(pagos_en_linea.router)
+app.include_router(contacto.router)
 app.include_router(ws_router.router)
 
 # Archivos subidos (fotos de vehículos/servicios) — se sirven directo desde
@@ -175,6 +176,13 @@ class UploadsSinSniffing(StaticFiles):
 
 
 app.mount("/uploads", UploadsSinSniffing(directory=UPLOADS_DIR), name="uploads")
+
+# Página informativa (carpeta sitio-web del repo; el despliegue la copia a app/sitio).
+# Se entrega en /sitio y su formulario manda las solicitudes a /api/contacto.
+_repo_sitio = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "sitio-web")
+SITIO_DIR = next((d for d in (os.getenv("SITIO_DIR"), os.path.join(os.path.dirname(__file__), "sitio"), _repo_sitio) if d and os.path.isdir(d)), None)
+if SITIO_DIR:
+    app.mount("/sitio", StaticFiles(directory=SITIO_DIR, html=True), name="sitio")
 
 
 @app.get("/api/health")

@@ -1221,3 +1221,20 @@ class Factura(TenantMixin, Base):
 
     servicio = relationship("Servicio")
     cliente = relationship("Cliente")
+
+
+class SolicitudContacto(Base):
+    """Alguien que pidió información o una demo desde la página informativa
+    (sitio-web). Es global (no pertenece a ningún taller): la atiende ALDM
+    desde el panel de súper admin. Al llegar también se crea un aviso en la
+    campanita del taller principal y se manda push a los súper admin."""
+    __tablename__ = "solicitudes_contacto"
+
+    id_solicitud = Column(Integer, primary_key=True, index=True)
+    negocio = Column(String(120), nullable=False)
+    nombre = Column(String(120), nullable=False)
+    telefono = Column(String(30), nullable=False)
+    correo = Column(String(120), nullable=True)
+    mensaje = Column(String(280), nullable=True)
+    fecha = Column(DateTime, default=datetime.utcnow, index=True)
+    atendida = Column(Boolean, default=False)

@@ -41,6 +41,7 @@ export default function CampanaNotificaciones({ grande = false }) {
     marcarNotificacionesVistas();
     if (n.id_servicio) navigate(`/servicios/${n.id_servicio}`);
     else if (n.tipo === "recuperacion_password") navigate("/usuarios");
+    else if (n.tipo === "solicitud_demo") navigate("/superadmin/solicitudes");
   }
 
   return (
@@ -64,10 +65,10 @@ export default function CampanaNotificaciones({ grande = false }) {
                 lista.map((n) => (
                   <div
                     key={n.id_notificacion}
-                    className={"campana-fila" + (!n.leida ? " no-leida" : "") + (n.id_servicio || n.tipo === "recuperacion_password" ? " clicable" : "")}
+                    className={"campana-fila" + (!n.leida ? " no-leida" : "") + (n.id_servicio || n.tipo === "recuperacion_password" || n.tipo === "solicitud_demo" ? " clicable" : "")}
                     onClick={() => irA(n)}
                   >
-                    <Icono nombre={n.tipo === "recuperacion_password" ? "key" : "chatbubble"} size={16} />
+                    <Icono nombre={n.tipo === "recuperacion_password" ? "key" : n.tipo === "solicitud_demo" ? "people" : "chatbubble"} size={16} />
                     <div className="campana-fila-texto">
                       <div className="campana-fila-titulo">{n.titulo}</div>
                       {n.mensaje && <div className="campana-fila-mensaje">{n.mensaje}</div>}

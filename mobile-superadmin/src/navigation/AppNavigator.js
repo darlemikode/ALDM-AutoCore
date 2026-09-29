@@ -11,6 +11,7 @@ import PagosScreen from "../screens/PagosScreen";
 import MasScreen from "../screens/MasScreen";
 import ConfiguracionScreen from "../screens/ConfiguracionScreen";
 import UsuariosScreen from "../screens/UsuariosScreen";
+import SolicitudesScreen from "../screens/SolicitudesScreen";
 import UsuarioDetalleScreen from "../screens/UsuarioDetalleScreen";
 import { PaquetesScreen, ModulosScreen, TiposCobroScreen } from "../screens/CatalogosScreens";
 
@@ -63,6 +64,7 @@ function MasPila() {
       <MasStack.Screen name="TiposCobro" component={TiposCobroScreen} options={{ title: "Tipos de cobro" }} />
       <MasStack.Screen name="Modulos" component={ModulosScreen} options={{ title: "Módulos" }} />
       <MasStack.Screen name="Configuracion" component={ConfiguracionScreen} options={{ title: "Reglas de suscripción" }} />
+      <MasStack.Screen name="Solicitudes" component={SolicitudesScreen} options={{ title: "Solicitudes" }} />
       <MasStack.Screen name="Usuarios" component={UsuariosScreen} options={{ title: "Usuarios" }} />
       <MasStack.Screen name="UsuarioDetalle" component={UsuarioDetalleScreen} options={{ title: "Usuario" }} />
     </MasStack.Navigator>

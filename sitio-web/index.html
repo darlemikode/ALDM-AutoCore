@@ -262,6 +262,25 @@
   ::-webkit-scrollbar-track { background: var(--ink-900); }
   ::-webkit-scrollbar-thumb { background: var(--ink-600); border-radius: 8px; }
 
+
+  /* ---------- Pantallas nuevas ---------- */
+  .pay-row { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; font-size:13px; color:var(--ink-300); flex-wrap:wrap; }
+  .pay-card { display:flex; flex-direction:column; gap:10px; }
+  .pay-plan { font-family:var(--font-display); font-size:22px; font-weight:800; color:#fff; }
+  .pay-plan em { font-family:var(--font-body); font-style:normal; font-size:13px; font-weight:600; color:var(--sport-400); }
+  .pay-opt { display:flex; justify-content:space-between; padding:13px 16px; border:1px solid rgba(255,255,255,0.12); border-radius:12px; font-size:14px; color:var(--ink-200); background:var(--ink-900); }
+  .pay-opt.on { border-color:var(--electric-500); background:rgba(63,140,255,0.14); color:#fff; }
+  .pay-btn { text-align:center; padding:13px; border-radius:12px; background:linear-gradient(135deg,var(--electric-600),var(--electric-500)); color:#fff; font-family:var(--font-display); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+  .pay-note { font-size:12px; color:var(--ink-400); text-align:center; }
+  .chat-mock { display:flex; flex-direction:column; gap:10px; }
+  .chat-mock .msg { max-width:82%; padding:10px 14px; border-radius:14px; font-size:14px; line-height:1.4; background:var(--ink-800); color:var(--ink-100); }
+  .chat-mock .msg small { display:block; margin-top:4px; font-size:11px; color:var(--ink-400); }
+  .chat-mock .msg.me { align-self:flex-end; background:rgba(63,140,255,0.22); }
+  .chat-mock .msg.photo { align-self:flex-end; background:var(--ink-700); font-weight:600; }
+  .demo-form-fila { display:flex; flex-direction:column; gap:12px; }
+  .demo-form { position:relative; }
+  @media (min-width: 640px) { .demo-form-fila { flex-direction:row; } .demo-form { flex-direction:column !important; } }
+
   /* ---------- Responsive ---------- */
   @media (min-width: 640px) {
     .nav-planes { display: inline-block; }
@@ -301,15 +320,15 @@
     <nav class="nav-links">
       <a href="#modulos">Talleres</a>
       <a href="#refaccionarias">Refaccionarias</a>
-      <a href="#reportes">Reportes</a>
-      <a href="#app">App móvil</a>
+      <a href="#reportes">Pantallas</a>
+      <a href="#app">En el celular</a>
       <a href="#precios">Precios</a>
     </nav>
 
     <div class="nav-right">
       <a href="#precios" class="nav-planes">Ver planes</a>
       <a href="#demo" class="btn btn-primary btn-sm">
-        Solicitar demo
+        Quiero una demo
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
     </div>
@@ -323,14 +342,14 @@
 
   <div class="container hero-grid">
     <div>
-      <span class="hero-badge">Software para el sector automotriz</span>
+      <span class="hero-badge">Para talleres y refaccionarias</span>
       <h1>Tu taller ya no cabe en <span class="accent">una libreta.</span></h1>
-      <p class="hero-lead">ALDM Garage Manager ordena las órdenes de servicio, el inventario, los cobros y a tus clientes en un solo sistema — web y app móvil — para que dejes de perseguir papeles y empieces a tener control real del negocio.</p>
+      <p class="hero-lead">Con ALDM llevas tus órdenes, tu inventario, tus cobros y a tus clientes en un solo lugar, desde la compu o el celular. Se acabó perseguir papeles.</p>
 
       <div class="hero-ctas">
-        <a href="#demo" class="btn btn-white">Solicitar demo gratis</a>
+        <a href="#demo" class="btn btn-white">Quiero una demo</a>
         <a href="#modulos" class="btn btn-outline">
-          Ver cómo funciona
+          Ver qué hace
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
         </a>
       </div>
@@ -401,176 +420,208 @@
 <section id="modulos" class="section">
   <div class="container">
     <div class="section-head">
-      <span class="eyebrow red">Un sistema, dos negocios</span>
-      <h2>Hecho para cómo trabaja tu negocio, no al revés</h2>
-      <p>Ya sea que recibas autos para reparar o vendas refacciones en mostrador, ALDM se ajusta a tu operación diaria.</p>
-    </div>
-
-    <div class="modulos-note">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff7166" stroke-width="2.2"><path d="M20 7h-9M14 17H5M17 3l4 4-4 4M7 21l-4-4 4-4"/></svg>
-      <p>Los módulos no están separados por negocio: si tienes un taller, también puedes llevar el <b>inventario de tus refacciones</b> con el mismo sistema — y si tienes una refaccionaria, puedes usar órdenes de servicio si además reparas vehículos.</p>
+      <span class="eyebrow red">Lo que hace</span>
+      <h2>Todo lo del taller, en un solo lugar</h2>
+      <p>Si reparas carros, vendes refacciones o las dos cosas, usas el mismo sistema.</p>
     </div>
 
     <div id="refaccionarias" class="card-grid">
       <div class="feature-card blue">
-        <div class="feature-ico blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/></svg></div>
-        <h3>Órdenes de servicio digitales</h3>
-        <p>Levanta la orden desde el celular, agrega conceptos y refacciones, y calcula el total automáticamente — sin notas sueltas que se pierden.</p>
+        <div class="feature-ico blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><path d="M9 12h6M9 16h6M13 3H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M13 3v5h5"/></svg></div>
+        <h3>Las órdenes, sin papelitos</h3>
+        <p>Levantas la orden desde el celular, le metes conceptos y refacciones y el total sale solo.</p>
       </div>
       <div class="feature-card blue">
-        <div class="feature-ico blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><path d="M9 12h6M9 16h6M13 3H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M13 3v5h5"/></svg></div>
-        <h3>Historial digital del vehículo</h3>
-        <p>Cada auto guarda su expediente completo: servicios anteriores, refacciones usadas y kilometraje — útil para ti y para ganarte la confianza del cliente.</p>
+        <div class="feature-ico blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/></svg></div>
+        <h3>Cotiza y que el cliente autorice</h3>
+        <p>Mandas la cotización y el cliente la aprueba con un código. Ya no hay “yo nunca dije que sí”.</p>
+      </div>
+      <div class="feature-card blue">
+        <div class="feature-ico blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17h-2v-5l2-5h11l3 5v5h-2M5 12h13"/></svg></div>
+        <h3>El historial de cada carro</h3>
+        <p>Servicios anteriores, refacciones que se le pusieron y kilometraje. Todo en un solo lugar.</p>
       </div>
       <div class="feature-card blue">
         <div class="feature-ico blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
-        <h3>Estatus en tiempo real</h3>
-        <p>Recibido, en diagnóstico, en reparación, listo para entrega — el cliente lo ve desde su celular, sin que tengas que llamarle a cada rato.</p>
+        <h3>Tu cliente ve cómo va su carro</h3>
+        <p>Estatus, fotos del avance y chat directo desde su app. Menos llamadas de “¿ya quedó?”.</p>
       </div>
       <div class="feature-card blue">
-        <div class="feature-ico blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="18" cy="8.5" r="2.3"/><path d="M15.8 20a4.7 4.7 0 0 1 6.2-4.4"/></svg></div>
-        <h3>Asignación de mecánicos</h3>
-        <p>Reparte el trabajo entre tu equipo y sabe siempre quién es responsable de cada orden — sin confusiones cuando algo sale mal.</p>
+        <div class="feature-ico blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="18" cy="8.5" r="2.3"/></svg></div>
+        <h3>Quién hizo qué</h3>
+        <p>Cada orden tiene su mecánico. Las comisiones y la nómina se calculan con lo que sí hizo.</p>
+      </div>
+      <div class="feature-card red">
+        <div class="feature-ico red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg></div>
+        <h3>Revisión de entrada</h3>
+        <p>Anotas cómo llega el carro, con fotos, antes de tocarlo. Se acaban los “eso no estaba rayado”.</p>
       </div>
       <div class="feature-card red">
         <div class="feature-ico red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><path d="M3 7l2-4h14l2 4M3 7h18M3 7v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7"/></svg></div>
-        <h3>Inventario de refacciones</h3>
-        <p>Alertas automáticas cuando una pieza está por agotarse — nunca más le digas "no hay" a un cliente por no revisar el estante a tiempo. Aplica igual si eres taller o refaccionaria.</p>
-      </div>
-      <div class="feature-card red">
-        <div class="feature-ico red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M8 14h3"/></svg></div>
-        <h3>Ventas y punto de venta</h3>
-        <p>Cobra en mostrador, genera el ticket y descuenta el inventario en automático — todo en la misma pantalla, sin doble captura.</p>
+        <h3>Inventario que te avisa</h3>
+        <p>Cuando una pieza se está acabando te llega el aviso, antes de que le tengas que decir “no hay” a alguien.</p>
       </div>
       <div class="feature-card red">
         <div class="feature-ico red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg></div>
-        <h3>Gestión de proveedores</h3>
-        <p>Controla a quién le compras, qué te debe cada uno y cuándo toca reabastecer — sin depender de una libreta aparte.</p>
+        <h3>Proveedores y lo que les debes</h3>
+        <p>A quién le compras, cuánto le debes y cuándo toca pagarle.</p>
       </div>
       <div class="feature-card red">
-        <div class="feature-ico red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17h-2v-5l2-5h11l3 5v5h-2M5 12h13"/></svg></div>
-        <h3>Compatibilidad exacta</h3>
-        <p>Marca, modelo y año de cada refacción, ligados desde el catálogo — vende con la seguridad de que la pieza sí es la correcta.</p>
+        <div class="feature-ico red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M8 14h3"/></svg></div>
+        <h3>Cobra en mostrador</h3>
+        <p>Cobras, das el ticket y se descuenta el inventario. Aceptas abonos y pagos mixtos.</p>
+      </div>
+      <div class="feature-card red">
+        <div class="feature-ico red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <h3>Facturas sin dolor de cabeza</h3>
+        <p>Timbras la factura desde la misma orden, con los datos del cliente ya guardados.</p>
+      </div>
+      <div class="feature-card red">
+        <div class="feature-ico red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><path d="M11.5 3.5H19a1.5 1.5 0 0 1 1.5 1.5v7.5a2 2 0 0 1-.6 1.4l-8 8a2 2 0 0 1-2.8 0l-6-6a2 2 0 0 1 0-2.8l8-8a2 2 0 0 1 1.4-.6z"/><circle cx="15.5" cy="8.5" r="1.6"/></svg></div>
+        <h3>Promos para tus clientes</h3>
+        <p>Subes una promoción y le aparece en su app. Sin imprimir volantes.</p>
+      </div>
+      <div class="feature-card red">
+        <div class="feature-ico red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><rect x="4" y="9.5" width="7" height="10.5"/><rect x="13" y="3.5" width="7" height="16.5"/><path d="M6.3 12.5h2.4M6.3 15.5h2.4M15.3 6.5h2.4M15.3 9.5h2.4"/></svg></div>
+        <h3>Varias sucursales, un solo sistema</h3>
+        <p>Cada taller tiene sus datos separados y tú los administras desde un panel.</p>
       </div>
     </div>
+    <p style="text-align:center; margin-top:30px;"><a href="modulos.html" class="btn btn-outline">Ver la lista completa</a></p>
   </div>
 </section>
 
-<!-- ============ PANTALLAS: REPORTES E INTERFAZ ============ -->
+<!-- ============ PANTALLAS ============ -->
 <section id="reportes" class="section bg-grid">
-  <div class="glow" style="top:-140px; right:-160px; width:520px; height:520px; background:rgba(52,211,153,0.08);"></div>
   <div class="container">
     <div class="section-head">
-      <span class="eyebrow blue">Así se ve por dentro</span>
-      <h2>Números claros y una interfaz que no te hace pensar</h2>
-      <p>Nada de hojas de cálculo ni libretas: reportes listos para decidir y una pantalla de trabajo pensada para el día a día del taller.</p>
+      <span class="eyebrow blue">Las pantallas</span>
+      <h2>Así se ve, sin maquillaje</h2>
+      <p>Son las pantallas del sistema con datos de ejemplo. Lo tuyo se ve igual, con tus clientes y tus números.</p>
     </div>
-
     <div class="screens-grid">
       <div class="screen-card">
         <div class="mockup-topbar">
           <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
           <span class="mockup-dot" style="background:#eab30899"></span>
           <span class="mockup-dot" style="background:#34d39999"></span>
-          <span class="screen-label">Reportes · Este mes</span>
+          <span class="screen-label">Panel · Hoy</span>
         </div>
         <div class="screen-body">
           <div class="screen-stats">
-            <div class="screen-stat">
-              <div class="screen-stat-label">Ingresos del mes</div>
-              <div class="screen-stat-value" style="color:var(--emerald-400)">$182,450</div>
-            </div>
-            <div class="screen-stat">
-              <div class="screen-stat-label">Órdenes cerradas</div>
-              <div class="screen-stat-value">96</div>
-            </div>
-            <div class="screen-stat">
-              <div class="screen-stat-label">Ticket promedio</div>
-              <div class="screen-stat-value">$1,901</div>
-            </div>
+            <div class="screen-stat"><div class="screen-stat-label">Órdenes abiertas</div><div class="screen-stat-value">18</div></div><div class="screen-stat"><div class="screen-stat-label">Cobrado hoy</div><div class="screen-stat-value" style=color:var(--emerald-400)>$14,320</div></div><div class="screen-stat"><div class="screen-stat-label">Stock bajo</div><div class="screen-stat-value" style=color:var(--sport-500)>3</div></div>
           </div>
-
           <div class="chart-wrap">
-            <div class="chart-head">
-              <h4>Ingresos por día</h4>
-              <span>▲ 18% vs. mes anterior</span>
-            </div>
-            <div class="chart-bars">
-              <div class="chart-col"><div class="chart-bar" style="height:38%"></div><span class="chart-day">L</span></div>
-              <div class="chart-col"><div class="chart-bar" style="height:55%"></div><span class="chart-day">M</span></div>
-              <div class="chart-col"><div class="chart-bar" style="height:47%"></div><span class="chart-day">M</span></div>
-              <div class="chart-col"><div class="chart-bar" style="height:70%"></div><span class="chart-day">J</span></div>
-              <div class="chart-col"><div class="chart-bar peak" style="height:100%"></div><span class="chart-day">V</span></div>
-              <div class="chart-col"><div class="chart-bar" style="height:82%"></div><span class="chart-day">S</span></div>
-              <div class="chart-col"><div class="chart-bar" style="height:24%"></div><span class="chart-day">D</span></div>
-            </div>
+            <div class="chart-head"><h4>Cobrado por día</h4><span>▲ 18% vs. semana pasada</span></div>
+            <div class="chart-bars"><div class="chart-col"><div class="chart-bar" style="height:38%"></div><span class="chart-day">L</span></div>
+<div class="chart-col"><div class="chart-bar" style="height:55%"></div><span class="chart-day">M</span></div>
+<div class="chart-col"><div class="chart-bar" style="height:47%"></div><span class="chart-day">M</span></div>
+<div class="chart-col"><div class="chart-bar" style="height:70%"></div><span class="chart-day">J</span></div>
+<div class="chart-col"><div class="chart-bar peak" style="height:100%"></div><span class="chart-day">V</span></div>
+<div class="chart-col"><div class="chart-bar" style="height:82%"></div><span class="chart-day">S</span></div>
+<div class="chart-col"><div class="chart-bar" style="height:24%"></div><span class="chart-day">D</span></div></div>
           </div>
-
-          <div class="donut-row">
-            <div class="donut"></div>
-            <div class="donut-legend">
-              <span><span class="sw" style="background:var(--electric-500)"></span>Completadas · 62%</span>
-              <span><span class="sw" style="background:var(--emerald-400)"></span>En proceso · 22%</span>
-              <span><span class="sw" style="background:var(--sport-500)"></span>Canceladas · 16%</span>
-            </div>
-          </div>
+          <div class="table-wrap-mock"><table class="table-mock">
+            <thead><tr><th>Ya les toca servicio</th><th>Último servicio</th><th>Teléfono</th></tr></thead>
+            <tbody>
+              <tr><td class="strong">Rosa Méndez · Aveo</td><td>Hace 6 meses</td><td>55 1234 8890</td></tr>
+              <tr><td class="strong">Luis Ortega · Versa</td><td>Hace 5 meses</td><td>33 4821 0075</td></tr>
+            </tbody></table></div>
         </div>
       </div>
-
       <div class="screen-card">
         <div class="mockup-topbar">
           <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
           <span class="mockup-dot" style="background:#eab30899"></span>
           <span class="mockup-dot" style="background:#34d39999"></span>
-          <span class="screen-label">Interfaz de trabajo · Órdenes</span>
+          <span class="screen-label">Órdenes de servicio</span>
         </div>
-        <div class="app-shell">
-          <div class="app-sidebar">
-            <span class="side-ico active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/></svg></span>
-            <span class="side-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6M9 16h6M13 3H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M13 3v5h5"/></svg></span>
-            <span class="side-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l2-4h14l2 4M3 7h18M3 7v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7"/></svg></span>
-            <span class="side-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/></svg></span>
-            <span class="side-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg></span>
+        <div class="screen-body">
+          <div class="app-main-head"><h4>Órdenes de hoy</h4><span class="app-search">🔍 Buscar por placas o cliente…</span></div>
+          <div class="table-wrap-mock"><table class="table-mock">
+            <thead><tr><th>Carro</th><th>Mecánico</th><th>Estatus</th><th>Total</th></tr></thead>
+            <tbody>
+              <tr><td class="strong">Nissan Versa · HXR-812</td><td>Juan P.</td><td><span class="status-pill" style="background:rgba(63,140,255,0.15); color:var(--electric-300)">En proceso</span></td><td>$2,150</td></tr>
+              <tr><td class="strong">VW Jetta · GPT-330</td><td>Marco R.</td><td><span class="status-pill" style="background:rgba(255,68,56,0.15); color:var(--sport-400)">Esperando refacción</span></td><td>$3,480</td></tr>
+              <tr><td class="strong">Chevrolet Aveo · LKM-045</td><td>Diego H.</td><td><span class="status-pill" style="background:rgba(52,211,153,0.15); color:var(--emerald-300)">Listo para entrega</span></td><td>$1,920</td></tr>
+              <tr><td class="strong">Kia Rio · MXP-221</td><td>Juan P.</td><td><span class="status-pill" style="background:rgba(234,179,8,0.15); color:#eab308">Diagnóstico</span></td><td>—</td></tr>
+              <tr><td class="strong">Ford Fiesta · TRN-908</td><td>Marco R.</td><td><span class="status-pill" style="background:rgba(52,211,153,0.15); color:var(--emerald-300)">Autorizada por el cliente</span></td><td>$1,240</td></tr>
+            </tbody></table></div>
+        </div>
+      </div>
+      <div class="screen-card">
+        <div class="mockup-topbar">
+          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+          <span class="mockup-dot" style="background:#eab30899"></span>
+          <span class="mockup-dot" style="background:#34d39999"></span>
+          <span class="screen-label">Cotización #0142 · VW Jetta</span>
+        </div>
+        <div class="screen-body">
+          <div class="table-wrap-mock"><table class="table-mock">
+            <thead><tr><th>Concepto</th><th>Cant.</th><th>Importe</th></tr></thead>
+            <tbody>
+              <tr><td class="strong">Balatas delanteras (cerámica)</td><td>1</td><td>$980</td></tr>
+              <tr><td class="strong">Rectificado de discos</td><td>2</td><td>$600</td></tr>
+              <tr><td class="strong">Mano de obra · frenos</td><td>1</td><td>$450</td></tr>
+              <tr><td class="strong">Cambio de líquido de frenos</td><td>1</td><td>$320</td></tr>
+            </tbody></table></div>
+          <div class="screen-stats" style="margin-top:14px">
+            <div class="screen-stat"><div class="screen-stat-label">Subtotal</div><div class="screen-stat-value">$2,350</div></div><div class="screen-stat"><div class="screen-stat-label">IVA 16%</div><div class="screen-stat-value">$376</div></div><div class="screen-stat"><div class="screen-stat-label">Total</div><div class="screen-stat-value" style=color:var(--electric-400)>$2,726</div></div>
           </div>
-          <div class="app-main">
-            <div class="app-main-head">
-              <h4>Órdenes de servicio</h4>
-              <span class="app-search">🔍 Buscar orden…</span>
-            </div>
-            <div class="table-wrap-mock">
-              <table class="table-mock">
-                <thead>
-                  <tr><th>Cliente / Vehículo</th><th>Mecánico</th><th>Estatus</th><th>Total</th></tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="strong">Nissan Versa · HXR-812</td>
-                    <td>Juan P.</td>
-                    <td><span class="status-pill" style="background:rgba(63,140,255,0.15); color:var(--electric-300)">En proceso</span></td>
-                    <td>$2,150</td>
-                  </tr>
-                  <tr>
-                    <td class="strong">VW Jetta · GPT-330</td>
-                    <td>Marco R.</td>
-                    <td><span class="status-pill" style="background:rgba(255,68,56,0.15); color:var(--sport-400)">Esperando refacción</span></td>
-                    <td>$3,480</td>
-                  </tr>
-                  <tr>
-                    <td class="strong">Chevrolet Aveo · LKM-045</td>
-                    <td>Diego H.</td>
-                    <td><span class="status-pill" style="background:rgba(52,211,153,0.15); color:var(--emerald-300)">Listo para entrega</span></td>
-                    <td>$1,920</td>
-                  </tr>
-                  <tr>
-                    <td class="strong">Kia Rio · MXP-221</td>
-                    <td>Juan P.</td>
-                    <td><span class="status-pill" style="background:rgba(234,179,8,0.15); color:#eab308">Diagnóstico</span></td>
-                    <td>$0</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <div class="pay-row"><span>El cliente recibe un código para autorizar</span><span class="status-pill" style="background:rgba(234,179,8,0.15); color:#eab308">Pendiente de autorizar</span></div>
+        </div>
+      </div>
+      <div class="screen-card">
+        <div class="mockup-topbar">
+          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+          <span class="mockup-dot" style="background:#eab30899"></span>
+          <span class="mockup-dot" style="background:#34d39999"></span>
+          <span class="screen-label">Chat con el cliente · Orden #318</span>
+        </div>
+        <div class="screen-body">
+          <div class="chat-mock">
+            <div class="msg them">Buenas tardes, ¿ya quedó mi Aveo?<small>Rosa · 4:12 pm</small></div>
+            <div class="msg me">Sí, ya está listo. Le mandamos fotos del cambio de amortiguadores.<small>Taller · 4:15 pm</small></div>
+            <div class="msg photo">📷 3 fotos del avance</div>
+            <div class="msg them">¡Perfecto, paso por él a las 6!<small>Rosa · 4:16 pm</small></div>
           </div>
+        </div>
+      </div>
+      <div class="screen-card">
+        <div class="mockup-topbar">
+          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+          <span class="mockup-dot" style="background:#eab30899"></span>
+          <span class="mockup-dot" style="background:#34d39999"></span>
+          <span class="screen-label">Mi suscripción · Pagar en línea</span>
+        </div>
+        <div class="screen-body">
+          <div class="pay-card">
+            <div class="pay-plan">Plan Premium <em>· vence en 5 días</em></div>
+            <div class="pay-opt on"><span>Mensual</span><b>$1,499.00</b></div>
+            <div class="pay-opt"><span>Anual (2 meses gratis)</span><b>$14,990.00</b></div>
+            <div class="pay-btn">Ir a pagar</div>
+            <div class="pay-note">Tarjeta, OXXO o transferencia SPEI. Al aprobarse, tu plan se renueva solo.</div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-card">
+        <div class="mockup-topbar">
+          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+          <span class="mockup-dot" style="background:#eab30899"></span>
+          <span class="mockup-dot" style="background:#34d39999"></span>
+          <span class="screen-label">Súper admin · Resumen</span>
+        </div>
+        <div class="screen-body">
+          <div class="screen-stats">
+            <div class="screen-stat"><div class="screen-stat-label">Cobrado este mes</div><div class="screen-stat-value" style=color:var(--emerald-400)>$38,900</div></div><div class="screen-stat"><div class="screen-stat-label">Talleres vigentes</div><div class="screen-stat-value">12</div></div><div class="screen-stat"><div class="screen-stat-label">Por vencer</div><div class="screen-stat-value" style=color:var(--sport-500)>3</div></div>
+          </div>
+          <div class="table-wrap-mock"><table class="table-mock">
+            <thead><tr><th>Taller</th><th>Plan</th><th>Vence</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td class="strong">Taller Los Pinos</td><td>Premium</td><td>3 oct</td><td><span class="status-pill" style="background:rgba(234,179,8,0.15); color:#eab308">Por vencer</span></td></tr>
+              <tr><td class="strong">Refaccionaria El Buen Precio</td><td>Básico</td><td>14 oct</td><td><span class="status-pill" style="background:rgba(63,140,255,0.15); color:var(--electric-300)">En prueba</span></td></tr>
+              <tr><td class="strong">Autoservicio Ramírez</td><td>Premium</td><td>28 nov</td><td><span class="status-pill" style="background:rgba(52,211,153,0.15); color:var(--emerald-300)">Activa</span></td></tr>
+            </tbody></table></div>
         </div>
       </div>
     </div>
@@ -582,9 +633,9 @@
   <div class="glow" style="top:50%; left:-120px; transform:translateY(-50%); width:460px; height:460px; background:rgba(63,140,255,0.12);"></div>
   <div class="container app-grid">
     <div class="app-col-text">
-      <span class="eyebrow blue">La app móvil</span>
-      <h2 style="font-size:38px; margin-top:14px;">El taller, en tu bolsillo — y en el de tu cliente</h2>
-      <p class="hero-lead" style="margin-top:18px;">Tú y tu equipo capturan desde el celular, sin correr a la computadora. Tu cliente sigue el avance de su auto sin tener que llamarte.</p>
+      <span class="eyebrow blue">En el celular</span>
+      <h2 style="font-size:38px; margin-top:14px;">Tu taller en el celular, y el de tu cliente también</h2>
+      <p class="hero-lead" style="margin-top:18px;">Tú y tu equipo capturan desde el celular, sin correr a la compu. Tu cliente ve cómo va su carro sin tener que llamarte.</p>
 
       <div class="app-points">
         <div class="app-point">
@@ -636,24 +687,24 @@
 <section class="section">
   <div class="container">
     <div class="section-head">
-      <span class="eyebrow red">Por qué te conviene</span>
-      <h2>Menos caos administrativo, más taller funcionando</h2>
+      <span class="eyebrow red">Para qué te sirve</span>
+      <h2>Menos desorden, más carros saliendo</h2>
     </div>
     <div class="benefit-grid">
       <div class="benefit-card">
         <div class="benefit-ico blue"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
-        <h3>Ahorra horas cada semana</h3>
-        <p>Deja de armar cotizaciones a mano y de buscar papeles perdidos — captura una vez y el sistema hace las cuentas.</p>
+        <h3>Te ahorras horas</h3>
+        <p>Ya no armas cotizaciones a mano ni buscas notas perdidas. Capturas una vez y el sistema hace las cuentas.</p>
       </div>
       <div class="benefit-card">
         <div class="benefit-ico red"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-        <h3>Deja de perder dinero</h3>
-        <p>Sin conceptos olvidados, sin refacciones que salen del estante sin registrarse, sin cobros que nadie hizo.</p>
+        <h3>Ya no se te va el dinero</h3>
+        <p>Sin conceptos olvidados, sin piezas que salen sin anotarse y sin cobros que nadie hizo.</p>
       </div>
       <div class="benefit-card">
-        <div class="benefit-ico blue"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-        <h3>Control absoluto, desde donde estés</h3>
-        <p>Ve cómo va tu negocio desde el celular, sin tener que estar físicamente ahí para saber qué está pasando.</p>
+        <div class="benefit-ico blue"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3f8cff" stroke-width="2"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="18" cy="8.5" r="2.3"/></svg></div>
+        <h3>Lo ves desde donde estés</h3>
+        <p>Revisas cómo va el día desde tu celular, y te llega un aviso cuando algo necesita tu atención.</p>
       </div>
     </div>
   </div>
@@ -664,18 +715,18 @@
   <div class="container">
     <div class="section-head">
       <span class="eyebrow blue">Planes</span>
-      <h2>Un plan para cada tamaño de negocio</h2>
-      <p>Precios en pesos mexicanos. Cambia de plan cuando quieras, sin contratos forzosos.</p>
+      <h2>Elige tu plan</h2>
+      <p>Precios en pesos mexicanos. Cambias de plan cuando quieras, sin contratos.</p>
     </div>
 
     <div class="pricing-grid">
       <div class="plan">
         <h3>Básico</h3>
-        <p class="plan-desc">Para talleres o refaccionarias que están empezando a ordenarse.</p>
+        <p class="plan-desc">Para empezar a ordenar tu taller o refaccionaria.</p>
         <div class="plan-price"><span class="amount">$799</span><span class="period">MXN / mes</span></div>
         <ul class="plan-features">
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Hasta 2 usuarios</li>
-          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Órdenes de servicio o ventas ilimitadas</li>
+          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Órdenes y ventas sin límite</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Inventario y catálogo de clientes</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> App móvil incluida</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Soporte por correo</li>
@@ -686,14 +737,14 @@
       <div class="plan featured">
         <span class="plan-tag">Más elegido</span>
         <h3>Premium</h3>
-        <p class="plan-desc">Para el taller o refaccionaria con equipo y flujo de clientes constante.</p>
+        <p class="plan-desc">Para el que ya tiene equipo y clientes todos los días.</p>
         <div class="plan-price"><span class="amount">$1,499</span><span class="period">MXN / mes</span></div>
         <ul class="plan-features">
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Hasta 8 usuarios</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Todo lo del plan Básico</li>
-          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> App para tus clientes (seguimiento y promociones)</li>
+          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> App para tus clientes (seguimiento, chat y promos)</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Roles y permisos por empleado</li>
-          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Reportes y comisiones</li>
+          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Reportes, comisiones y nómina</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Soporte prioritario</li>
         </ul>
         <a href="#demo" class="btn btn-primary">Solicitar demo</a>
@@ -701,14 +752,14 @@
 
       <div class="plan">
         <h3>Empresa</h3>
-        <p class="plan-desc">Para cadenas con varias sucursales o volumen alto de operación.</p>
+        <p class="plan-desc">Para cadenas con varias sucursales.</p>
         <div class="plan-price"><span class="amount">Cotización</span></div>
         <ul class="plan-features">
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Usuarios ilimitados</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Todo lo del plan Premium</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Varias sucursales conectadas</li>
-          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Integración a tu contabilidad</li>
-          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Gerente de cuenta dedicado</li>
+          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Facturación y contabilidad</li>
+          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Alguien de nuestro lado que te atiende directo</li>
         </ul>
         <a href="#demo" class="btn btn-outline">Hablar con ventas</a>
       </div>
@@ -721,13 +772,21 @@
   <div class="glow" style="top:0; left:50%; transform:translateX(-50%); width:700px; height:400px; background:rgba(63,140,255,0.1);"></div>
   <div class="container">
     <div class="demo-box">
-      <h2>¿Listo para dejar de operar a ciegas?</h2>
-      <p>Agenda una demo de 20 minutos y te mostramos ALDM Garage Manager funcionando con datos parecidos a los de tu negocio.</p>
-      <form id="demo-form" class="demo-form">
-        <input type="text" required placeholder="Nombre de tu taller o refaccionaria" />
-        <button type="submit" class="btn btn-white btn-block">Solicitar demo</button>
+      <h2>¿Quieres verlo funcionando?</h2>
+      <p>Déjanos tus datos y te escribimos para enseñártelo con información parecida a la de tu negocio. Son 20 minutos.</p>
+      <form id="demo-form" class="demo-form" novalidate>
+        <input type="text" name="negocio" required maxlength="120" placeholder="Nombre de tu taller o refaccionaria" />
+        <input type="text" name="nombre" required maxlength="120" placeholder="Tu nombre" />
+        <div class="demo-form-fila">
+          <input type="tel" name="telefono" required maxlength="30" placeholder="Teléfono o WhatsApp" />
+          <input type="email" name="correo" maxlength="120" placeholder="Correo (opcional)" />
+        </div>
+        <input type="text" name="mensaje" maxlength="280" placeholder="¿Algo que quieras contarnos? (opcional)" />
+        <input type="text" name="web" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute; left:-9999px; opacity:0; height:0;" />
+        <button type="submit" class="btn btn-white btn-block">Quiero mi demo</button>
       </form>
-      <p id="demo-msg" class="demo-msg hidden">✓ ¡Gracias! Te contactaremos pronto para agendar tu demo.</p>
+      <p id="demo-error" class="demo-msg hidden" style="color:var(--sport-400)"></p>
+      <p id="demo-msg" class="demo-msg hidden">¡Listo! Ya recibimos tus datos. Te escribimos pronto.</p>
     </div>
   </div>
 </section>
@@ -738,7 +797,7 @@
     <div class="footer-about">
       <span class="brand-name">ALDM<em>.</em></span><br/>
       <span class="brand-sub">Garage Manager</span>
-      <p>El sistema web y app móvil para talleres mecánicos y refaccionarias que quieren dejar el papel y el Excel atrás.</p>
+      <p>Sistema web y app para talleres mecánicos y refaccionarias.</p>
       <div class="footer-social">
         <a href="#" aria-label="Facebook" class="social-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="#8493a8"><path d="M13.5 21v-7.5h2.5l.5-3h-3V8.5c0-.9.3-1.5 1.6-1.5H16.5V4.3C16.2 4.3 15.2 4 14 4c-2.4 0-4 1.5-4 4.2v2.3H7.5v3H10V21z"/></svg></a>
         <a href="#" aria-label="Instagram" class="social-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8493a8" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg></a>
@@ -751,7 +810,7 @@
       <ul>
         <li><a href="#modulos">Para talleres</a></li>
         <li><a href="#refaccionarias">Para refaccionarias</a></li>
-        <li><a href="#app">App móvil</a></li>
+        <li><a href="#app">En el celular</a></li>
         <li><a href="#precios">Precios</a></li>
         <li><a href="modulos.html">Todos los módulos</a></li>
       </ul>
@@ -781,17 +840,28 @@
 
   <div class="footer-bottom">
     <span>© <span id="anio"></span> ALDM Garage Manager. Todos los derechos reservados.</span>
-    <span>Hecho para talleres y refaccionarias.</span>
+    <span>Hecho en México para talleres y refaccionarias.</span>
   </div>
 </footer>
 
 <script>
   document.getElementById('anio').textContent = new Date().getFullYear();
 
+  // Si la página se abre como archivo, manda la solicitud al sistema en Azure.
+  var API_BASE = location.protocol === 'file:' ? 'https://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net' : '';
+
   document.getElementById('demo-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    this.classList.add('hidden');
-    document.getElementById('demo-msg').classList.remove('hidden');
+    var f = this, err = document.getElementById('demo-error'), btn = f.querySelector('button');
+    err.classList.add('hidden');
+    var d = { negocio: f.negocio.value.trim(), nombre: f.nombre.value.trim(), telefono: f.telefono.value.trim(),
+              correo: f.correo.value.trim(), mensaje: f.mensaje.value.trim(), web: f.web.value };
+    if (!d.negocio || !d.nombre || !d.telefono) { err.textContent = 'Falta tu negocio, tu nombre y un teléfono.'; err.classList.remove('hidden'); return; }
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    fetch(API_BASE + '/api/contacto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || 'No se pudo enviar.'); }); })
+      .then(function () { f.classList.add('hidden'); document.getElementById('demo-msg').classList.remove('hidden'); })
+      .catch(function (x) { err.textContent = x.message || 'No se pudo enviar, intenta de nuevo.'; err.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Quiero mi demo'; });
   });
 </script>
 

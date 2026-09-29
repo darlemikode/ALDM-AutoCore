@@ -44,3 +44,4 @@ backend/nul
 
 # Web compilada (se genera con npm run build en web-admin)
 backend/app/web/
+backend/app/sitio/
