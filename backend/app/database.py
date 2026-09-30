@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.getenv("ENV_FILE") or None)  # ENV_FILE=.env.azure para usar otro archivo
 
 # Por defecto usa SQLite: un solo archivo (sistema_mecanico.db), sin instalar
 # ni levantar ningún servidor de base de datos. Si más adelante quieres usar
