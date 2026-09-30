@@ -66,6 +66,8 @@ def calcular_estado(taller: models.Taller, config: models.ConfiguracionSaaS, hoy
         "modulos": set(m.clave for m in susc.paquete.modulos) if susc and susc.paquete else None,
         "mensaje": None,
     }
+    if config.id_taller_principal == taller.id_taller:
+        info["modulos"] = None  # el taller principal (ALDM) siempre tiene todos los módulos
     if not taller.activo:
         info.update(estado="suspendida", bloqueado=True, mensaje="El acceso de este taller está suspendido. Contacta a ALDM AutoCore.")
         return info
