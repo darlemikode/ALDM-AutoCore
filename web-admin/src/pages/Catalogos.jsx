@@ -84,12 +84,18 @@ const CATALOGS = {
 };
 
 const CLAVES = Object.keys(CATALOGS);
-const GRUPOS = [...new Set(CLAVES.map((k) => CATALOGS[k].grupo))];
+// Esenciales: lo que el taller usa a diario. El resto (ubicación global y
+// marcas de herramientas) va colapsado en "Más catálogos".
+const esAvanzado = (k) => CATALOGS[k].grupo === "Ubicación" || CATALOGS[k].label === "Marcas de herramientas";
+const CLAVES_ESENCIALES = CLAVES.filter((k) => !esAvanzado(k));
+const CLAVES_AVANZADAS = CLAVES.filter(esAvanzado);
+const GRUPOS = [...new Set(CLAVES_ESENCIALES.map((k) => CATALOGS[k].grupo))];
 
 export default function Catalogos() {
   const { confirmDialog, notify } = useUI();
   const { hasPermission } = useAuth();
-  const [tab, setTab] = useState("paises");
+  const [tab, setTab] = useState(CLAVES_ESENCIALES[0]);
+  const [verMas, setVerMas] = useState(false);
   const [rows, setRows] = useState([]);
   const [deps, setDeps] = useState({});
   const [conteos, setConteos] = useState({});
@@ -105,6 +111,26 @@ export default function Catalogos() {
   const puedeEliminar = hasPermission("catalogos.eliminar");
 
   const config = CATALOGS[tab];
+  const tarjeta = (k) => {
+    const c = CATALOGS[k];
+    const n = conteos[k];
+    return (
+      <button
+        type="button"
+        key={k}
+        onClick={() => setTab(k)}
+        className={`rol-card ${tab === k ? "activo" : ""}`}
+        style={acentoDe(CLAVES.indexOf(k))}
+      >
+        <span className="rol-card-icono">{c.icono}</span>
+        <span className="rol-card-info">
+          <span className="rol-card-nombre">{c.label}</span>
+          <span className="rol-card-meta">{n === undefined ? "…" : `${n} registro${n === 1 ? "" : "s"}`}</span>
+        </span>
+      </button>
+    );
+  };
+
   const indice = CLAVES.indexOf(tab);
   // Al cambiar de catálogo, React repinta de inmediato con el "deps" del
   // catálogo ANTERIOR (el nuevo todavía se está pidiendo) — aquí se rellenan
@@ -235,27 +261,15 @@ export default function Catalogos() {
           {GRUPOS.map((grupo) => (
             <div key={grupo} className="cat-grupo">
               <div className="cat-grupo-titulo">{grupo}</div>
-              {CLAVES.filter((k) => CATALOGS[k].grupo === grupo).map((k) => {
-                const c = CATALOGS[k];
-                const n = conteos[k];
-                return (
-                  <button
-                    type="button"
-                    key={k}
-                    onClick={() => setTab(k)}
-                    className={`rol-card ${tab === k ? "activo" : ""}`}
-                    style={acentoDe(CLAVES.indexOf(k))}
-                  >
-                    <span className="rol-card-icono">{c.icono}</span>
-                    <span className="rol-card-info">
-                      <span className="rol-card-nombre">{c.label}</span>
-                      <span className="rol-card-meta">{n === undefined ? "…" : `${n} registro${n === 1 ? "" : "s"}`}</span>
-                    </span>
-                  </button>
-                );
-              })}
+              {CLAVES_ESENCIALES.filter((k) => CATALOGS[k].grupo === grupo).map(tarjeta)}
             </div>
           ))}
+          <div className="cat-grupo">
+            <button type="button" className="cat-grupo-titulo" style={{ background: "none", border: 0, cursor: "pointer", textAlign: "left", padding: 0 }} onClick={() => setVerMas((v) => !v)}>
+              {verMas || CLAVES_AVANZADAS.includes(tab) ? "▾" : "▸"} Más catálogos (ubicación y herramientas)
+            </button>
+            {(verMas || CLAVES_AVANZADAS.includes(tab)) && CLAVES_AVANZADAS.map(tarjeta)}
+          </div>
         </div>
 
         <div className="panel">
