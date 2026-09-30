@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { AppState } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, getToken, setToken, login as apiLogin, esTokenLocal } from "../api";
 import {
   isBiometricHardwareAvailable, isBiometricEnabled, setBiometricEnabled,
@@ -64,15 +66,21 @@ export function AuthProvider({ children }) {
         const me = await api.get("/auth/me");
         setUser(me);
         setPermisos(me.permisos || []);
+        const t = await getToken();
+        if (t && !esTokenLocal(t)) AsyncStorage.setItem("sm_permisos_cache", JSON.stringify(me.permisos || [])).catch(() => {});
       } catch {
         // si falla, el resto de la app ya maneja la sesión inválida
       }
     }
+    // Al volver a la app se revisan los módulos contratados
+    const appSub = AppState.addEventListener("change", (estado) => { if (estado === "active") refrescarPermisos(); });
+    refrescarPermisos();
     const quitar1 = suscribirActualizacionGlobal("roles", refrescarPermisos);
     const quitar2 = suscribirActualizacionGlobal("usuarios", refrescarPermisos);
     return () => {
       quitar1();
       quitar2();
+      appSub.remove();
     };
   }, [user?.username, user?.id_taller]);
 

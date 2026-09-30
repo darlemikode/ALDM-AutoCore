@@ -46,7 +46,7 @@ function esFalloDeRed(err) {
   if (err.name === "AbortError") return true; // se acabó el tiempo de espera
   if (err instanceof TypeError) return true; // fetch no pudo ni conectar
   const msg = String(err.message || "");
-  return /network request failed|failed to fetch|Network Error/i.test(msg);
+  return /network request failed|failed to fetch|Network Error|fetch failed|canceled|cancelled/i.test(msg);
 }
 
 const TIEMPO_LIMITE_MS = 8000;
@@ -87,6 +87,29 @@ async function requestReal(path, method, body, isForm) {
   return data;
 }
 
+const MENSAJE_SOPORTE = (codigo) =>
+  `Ocurrió un problema en el sistema. Comunícate con soporte de ALDM AutoCore y menciona el código ${codigo}.`;
+
+// Errores del servidor ya traen mensaje y código de soporte. Los técnicos
+// del propio celular (sin mensaje legible) se reportan al log del taller y
+// se muestran con el mismo mensaje estándar.
+async function errorEstandar(err, path) {
+  const msg = String(err?.message || "");
+  const legible = /código ERR-|codigo ERR-|\bERR-[0-9A-F]{8}\b/.test(msg) || (msg && !/fetch|network|undefined|null|TypeError|\[object|JSON|canceled|cancelled/i.test(msg));
+  if (legible) return err;
+  let codigo = "LOC-" + Math.random().toString(16).slice(2, 10).toUpperCase();
+  try {
+    const r = await fetchConLimite(`${API_URL}/errores/cliente`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await getToken() && !esTokenLocal(await getToken()) ? { Authorization: `Bearer ${await getToken()}` } : {}) },
+      body: JSON.stringify({ mensaje: msg.slice(0, 300), pantalla: path, origen: "app_movil", detalle: String(err?.stack || "").slice(0, 3000) }),
+    });
+    const d = await r.json();
+    if (d?.codigo) codigo = d.codigo;
+  } catch { /* sin servidor: se queda el código local */ }
+  return new Error(MENSAJE_SOPORTE(codigo));
+}
+
 async function request(path, { method = "GET", body, isForm = false } = {}) {
   // Modo local (ver localMode.js): ya se sabe que no hay servidor, no
   // tiene sentido intentar el fetch real cada vez — se resuelve directo
@@ -98,13 +121,17 @@ async function request(path, { method = "GET", body, isForm = false } = {}) {
   try {
     return await requestReal(path, method, body, isForm);
   } catch (err) {
-    if (!esFalloDeRed(err)) throw err; // error real del servidor: se muestra, no se encola
+    if (!esFalloDeRed(err)) throw await errorEstandar(err, path); // error real del servidor: se muestra, no se encola
     // No hubo forma de llegar al servidor — se confirma con una
     // verificación de conexión (enciende MODO_LOCAL si en efecto no hay
     // servidor) y esta petición en particular se resuelve local para no
     // perder lo que el usuario estaba haciendo.
     await verificarConexion();
-    return solicitudLocal(path, method, body);
+    try {
+      return await solicitudLocal(path, method, body);
+    } catch (errLocal) {
+      throw await errorEstandar(errLocal, path);
+    }
   }
 }
 

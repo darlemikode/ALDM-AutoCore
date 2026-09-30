@@ -216,9 +216,12 @@ function TallerTabs() {
           options={{ tabBarButton: (props) => <BotonServicioGrande {...props} />, tabBarIcon: undefined }}
           listeners={({ navigation }) => ({
             tabPress: (e) => {
-              // Al tocar el tab siempre se regresa al historial.
-              e.preventDefault();
-              navigation.navigate("Servicio", { screen: "HistorialServicios", params: { resetear: Date.now() } });
+              // Si ya estás en Servicio, tocar el tab regresa al historial.
+              // Si vienes de otro módulo, se conserva donde te quedaste.
+              if (navigation.isFocused()) {
+                e.preventDefault();
+                navigation.navigate("Servicio", { screen: "HistorialServicios", params: { resetear: Date.now() } });
+              }
             },
           })}
         />
@@ -261,7 +264,7 @@ function ContenidoDrawer({ navigation, state }) {
       hasPermission("servicios.ver") && { label: "Órdenes de servicio", icono: "construct-outline", ruta: "HistorialServicios", destino: ["Taller", "Servicio", "HistorialServicios"] },
       hasPermission("servicios.crear") && { label: "Nueva orden", icono: "add-circle-outline", ruta: "NuevaOrden", destino: ["Taller", "Servicio", "NuevaOrden"] },
       hasPermission("cotizaciones.ver") && { label: "Cotizaciones", icono: "document-text-outline", ruta: "Cotizaciones", destino: ["Taller", "Más", "Cotizaciones"] },
-      { label: "Citas solicitadas", icono: "calendar-outline", ruta: "Citas", destino: ["Taller", "Más", "Citas"] },
+      hasPermission("promociones.ver") && { label: "Citas solicitadas", icono: "calendar-outline", ruta: "Citas", destino: ["Taller", "Más", "Citas"] },
       hasPermission("clientes.ver") && { label: "Clientes", icono: "people-outline", ruta: "ClientesLista", destino: ["Taller", "Clientes"] },
       hasPermission("vehiculos.ver") && { label: "Vehículos", icono: "car-outline", ruta: "VehiculosLista", destino: ["Vehículos"] },
     ].filter(Boolean) },
@@ -273,7 +276,7 @@ function ContenidoDrawer({ navigation, state }) {
     ].filter(Boolean) },
     { grupo: "App de clientes", items: [
       hasPermission("promociones.ver") && { label: "Promociones", icono: "pricetag-outline", ruta: "Promociones", destino: ["Taller", "Más", "Promociones"] },
-      { label: "Asistente (chatbot)", icono: "chatbubbles-outline", ruta: "Asistente", destino: ["Taller", "Más", "Asistente"] },
+      hasPermission("promociones.ver") && { label: "Asistente (chatbot)", icono: "chatbubbles-outline", ruta: "Asistente", destino: ["Taller", "Más", "Asistente"] },
     ].filter(Boolean) },
     { grupo: "Configuración", items: [
       hasPermission("catalogos.ver") && { label: "Catálogos", icono: "list-outline", ruta: "CatalogosLista", destino: ["Catálogos"] },

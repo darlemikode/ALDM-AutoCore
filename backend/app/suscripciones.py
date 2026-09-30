@@ -28,6 +28,8 @@ MODULO_POR_PERMISO = {
     "roles": "roles_permisos",
     "facturacion": "facturacion",
     "promociones": "app_movil",
+    "citas": "app_movil",
+    "chatbot": "app_movil",
 }
 
 ESTADOS_MANUALES = ("prueba", "activa", "suspendida", "cancelada")

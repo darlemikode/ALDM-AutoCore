@@ -20,17 +20,20 @@ export async function sincronizarAhora() {
   // Trae los catálogos completos del servidor. Si alguno falla (por
   // ejemplo, sin internet en ese momento), se cancela todo el intento sin
   // tocar lo que ya había guardado localmente.
+  // Módulos no contratados o sin permiso se omiten en silencio (null);
+  // cualquier otro fallo (sin internet, servidor) cancela el intento.
+  const omitible = (p) => p.catch((e) => (/no está incluido|no tiene permiso|no esta incluido/i.test(String(e?.message)) ? null : Promise.reject(e)));
   const [clientes, vehiculos, servicios, refacciones] = await Promise.all([
-    api.get("/clientes/"),
-    api.get("/vehiculos/"),
-    api.get("/servicios/"),
-    api.get("/refacciones/"),
+    omitible(api.get("/clientes/")),
+    omitible(api.get("/vehiculos/")),
+    omitible(api.get("/servicios/")),
+    omitible(api.get("/refacciones/")),
   ]);
 
-  await reemplazarClientes(clientes || []);
-  await reemplazarVehiculos(vehiculos || []);
-  await reemplazarServicios(servicios || []);
-  await reemplazarRefacciones(refacciones || []);
+  if (clientes) await reemplazarClientes(clientes);
+  if (vehiculos) await reemplazarVehiculos(vehiculos);
+  if (servicios) await reemplazarServicios(servicios);
+  if (refacciones) await reemplazarRefacciones(refacciones);
 
   const ahoraIso = new Date().toISOString();
   await setMeta("ultima_sincronizacion", ahoraIso);

@@ -1238,3 +1238,20 @@ class SolicitudContacto(Base):
     mensaje = Column(String(280), nullable=True)
     fecha = Column(DateTime, default=datetime.utcnow, index=True)
     atendida = Column(Boolean, default=False)
+
+
+class ErrorSistema(TenantMixin, Base):
+    """Bitácora de errores por taller: cada error inesperado (servidor o app)
+    queda con un código corto que el usuario le da a soporte."""
+    __tablename__ = "errores_sistema"
+
+    id_error = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(20), nullable=False, index=True)
+    fecha = Column(DateTime, default=datetime.utcnow, index=True)
+    origen = Column(String(20), nullable=False, default="servidor")  # servidor | app_movil | web
+    metodo = Column(String(10), nullable=True)
+    ruta = Column(String(255), nullable=True)
+    status = Column(Integer, nullable=True)
+    usuario = Column(String(50), nullable=True)
+    mensaje = Column(String(500), nullable=True)
+    detalle = Column(Text, nullable=True)

@@ -1,4 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   colGetAll,
   colGetOne,
@@ -469,7 +470,16 @@ async function colInsertarConIdFijo(coleccion, id, registro) {
           costo_mano_obra: Number(body.costo_mano_obra) || 0, costo_refaccion: Number(body.costo_refaccion) || 0, costo_extra: Number(body.costo_extra) || 0,
         }], "id_cotizacion_detalle");
       } else if (seg.length === 4 && method === "PUT") {
-        detalles = detalles.map((d) => (Number(d.id_cotizacion_detalle) === Number(seg[3]) ? { ...d, ...body } : d));
+        detalles = detalles.map((d) => {
+          if (Number(d.id_cotizacion_detalle) !== Number(seg[3])) return d;
+          const cambios = { ...body };
+          const sinCostos = !["costo_mano_obra", "costo_refaccion", "costo_extra"].some((k) => k in cambios);
+          if ("cantidad" in cambios && sinCostos) {
+            const antes = Number(d.cantidad) || 1, nueva = Math.max(Number(cambios.cantidad) || 1, 1);
+            for (const k of ["costo_mano_obra", "costo_refaccion", "costo_extra"]) cambios[k] = Math.round(((Number(d[k]) || 0) / antes * nueva) * 100) / 100;
+          }
+          return { ...d, ...cambios };
+        });
       } else if (seg.length === 4 && method === "DELETE") {
         detalles = detalles.filter((d) => Number(d.id_cotizacion_detalle) !== Number(seg[3]));
       }
@@ -733,7 +743,13 @@ async function colInsertarConIdFijo(coleccion, id, registro) {
 
   // ---------------- USUARIOS (para selects de "responsable") ----------------
   if (seg[0] === "auth" && seg[1] === "me" && method === "GET") {
-    return { username: "admin", nombre_completo: "Administrador General", rol: "Administrador General", permisos: CATALOGO_PERMISOS.map((p) => p.clave) };
+    // Usa los permisos de la última vez que hubo servidor (respeta el paquete contratado)
+    let permisos = CATALOGO_PERMISOS.map((p) => p.clave);
+    try {
+      const guardado = await AsyncStorage.getItem("sm_permisos_cache");
+      if (guardado) permisos = JSON.parse(guardado);
+    } catch { /* sin caché: todos */ }
+    return { username: "admin", nombre_completo: "Administrador General", rol: "Administrador General", permisos };
   }
   // Multi-taller: en modo local el celular trabaja con un solo taller
   if (seg[0] === "auth" && seg[1] === "talleres" && method === "GET") return [];

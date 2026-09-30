@@ -1,7 +1,11 @@
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Annotated, Optional, List
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import AliasChoices, BeforeValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+
+# Kilometraje: las apps lo mandan como número; se guarda como texto.
+KmTexto = Annotated[Optional[str], BeforeValidator(lambda v: None if v is None or v == "" else str(v))]
 
 
 class ORMBase(BaseModel):
@@ -647,8 +651,8 @@ class ServicioIn(BaseModel):
     id_cliente: int
     id_vehiculo: int
     nombre_servicio: str
-    km_llegada: Optional[str] = None
-    km_proximo_servicio: Optional[str] = None
+    km_llegada: KmTexto = None
+    km_proximo_servicio: KmTexto = None
     iva_porcentaje: float = 0.0  # sin IVA automático; se aplica desde la orden si el cliente lo pide
     diagnostico: Optional[str] = None
     id_tipo_mantenimiento: Optional[int] = None
@@ -665,8 +669,8 @@ class ServicioIn(BaseModel):
 
 class ServicioUpdate(BaseModel):
     nombre_servicio: Optional[str] = None
-    km_llegada: Optional[str] = None
-    km_proximo_servicio: Optional[str] = None
+    km_llegada: KmTexto = None
+    km_proximo_servicio: KmTexto = None
     status: Optional[str] = None
     pagado: Optional[bool] = None
     iva_porcentaje: Optional[float] = None
@@ -684,8 +688,8 @@ class ServicioOut(ORMBase):
     id_cliente: int
     id_vehiculo: int
     nombre_servicio: str
-    km_llegada: Optional[str] = None
-    km_proximo_servicio: Optional[str] = None
+    km_llegada: KmTexto = None
+    km_proximo_servicio: KmTexto = None
     fecha_entrada_servicio: datetime
     fecha_salida_servicio: Optional[datetime] = None
     status: str
@@ -752,7 +756,7 @@ class ProximoServicioOut(BaseModel):
     numero_cuenta_vehiculo: str
     fecha_ultimo_servicio: datetime
     dias_desde_ultimo_servicio: int
-    km_proximo_servicio: Optional[str] = None
+    km_proximo_servicio: KmTexto = None
 
 
 # ---------------------------------------------------------------------------

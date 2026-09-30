@@ -117,7 +117,15 @@ def actualizar_detalle(cotizacion_id: int, detalle_id: int, payload: schemas.Cot
     )
     if not detalle:
         raise HTTPException(status_code=404, detail="Detalle no encontrado")
-    for key, value in payload.model_dump(exclude_unset=True).items():
+    cambios = payload.model_dump(exclude_unset=True)
+    # Al cambiar solo la cantidad, los costos escalan (el costo guardado es el total del renglón)
+    if "cantidad" in cambios and not any(k in cambios for k in ("costo_mano_obra", "costo_refaccion", "costo_extra")):
+        anterior = detalle.cantidad or 1
+        nueva = max(cambios["cantidad"] or 1, 1)
+        if anterior != nueva:
+            for campo in ("costo_mano_obra", "costo_refaccion", "costo_extra"):
+                setattr(detalle, campo, round((getattr(detalle, campo) or 0) / anterior * nueva, 2))
+    for key, value in cambios.items():
         setattr(detalle, key, value)
     db.commit()
     return _con_costos(_get_cotizacion_o_404(db, cotizacion_id))

@@ -661,6 +661,8 @@ def run():
     db = sesion_global()
     try:
         sembrar_globales(db)
+        from .seed_catalogos import asegurar_catalogos_base
+        asegurar_catalogos_base(db)  # catálogos precargados (idempotente)
         _migrar_a_multitaller(db)
         _una_suscripcion_por_taller(db)
         id_principal = db.query(models.ConfiguracionSaaS).first().id_taller_principal

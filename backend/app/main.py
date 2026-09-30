@@ -9,11 +9,13 @@ import os
 
 from .rate_limit import limiter
 
-from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, superadmin, facturacion, notificaciones, nomina, pagos_en_linea, contacto
+from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, notificaciones, nomina, pagos_en_linea, contacto
 from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
 from . import ws_router
+from fastapi.exceptions import RequestValidationError
+from .errores import MENSAJE_SOPORTE, registrar_error
 from .ws_manager import REDIS_URL, escuchar_bus, manager_global
 
 app = FastAPI(
@@ -80,9 +82,8 @@ async def avisar_cambios_globales(request: Request, call_next):
 
 @app.exception_handler(IntegrityError)
 def integrity_error_handler(request: Request, exc: IntegrityError):
-    """Convierte violaciones de la base de datos (llaves foráneas, valores
-    duplicados en columnas únicas, campos obligatorios vacíos, etc.) en una
-    respuesta 400 legible, en vez de un 500 genérico con el traceback de SQL."""
+    """Violaciones de la base (llaves foráneas, duplicados, campos vacíos):
+    mensaje claro para el usuario y el detalle técnico en la bitácora."""
     detalle = str(getattr(exc, "orig", exc)).lower()
     if "unique" in detalle or "duplicate" in detalle:
         mensaje = "Ya existe un registro con ese mismo valor único (por ejemplo, VIN o nombre de usuario)."
@@ -91,10 +92,24 @@ def integrity_error_handler(request: Request, exc: IntegrityError):
     elif "not null" in detalle:
         mensaje = "Falta un campo obligatorio para poder guardar este registro."
     else:
-        # No es un caso que ya identifiquemos — se manda el detalle real de
-        # SQL en vez de un mensaje genérico que no ayuda a saber qué pasó.
-        mensaje = f"No se pudo completar la acción: {detalle}"
-    return JSONResponse(status_code=400, content={"detail": mensaje})
+        codigo = registrar_error(request, exc, 400)
+        return JSONResponse(status_code=400, content={"detail": MENSAJE_SOPORTE.format(codigo=codigo), "codigo": codigo})
+    codigo = registrar_error(request, exc, 400, mensaje=mensaje)
+    return JSONResponse(status_code=400, content={"detail": f"{mensaje} (código {codigo})", "codigo": codigo})
+
+
+@app.exception_handler(RequestValidationError)
+async def validacion_handler(request: Request, exc: RequestValidationError):
+    """Datos que la app mandó mal: se guarda el detalle y el usuario ve el código."""
+    codigo = registrar_error(request, None, 422, mensaje="Validación: " + str(exc.errors())[:400], detalle=str(exc.errors())[:4000])
+    return JSONResponse(status_code=422, content={"detail": MENSAJE_SOPORTE.format(codigo=codigo), "codigo": codigo})
+
+
+@app.exception_handler(Exception)
+async def error_inesperado_handler(request: Request, exc: Exception):
+    """Cualquier error no previsto (500): código de soporte + bitácora del taller."""
+    codigo = registrar_error(request, exc, 500)
+    return JSONResponse(status_code=500, content={"detail": MENSAJE_SOPORTE.format(codigo=codigo), "codigo": codigo})
 
 
 def _esperar_base_de_datos(intentos: int = 8, espera: int = 15):
@@ -156,6 +171,7 @@ app.include_router(comisiones.router)
 app.include_router(roles.router)
 app.include_router(usuarios.router)
 app.include_router(cotizaciones.router)
+app.include_router(errores_router.router)
 app.include_router(superadmin.router)
 app.include_router(facturacion.router)
 app.include_router(notificaciones.router)
