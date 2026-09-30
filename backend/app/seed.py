@@ -643,6 +643,9 @@ def _asegurar_admin(db, id_taller_principal: int):
         )
         db.add(admin)
         db.flush()
+    if os.getenv("RESET_ADMIN_PASSWORD") == "1":  # solo para DEV local: fuerza ADMIN_PASSWORD
+        admin.hashed_password = hash_password(admin_password)
+        admin.activo = True
     admin.es_superadmin = True
     if not any(m.id_taller == id_taller_principal for m in admin.membresias):
         db.add(models.UsuarioTaller(id_usuario=admin.id_usuario, id_taller=id_taller_principal, id_rol=rol_admin.id_rol, activo=True))
