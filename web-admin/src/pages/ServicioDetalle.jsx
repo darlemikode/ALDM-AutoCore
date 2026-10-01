@@ -11,6 +11,7 @@ import FinalizarOrdenModal from "../components/FinalizarOrdenModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import ElegirClienteVehiculo from "../components/ElegirClienteVehiculo";
 
 function BloqueNota({ icono, titulo, acento, accion, children }) {
   return (
@@ -61,6 +62,25 @@ export default function ServicioDetalle() {
   const [datosTaller, setDatosTaller] = useState(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [eligiendoCV, setEligiendoCV] = useState(false);
+
+  // Orden recién abierta (sin cliente o sin vehículo): se pide de inmediato
+  useEffect(() => {
+    if (servicio && servicio.status === "abierto" && (!servicio.id_cliente || !servicio.id_vehiculo)) setEligiendoCV(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servicio?.id_servicio]);
+
+  async function guardarClienteVehiculo(datos) {
+    try {
+      const actualizado = await api.put(`/servicios/${id}`, datos);
+      setServicio(actualizado);
+      setEligiendoCV(false);
+      load();
+      notify("Cliente y vehículo guardados en la orden.", "success");
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
 
   // Viniendo de "Nueva orden": abre directo el alta de refacciones
   useEffect(() => {
@@ -458,20 +478,22 @@ export default function ServicioDetalle() {
         </div>
 
         <div className="orden-hero-grid">
-          <div className="orden-hero-bloque" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}>
+          <div className="orden-hero-bloque" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)", cursor: abierta ? "pointer" : "default" }}
+            onClick={() => abierta && hasPermission("servicios.editar") && setEligiendoCV(true)} title={abierta ? "Elegir o cambiar el cliente y el vehículo" : undefined}>
             <span className="orden-hero-icono">🧑</span>
             <div>
               <div className="orden-hero-etiqueta">Cliente</div>
-              <div className="orden-hero-valor">{servicio.cliente?.nombre_cliente} {servicio.cliente?.paterno_cliente}</div>
+              <div className="orden-hero-valor">{servicio.cliente ? `${servicio.cliente.nombre_cliente} ${servicio.cliente.paterno_cliente || ""}` : "Toca para elegir…"}</div>
               <div className="orden-hero-meta">{servicio.cliente?.numero_cuenta}{servicio.cliente?.telefono1 ? ` · 📱 ${servicio.cliente.telefono1}` : ""}</div>
             </div>
           </div>
-          <div className="orden-hero-bloque" style={{ "--acc": "var(--blue-600)", "--acc-soft": "var(--blue-100)" }}>
+          <div className="orden-hero-bloque" style={{ "--acc": "var(--blue-600)", "--acc-soft": "var(--blue-100)", cursor: abierta ? "pointer" : "default" }}
+            onClick={() => abierta && hasPermission("servicios.editar") && setEligiendoCV(true)} title={abierta ? "Elegir o cambiar el cliente y el vehículo" : undefined}>
             <span className="orden-hero-icono">🚗</span>
             <div>
               <div className="orden-hero-etiqueta">Vehículo</div>
               <div className="orden-hero-valor">
-                {[servicio.vehiculo?.marca?.nombre_marca, servicio.vehiculo?.modelo?.nombre_modelo].filter(Boolean).join(" ") || "—"}
+                {[servicio.vehiculo?.marca?.nombre_marca, servicio.vehiculo?.modelo?.nombre_modelo].filter(Boolean).join(" ") || (servicio.id_cliente ? "Toca para elegir…" : "—")}
               </div>
               <div className="orden-hero-meta">{servicio.vehiculo?.numero_cuenta} · Placas {servicio.vehiculo?.placas_vehiculo || "—"}</div>
             </div>
@@ -816,6 +838,15 @@ export default function ServicioDetalle() {
         <EstatusLateral servicio={servicio} puedeEditar={hasPermission("servicios.editar")} onActualizado={setServicio} />
       </aside>
       </div>
+
+      {eligiendoCV && (
+        <ElegirClienteVehiculo
+          idCliente={servicio.id_cliente}
+          idVehiculo={servicio.id_vehiculo}
+          onConfirmar={guardarClienteVehiculo}
+          onCerrar={() => setEligiendoCV(false)}
+        />
+      )}
 
       {pdfPreviewUrl && (
         <ModalPortal>

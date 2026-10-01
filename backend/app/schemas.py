@@ -658,9 +658,9 @@ class ConfiguracionComisionIn(BaseModel):
 
 
 class ServicioIn(BaseModel):
-    id_cliente: int
-    id_vehiculo: int
-    nombre_servicio: str
+    id_cliente: Optional[int] = None  # None = orden borrador: se eligen desde la orden
+    id_vehiculo: Optional[int] = None
+    nombre_servicio: str = "Servicio general"
     km_llegada: KmTexto = None
     km_proximo_servicio: KmTexto = None
     iva_porcentaje: float = 0.0  # sin IVA automático; se aplica desde la orden si el cliente lo pide
@@ -678,6 +678,8 @@ class ServicioIn(BaseModel):
 
 
 class ServicioUpdate(BaseModel):
+    id_cliente: Optional[int] = None
+    id_vehiculo: Optional[int] = None
     nombre_servicio: Optional[str] = None
     km_llegada: KmTexto = None
     km_proximo_servicio: KmTexto = None
@@ -695,8 +697,8 @@ class ServicioUpdate(BaseModel):
 
 class ServicioOut(ORMBase):
     id_servicio: int
-    id_cliente: int
-    id_vehiculo: int
+    id_cliente: Optional[int] = None
+    id_vehiculo: Optional[int] = None
     nombre_servicio: str
     km_llegada: KmTexto = None
     km_proximo_servicio: KmTexto = None

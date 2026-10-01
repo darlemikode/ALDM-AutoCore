@@ -162,13 +162,28 @@ def obtener(servicio_id: int, db: Session = Depends(get_db), user=Depends(requir
     return _con_costos(servicio)
 
 
+def _validar_cliente_vehiculo(db: Session, id_cliente, id_vehiculo, exigir_ambos=False):
+    if exigir_ambos and (id_cliente is None or id_vehiculo is None):
+        raise HTTPException(status_code=400, detail="Elige el cliente y el vehículo.")
+    if id_cliente is not None and not db.query(models.Cliente).filter(models.Cliente.id_cliente == id_cliente).first():
+        raise HTTPException(status_code=400, detail="El cliente indicado no existe")
+    if id_vehiculo is not None:
+        vehiculo = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == id_vehiculo).first()
+        if not vehiculo:
+            raise HTTPException(status_code=400, detail="El vehículo indicado no existe")
+        if id_cliente is not None and vehiculo.id_cliente != id_cliente:
+            raise HTTPException(status_code=400, detail="El vehículo no pertenece a ese cliente")
+
+
+def _exigir_cliente_y_vehiculo(servicio):
+    if servicio.id_cliente is None or servicio.id_vehiculo is None:
+        raise HTTPException(status_code=400, detail="Elige el cliente y el vehículo de la orden antes de continuar.")
+
+
 @router.post("/", response_model=schemas.ServicioCompletoOut, status_code=201)
 def crear(payload: schemas.ServicioIn, db: Session = Depends(get_db), user=Depends(require_permission("servicios.crear"))):
-    vehiculo = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == payload.id_vehiculo).first()
-    if not vehiculo:
-        raise HTTPException(status_code=400, detail="El vehículo indicado no existe")
-    if vehiculo.id_cliente != payload.id_cliente:
-        raise HTTPException(status_code=400, detail="El vehículo no pertenece a ese cliente")
+    if payload.id_vehiculo is not None or payload.id_cliente is not None or payload.es_garantia:
+        _validar_cliente_vehiculo(db, payload.id_cliente, payload.id_vehiculo, exigir_ambos=True)
     # La autorización del cliente (con código) es OPCIONAL — depende del
     # interruptor "Verificación en 2 pasos" en Datos del taller. Antes esto
     # era obligatorio siempre, lo cual hacía inútil ese interruptor.
@@ -221,7 +236,20 @@ def actualizar(servicio_id: int, payload: schemas.ServicioUpdate, db: Session = 
         costos = _calcular_costos(servicio)
         if servicio.status == "cerrado" or (costos.total_abonado > 0 and costos.saldo_pendiente <= 0):
             raise HTTPException(status_code=400, detail="Una orden finalizada y pagada no se puede cancelar.")
+    if "id_cliente" in updates or "id_vehiculo" in updates:
+        nuevo_cliente = updates.get("id_cliente", servicio.id_cliente)
+        nuevo_vehiculo = updates.get("id_vehiculo", servicio.id_vehiculo)
+        if "id_cliente" in updates and "id_vehiculo" not in updates and nuevo_cliente != servicio.id_cliente:
+            nuevo_vehiculo = None  # cambió el cliente: el vehículo anterior ya no aplica
+            updates["id_vehiculo"] = None
+        _validar_cliente_vehiculo(db, nuevo_cliente, nuevo_vehiculo)
+        if nuevo_vehiculo and not servicio.km_llegada and "km_llegada" not in updates:
+            veh = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == nuevo_vehiculo).first()
+            if veh and veh.km_vehiculo:
+                updates["km_llegada"] = str(veh.km_vehiculo)
     se_esta_cerrando = updates.get("status") == "cerrado" and servicio.status != "cerrado"
+    if se_esta_cerrando:
+        _exigir_cliente_y_vehiculo(servicio)
     if updates.get("status") == "cerrado" and not servicio.fecha_salida_servicio and "fecha_salida_servicio" not in updates:
         updates["fecha_salida_servicio"] = datetime.utcnow()
     for key, value in updates.items():
@@ -433,6 +461,7 @@ def descargar_recibo(servicio_id: int, db: Session = Depends(get_db), user=Depen
     from ..recibo_pdf import generar_recibo_pdf  # import diferido: evita cargar reportlab si no se usa
 
     servicio = _get_servicio_o_404(db, servicio_id)
+    _exigir_cliente_y_vehiculo(servicio)
     costos = _calcular_costos(servicio)
     taller = db.query(models.ConfiguracionTaller).first()
     from ..inspeccion_pdf import inspeccion_de_servicio
@@ -478,6 +507,7 @@ async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn
 
     servicio = _get_servicio_o_404(db, servicio_id)
     _exigir_orden_abierta(servicio)
+    _exigir_cliente_y_vehiculo(servicio)
     if not servicio.detalles:
         raise HTTPException(status_code=400, detail="La orden no tiene conceptos; agrégalos antes de finalizarla.")
 

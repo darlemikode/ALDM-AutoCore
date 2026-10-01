@@ -98,6 +98,17 @@ export default function Servicios() {
     setCreating(true);
   }
 
+  // "Nueva orden": se abre la orden vacía y ahí mismo se elige/agrega cliente y vehículo
+  async function nuevaOrdenDirecta() {
+    if (verificacion2Pasos) { openCreate(); return; } // con verificación en 2 pasos se conserva el formulario con código
+    try {
+      const s = await api.post("/servicios/", { nombre_servicio: "Servicio general", iva_porcentaje: 0, tipos_mantenimiento_ids: [], autorizado_cliente: false });
+      navigate(`/servicios/${s.id_servicio}`);
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
+
   async function handleCreate(values) {
     if (verificacion2Pasos && !values._confirmadoYa) {
       const codigo = String(Math.floor(1000 + Math.random() * 9000));
@@ -286,7 +297,7 @@ export default function Servicios() {
           <h1><IconoModulo ruta="/servicios" /> Órdenes de servicio</h1>
           <div className="subtitle">{servicios.length} orden(es)</div>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>
+        <button className="btn btn-primary" onClick={nuevaOrdenDirecta}>
           🔧 Nueva orden
         </button>
       </div>

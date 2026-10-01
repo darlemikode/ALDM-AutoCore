@@ -373,6 +373,32 @@ def _migrar_subcategorias_a_refacciones(id_taller: int):
         db.close()
 
 
+def _servicio_cliente_opcional():
+    """Las órdenes pueden abrirse como borrador sin cliente/vehículo: esas dos
+    columnas de `servicios` dejan de ser NOT NULL."""
+    inspector = inspect(engine)
+    if "servicios" not in inspector.get_table_names():
+        return
+    cols = {c["name"]: c for c in inspector.get_columns("servicios")}
+    pendientes = [n for n in ("id_cliente", "id_vehiculo") if n in cols and not cols[n].get("nullable", True)]
+    if not pendientes:
+        return
+    try:
+        with engine.begin() as conn:
+            if es_sqlite:
+                _reconstruir_tabla_sqlite(conn, Base.metadata.tables["servicios"])
+                conn.execute(text("PRAGMA foreign_keys=ON"))
+            elif es_mssql:
+                for n in pendientes:
+                    conn.execute(text(f"ALTER TABLE servicios ALTER COLUMN {n} INT NULL"))
+            else:
+                for n in pendientes:
+                    conn.execute(text(f'ALTER TABLE servicios ALTER COLUMN "{n}" DROP NOT NULL'))
+        print("[migración automática] servicios: cliente y vehículo ahora opcionales (órdenes borrador)")
+    except Exception as e:  # noqa: BLE001
+        print(f"[migración] no se pudo relajar servicios.id_cliente/id_vehiculo: {e}")
+
+
 def _quitar_subcategoria_legacy():
     """inventario_refacciones aún trae la columna vieja id_subcategoria_refaccion
     (NOT NULL) del diseño anterior; el modelo actual ya no la usa y bloquea los
@@ -721,6 +747,7 @@ def run():
     _ajustar_restricciones()
     _vin_unico_filtrado()
     _quitar_subcategoria_legacy()
+    _servicio_cliente_opcional()
     _indices_llaves_foraneas()
     db = sesion_global()
     try:

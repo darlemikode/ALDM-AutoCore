@@ -596,8 +596,10 @@ class Servicio(TenantMixin, Base):
     __tablename__ = "servicios"
 
     id_servicio = Column(Integer, primary_key=True, index=True)
-    id_cliente = Column(Integer, ForeignKey("clientes.id_cliente"), nullable=False)
-    id_vehiculo = Column(Integer, ForeignKey("vehiculos.id_vehiculo"), nullable=False)
+    # Nulos solo mientras la orden es un "borrador" recién abierta: el cliente y
+    # el vehículo se eligen (o se dan de alta) desde la propia pantalla de la orden.
+    id_cliente = Column(Integer, ForeignKey("clientes.id_cliente"), nullable=True)
+    id_vehiculo = Column(Integer, ForeignKey("vehiculos.id_vehiculo"), nullable=True)
     nombre_servicio = Column(String(150), nullable=False)  # descripción del servicio
     km_llegada = Column(String(20), nullable=True)
     km_proximo_servicio = Column(String(20), nullable=True)
