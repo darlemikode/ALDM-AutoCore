@@ -122,38 +122,46 @@ export default function Dashboard() {
 
       <div className="kpi-grid">
         <Link to="/clientes" className="kpi-card kpi-card-link">
+          <span className="kpi-icono">🧑</span>
           <div className="kpi-label">Clientes activos</div>
           <div className="kpi-value">{data.total_clientes}</div>
         </Link>
         <Link to="/vehiculos" className="kpi-card kpi-card-link">
+          <span className="kpi-icono">🚗</span>
           <div className="kpi-label">Vehículos registrados</div>
           <div className="kpi-value">{data.total_vehiculos}</div>
         </Link>
         <Link to="/servicios?status=abierto" className="kpi-card kpi-card-link">
+          <span className="kpi-icono">🔧</span>
           <div className="kpi-label">Órdenes abiertas</div>
           <div className="kpi-value">{data.servicios_abiertos}</div>
         </Link>
         <Link to="/servicios" className="kpi-card kpi-card-link">
+          <span className="kpi-icono">📅</span>
           <div className="kpi-label">Servicios este mes</div>
           <div className="kpi-value">{data.servicios_este_mes}</div>
         </Link>
         <Link to="/refacciones" className={`kpi-card kpi-card-link ${data.refacciones_bajo_stock > 0 ? "alert" : "ok"}`}>
+          <span className="kpi-icono">📦</span>
           <div className="kpi-label">Refacciones con poco stock</div>
           <div className="kpi-value">{data.refacciones_bajo_stock}</div>
         </Link>
         {hasPermission("dashboard.ver_por_cobrar") && (
           <Link to="/servicios?status=abierto" className={`kpi-card kpi-card-link ${data.saldo_pendiente_clientes > 0 ? "alert" : "ok"}`}>
-            <div className="kpi-label">Por cobrar</div>
+            <span className="kpi-icono">💰</span>
+          <div className="kpi-label">Por cobrar</div>
             <div className="kpi-value">{fmt(data.saldo_pendiente_clientes)}</div>
           </Link>
         )}
         <Link to="/proveedores" className={`kpi-card kpi-card-link ${data.deuda_con_proveedores > 0 ? "alert" : "ok"}`}>
+          <span className="kpi-icono">🚚</span>
           <div className="kpi-label">Deuda con proveedores</div>
           <div className="kpi-value">{fmt(data.deuda_con_proveedores)}</div>
         </Link>
         {data.solicitudes_recuperacion_pendientes > 0 && (
           <div className="kpi-card alert">
-            <div className="kpi-label">🔔 Solicitudes de acceso</div>
+            <span className="kpi-icono">🔔</span>
+            <div className="kpi-label">Solicitudes de acceso</div>
             <div className="kpi-value">
               <Link to="/usuarios" style={{ color: "inherit" }}>{data.solicitudes_recuperacion_pendientes}</Link>
             </div>
