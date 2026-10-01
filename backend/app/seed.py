@@ -554,6 +554,11 @@ def sembrar_taller(id_taller: int):
                 telefono=taller.telefono if taller else None,
                 correo=taller.correo if taller else None,
             ))
+        if not db.query(models.Refaccion).first():
+            # Catálogo base de refacciones (desde las categorías/subcategorías compartidas)
+            cats = {c.id_categoria_refaccion: c.nombre_categoria for c in db.query(models.RefaccionCategoria).all()}
+            for sub in db.query(models.RefaccionSubcategoria).all():
+                db.add(models.Refaccion(nombre_refaccion=sub.nombre_subcategoria, categoria=cats.get(sub.id_categoria_refaccion)))
         if not db.query(models.InspeccionItem).first():
             orden = 0
             for categoria, items in ITEMS_INSPECCION.items():
