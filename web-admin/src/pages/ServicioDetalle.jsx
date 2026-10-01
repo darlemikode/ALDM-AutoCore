@@ -671,9 +671,9 @@ export default function ServicioDetalle() {
                 <th>Descripción</th>
                 <th>Tipo</th>
                 <th>Refacción</th>
-                <th>Cantidad de piezas</th>
-                <th>Costo original</th>
-                <th>Precio final</th>
+                <th>Cantidad</th>
+                <th>Precio original</th>
+                <th>Importe</th>
                 <th></th>
               </tr>
             </thead>
@@ -710,7 +710,7 @@ export default function ServicioDetalle() {
                           />
                         </td>
                         <td style={{ width: 100, color: "var(--ink-500)" }}>
-                          {ref ? fmt((ref.preciopropio_refaccion || 0) * (d.cantidad || 1)) : "—"}
+                          {ref ? fmt(ref.preciopropio_refaccion || 0) : "—"}
                         </td>
                         <td style={{ width: 100 }}>
                           <input

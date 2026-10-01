@@ -47,7 +47,7 @@ def generar_nota_remision_pdf(servicio, costos: ServicioCostos, taller=None, ins
         ANCHO,
     ))
 
-    story += seccion("Refacciones y mano de obra", ANCHO)
+    story += seccion("Refacciones", ANCHO)
     filas = []
     for d in servicio.detalles:
         refaccion = nombre_refaccion(d)
@@ -57,10 +57,11 @@ def generar_nota_remision_pdf(servicio, costos: ServicioCostos, taller=None, ins
             E["celda"],
         )
         importe = (d.costo_mano_obra or 0) + (d.costo_refaccion or 0) + (d.costo_extra or 0)
-        filas.append([nombre, str(d.cantidad or 1), fmt(importe), categoria_refaccion(d) or "—"])
+        cant = d.cantidad or 1
+        filas.append([nombre, str(cant), fmt(importe / cant), fmt(importe)])
     story.append(tabla_conceptos(
-        ["Nombre", "Cant.", "Precio", "Categoría"], filas,
-        [ANCHO * w for w in (0.42, 0.10, 0.18, 0.30)], alinear_derecha=(1, 2),
+        ["Nombre", "Cant.", "Precio unitario", "Importe"], filas,
+        [ANCHO * w for w in (0.46, 0.10, 0.22, 0.22)], alinear_derecha=(1, 2, 3),
     ))
     story.append(Spacer(1, 4 * mm))
     izquierda = []

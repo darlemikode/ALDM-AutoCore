@@ -93,10 +93,11 @@ def generar_recibo_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion
             E["celda"],
         )
         importe = (d.costo_mano_obra or 0) + (d.costo_refaccion or 0) + (d.costo_extra or 0)
-        filas.append([concepto, str(d.cantidad or 1), fmt(d.costo_mano_obra), fmt(d.costo_refaccion), fmt(d.costo_extra), Paragraph(f"<b>{fmt(importe)}</b>", E["celda_der"])])
+        cant = d.cantidad or 1
+        filas.append([concepto, str(cant), fmt(importe / cant), Paragraph(f"<b>{fmt(importe)}</b>", E["celda_der"])])
     story.append(tabla_conceptos(
-        ["Concepto", "Cant.", "Mano de obra", "Refacción", "Extra", "Importe"], filas,
-        [ANCHO * w for w in (0.38, 0.07, 0.14, 0.14, 0.12, 0.15)], alinear_derecha=(1, 2, 3, 4, 5),
+        ["Concepto", "Cant.", "Precio unitario", "Importe"], filas,
+        [ANCHO * w for w in (0.52, 0.10, 0.19, 0.19)], alinear_derecha=(1, 2, 3),
     ))
     story.append(Spacer(1, 5 * mm))
 
@@ -163,10 +164,11 @@ def generar_cotizacion_pdf(cotizacion, costos, taller=None) -> bytes:
             E["celda"],
         )
         importe = (d.costo_mano_obra or 0) + (d.costo_refaccion or 0) + (d.costo_extra or 0)
-        filas.append([concepto, str(d.cantidad or 1), fmt(d.costo_mano_obra), fmt(d.costo_refaccion), fmt(d.costo_extra), Paragraph(f"<b>{fmt(importe)}</b>", E["celda_der"])])
+        cant = d.cantidad or 1
+        filas.append([concepto, str(cant), fmt(importe / cant), Paragraph(f"<b>{fmt(importe)}</b>", E["celda_der"])])
     story.append(tabla_conceptos(
-        ["Concepto", "Cant.", "Mano de obra", "Refacción", "Extra", "Importe"], filas,
-        [ANCHO * w for w in (0.38, 0.07, 0.14, 0.14, 0.12, 0.15)], alinear_derecha=(1, 2, 3, 4, 5),
+        ["Concepto", "Cant.", "Precio unitario", "Importe"], filas,
+        [ANCHO * w for w in (0.52, 0.10, 0.19, 0.19)], alinear_derecha=(1, 2, 3),
     ))
     story.append(Spacer(1, 5 * mm))
     story.append(totales([
