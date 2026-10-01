@@ -123,11 +123,20 @@ export default function Dashboard() {
       )}
 
       <div className="kpi-grid">
-        <Link to="/clientes" className="kpi-card kpi-card-link">
-          <span className="kpi-icono"><Icono nombre="people" size={22} /></span>
-          <div className="kpi-label">Clientes activos</div>
-          <div className="kpi-value">{data.total_clientes}</div>
-        </Link>
+        {hasPermission("clientes.crear") ? (
+          <Link to="/clientes?abrir_nuevo=1" className="kpi-card kpi-card-link kpi-card-accion">
+            <span className="kpi-icono"><Icono nombre="people" size={22} /></span>
+            <div className="kpi-label">Nuevo cliente</div>
+            <div className="kpi-accion-mas">＋ Agregar</div>
+            <div className="kpi-accion-sub">{data.total_clientes} clientes activos</div>
+          </Link>
+        ) : (
+          <Link to="/clientes" className="kpi-card kpi-card-link">
+            <span className="kpi-icono"><Icono nombre="people" size={22} /></span>
+            <div className="kpi-label">Clientes activos</div>
+            <div className="kpi-value">{data.total_clientes}</div>
+          </Link>
+        )}
         <Link to="/vehiculos" className="kpi-card kpi-card-link">
           <span className="kpi-icono"><Icono nombre="car" size={22} /></span>
           <div className="kpi-label">Vehículos registrados</div>

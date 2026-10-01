@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import ClienteFormModal from "../components/ClienteFormModal";
 import ModalPortal from "../components/ModalPortal";
@@ -26,10 +26,21 @@ export default function Clientes() {
   const { confirmDialog, notify } = useUI();
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const [clientes, setClientes] = useState([]);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState(null); // null = cerrado, {} = crear, {...} = editar
   const [loading, setLoading] = useState(true);
+  // Desde el Panel: /clientes?abrir_nuevo=1 abre directo el alta de cliente
+  useEffect(() => {
+    if (params.get("abrir_nuevo") === "1" && hasPermission("clientes.crear")) {
+      setEditing({});
+      const p = new URLSearchParams(params);
+      p.delete("abrir_nuevo");
+      setParams(p, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [invitacion, setInvitacion] = useState(null); // { cliente, codigo_invitacion }
   const [ofrecerVehiculo, setOfrecerVehiculo] = useState(null); // { id_cliente, nombre_cliente, numero_cuenta } tras crear un cliente
 

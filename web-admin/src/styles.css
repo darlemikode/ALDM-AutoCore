@@ -495,6 +495,15 @@ button {
 .kpi-card .kpi-icono { color: var(--petrol-500); }
 .kpi-card.alert .kpi-icono { color: var(--red-600); }
 .kpi-card.ok .kpi-icono { color: var(--teal-600); }
+.kpi-card-accion {
+  background: linear-gradient(135deg, var(--petrol-500), color-mix(in srgb, var(--petrol-500) 60%, #000));
+  border-color: var(--petrol-500);
+  color: #fff;
+}
+.kpi-card-accion .kpi-label { color: #fff; }
+.kpi-card-accion .kpi-icono { background: rgba(255,255,255,0.22); color: #fff; box-shadow: none; }
+.kpi-accion-mas { font-family: var(--font-display); font-size: 30px; font-weight: 700; margin-top: 10px; }
+.kpi-accion-sub { font-size: 13px; opacity: 0.9; margin-top: 4px; }
 .h1-icono {
   --ico: var(--petrol-500);
   display: inline-flex; align-items: center; justify-content: center;
