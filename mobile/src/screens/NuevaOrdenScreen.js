@@ -18,7 +18,7 @@ import { mostrarDialogo, alerta } from "../ui/Dialogo";
  * Hace lo mismo que el formulario de la web (incluye garantías).
  */
 
-const PASOS = ["Cliente", "Trabajo", "Asignar", "Confirmar"];
+const PASOS = ["Cliente"];
 const TIPOS_PAGO = [
   { valor: "efectivo", texto: "Efectivo", icono: "cash-outline" },
   { valor: "tarjeta", texto: "Tarjeta", icono: "card-outline" },
@@ -196,12 +196,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
       if (!cliente) return "Elige el cliente (o da de alta uno nuevo).";
       if (!vehiculo) return "Elige el vehículo que dejó el cliente.";
     }
-    if (n === 1) {
-      if (!descripcion.trim()) return "Escribe qué trae el vehículo o qué servicio se va a hacer.";
-      if (tiposIds.length === 0) return "Marca al menos un tipo de mantenimiento.";
-      if (garantiaOriginal && !motivoGarantia.trim()) return "Escribe qué volvió a fallar (motivo de la garantía).";
-    }
-    if (n === 3 && verificacion2Pasos && !autorizado) return "Falta marcar la autorización del cliente.";
+    if (n === 0 && garantiaOriginal && !motivoGarantia.trim()) return "Escribe qué volvió a fallar (motivo de la garantía).";
     return "";
   }
 
@@ -237,7 +232,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
       const nueva = await api.post("/servicios/", {
         id_cliente: Number(cliente.id_cliente),
         id_vehiculo: Number(vehiculo.id_vehiculo),
-        nombre_servicio: descripcion.trim(),
+        nombre_servicio: garantiaOriginal ? "Garantía" : "Servicio general",
         iva_porcentaje: 0, // sin IVA automático: se aplica desde la orden si el cliente lo pide
         diagnostico: diagnostico.trim() || null,
         tipos_mantenimiento_ids: tiposIds,
@@ -312,22 +307,6 @@ export default function NuevaOrdenScreen({ navigation, route }) {
 
   return (
     <View style={styles.screen}>
-      {/* Progreso */}
-      <View style={styles.progreso}>
-        {PASOS.map((nombre, i) => {
-          const hecho = i < paso;
-          const actual = i === paso;
-          return (
-            <View key={nombre} style={styles.pasoItem}>
-              <View style={[styles.pasoCirculo, hecho && styles.pasoHecho, actual && styles.pasoActual]}>
-                {hecho ? <Ionicons name="checkmark" size={14} color={colors.paper100} /> : <Text style={[styles.pasoNumero, actual && { color: colors.paper100 }]}>{i + 1}</Text>}
-              </View>
-              <Text style={[styles.pasoNombre, (actual || hecho) && styles.pasoNombreActivo]}>{nombre}</Text>
-            </View>
-          );
-        })}
-      </View>
-
       <FormScroll contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
         {garantiaOriginal && (
           <View style={styles.aviso}>
@@ -403,155 +382,38 @@ export default function NuevaOrdenScreen({ navigation, route }) {
           </>
         )}
 
-        {/* PASO 2: trabajo */}
-        {paso === 1 && (
+        {/* Garantía: motivo obligatorio */}
+        {garantiaOriginal && (
           <>
-            <View style={styles.resumenMini}>
-              <Ionicons name="car-outline" size={18} color={colors.petrol600} />
-              <Text style={styles.resumenMiniTexto} numberOfLines={1}>{nombreCliente(cliente)} · {nombreVehiculo(vehiculo)} {vehiculo?.placas_vehiculo ? `(${vehiculo.placas_vehiculo})` : ""}</Text>
-            </View>
-            <Text style={styles.pregunta}>¿Qué se le va a hacer?</Text>
-            <Text style={styles.label}>Descripción *</Text>
-            <TextInput style={[styles.input, styles.textarea]} value={descripcion} onChangeText={setDescripcion} multiline placeholder="Ej. Ruido en la suspensión delantera" placeholderTextColor={colors.ink500} />
-
-            {garantiaOriginal && (
-              <>
-                <Text style={[styles.label, { marginTop: 14 }]}>¿Qué volvió a fallar? *</Text>
-                <TextInput style={[styles.input, styles.textarea]} value={motivoGarantia} onChangeText={setMotivoGarantia} multiline placeholder="Motivo de la garantía" placeholderTextColor={colors.ink500} />
-              </>
-            )}
-
-            <Text style={[styles.label, { marginTop: 14 }]}>Tipo de mantenimiento * <Text style={styles.labelNota}>(toca uno o varios)</Text></Text>
-            <View style={styles.chips}>
-              {tipos.map((t) => {
-                const activo = tiposIds.includes(t.id_tipo_servicio);
-                return (
-                  <TouchableOpacity key={t.id_tipo_servicio} style={[styles.chip, activo && styles.chipActivo]} onPress={() => alternarTipo(t.id_tipo_servicio)}>
-                    {activo && <Ionicons name="checkmark" size={14} color={colors.paper100} />}
-                    <Text style={[styles.chipTexto, activo && styles.chipTextoActivo]}>{t.nombre_tipo}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Km de llegada</Text>
-                <TextInput style={styles.input} value={kmLlegada} onChangeText={setKmLlegada} keyboardType="number-pad" placeholder="Ej. 85000" placeholderTextColor={colors.ink500} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Próximo servicio</Text>
-                <TextInput style={styles.input} value={kmProximo} onChangeText={(v) => { setKmProximo(v); setKmProximoManual(!!v); }} keyboardType="number-pad" placeholder="km" placeholderTextColor={colors.ink500} />
-              </View>
-            </View>
-            {!kmProximoManual && kmProximo ? <Text style={styles.ayuda}>Sugerido según el tipo de mantenimiento; puedes cambiarlo.</Text> : null}
-
-            <Text style={[styles.label, { marginTop: 14 }]}>Fotos <Text style={styles.labelNota}>(opcional, cómo llegó el vehículo)</Text></Text>
-            <View style={styles.fotosFila}>
-              {fotos.map((f, i) => (
-                <View key={f.uri + i}>
-                  <Image source={{ uri: f.uri }} style={styles.fotoMini} />
-                  <TouchableOpacity style={styles.fotoQuitar} onPress={() => setFotos((p) => p.filter((_, j) => j !== i))} hitSlop={6}>
-                    <Ionicons name="close" size={14} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {fotos.length < 8 && (
-                <>
-                  <TouchableOpacity style={styles.fotoAgregar} onPress={() => agregarFotos("camara")}>
-                    <Ionicons name="camera-outline" size={22} color={colors.petrol600} />
-                    <Text style={styles.fotoAgregarTexto}>Cámara</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.fotoAgregar} onPress={() => agregarFotos("galeria")}>
-                    <Ionicons name="images-outline" size={22} color={colors.petrol600} />
-                    <Text style={styles.fotoAgregarTexto}>Galería</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-
-            <Text style={[styles.label, { marginTop: 14 }]}>Diagnóstico <Text style={styles.labelNota}>(opcional)</Text></Text>
-            <TextInput style={[styles.input, styles.textarea]} value={diagnostico} onChangeText={setDiagnostico} multiline placeholder="Lo que encontraste al revisarlo" placeholderTextColor={colors.ink500} />
-            <Text style={[styles.label, { marginTop: 14 }]}>Operaciones a realizar <Text style={styles.labelNota}>(opcional)</Text></Text>
-            <TextInput style={[styles.input, styles.textarea]} value={operaciones} onChangeText={setOperaciones} multiline placeholder="Ej. Cambio de aceite, revisión de frenos…" placeholderTextColor={colors.ink500} />
+            <Text style={[styles.label, { marginTop: 14 }]}>Motivo de la garantía</Text>
+            <TextInput style={[styles.input, styles.textarea]} value={motivoGarantia} onChangeText={setMotivoGarantia} multiline placeholder="¿Qué volvió a fallar?" placeholderTextColor={colors.ink500} />
           </>
         )}
 
-        {/* PASO 3: responsable, estatus y anticipo */}
-        {paso === 2 && (
-          <>
-            <Text style={styles.pregunta}>¿Quién se encarga?</Text>
-            {empleados.length === 0 ? (
-              <Text style={styles.vacio}>No hay empleados registrados; la orden queda sin asignar.</Text>
-            ) : (
-              <View style={styles.chips}>
-                {[{ id_empleado: "", nombre: "Sin asignar" }, ...empleados].map((e) => {
-                  const activo = String(empleadoId) === String(e.id_empleado);
-                  return (
-                    <TouchableOpacity key={e.id_empleado || "ninguno"} style={[styles.chip, activo && styles.chipActivo]} onPress={() => setEmpleadoId(e.id_empleado)}>
-                      <Text style={[styles.chipTexto, activo && styles.chipTextoActivo]}>{`${e.nombre} ${e.paterno || ""}`.trim()}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-
-            <Text style={[styles.pregunta, { marginTop: 22 }]}>¿Dejó anticipo?</Text>
-            <Text style={styles.ayuda}>Si el cliente deja dinero a cuenta, se registra como el primer pago. Si no, déjalo vacío.</Text>
-            <View style={styles.segmentado}>
-              {TIPOS_PAGO.map((f) => (
-                <TouchableOpacity key={f.valor} style={[styles.segmento, anticipoTipo === f.valor && styles.segmentoActivo]} onPress={() => setAnticipoTipo(f.valor)}>
-                  <Ionicons name={f.icono} size={15} color={anticipoTipo === f.valor ? colors.paper100 : colors.ink700} />
-                  <Text style={[styles.segmentoTexto, anticipoTipo === f.valor && styles.segmentoTextoActivo]}>{f.texto}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {anticipoTipo === "mixto" ? (
-              <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-                <TextInput style={[styles.input, { flex: 1 }]} value={anticipoEfectivo} onChangeText={setAnticipoEfectivo} keyboardType="decimal-pad" placeholder="Efectivo" placeholderTextColor={colors.ink500} />
-                <TextInput style={[styles.input, { flex: 1 }]} value={anticipoTarjeta} onChangeText={setAnticipoTarjeta} keyboardType="decimal-pad" placeholder="Tarjeta" placeholderTextColor={colors.ink500} />
-              </View>
-            ) : (
-              <TextInput style={[styles.input, { marginTop: 10 }]} value={anticipoMonto} onChangeText={setAnticipoMonto} keyboardType="decimal-pad" placeholder="Monto (0.00)" placeholderTextColor={colors.ink500} />
-            )}
-
-          </>
-        )}
-
-        {/* PASO 4: confirmar */}
-        {paso === 3 && (
-          <>
-            <Text style={styles.pregunta}>Revisa y crea la orden</Text>
-            <View style={styles.resumen}>
-              {[
-                ["Cliente", nombreCliente(cliente), 0],
-                ["Vehículo", `${nombreVehiculo(vehiculo)}${vehiculo?.placas_vehiculo ? ` · ${vehiculo.placas_vehiculo}` : ""}`, 0],
-                ["Trabajo", descripcion, 1],
-                ["Tipos", tiposIds.map((idT) => tipos.find((t) => t.id_tipo_servicio === idT)?.nombre_tipo).filter(Boolean).join(", "), 1],
-                garantiaOriginal ? ["Garantía", motivoGarantia, 1] : null,
-                diagnostico ? ["Diagnóstico", diagnostico, 1] : null,
-                ["Responsable", responsable ? `${responsable.nombre} ${responsable.paterno || ""}` : "Sin asignar", 2],
-                ["Anticipo", montoAnticipo > 0 ? `${fmt(montoAnticipo)} (${TIPOS_PAGO.find((t) => t.valor === anticipoTipo)?.texto})` : "Sin anticipo", 2],
-                kmLlegada ? ["Kilometraje", `${Number(kmLlegada).toLocaleString("es-MX")} km${kmProximo ? ` · próximo ${Number(kmProximo).toLocaleString("es-MX")}` : ""}`, 1] : null,
-                fotos.length ? ["Fotos", `${fotos.length} adjunta(s)`, 1] : null,
-              ].filter(Boolean).map(([etq, val, irA]) => (
-                <TouchableOpacity key={etq} style={styles.resumenFila} onPress={() => !(fijos && irA === 0) && setPaso(irA)}>
-                  <Text style={styles.resumenEtiqueta}>{etq}</Text>
-                  <Text style={styles.resumenValor} numberOfLines={2}>{val || "—"}</Text>
-                  {!(fijos && irA === 0) && <Ionicons name="create-outline" size={15} color={colors.ink500} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.ayuda}>Toca cualquier dato para corregirlo. Las refacciones y la mano de obra se agregan ya dentro de la orden.</Text>
-
-            {verificacion2Pasos && (
-              <TouchableOpacity style={styles.checkRow} onPress={() => setAutorizado((v) => !v)}>
-                <Ionicons name={autorizado ? "checkbox" : "square-outline"} size={22} color={autorizado ? colors.petrol500 : colors.ink500} />
-                <Text style={styles.checkLabel}>El cliente autoriza que se realice este servicio</Text>
+        {/* Fotos al final: cámara o galería */}
+        <Text style={[styles.label, { marginTop: 18 }]}>Fotos <Text style={styles.labelNota}>(opcional, cómo llegó el vehículo)</Text></Text>
+        <View style={styles.fotosFila}>
+          {fotos.map((f, i) => (
+            <View key={f.uri + i}>
+              <Image source={{ uri: f.uri }} style={styles.fotoMini} />
+              <TouchableOpacity style={styles.fotoQuitar} onPress={() => setFotos((p) => p.filter((_, j) => j !== i))} hitSlop={6}>
+                <Ionicons name="close" size={14} color="#fff" />
               </TouchableOpacity>
-            )}
-          </>
-        )}
+            </View>
+          ))}
+          {fotos.length < 8 && (
+            <>
+              <TouchableOpacity style={styles.fotoAgregar} onPress={() => agregarFotos("camara")}>
+                <Ionicons name="camera-outline" size={22} color={colors.petrol600} />
+                <Text style={styles.fotoAgregarTexto}>Cámara</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.fotoAgregar} onPress={() => agregarFotos("galeria")}>
+                <Ionicons name="images-outline" size={22} color={colors.petrol600} />
+                <Text style={styles.fotoAgregarTexto}>Galería</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
         {error ? (
           <View style={styles.errorCaja}>
@@ -576,8 +438,8 @@ export default function NuevaOrdenScreen({ navigation, route }) {
         <TouchableOpacity style={[styles.btnPrimario, guardando && { opacity: 0.6 }]} onPress={siguiente} disabled={guardando}>
           {guardando ? <ActivityIndicator color={colors.paper100} /> : (
             <>
-              <Text style={styles.btnPrimarioTexto}>{paso === PASOS.length - 1 ? "Crear orden" : "Siguiente"}</Text>
-              <Ionicons name={paso === PASOS.length - 1 ? "checkmark" : "arrow-forward"} size={17} color={colors.paper100} />
+              <Text style={styles.btnPrimarioTexto}>Crear orden</Text>
+              <Ionicons name="checkmark" size={17} color={colors.paper100} />
             </>
           )}
         </TouchableOpacity>
