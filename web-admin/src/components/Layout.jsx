@@ -35,6 +35,7 @@ const NAV = [
       { to: "/proveedores", label: "Proveedores", permisoRequerido: "proveedores.ver" },
     ],
   },
+  { group: "Soporte", items: [{ to: "/errores", label: "Errores del sistema", permisoRequerido: "configuracion.editar" }] },
   { group: "App de clientes", items: [{ to: "/promociones", label: "Promociones", permisoRequerido: "promociones.ver" }, { to: "/asistente", label: "Asistente (chatbot)" }] },
 ];
 

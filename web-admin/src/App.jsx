@@ -15,6 +15,7 @@ import AsignacionRoles from "./pages/AsignacionRoles";
 import ConfiguracionTaller from "./pages/ConfiguracionTaller";
 import Comisiones from "./pages/Comisiones";
 import Inventario from "./pages/Inventario";
+import Errores from "./pages/Errores";
 import Sincronizacion from "./pages/Sincronizacion";
 import MiDashboard from "./pages/MiDashboard";
 import Refacciones from "./pages/Refacciones";
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="asignacion-roles" element={<RequirePermission clave="usuarios.ver"><AsignacionRoles /></RequirePermission>} />
         <Route path="configuracion-taller" element={<RequirePermission clave="configuracion.editar"><ConfiguracionTaller /></RequirePermission>} />
         <Route path="comisiones" element={<RequirePermission clave="configuracion.editar"><Comisiones /></RequirePermission>} />
+        <Route path="errores" element={<RequirePermission clave="configuracion.editar"><Errores /></RequirePermission>} />
         <Route path="sincronizacion" element={<Sincronizacion />} />
         <Route path="mi-dashboard" element={<MiDashboard />} />
         <Route path="refacciones" element={<RequirePermission clave="refacciones.ver"><Refacciones /></RequirePermission>} />
