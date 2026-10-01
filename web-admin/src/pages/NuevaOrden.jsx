@@ -61,7 +61,7 @@ export default function NuevaOrden() {
         tipos_mantenimiento_ids: [], autorizado_cliente: false,
       });
       notify(`Orden creada — #${s.id_servicio}.`, "success");
-      navigate(`/servicios/${s.id_servicio}`, { replace: true });
+      navigate(`/servicios/${s.id_servicio}?agregar=1`, { replace: true });
     } catch (err) {
       notify(err.message, "error");
       setGuardando(false);

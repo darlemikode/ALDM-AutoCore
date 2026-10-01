@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, getToken } from "../api";
 import FormModal from "../components/FormModal";
 import ModalPortal from "../components/ModalPortal";
@@ -60,6 +60,18 @@ export default function ServicioDetalle() {
   const [fotoVehiculo, setFotoVehiculo] = useState(null);
   const [datosTaller, setDatosTaller] = useState(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Viniendo de "Nueva orden": abre directo el alta de refacciones
+  useEffect(() => {
+    if (servicio && searchParams.get("agregar") === "1" && servicio.status === "abierto") {
+      setAddingDetalle(true);
+      const p = new URLSearchParams(searchParams);
+      p.delete("agregar");
+      setSearchParams(p, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servicio?.id_servicio]);
 
   async function load() {
     const s = await api.get(`/servicios/${id}`);
@@ -298,6 +310,52 @@ export default function ServicioDetalle() {
     }
   }
 
+  // Imprime la nota directo (sin descargar ni abrir pestañas)
+  async function imprimirNota(tipo = "remision") {
+    setDescargando(true);
+    try {
+      const ruta = tipo === "remision" ? `/api/servicios/${id}/nota-remision` : `/api/servicios/${id}/recibo`;
+      const res = await fetch(ruta, { headers: { Authorization: `Bearer ${getToken()}` } });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.detail || "No se pudo generar la nota.");
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const marco = document.createElement("iframe");
+      marco.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+      marco.src = url;
+      marco.onload = () => {
+        try { marco.contentWindow.focus(); marco.contentWindow.print(); } catch (e) { window.open(url, "_blank"); }
+        setTimeout(() => { marco.remove(); URL.revokeObjectURL(url); }, 60000);
+      };
+      document.body.appendChild(marco);
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setDescargando(false);
+    }
+  }
+
+  // WhatsApp al cliente con el resumen de la orden y el número del taller
+  function enviarWhatsApp() {
+    const digitos = String(servicio.cliente?.telefono1 || "").replace(/\D/g, "").slice(-10);
+    if (digitos.length !== 10) {
+      notify("El cliente no tiene un teléfono válido de 10 dígitos. Corrígelo en su ficha.", "error");
+      return;
+    }
+    const dinero = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
+    const veh = [servicio.vehiculo?.marca?.nombre_marca, servicio.vehiculo?.modelo?.nombre_modelo, servicio.vehiculo?.placas_vehiculo].filter(Boolean).join(" ");
+    const taller = [datosTaller?.nombre_taller, datosTaller?.telefono && `Tel. ${datosTaller.telefono}`].filter(Boolean).join(" · ");
+    const estado = servicio.status === "cerrado" ? "Tu vehículo está listo." : "Tu orden está en proceso.";
+    const texto = [
+      `Hola ${servicio.cliente?.nombre_cliente || ""}, te escribimos de ${taller || "tu taller"}.`,
+      `Orden #${servicio.id_servicio}${veh ? ` · ${veh}` : ""}. ${estado}`,
+      `Total: ${dinero(servicio.costos.total)} · Saldo: ${dinero(servicio.costos.saldo_pendiente)}`,
+      "Gracias por tu confianza.",
+    ].join("\n");
+    window.open(`https://wa.me/52${digitos}?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
+  }
+
   async function confirmarCierre() {
     if (textoConfirmar !== "CONFIRMAR") {
       notify("Escribe la palabra CONFIRMAR, en mayúsculas, para finalizar la orden.", "error");
@@ -308,6 +366,8 @@ export default function ServicioDetalle() {
       await cambiarStatus("cerrado");
       setModalCierre(false);
       setTextoConfirmar("");
+      notify("Orden finalizada — imprimiendo la nota. Usa «Enviar por WhatsApp» para avisar al cliente.", "success");
+      await imprimirNota("remision");
     } finally {
       setCerrando(false);
     }
@@ -717,6 +777,14 @@ export default function ServicioDetalle() {
                   🧾 Finalizar y generar nota
                 </button>
               )}
+              {servicio.detalles.length > 0 && (
+                <button className="btn btn-primary" onClick={() => imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo")} disabled={descargando} title="Imprimir la nota ahora">
+                  🖨️ Imprimir nota
+                </button>
+              )}
+              <button className="btn btn-secondary" onClick={enviarWhatsApp} title="Abrir WhatsApp con el resumen de la orden para el cliente">
+                💬 Enviar por WhatsApp
+              </button>
               {servicio.status === "cerrado" && (
                 <button className="btn btn-secondary" onClick={() => descargarPdf("remision")} disabled={descargando} title="Descargar la nota de remisión en PDF">
                   📋 Nota de remisión
