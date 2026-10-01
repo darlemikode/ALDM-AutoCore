@@ -169,7 +169,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20 }}>
+      <div className="dash-2col">
         <div className="panel">
           <h2 style={{ fontSize: 16, marginBottom: 14 }}>Órdenes e ingresos — últimos 6 meses</h2>
           <ResponsiveContainer width="100%" height={260}>
