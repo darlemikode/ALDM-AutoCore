@@ -87,6 +87,28 @@ CIUDADES = {
 }
 
 
+VEHICULOS = {
+    "Nissan": ["Versa", "Sentra", "March", "Tsuru", "NP300", "Kicks", "X-Trail", "Frontier"],
+    "Chevrolet": ["Aveo", "Spark", "Onix", "Beat", "Silverado", "Tornado", "Tracker", "Cavalier"],
+    "Volkswagen": ["Jetta", "Vento", "Polo", "Gol", "Tiguan", "Sedan (Vocho)", "Saveiro"],
+    "Toyota": ["Corolla", "Yaris", "Hilux", "RAV4", "Camry", "Avanza", "Tacoma"],
+    "Ford": ["Fiesta", "Focus", "Ranger", "F-150", "Escape", "Figo", "Ikon"],
+    "Honda": ["Civic", "City", "CR-V", "Accord", "HR-V", "Fit"],
+    "Mazda": ["Mazda 2", "Mazda 3", "Mazda 6", "CX-5", "CX-30"],
+    "Kia": ["Rio", "Forte", "Sportage", "Seltos", "Soul"],
+    "Hyundai": ["Grand i10", "Accent", "Elantra", "Tucson", "Creta"],
+    "Suzuki": ["Swift", "Ignis", "Vitara", "Ertiga"],
+    "SEAT": ["Ibiza", "León", "Arona"],
+    "Renault": ["Kwid", "Sandero", "Duster", "Logan"],
+    "Dodge": ["Attitude", "Neon", "Journey", "RAM"],
+    "Jeep": ["Wrangler", "Compass", "Renegade"],
+    "Mitsubishi": ["L200", "Mirage", "Outlander"],
+    "BMW": ["Serie 1", "Serie 3", "X1", "X3"],
+    "Mercedes-Benz": ["Clase A", "Clase C", "GLA"],
+    "Audi": ["A3", "A4", "Q3"],
+}
+
+
 def _agregar_simples(db, modelo, campo, nombres):
     existentes = {(getattr(x, campo) or "").strip().lower() for x in db.query(modelo).all()}
     for n in nombres:
@@ -115,6 +137,20 @@ def asegurar_catalogos_base(db):
         for s in subs:
             if s.lower() not in existentes:
                 db.add(models.RefaccionSubcategoria(nombre_subcategoria=s, id_categoria_refaccion=cat.id_categoria_refaccion))
+    db.flush()
+
+    # Marcas y modelos de vehículos
+    marcas = {m.nombre_marca.strip().lower(): m for m in db.query(models.VehiculoMarca).all()}
+    for nombre, modelos in VEHICULOS.items():
+        marca = marcas.get(nombre.lower())
+        if not marca:
+            marca = models.VehiculoMarca(nombre_marca=nombre)
+            db.add(marca)
+            db.flush()
+        ya = {m.nombre_modelo.strip().lower() for m in db.query(models.VehiculoModelo).filter(models.VehiculoModelo.id_marca_vehiculo == marca.id_marca_vehiculo)}
+        for mod in modelos:
+            if mod.lower() not in ya:
+                db.add(models.VehiculoModelo(nombre_modelo=mod, id_marca_vehiculo=marca.id_marca_vehiculo))
     db.flush()
 
     # Ciudades por estado
