@@ -26,4 +26,33 @@ export const ICONOS = {
   "/roles": "shield-check",
   "/facturacion": "document",
   "/superadmin": "shield-check",
+  "/errores": "warning",
+};
+
+// Color propio de cada módulo (insignia del menú lateral)
+export const COLORES_ICONO = {
+  "/": "#2de2d0",
+  "/mi-dashboard": "#7aa8ff",
+  "/servicios": "#ffb454",
+  "/cotizaciones": "#c39bff",
+  "/citas": "#ff8fb1",
+  "/clientes": "#5ad1ff",
+  "/vehiculos": "#ff7a6b",
+  "/facturacion": "#6bdc8c",
+  "/refacciones": "#ffcc4d",
+  "/inventario": "#4dd6b0",
+  "/herramientas": "#ff9d5c",
+  "/proveedores": "#8ea2ff",
+  "/errores": "#ff6b6b",
+  "/promociones": "#ff8fd0",
+  "/asistente": "#b48cff",
+  "/superadmin": "#5ee0a0",
+  "/catalogos": "#7fd6ff",
+  "/configuracion-taller": "#ffd166",
+  "/comisiones": "#7be07b",
+  "/sincronizacion": "#6bc4ff",
+  "/empleados": "#ffa86b",
+  "/usuarios": "#ffd166",
+  "/asignacion-roles": "#a0b4ff",
+  "/roles": "#6bdc8c",
 };

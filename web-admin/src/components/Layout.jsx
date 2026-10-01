@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import ChangePasswordModal from "./ChangePasswordModal";
 import PagarSuscripcion from "./PagarSuscripcion";
 import { api } from "../api";
-import { ICONOS } from "../iconos";
+import { ICONOS, COLORES_ICONO } from "../iconos";
 import { Icono } from "./Icono";
 import { escucharSidebar, escucharTema, setSidebarCompacta, sidebarCompactaActiva, temaOscuroActivo } from "../preferencias";
 import CampanaNotificaciones from "./CampanaNotificaciones";
@@ -141,7 +141,7 @@ export default function Layout() {
                 title={item.label}
                 className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
               >
-                <span className="nav-link-icono"><Icono nombre={ICONOS[item.to] || "grid"} size={17} /></span>
+                <span className="nav-link-icono" style={{ "--ico": COLORES_ICONO[item.to] || "#2de2d0" }}><Icono nombre={ICONOS[item.to] || "grid"} size={19} /></span>
                 <span className="nav-link-texto">{item.label}</span>
                 {item.to === "/usuarios" && solicitudesPendientes > 0 && (
                   <span className="nav-badge">{solicitudesPendientes}</span>

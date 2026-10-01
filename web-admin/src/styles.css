@@ -110,7 +110,7 @@ button {
 /* ---------------- App shell ---------------- */
 .app-shell {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: clamp(240px, 19vw, 340px) 1fr;
   height: 100vh;
 }
 .sidebar-compacta-shell { grid-template-columns: 68px 1fr; }
@@ -167,20 +167,31 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 7px 10px;
   border-radius: var(--radius);
-  color: var(--sidebar-text-muted);
+  color: var(--sidebar-text);
   text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   font-family: var(--font-display);
 }
 
 .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text); }
-.nav-link-icono { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.nav-link-icono {
+  --ico: var(--petrol-300);
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 34px; height: 34px; border-radius: 10px;
+  color: var(--ico);
+  background: color-mix(in srgb, var(--ico) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ico) 38%, transparent);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.nav-link:hover .nav-link-icono { transform: scale(1.08); background: color-mix(in srgb, var(--ico) 32%, transparent); }
+.nav-link.active .nav-link-icono { background: rgba(255,255,255,0.92); color: #0c2a30; box-shadow: none; }
 .nav-link-icono svg { display: block; }
+.nav-link.active { box-shadow: 0 4px 14px color-mix(in srgb, var(--petrol-500) 45%, transparent); }
 .nav-link-boton {
   width: 100%;
   border: none;
@@ -201,11 +212,12 @@ button {
 }
 
 .nav-group-label {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--sidebar-text-muted);
-  padding: 16px 12px 4px;
+  letter-spacing: 0.1em;
+  color: var(--petrol-300);
+  padding: 18px 12px 6px;
 }
 
 .nav-group-label-boton {
@@ -983,12 +995,12 @@ tbody td:last-child {
 
 .loading-text { color: var(--ink-500); padding: 30px 0; text-align: center; }
 
-/* ---------------- Barra superior móvil (☰) — solo <780px ---------------- */
+/* ---------------- Barra superior móvil (☰) — solo <520px ---------------- */
 .topbar-movil { display: none; }
 .sidebar-backdrop { display: none; }
 .sidebar-cerrar-movil { display: none; }
 
-@media (max-width: 780px) {
+@media (max-width: 520px) {
   .app-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: 100vh; }
 
   .topbar-movil {
