@@ -28,7 +28,7 @@ const hoyISO = (dias = 0) => {
   return d.toISOString().slice(0, 10);
 };
 
-function Selector({ campo, valor, onCambiar, multiple }) {
+function Selector({ campo, valor, onCambiar, multiple, conError }) {
   const [buscando, setBuscando] = useState("");
   const [abierto, setAbierto] = useState(false);
   const opcionesOriginales = campo.options || [];
@@ -49,7 +49,7 @@ function Selector({ campo, valor, onCambiar, multiple }) {
 
   if (opciones.length <= 8) {
     return (
-      <View style={styles.chips}>
+      <View style={[styles.chips, conError && styles.chipsError]}>
         {opciones.map((o) => {
           const activo = elegidos.includes(String(o.value));
           return (
@@ -66,7 +66,7 @@ function Selector({ campo, valor, onCambiar, multiple }) {
 
   if (!multiple) {
     return (
-      <Picker titulo={campo.label} enabled={!campo.disabled} selectedValue={valor ?? ""} onValueChange={(v) => onCambiar(v)} estiloDisparador={styles.selectorBoton}>
+      <Picker titulo={campo.label} enabled={!campo.disabled} selectedValue={valor ?? ""} onValueChange={(v) => onCambiar(v)} estiloDisparador={[styles.selectorBoton, conError && styles.inputError]}>
         <Picker.Item label={campo.placeholder || "Toca para elegir"} value="" />
         {opciones.map((o) => <Picker.Item key={String(o.value)} label={String(o.label)} value={o.value} />)}
       </Picker>
@@ -79,7 +79,7 @@ function Selector({ campo, valor, onCambiar, multiple }) {
   const filtradas = opciones.filter((o) => !buscando || String(o.label).toLowerCase().includes(buscando.toLowerCase()));
   return (
     <>
-      <TouchableOpacity style={[styles.selectorBoton, campo.disabled && { opacity: 0.5 }]} onPress={() => !campo.disabled && setAbierto(true)}>
+      <TouchableOpacity style={[styles.selectorBoton, conError && styles.inputError, campo.disabled && { opacity: 0.5 }]} onPress={() => !campo.disabled && setAbierto(true)}>
         <Text style={[styles.selectorTexto, !etiqueta && { color: colors.ink500 }]} numberOfLines={1}>{etiqueta || campo.placeholder || "Toca para elegir"}</Text>
         <Ionicons name="chevron-down" size={18} color={colors.ink500} />
       </TouchableOpacity>
@@ -139,6 +139,8 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
     setAbiertoAntes(false);
   }
 
+  const vacio = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
+
   const lista = useMemo(() => (typeof campos === "function" ? campos(valores) : campos) || [], [campos, valores]);
 
   function actualizar(campo, valor) {
@@ -150,11 +152,20 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
       }
       return nuevo;
     });
-    if (faltantes.includes(campo.name)) setFaltantes((f) => f.filter((x) => x !== campo.name));
     if (invalidos.includes(campo.name)) setInvalidos((f) => f.filter((x) => x !== campo.name));
+    // Se quita el error del campo ya llenado y se marca el SIGUIENTE obligatorio pendiente
+    if (campo.required && !vacio(valor)) {
+      let nuevo = { ...valores, [campo.name]: valor };
+      if (campo.onElegir) nuevo = { ...nuevo, ...(campo.onElegir(valor, nuevo) || {}) };
+      const pendientes = lista.filter((c) => c.required && !c.disabled && vacio(nuevo[c.name])).map((c) => c.name);
+      const siguiente = pendientes.filter((n) => n !== campo.name)[0];
+      setFaltantes(siguiente ? [siguiente] : []);
+      const y = siguiente ? posiciones.current[siguiente] : null;
+      if (y != null) scrollRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
+    } else if (faltantes.includes(campo.name) && !vacio(valor)) {
+      setFaltantes((f) => f.filter((x) => x !== campo.name));
+    }
   }
-
-  const vacio = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
 
   async function guardar() {
     const falta = lista.filter((c) => c.required && !c.disabled && vacio(valores[c.name])).map((c) => c.name);
@@ -205,8 +216,8 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
       style: [styles.input, conError && styles.inputError, c.type === "textarea" && styles.textarea, c.disabled && { opacity: 0.55 }],
     };
     let control;
-    if (c.type === "select") control = <Selector campo={c} valor={valor} onCambiar={(v) => actualizar(c, v)} />;
-    else if (c.type === "multiselect") control = <Selector campo={c} valor={valor} onCambiar={(v) => actualizar(c, v)} multiple />;
+    if (c.type === "select") control = <Selector campo={c} valor={valor} onCambiar={(v) => actualizar(c, v)} conError={conError} />;
+    else if (c.type === "multiselect") control = <Selector campo={c} valor={valor} onCambiar={(v) => actualizar(c, v)} multiple conError={conError} />;
     else if (c.type === "checkbox") {
       control = (
         <View style={styles.switchFila}>
@@ -242,7 +253,7 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
     return (
       <View key={c.name} style={[styles.campo, c.mitad && styles.campoMitad]} onLayout={(e) => { posiciones.current[c.name] = e.nativeEvent.layout.y; }}>
         {c.type !== "checkbox" || c.label ? (
-          <Text style={[styles.label, conError && { color: colors.red600 }]}>{c.label}{c.required ? " *" : ""}</Text>
+          <Text style={[styles.label, conError && styles.labelError]}>{c.label}{c.required ? <Text style={{ color: colors.red600 }}> *</Text> : null}</Text>
         ) : null}
         {control}
         {faltantes.includes(c.name) ? (
@@ -316,9 +327,11 @@ const styles = crearEstilos({
   filaCampos: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   campo: { width: "100%", marginBottom: 14 },
   campoMitad: { width: "48.5%" },
-  label: { fontSize: 12, fontWeight: "800", color: colors.ink900, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 7 },
+  label: { fontSize: 13, fontWeight: "800", color: colors.ink900, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 7 },
+  labelError: { color: colors.red600 },
+  chipsError: { borderWidth: 2, borderColor: colors.red600, borderRadius: 12, padding: 6 },
   input: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, fontSize: 15, color: colors.ink900 },
-  inputError: { borderColor: colors.red600, borderWidth: 2 },
+  inputError: { borderColor: colors.red600, borderWidth: 2, backgroundColor: colors.red100 },
   textarea: { minHeight: 80, textAlignVertical: "top" },
   hint: { fontSize: 12, color: colors.ink700, marginTop: 5 },
   errorCampo: { fontSize: 12, fontWeight: "600", color: colors.red600, marginTop: 5 },

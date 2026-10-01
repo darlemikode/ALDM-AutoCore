@@ -30,7 +30,7 @@ const NAV = [
     group: "Inventario",
     items: [
       { to: "/refacciones", label: "Refacciones", permisoRequerido: "refacciones.ver" },
-      { to: "/inventario", label: "Inventario", permisoRequerido: "refacciones.ver" },
+      { to: "/inventario", label: "Inventario", permisoRequerido: "inventario.ver" },
       { to: "/herramientas", label: "Herramientas", permisoRequerido: "herramientas.ver" },
       { to: "/proveedores", label: "Proveedores", permisoRequerido: "proveedores.ver" },
     ],

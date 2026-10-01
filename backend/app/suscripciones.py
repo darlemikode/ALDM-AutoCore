@@ -17,7 +17,8 @@ from . import models
 MODULO_POR_PERMISO = {
     "servicios": "ordenes_servicio",
     "cotizaciones": "cotizaciones",
-    "refacciones": "inventario",
+    "refacciones": "refacciones",
+    "inventario": "inventario",
     "herramientas": "herramientas",
     "clientes": "clientes_vehiculos",
     "vehiculos": "clientes_vehiculos",

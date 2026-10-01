@@ -363,6 +363,16 @@ class VehiculoIn(BaseModel):
     id_cliente: int
     numserie_vehiculo: Optional[str] = None
     placas_vehiculo: Optional[str] = None
+
+    @field_validator("numserie_vehiculo", "placas_vehiculo", mode="before")
+    @classmethod
+    def _vacio_a_none(cls, v):
+        # "" no es un VIN: en SQL Server dos "" (o dos NULL) chocarían en el índice único
+        if v is None:
+            return None
+        v = str(v).strip()
+        return v or None
+
     id_color: Optional[int] = None
     cilindraje_vehiculo: Optional[str] = None
     id_year_vehiculo: Optional[str] = None

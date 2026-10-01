@@ -7,6 +7,8 @@ import { colors, spacing } from "../theme";
 import { useAuth } from "../context/AuthContext";
 import { crearEstilos } from "../ui/estilos";
 import { abrirOrdenDeVehiculo } from "../navigation/irAOrden";
+import { alerta } from "../ui/Dialogo";
+import { telefonoValido, MENSAJE_TELEFONO_INVALIDO } from "../validaciones";
 
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -29,6 +31,22 @@ export default function ClienteDetalleScreen({ route, navigation }) {
   useFocusEffect(useCallback(() => { cargar(); }, [cliente.id_cliente])); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tel = cliente.telefono1;
+
+  // WhatsApp: valida el número del cliente y firma con el número registrado del taller.
+  // (WhatsApp no permite comprobar desde la app si el número tiene cuenta; si no la tiene, abre el chat vacío y avisa al usuario.)
+  async function enviarWhatsApp() {
+    const digitos = String(tel || "").replace(/\D/g, "").slice(-10);
+    if (!telefonoValido(digitos)) {
+      alerta("WhatsApp", `${MENSAJE_TELEFONO_INVALIDO} Corrige el teléfono principal del cliente.`);
+      return;
+    }
+    let taller = {};
+    try { taller = (await api.get("/configuracion-taller/")) || {}; } catch (e) { /* sin conexión: se envía sin firma */ }
+    const firma = [taller.nombre_taller, taller.telefono && `Tel. ${taller.telefono}`].filter(Boolean).join(" · ");
+    const texto = `Hola ${cliente.nombre_cliente || ""}, te escribimos de ${firma || "tu taller"}.`.replace(/\s+,/, ",");
+    const url = `https://wa.me/52${digitos}?text=${encodeURIComponent(texto)}`;
+    try { await Linking.openURL(url); } catch (e) { alerta("WhatsApp", "No se pudo abrir WhatsApp. Verifica que esté instalado y que el número tenga cuenta."); }
+  }
   const saldo = servicios.filter((s) => s.status !== "cancelado").reduce((a, s) => a + Math.max(s.costos?.saldo_pendiente || 0, 0), 0);
   const abiertas = servicios.filter((s) => s.status === "abierto").length;
   const nuevaOrden = (v) => abrirOrdenDeVehiculo(navigation, cliente, v);
@@ -52,7 +70,7 @@ export default function ClienteDetalleScreen({ route, navigation }) {
       <View style={styles.acciones}>
         {[
           ["call-outline", "Llamar", tel ? () => Linking.openURL(`tel:${tel}`) : null],
-          ["logo-whatsapp", "WhatsApp", tel ? () => Linking.openURL(`https://wa.me/52${String(tel).replace(/\D/g, "").slice(-10)}`) : null],
+          ["logo-whatsapp", "WhatsApp", tel ? enviarWhatsApp : null],
           ["mail-outline", "Correo", cliente.correo_cliente ? () => Linking.openURL(`mailto:${cliente.correo_cliente}`) : null],
         ].map(([icono, texto, fn]) => (
           <TouchableOpacity key={texto} style={[styles.accion, !fn && { opacity: 0.4 }]} onPress={fn} disabled={!fn}>
@@ -82,7 +100,7 @@ export default function ClienteDetalleScreen({ route, navigation }) {
       <View style={styles.seccionFila}>
         <Text style={styles.seccion}>Vehículos</Text>
         {hasPermission("vehiculos.crear") && (
-          <TouchableOpacity onPress={() => navigation.navigate("VehiculoForm", { clienteFijo: cliente })}><Text style={styles.agregar}>+ Agregar</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.btnAgregar} onPress={() => navigation.navigate("VehiculoForm", { clienteFijo: cliente })} activeOpacity={0.8}><Ionicons name="add" size={20} color="#fff" /><Text style={styles.agregar}>Agregar</Text></TouchableOpacity>
         )}
       </View>
       {vehiculos.length === 0 ? <Text style={styles.vacio}>Sin vehículos registrados.</Text> : vehiculos.map((v) => (
@@ -139,7 +157,8 @@ const styles = crearEstilos({
   datoValor: { flex: 1, fontSize: 13.5, fontWeight: "500", color: colors.ink900 },
   seccionFila: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 22, marginBottom: 8 },
   seccion: { fontSize: 12.5, fontWeight: "700", color: colors.ink700, textTransform: "uppercase", letterSpacing: 0.6 },
-  agregar: { fontSize: 14, fontWeight: "700", color: colors.petrol600 },
+  agregar: { fontSize: 16, fontWeight: "800", color: "#fff" },
+  btnAgregar: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.petrol500, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 18, minHeight: 46 },
   vacio: { fontSize: 13.5, color: colors.ink500 },
   tarjeta: { backgroundColor: colors.paper100, borderRadius: 12, padding: 12, marginBottom: 10, gap: 10 },
   vehiculoFila: { flexDirection: "row", alignItems: "center", gap: 10 },

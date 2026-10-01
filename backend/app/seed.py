@@ -39,7 +39,8 @@ PERMISOS = (
     + _crud("vehiculos", "vehículos")
     + _crud("servicios", "órdenes de servicio (incluye agregar conceptos/abonos y cerrar)")
     + _crud("cotizaciones", "cotizaciones / presupuestos")
-    + _crud("refacciones", "refacciones (inventario)")
+    + _crud("refacciones", "refacciones (catálogo y precios)")
+    + _crud("inventario", "inventario y punto de venta (stock por vehículo y venta en mostrador)")
     + _crud("herramientas", "herramientas (inventario)")
     + _crud("proveedores", "proveedores y sus deudas")
     + _crud("catalogos", "catálogos generales (marcas, modelos, colores, tipos de servicio, países/estados/ciudades)")
@@ -71,6 +72,7 @@ PERMISOS_JEFE_TALLER = [
     "servicios.ver", "servicios.crear", "servicios.editar", "servicios.eliminar",
     "cotizaciones.ver", "cotizaciones.crear", "cotizaciones.editar", "cotizaciones.eliminar",
     "refacciones.ver", "refacciones.crear", "refacciones.editar", "refacciones.eliminar",
+    "inventario.ver", "inventario.crear", "inventario.editar", "inventario.eliminar",
     "herramientas.ver", "herramientas.editar",
     "proveedores.ver", "proveedores.editar",
     "catalogos.ver", "catalogos.crear", "catalogos.editar", "catalogos.eliminar",
@@ -84,7 +86,7 @@ PERMISOS_ASESOR_SERVICIO = [
     "vehiculos.ver",
     "servicios.ver", "servicios.crear", "servicios.editar",
     "cotizaciones.ver", "cotizaciones.crear", "cotizaciones.editar",
-    "refacciones.ver",
+    "refacciones.ver", "inventario.ver",
 ]
 
 # El rol "Técnico / Mecánico" es el más angosto de todos: no administra nada
@@ -102,16 +104,17 @@ MODULOS_SISTEMA = [
     ("ordenes_servicio", "Órdenes de servicio", "Recepción, diagnóstico, avance, cobro y cierre de cada servicio.", "🔧", 1),
     ("cotizaciones", "Cotizaciones", "Presupuestos para el cliente antes de abrir la orden.", "🧾", 2),
     ("clientes_vehiculos", "Clientes y vehículos", "Historial completo por cliente y por vehículo.", "🧑", 3),
-    ("inventario", "Inventario y punto de venta", "Refacciones y stock, con venta directa en mostrador.", "📦", 4),
-    ("herramientas", "Herramientas", "Inventario de herramientas del taller.", "🛠️", 5),
-    ("proveedores", "Proveedores", "Catálogo de proveedores, compras y deuda.", "🚚", 6),
-    ("catalogos", "Catálogos", "Administrar marcas, modelos, colores, tipos de servicio y categorías propias.", "🗂️", 7),
-    ("empleados", "Empleados", "Personal del taller y responsables de cada orden.", "🪪", 8),
-    ("nomina", "Nómina", "Sueldos, periodos de pago y recibos.", "👷", 9),
-    ("roles_permisos", "Roles y permisos", "Control fino de qué puede hacer cada usuario.", "🛡️", 10),
-    ("reportes", "Reportes", "Indicadores del negocio y saldo por cobrar.", "📊", 11),
-    ("app_movil", "App para clientes", "App para que los clientes den seguimiento a su vehículo, promociones y citas.", "📱", 12),
-    ("facturacion", "Facturación electrónica", "Emisión y cancelación de CFDI 4.0 desde las órdenes de servicio.", "💳", 13),
+    ("refacciones", "Refacciones", "Catálogo de refacciones, marcas, categorías y precios. Es la base del inventario.", "🔩", 4),
+    ("inventario", "Inventario y punto de venta", "Stock, compatibilidad por vehículo y venta en mostrador. Requiere Refacciones.", "📦", 5),
+    ("herramientas", "Herramientas", "Inventario de herramientas del taller.", "🛠️", 6),
+    ("proveedores", "Proveedores", "Catálogo de proveedores, compras y deuda.", "🚚", 7),
+    ("catalogos", "Catálogos", "Administrar marcas, modelos, colores, tipos de servicio y categorías propias.", "🗂️", 8),
+    ("empleados", "Empleados", "Personal del taller y responsables de cada orden.", "🪪", 9),
+    ("nomina", "Nómina", "Sueldos, periodos de pago y recibos.", "👷", 10),
+    ("roles_permisos", "Roles y permisos", "Control fino de qué puede hacer cada usuario.", "🛡️", 11),
+    ("reportes", "Reportes", "Indicadores del negocio y saldo por cobrar.", "📊", 12),
+    ("app_movil", "App para clientes", "App para que los clientes den seguimiento a su vehículo, promociones y citas.", "📱", 13),
+    ("facturacion", "Facturación electrónica", "Emisión y cancelación de CFDI 4.0 desde las órdenes de servicio.", "💳", 14),
 ]
 
 # Módulos que antes venían "dentro" de otro: al crearse por primera vez se
@@ -120,6 +123,7 @@ MODULOS_SISTEMA = [
 MODULOS_HEREDADOS = {
     "cotizaciones": "ordenes_servicio",
     "herramientas": "inventario",
+    "refacciones": "inventario",
     "catalogos": None,
     "empleados": None,
 }
@@ -128,9 +132,9 @@ MODULOS_HEREDADOS = {
 # necesite desde el panel; estos solo evitan arrancar con la pantalla vacía.
 PAQUETES_BASE = [
     ("Básico", "Para un taller chico que va empezando.", 799.0,
-     ["ordenes_servicio", "clientes_vehiculos", "inventario"]),
+     ["ordenes_servicio", "clientes_vehiculos", "refacciones", "inventario"]),
     ("Profesional", "El más contratado — cubre la operación diaria completa.", 1499.0,
-     ["ordenes_servicio", "clientes_vehiculos", "inventario", "proveedores", "roles_permisos", "reportes"]),
+     ["ordenes_servicio", "clientes_vehiculos", "refacciones", "inventario", "proveedores", "roles_permisos", "reportes"]),
     ("Premium", "Todo el sistema, incluida la app para los clientes del taller.", 2499.0,
      [c for c, *_ in MODULOS_SISTEMA]),
 ]
@@ -293,6 +297,19 @@ def _ajustar_restricciones():
         conn.commit()
 
 
+def _vin_unico_filtrado():
+    """SQL Server trata NULL como un valor en un UNIQUE: solo dejaba un
+    vehículo sin VIN por taller. Se cambia por un índice único filtrado
+    (solo cuando hay VIN) y se limpian los VIN vacíos."""
+    if not es_mssql:
+        return
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE vehiculos SET numserie_vehiculo = NULL WHERE numserie_vehiculo IS NOT NULL AND LTRIM(RTRIM(numserie_vehiculo)) = ''"))
+        conn.execute(text("IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'uq_vehiculos_taller_numserie') ALTER TABLE vehiculos DROP CONSTRAINT uq_vehiculos_taller_numserie"))
+        conn.execute(text("IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'uq_vehiculos_taller_numserie' AND object_id = OBJECT_ID('vehiculos')) DROP INDEX uq_vehiculos_taller_numserie ON vehiculos"))
+        conn.execute(text("IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ux_vehiculos_taller_numserie' AND object_id = OBJECT_ID('vehiculos')) CREATE UNIQUE INDEX ux_vehiculos_taller_numserie ON vehiculos (id_taller, numserie_vehiculo) WHERE numserie_vehiculo IS NOT NULL"))
+
+
 def _indices_llaves_foraneas():
     """SQL Server no crea índices para las llaves foráneas (Postgres y MySQL
     tampoco siempre). Sin ellos cada JOIN o filtro por cliente, vehículo,
@@ -422,6 +439,15 @@ def sembrar_globales(db):
         if clave not in existentes:
             db.add(models.Permiso(clave=clave, modulo=modulo, descripcion=descripcion))
     db.commit()
+    if "inventario.ver" not in existentes:
+        # Separación Refacciones / Inventario: quien tenía refacciones.X conserva inventario.X
+        mapa = {p.clave: p for p in db.query(models.Permiso).all()}
+        for rol in db.query(models.Rol).execution_options(sin_filtro_taller=True).all():
+            claves = {p.clave for p in rol.permisos}
+            for accion in ("ver", "crear", "editar", "eliminar"):
+                if f"refacciones.{accion}" in claves and f"inventario.{accion}" in mapa and f"inventario.{accion}" not in claves:
+                    rol.permisos.append(mapa[f"inventario.{accion}"])
+        db.commit()
 
     modulos_existentes = {m.clave for m in db.query(models.Modulo).all()}
     nuevos = []
@@ -657,6 +683,7 @@ def run():
     Base.metadata.create_all(bind=engine)
     _sincronizar_columnas_faltantes()
     _ajustar_restricciones()
+    _vin_unico_filtrado()
     _indices_llaves_foraneas()
     db = sesion_global()
     try:

@@ -147,7 +147,7 @@ export default function InventarioListaScreen() {
                 ))}
               </View>
               <View style={styles.acciones}>
-                {hasPermission("refacciones.editar") && (
+                {hasPermission("inventario.editar") && (
                   <>
                     <TouchableOpacity style={styles.accion} onPress={() => { setCompat(f); setCompatMarca(""); setBuscarMarca(""); }}>
                       <Ionicons name="car-sport-outline" size={16} color={colors.petrol600} /><Text style={styles.accionTexto}>Compatibilidades</Text>

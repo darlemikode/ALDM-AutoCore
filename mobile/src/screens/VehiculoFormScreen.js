@@ -58,9 +58,27 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
   const modelosDeLaMarca = marcaId ? modelos.filter((m) => m.id_marca_vehiculo === marcaId) : [];
   const bloqueado = !editando && !clienteFijo && !clienteId;
 
+  // Obligatorios en orden; al llenar uno se quita su error y se marca el siguiente pendiente
+  function pendientes(m, mo, k) {
+    return [!m && "marca", !mo && "modelo", !String(k).trim() && "km"].filter(Boolean);
+  }
+  function marcarSiguiente(m, mo, k) {
+    setErrores(pendientes(m, mo, k).slice(0, 1));
+  }
+
   function alElegirMarca(id) {
     setMarcaId(id);
+    const modeloAplica = editando && id === vehiculoExistente?.id_marca_vehiculo ? modeloId : "";
     if (!editando || id !== vehiculoExistente?.id_marca_vehiculo) setModeloId(""); // el modelo elegido antes ya no aplica
+    if (id) marcarSiguiente(id, modeloAplica, km);
+  }
+  function alElegirModelo(id) {
+    setModeloId(id);
+    if (id) marcarSiguiente(marcaId, id, km);
+  }
+  function alEscribirKm(v) {
+    setKm(v);
+    if (v.trim()) setErrores((e) => e.filter((x) => x !== "km"));
   }
 
   async function clienteCreado(nuevo) {
@@ -73,7 +91,7 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
   }
 
   function marcarError(campo, mensaje) {
-    setErrores([campo]);
+    setErrores(pendientes(marcaId, modeloId, km));
     alerta("Falta información", mensaje);
   }
 
@@ -167,7 +185,7 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
         <TextInput placeholderTextColor={colors.ink500} style={[styles.input, conError("placas")]} value={placas} onChangeText={setPlacas} editable={!bloqueado} placeholder="ABC-123" autoCapitalize="characters" />
       </Campo>
 
-      <Campo label="Marca *">
+      <Campo label="Marca" obligatorio error={errores.includes("marca")}>
         <View style={[styles.pickerWrap, conError("marca")]}>
           <Picker titulo="Marca" style={{ color: colors.ink900 }} dropdownIconColor={colors.ink500} enabled={!bloqueado} selectedValue={marcaId} onValueChange={alElegirMarca}>
             <Picker.Item label="-- Selecciona --" value="" />
@@ -178,9 +196,9 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
         </View>
       </Campo>
 
-      <Campo label="Modelo *">
+      <Campo label="Modelo" obligatorio error={errores.includes("modelo")}>
         <View style={[styles.pickerWrap, conError("modelo")]}>
-          <Picker titulo="Modelo" style={{ color: colors.ink900 }} dropdownIconColor={colors.ink500} enabled={!bloqueado && !!marcaId} selectedValue={modeloId} onValueChange={setModeloId}>
+          <Picker titulo="Modelo" style={{ color: colors.ink900 }} dropdownIconColor={colors.ink500} enabled={!bloqueado && !!marcaId} selectedValue={modeloId} onValueChange={alElegirModelo}>
             <Picker.Item label={marcaId ? "-- Selecciona --" : "Elige una marca primero"} value="" />
             {modelosDeLaMarca.map((m) => (
               <Picker.Item key={m.id_modelo_vehiculo} label={m.nombre_modelo} value={m.id_modelo_vehiculo} />
@@ -212,8 +230,8 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
         <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={cilindraje} onChangeText={setCilindraje} editable={!bloqueado} placeholder="2.0L / 4 cil." />
       </Campo>
 
-      <Campo label="Kilometraje *">
-        <TextInput placeholderTextColor={colors.ink500} style={[styles.input, conError("km")]} value={km} onChangeText={setKm} editable={!bloqueado} keyboardType="numeric" placeholder="45,000" />
+      <Campo label="Kilometraje" obligatorio error={errores.includes("km")}>
+        <TextInput placeholderTextColor={colors.ink500} style={[styles.input, conError("km")]} value={km} onChangeText={alEscribirKm} editable={!bloqueado} keyboardType="numeric" placeholder="45,000" />
       </Campo>
 
       {editando && (
@@ -238,10 +256,10 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
   );
 }
 
-function Campo({ label, children }) {
+function Campo({ label, obligatorio, error, children }) {
   return (
     <View style={styles.campo}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, error && styles.labelError]}>{label}{obligatorio ? <Text style={{ color: colors.red600 }}> *</Text> : null}</Text>
       {children}
     </View>
   );
@@ -250,9 +268,10 @@ function Campo({ label, children }) {
 const styles = crearEstilos({
   screen: { flex: 1, backgroundColor: colors.paper0 },
   campo: { marginBottom: spacing.md },
-  label: { fontSize: 11, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 },
+  label: { fontSize: 12, fontWeight: "800", color: colors.ink900, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 7 },
+  labelError: { color: colors.red600 },
   input: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, padding: 10, fontSize: 14, color: colors.ink900 },
-  inputError: { borderColor: colors.red600, backgroundColor: colors.red100 },
+  inputError: { borderColor: colors.red600, borderWidth: 2, backgroundColor: colors.red100 },
   pickerWrap: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, overflow: "hidden" },
   filaCliente: { flexDirection: "row", gap: spacing.sm, alignItems: "center" },
   botonMas: { backgroundColor: colors.petrol500, width: 44, height: 44, borderRadius: 8, alignItems: "center", justifyContent: "center" },

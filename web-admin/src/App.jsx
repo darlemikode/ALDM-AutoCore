@@ -81,7 +81,7 @@ export default function App() {
         <Route path="sincronizacion" element={<Sincronizacion />} />
         <Route path="mi-dashboard" element={<MiDashboard />} />
         <Route path="refacciones" element={<RequirePermission clave="refacciones.ver"><Refacciones /></RequirePermission>} />
-        <Route path="inventario" element={<RequirePermission clave="refacciones.ver"><Inventario /></RequirePermission>} />
+        <Route path="inventario" element={<RequirePermission clave="inventario.ver"><Inventario /></RequirePermission>} />
         <Route path="proveedores" element={<RequirePermission clave="proveedores.ver"><Proveedores /></RequirePermission>} />
         <Route path="proveedores/:id" element={<RequirePermission clave="proveedores.ver"><ProveedorDetalle /></RequirePermission>} />
         <Route path="herramientas" element={<RequirePermission clave="herramientas.ver"><Herramientas /></RequirePermission>} />

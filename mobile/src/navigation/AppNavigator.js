@@ -173,19 +173,20 @@ function MasStackScreen() {
 const ICONOS_TAB = {
   Panel: ["grid", "grid-outline"],
   Clientes: ["people", "people-outline"],
+  Servicio: ["construct", "construct-outline"],
   Refacciones: ["cube", "cube-outline"],
   Más: ["ellipsis-horizontal-circle", "ellipsis-horizontal-circle-outline"],
 };
 
-// Botón central elevado para "Servicio" — la acción del día a día del taller.
+// Botón central elevado: crea una nueva orden de servicio (acción del día a día).
 function BotonServicioGrande({ onPress, accessibilityState }) {
   const enfocado = accessibilityState?.selected;
   return (
     <TouchableOpacity style={styles.tabItemBig} onPress={onPress} activeOpacity={0.85}>
       <View style={[styles.iconWrapBig, { borderColor: colors.paper100 }, enfocado && styles.iconWrapBigActivo]}>
-        <Ionicons name="construct" size={22} color={temaActivo() === "oscuro" ? colors.paper100 : "#fff"} />
+        <Ionicons name="add" size={32} color={temaActivo() === "oscuro" ? colors.paper100 : "#fff"} />
       </View>
-      <Text style={[styles.tabLabelBig, enfocado && { color: colors.petrol600 }]}>Servicio</Text>
+      <Text style={[styles.tabLabelBig, enfocado && { color: colors.petrol600 }]}>Nueva orden</Text>
     </TouchableOpacity>
   );
 }
@@ -213,7 +214,7 @@ function TallerTabs() {
         <Tab.Screen
           name="Servicio"
           component={ServicioStackScreen}
-          options={{ tabBarButton: (props) => <BotonServicioGrande {...props} />, tabBarIcon: undefined }}
+          options={{ tabBarLabel: "Servicios" }}
           listeners={({ navigation }) => ({
             tabPress: (e) => {
               // Si ya estás en Servicio, tocar el tab regresa al historial.
@@ -222,6 +223,19 @@ function TallerTabs() {
                 e.preventDefault();
                 navigation.navigate("Servicio", { screen: "HistorialServicios", params: { resetear: Date.now() } });
               }
+            },
+          })}
+        />
+      )}
+      {hasPermission("servicios.crear") && (
+        <Tab.Screen
+          name="NuevaOrdenTab"
+          component={ServicioStackScreen}
+          options={{ tabBarButton: (props) => <BotonServicioGrande {...props} />, tabBarIcon: undefined }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              e.preventDefault();
+              navigation.navigate("Servicio", { screen: "NuevaOrden", params: { resetear: Date.now() } });
             },
           })}
         />
@@ -270,7 +284,7 @@ function ContenidoDrawer({ navigation, state }) {
     ].filter(Boolean) },
     { grupo: "Inventario", items: [
       hasPermission("refacciones.ver") && { label: "Refacciones", icono: "cube-outline", ruta: "RefaccionesLista", destino: ["Taller", "Refacciones"] },
-      hasPermission("refacciones.ver") && { label: "Inventario", icono: "file-tray-stacked-outline", ruta: "InventarioLista", destino: ["Taller", "Más", "InventarioLista"] },
+      hasPermission("inventario.ver") && { label: "Inventario", icono: "file-tray-stacked-outline", ruta: "InventarioLista", destino: ["Taller", "Más", "InventarioLista"] },
       hasPermission("herramientas.ver") && { label: "Herramientas", icono: "hammer-outline", ruta: "Herramientas", destino: ["Taller", "Más", "Herramientas"] },
       hasPermission("proveedores.ver") && { label: "Proveedores", icono: "business-outline", ruta: "Proveedores", destino: ["Taller", "Más", "Proveedores"] },
     ].filter(Boolean) },

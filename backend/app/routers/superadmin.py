@@ -142,13 +142,23 @@ def _aplicar_precios(db: Session, paquete: models.Paquete, precios):
         paquete.precios.append(models.PrecioPaquete(id_tipo_cobro=p.id_tipo_cobro, precio=round(p.precio, 2)))
 
 
+def _con_padres(db, modulos):
+    """Inventario y punto de venta depende de Refacciones (el padre)."""
+    claves = {m.clave for m in modulos}
+    if "inventario" in claves and "refacciones" not in claves:
+        padre = db.query(models.Modulo).filter(models.Modulo.clave == "refacciones").first()
+        if padre:
+            modulos = list(modulos) + [padre]
+    return modulos
+
+
 @router.post("/paquetes", response_model=schemas.PaqueteOut, status_code=201)
 def crear_paquete(payload: schemas.PaqueteCreate, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
     if db.query(models.Paquete).filter(models.Paquete.nombre == payload.nombre).first():
         raise HTTPException(status_code=400, detail="Ya existe un paquete con ese nombre")
     if payload.precio_mensual is None or payload.precio_mensual < 0:
         raise HTTPException(status_code=400, detail="El precio mensual no puede ser negativo.")
-    paquete = models.Paquete(**payload.model_dump(exclude={"modulos", "precios"}), modulos=_resolver_modulos(db, payload.modulos))
+    paquete = models.Paquete(**payload.model_dump(exclude={"modulos", "precios"}), modulos=_con_padres(db, _resolver_modulos(db, payload.modulos)))
     db.add(paquete)
     db.flush()
     _aplicar_precios(db, paquete, payload.precios)
@@ -170,7 +180,7 @@ def actualizar_paquete(paquete_id: int, payload: schemas.PaqueteUpdate, db: Sess
     for key, value in datos.items():
         setattr(paquete, key, value)
     if payload.modulos is not None:
-        paquete.modulos = _resolver_modulos(db, payload.modulos)
+        paquete.modulos = _con_padres(db, _resolver_modulos(db, payload.modulos))
     if payload.precios is not None:
         _aplicar_precios(db, paquete, payload.precios)
     db.commit()
