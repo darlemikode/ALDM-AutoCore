@@ -373,6 +373,37 @@ def _migrar_subcategorias_a_refacciones(id_taller: int):
         db.close()
 
 
+def _quitar_subcategoria_legacy():
+    """inventario_refacciones aún trae la columna vieja id_subcategoria_refaccion
+    (NOT NULL) del diseño anterior; el modelo actual ya no la usa y bloquea los
+    INSERT. SQL Server: se vuelve NULL. SQLite: se reconstruye la tabla."""
+    inspector = inspect(engine)
+    if "inventario_refacciones" not in inspector.get_table_names():
+        return
+    cols = {c["name"]: c for c in inspector.get_columns("inventario_refacciones")}
+    legacy = cols.get("id_subcategoria_refaccion")
+    if not legacy or legacy.get("nullable", True):
+        return
+    try:
+        with engine.begin() as conn:
+            if engine.dialect.name == "mssql":
+                conn.execute(text("ALTER TABLE inventario_refacciones ALTER COLUMN id_subcategoria_refaccion INT NULL"))
+            elif engine.dialect.name == "sqlite":
+                for (nombre,) in conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='inventario_refacciones' AND sql IS NOT NULL")).fetchall():
+                    conn.execute(text(f'DROP INDEX IF EXISTS "{nombre}"'))
+                conn.execute(text("ALTER TABLE inventario_refacciones RENAME TO inventario_refacciones_old"))
+                models.InventarioRefaccion.__table__.create(conn)
+                nuevas = {c.name for c in models.InventarioRefaccion.__table__.columns}
+                comunes = ", ".join(f'"{c}"' for c in cols if c in nuevas)
+                conn.execute(text(f"INSERT INTO inventario_refacciones ({comunes}) SELECT {comunes} FROM inventario_refacciones_old WHERE id_refaccion IS NOT NULL"))
+                conn.execute(text("DROP TABLE inventario_refacciones_old"))
+            else:
+                conn.execute(text("ALTER TABLE inventario_refacciones ALTER COLUMN id_subcategoria_refaccion DROP NOT NULL"))
+        print("[migración automática] inventario_refacciones: columna legacy id_subcategoria_refaccion ahora es opcional")
+    except Exception as e:  # noqa: BLE001
+        print(f"[migración] no se pudo relajar id_subcategoria_refaccion: {e}")
+
+
 def _limpiar_inventario_huerfano(id_taller: int):
     """InventarioRefaccion cambió de apuntar a una subcategoría a apuntar a
     Refaccion (id_refaccion, ahora obligatorio). Los registros que se hayan
@@ -689,6 +720,7 @@ def run():
     _sincronizar_columnas_faltantes()
     _ajustar_restricciones()
     _vin_unico_filtrado()
+    _quitar_subcategoria_legacy()
     _indices_llaves_foraneas()
     db = sesion_global()
     try:
