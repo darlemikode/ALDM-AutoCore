@@ -6,6 +6,7 @@ import ModalPortal from "../components/ModalPortal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
+import IconoModulo from "../components/IconoModulo";
 
 const STATUS_BADGE = {
   abierto: "badge-petrol",
@@ -282,7 +283,7 @@ export default function Servicios() {
     <>
       <div className="page-header">
         <div>
-          <h1>🔧 Órdenes de servicio</h1>
+          <h1><IconoModulo ruta="/servicios" /> Órdenes de servicio</h1>
           <div className="subtitle">{servicios.length} orden(es)</div>
         </div>
         <button className="btn btn-primary" onClick={openCreate}>

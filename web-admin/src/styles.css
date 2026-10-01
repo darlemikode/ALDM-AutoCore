@@ -492,6 +492,17 @@ button {
 }
 .kpi-card.alert .kpi-icono { background: color-mix(in srgb, var(--red-600) 24%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red-600) 45%, transparent); }
 .kpi-card.ok .kpi-icono { background: color-mix(in srgb, var(--teal-600) 24%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal-600) 45%, transparent); }
+.kpi-card .kpi-icono { color: var(--petrol-500); }
+.kpi-card.alert .kpi-icono { color: var(--red-600); }
+.kpi-card.ok .kpi-icono { color: var(--teal-600); }
+.h1-icono {
+  --ico: var(--petrol-500);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 12px; margin-right: 10px; vertical-align: middle;
+  color: var(--ico);
+  background: color-mix(in srgb, var(--ico) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ico) 40%, transparent);
+}
 .kpi-card .kpi-label { padding-right: 52px; color: var(--ink-700); font-weight: 700; }
 .kpi-card .kpi-value { font-size: 40px; margin-top: 10px; }
 

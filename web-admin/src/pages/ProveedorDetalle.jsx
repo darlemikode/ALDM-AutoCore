@@ -4,6 +4,7 @@ import { api } from "../api";
 import FormModal from "../components/FormModal";
 import FotoGaleria from "../components/FotoGaleria";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 export default function ProveedorDetalle() {
   const { id } = useParams();
@@ -53,7 +54,7 @@ export default function ProveedorDetalle() {
     <>
       <div className="page-header">
         <div>
-          <h1>🚚 {proveedor.nombre_proveedor}</h1>
+          <h1><IconoModulo ruta="/proveedores" /> {proveedor.nombre_proveedor}</h1>
           <div className="subtitle">{proveedor.empresa_proveedor || "Proveedor"} · {proveedor.telefono1_proveedor || "sin teléfono"}</div>
         </div>
         <Link className="btn btn-secondary" to="/proveedores">← Volver</Link>

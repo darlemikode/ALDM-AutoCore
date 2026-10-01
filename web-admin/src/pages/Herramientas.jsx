@@ -6,6 +6,7 @@ import ModalPortal from "../components/ModalPortal";
 import FotoGaleria from "../components/FotoGaleria";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 export default function Herramientas() {
   const { confirmDialog, notify } = useUI();
@@ -79,7 +80,7 @@ export default function Herramientas() {
     <>
       <div className="page-header">
         <div>
-          <h1>🛠️ Herramientas</h1>
+          <h1><IconoModulo ruta="/herramientas" /> Herramientas</h1>
           <div className="subtitle">
             Inventario de herramientas del taller
             {!hasPermission("herramientas.crear") && <span className="role-badge">Solo lectura</span>}

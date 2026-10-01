@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 import {
   AVISOS, avisoOmitido, escucharAvisos, escucharSidebar, escucharTema, omitirAviso,
   setSidebarCompacta, setTemaOscuro, sidebarCompactaActiva, temaOscuroActivo,
@@ -95,7 +96,7 @@ export default function ConfiguracionInicio() {
     <>
       <div className="page-header">
         <div>
-          <h1>⚙️ Configuración</h1>
+          <h1><IconoModulo ruta="/configuracion" /> Configuración</h1>
           <div className="subtitle">Ajustes del taller, catálogos, personal y accesos</div>
         </div>
       </div>

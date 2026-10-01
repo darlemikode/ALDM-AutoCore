@@ -5,6 +5,7 @@ import DataTable from "../components/DataTable";
 import ModalPortal from "../components/ModalPortal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 /**
  * Facturación electrónica (CFDI 4.0).
@@ -158,7 +159,7 @@ export default function Facturacion() {
     <>
       <div className="page-header">
         <div>
-          <h1>📑 Facturación electrónica</h1>
+          <h1><IconoModulo ruta="/facturacion" /> Facturación electrónica</h1>
           <div className="subtitle">
             CFDI 4.0 de ingreso · <span className={`badge ${modoClase}`}>{modoTexto}</span>
           </div>

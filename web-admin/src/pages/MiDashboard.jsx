@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import IconoModulo from "../components/IconoModulo";
 
 const ETIQUETAS_ETAPA = {
   recibido: "Recibido",
@@ -35,7 +36,7 @@ export default function MiDashboard() {
   if (error) {
     return (
       <>
-        <div className="page-header"><div><h1>📋 Mi dashboard</h1></div></div>
+        <div className="page-header"><div><h1><IconoModulo ruta="/mi-dashboard" /> Mi dashboard</h1></div></div>
         <div className="panel" style={{ borderLeft: "4px solid var(--red-600)" }}>{error}</div>
       </>
     );
@@ -45,7 +46,7 @@ export default function MiDashboard() {
     <>
       <div className="page-header">
         <div>
-          <h1>📋 Mi dashboard</h1>
+          <h1><IconoModulo ruta="/mi-dashboard" /> Mi dashboard</h1>
           <div className="subtitle">Hola, {data.nombre_empleado}</div>
         </div>
       </div>

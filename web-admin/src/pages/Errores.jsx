@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import IconoModulo from "../components/IconoModulo";
 
 export default function Errores() {
   const [filas, setFilas] = useState([]);
@@ -15,7 +16,7 @@ export default function Errores() {
 
   return (
     <div>
-      <div className="page-header"><h1>Errores del sistema</h1><p className="subtitle">Bitácora de errores de tu taller. Busca por el código que ve el usuario.</p></div>
+      <div className="page-header"><h1><IconoModulo ruta="/errores" /> Errores del sistema</h1><p className="subtitle">Bitácora de errores de tu taller. Busca por el código que ve el usuario.</p></div>
       <div className="card">
         <input placeholder="Buscar por código (ERR-…), ruta o mensaje" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: "100%", marginBottom: 12 }} />
         {cargando ? <p>Cargando…</p> : visibles.length === 0 ? <p>Sin errores registrados.</p> : visibles.map((e) => (

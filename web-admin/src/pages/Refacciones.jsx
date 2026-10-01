@@ -5,6 +5,7 @@ import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
+import IconoModulo from "../components/IconoModulo";
 
 export default function Refacciones() {
   const { confirmDialog, notify } = useUI();
@@ -148,7 +149,7 @@ export default function Refacciones() {
     <>
       <div className="page-header">
         <div>
-          <h1>⚙️ Refacciones</h1>
+          <h1><IconoModulo ruta="/refacciones" /> Refacciones</h1>
           <div className="subtitle">Inventario de partes del taller</div>
         </div>
         <button className="btn btn-primary" onClick={() => setEditing({})}>⚙️ Nueva refacción</button>

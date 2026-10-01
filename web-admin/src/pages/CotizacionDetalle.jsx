@@ -5,6 +5,7 @@ import FormModal from "../components/FormModal";
 import ModalPortal from "../components/ModalPortal";
 import { useAuth } from "../context/AuthContext";
 import { useUI } from "../context/UIContext";
+import IconoModulo from "../components/IconoModulo";
 
 function BloqueNota({ icono, titulo, acento, accion, children }) {
   return (
@@ -202,7 +203,7 @@ export default function CotizacionDetalle() {
     <>
       <div className="page-header">
         <div>
-          <h1>🧾 {cotizacion.titulo}</h1>
+          <h1><IconoModulo ruta="/cotizaciones" /> {cotizacion.titulo}</h1>
           <div className="orden-cliente-vehiculo">
             Cotización #{cotizacion.id_cotizacion} · {new Date(cotizacion.fecha_cotizacion).toLocaleDateString("es-MX")}
             {cotizacion.vigente_hasta && ` · Vigente hasta ${new Date(cotizacion.vigente_hasta).toLocaleDateString("es-MX")}`}

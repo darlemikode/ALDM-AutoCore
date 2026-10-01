@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useUI } from "../context/UIContext";
 import { sincronizarAhora, obtenerUltimaSincronizacion, formatearFechaSync } from "../sync";
+import IconoModulo from "../components/IconoModulo";
 
 /**
  * Guarda una copia local de clientes, vehículos, órdenes y refacciones en
@@ -39,7 +40,7 @@ export default function Sincronizacion() {
         <div className="page-header-titulo">
           <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
-            <h1>🔄 Sincronización</h1>
+            <h1><IconoModulo ruta="/sincronizacion" /> Sincronización</h1>
             <div className="subtitle">Guarda una copia local en este navegador para poder consultarla sin internet</div>
           </div>
         </div>

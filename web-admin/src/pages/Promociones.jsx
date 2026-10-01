@@ -5,6 +5,7 @@ import DataTable from "../components/DataTable";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 const CAMPOS = [
   { name: "titulo", label: "Título", required: true, full: true, grupo: "contenido" },
@@ -120,7 +121,7 @@ export default function Promociones() {
     <>
       <div className="page-header">
         <div>
-          <h1>🏷️ Promociones</h1>
+          <h1><IconoModulo ruta="/promociones" /> Promociones</h1>
           <div className="subtitle">Aparecen en el inicio de la app de tus clientes</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

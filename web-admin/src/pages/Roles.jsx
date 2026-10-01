@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { AccionesModulo, ICONO_ROL_BASE, detalleModulo, infoModulo } from "../components/permisosUI";
+import IconoModulo from "../components/IconoModulo";
 
 // Ciclo de acentos de color — igual que los badges del resto de la app,
 // más violeta/azul para tener variedad suficiente entre roles y módulos
@@ -162,7 +163,7 @@ export default function Roles() {
         <div className="page-header-titulo">
           <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
-            <h1>🛡️ Roles y permisos</h1>
+            <h1><IconoModulo ruta="/roles" /> Roles y permisos</h1>
             <div className="subtitle">Administrador General, Jefe de Taller, Asesor de Servicio, Técnico, y cualquier rol adicional que necesites</div>
           </div>
         </div>

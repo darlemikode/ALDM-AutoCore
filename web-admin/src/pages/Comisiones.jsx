@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
+import IconoModulo from "../components/IconoModulo";
 
 const ETIQUETAS = { efectivo: "Efectivo", tarjeta: "Pago con tarjeta", mixto: "Mixto" };
 
@@ -40,7 +41,7 @@ export default function Comisiones() {
         <div className="page-header-titulo">
           <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
-            <h1>💳 Comisiones por tipo de pago</h1>
+            <h1><IconoModulo ruta="/comisiones" /> Comisiones por tipo de pago</h1>
             <div className="subtitle">Se usa para mostrar la comisión estimada en cada nota/recibo finalizado</div>
           </div>
         </div>

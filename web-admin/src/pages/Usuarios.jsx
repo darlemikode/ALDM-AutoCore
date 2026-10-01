@@ -7,6 +7,7 @@ import ModalPortal from "../components/ModalPortal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
+import IconoModulo from "../components/IconoModulo";
 
 const TABS = [
   { key: "usuarios", label: "🔑 Usuarios" },
@@ -193,7 +194,7 @@ export default function Usuarios() {
         <div className="page-header-titulo">
           <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
-            <h1>👤 Usuarios</h1>
+            <h1><IconoModulo ruta="/usuarios" /> Usuarios</h1>
             <div className="subtitle">
               Cuentas de acceso al panel, la app del taller y la app de clientes ·{" "}
               <Link to="/roles">ver roles y permisos →</Link>

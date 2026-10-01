@@ -8,6 +8,8 @@ import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useUI } from "../context/UIContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
+import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 const COLORS = {
   petrol: "#1565a8",
@@ -79,7 +81,7 @@ export default function Dashboard() {
     <>
       <div className="page-header">
         <div>
-          <h1>🏠 Panel general</h1>
+          <h1><IconoModulo ruta="/" /> Panel general</h1>
           <div className="subtitle">Resumen del taller en tiempo real</div>
         </div>
       </div>
@@ -122,45 +124,45 @@ export default function Dashboard() {
 
       <div className="kpi-grid">
         <Link to="/clientes" className="kpi-card kpi-card-link">
-          <span className="kpi-icono">🧑</span>
+          <span className="kpi-icono"><Icono nombre="people" size={22} /></span>
           <div className="kpi-label">Clientes activos</div>
           <div className="kpi-value">{data.total_clientes}</div>
         </Link>
         <Link to="/vehiculos" className="kpi-card kpi-card-link">
-          <span className="kpi-icono">🚗</span>
+          <span className="kpi-icono"><Icono nombre="car" size={22} /></span>
           <div className="kpi-label">Vehículos registrados</div>
           <div className="kpi-value">{data.total_vehiculos}</div>
         </Link>
         <Link to="/servicios?status=abierto" className="kpi-card kpi-card-link">
-          <span className="kpi-icono">🔧</span>
+          <span className="kpi-icono"><Icono nombre="construct" size={22} /></span>
           <div className="kpi-label">Órdenes abiertas</div>
           <div className="kpi-value">{data.servicios_abiertos}</div>
         </Link>
         <Link to="/servicios" className="kpi-card kpi-card-link">
-          <span className="kpi-icono">📅</span>
+          <span className="kpi-icono"><Icono nombre="calendar" size={22} /></span>
           <div className="kpi-label">Servicios este mes</div>
           <div className="kpi-value">{data.servicios_este_mes}</div>
         </Link>
         <Link to="/refacciones" className={`kpi-card kpi-card-link ${data.refacciones_bajo_stock > 0 ? "alert" : "ok"}`}>
-          <span className="kpi-icono">📦</span>
+          <span className="kpi-icono"><Icono nombre="cube" size={22} /></span>
           <div className="kpi-label">Refacciones con poco stock</div>
           <div className="kpi-value">{data.refacciones_bajo_stock}</div>
         </Link>
         {hasPermission("dashboard.ver_por_cobrar") && (
           <Link to="/servicios?status=abierto" className={`kpi-card kpi-card-link ${data.saldo_pendiente_clientes > 0 ? "alert" : "ok"}`}>
-            <span className="kpi-icono">💰</span>
+            <span className="kpi-icono"><Icono nombre="card" size={22} /></span>
           <div className="kpi-label">Por cobrar</div>
             <div className="kpi-value">{fmt(data.saldo_pendiente_clientes)}</div>
           </Link>
         )}
         <Link to="/proveedores" className={`kpi-card kpi-card-link ${data.deuda_con_proveedores > 0 ? "alert" : "ok"}`}>
-          <span className="kpi-icono">🚚</span>
+          <span className="kpi-icono"><Icono nombre="business" size={22} /></span>
           <div className="kpi-label">Deuda con proveedores</div>
           <div className="kpi-value">{fmt(data.deuda_con_proveedores)}</div>
         </Link>
         {data.solicitudes_recuperacion_pendientes > 0 && (
           <div className="kpi-card alert">
-            <span className="kpi-icono">🔔</span>
+            <span className="kpi-icono"><Icono nombre="notifications" size={22} /></span>
             <div className="kpi-label">Solicitudes de acceso</div>
             <div className="kpi-value">
               <Link to="/usuarios" style={{ color: "inherit" }}>{data.solicitudes_recuperacion_pendientes}</Link>

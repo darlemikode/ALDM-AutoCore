@@ -27,6 +27,7 @@ export const ICONOS = {
   "/facturacion": "document",
   "/superadmin": "shield-check",
   "/errores": "warning",
+  "/configuracion": "settings",
 };
 
 // Color propio de cada módulo (insignia del menú lateral)
@@ -55,4 +56,5 @@ export const COLORES_ICONO = {
   "/usuarios": "#ffd166",
   "/asignacion-roles": "#a0b4ff",
   "/roles": "#6bdc8c",
+  "/configuracion": "#9fb3ba",
 };

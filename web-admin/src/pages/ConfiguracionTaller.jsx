@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import QrTaller from "../components/QrTaller";
+import IconoModulo from "../components/IconoModulo";
 
 /**
  * Los datos que aparecen en el encabezado del recibo y la nota de
@@ -139,7 +140,7 @@ export default function ConfiguracionTaller() {
         <div className="page-header-titulo">
           <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
-            <h1>🏢 Datos del taller</h1>
+            <h1><IconoModulo ruta="/configuracion-taller" /> Datos del taller</h1>
             <div className="subtitle">Esto aparece en el encabezado del recibo, la nota de remisión y tus facturas</div>
           </div>
         </div>

@@ -7,6 +7,7 @@ import ModalPortal from "../components/ModalPortal";
 import FotoGaleria from "../components/FotoGaleria";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 export default function Vehiculos() {
   const [params, setParams] = useSearchParams();
@@ -180,7 +181,7 @@ export default function Vehiculos() {
     <>
       <div className="page-header">
         <div>
-          <h1>🚗 Vehículos</h1>
+          <h1><IconoModulo ruta="/vehiculos" /> Vehículos</h1>
           <div className="subtitle">
             {idCliente ? "Filtrando por cliente seleccionado" : `${vehiculos.length} vehículo(s) registrados`}
           </div>

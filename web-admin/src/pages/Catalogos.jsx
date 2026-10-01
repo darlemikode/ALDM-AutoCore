@@ -4,6 +4,7 @@ import { api } from "../api";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 // Mismo ciclo de acentos que Roles y Super Admin — cada catálogo toma un color.
 const COLORES = ["petrol", "teal", "warn", "violet", "blue"];
@@ -247,7 +248,7 @@ export default function Catalogos() {
         <div className="page-header-titulo">
           <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
-            <h1>📚 Catálogos generales</h1>
+            <h1><IconoModulo ruta="/catalogos" /> Catálogos generales</h1>
             <div className="subtitle">
               Listas usadas en clientes, vehículos y refacciones
               {!puedeEditar && <span className="role-badge">Solo lectura</span>}

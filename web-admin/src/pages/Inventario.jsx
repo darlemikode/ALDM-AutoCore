@@ -4,6 +4,7 @@ import DataTable from "../components/DataTable";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 /**
  * Inventario — cada renglón es un registro de stock/precio para una
@@ -226,7 +227,7 @@ export default function Inventario() {
     <>
       <div className="page-header">
         <div>
-          <h1>📦 Inventario</h1>
+          <h1><IconoModulo ruta="/inventario" /> Inventario</h1>
           <div className="subtitle">Stock y precio por refacción, con las marcas/modelos de vehículo con las que es compatible</div>
         </div>
         {hasPermission("refacciones.crear") && (

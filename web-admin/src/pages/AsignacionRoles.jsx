@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { AccionesModulo, ICONO_ROL_BASE, detalleModulo, infoModulo } from "../components/permisosUI";
+import IconoModulo from "../components/IconoModulo";
 
 // Mismo ciclo de acentos que Roles y permisos
 const COLORES = ["petrol", "teal", "warn", "violet", "blue"];
@@ -99,7 +100,7 @@ export default function AsignacionRoles() {
         <div className="page-header-titulo">
           <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
-            <h1>🔗 Asignación de roles</h1>
+            <h1><IconoModulo ruta="/asignacion-roles" /> Asignación de roles</h1>
             <div className="subtitle">
               Quién es quién y qué rol tiene cada uno · <Link to="/roles">editar qué puede hacer cada rol →</Link>
             </div>

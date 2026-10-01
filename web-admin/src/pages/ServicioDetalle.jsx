@@ -10,6 +10,7 @@ import InspeccionForm from "../components/InspeccionForm";
 import FinalizarOrdenModal from "../components/FinalizarOrdenModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 function BloqueNota({ icono, titulo, acento, accion, children }) {
   return (
@@ -378,7 +379,7 @@ export default function ServicioDetalle() {
         <div className="orden-hero-top">
           <Link className="icon-btn" to="/servicios" title="Volver a las órdenes de servicio">←</Link>
           <h1 className="orden-hero-titulo">
-            🔧 Orden #{servicio.id_servicio}
+            <IconoModulo ruta="/servicios" /> Orden #{servicio.id_servicio}
             <span className={`badge badge-${servicio.status === "abierto" ? "petrol" : servicio.status === "cerrado" ? "teal" : "red"}`}>
               {servicio.status === "cerrado" ? "finalizada" : servicio.status}
             </span>

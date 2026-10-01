@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 const ESTADO_BADGE = { pendiente: "badge-petrol", confirmada: "badge-teal", rechazada: "badge-red" };
 
@@ -41,7 +42,7 @@ export default function Citas() {
     <>
       <div className="page-header">
         <div>
-          <h1>📅 Citas solicitadas</h1>
+          <h1><IconoModulo ruta="/citas" /> Citas solicitadas</h1>
           <div className="subtitle">Lo que los clientes piden desde su app — tú decides si se confirma</div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api";
+import IconoModulo from "../components/IconoModulo";
 
 /**
  * Consultas rápidas de uso interno para el staff del taller — no es de
@@ -117,7 +118,7 @@ export default function Asistente() {
     <>
       <div className="page-header">
         <div>
-          <h1>💬 Asistente</h1>
+          <h1><IconoModulo ruta="/asistente" /> Asistente</h1>
           <div className="subtitle">Consultas rápidas de uso interno — clientes, servicios por estatus y reportes</div>
         </div>
         {mensajes.length > 0 && (

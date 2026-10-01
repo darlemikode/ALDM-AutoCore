@@ -6,6 +6,7 @@ import ModalPortal from "../components/ModalPortal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
+import IconoModulo from "../components/IconoModulo";
 
 // Mismo ciclo de acentos que Roles y permisos, para que el avatar de cada
 // cliente tenga color propio sin salirse de la paleta de la app.
@@ -94,7 +95,7 @@ export default function Clientes() {
     <>
       <div className="page-header">
         <div>
-          <h1>🧑 Clientes</h1>
+          <h1><IconoModulo ruta="/clientes" /> Clientes</h1>
           <div className="subtitle">{clientes.length} cliente(s) activos</div>
         </div>
         <button className="btn btn-primary" onClick={() => setEditing({})}>

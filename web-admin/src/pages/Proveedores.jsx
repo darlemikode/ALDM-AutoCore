@@ -5,6 +5,7 @@ import DataTable from "../components/DataTable";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 const FIELDS = [
   { name: "nombre_proveedor", label: "Nombre", required: true, full: true, grupo: "general" },
@@ -68,7 +69,7 @@ export default function Proveedores() {
     <>
       <div className="page-header">
         <div>
-          <h1>🚚 Proveedores</h1>
+          <h1><IconoModulo ruta="/proveedores" /> Proveedores</h1>
           <div className="subtitle">
             {proveedores.length} proveedor(es)
             {!hasPermission("proveedores.crear") && <span className="role-badge">Solo lectura</span>}

@@ -5,6 +5,7 @@ import DataTable from "../components/DataTable";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
+import IconoModulo from "../components/IconoModulo";
 
 const CAMPOS = [
   { name: "nombre", label: "Nombre", required: true, grupo: "personal" },
@@ -79,7 +80,7 @@ export default function Empleados() {
         <div className="page-header-titulo">
           <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
-            <h1>👷 Empleados</h1>
+            <h1><IconoModulo ruta="/empleados" /> Empleados</h1>
             <div className="subtitle">Catálogo del personal del taller — solo el Administrador General lo administra</div>
           </div>
         </div>
