@@ -1418,7 +1418,8 @@ tbody td:last-child {
      del mismo tamaño y centrados — antes el glifo quedaba "encimado" con
      el borde del campo al escribir. */
 }
-.input-icono input { padding-left: 36px; }
+/* Mayor especificidad que la regla genérica de input: el texto empieza a un costado del ícono, no debajo */
+.input-icono input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) { padding-left: 40px; }
 
 .cliente-modal-header {
   display: flex;
