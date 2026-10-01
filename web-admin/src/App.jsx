@@ -16,6 +16,7 @@ import ConfiguracionTaller from "./pages/ConfiguracionTaller";
 import Comisiones from "./pages/Comisiones";
 import Inventario from "./pages/Inventario";
 import Errores from "./pages/Errores";
+import NuevaOrden from "./pages/NuevaOrden";
 import Sincronizacion from "./pages/Sincronizacion";
 import MiDashboard from "./pages/MiDashboard";
 import Refacciones from "./pages/Refacciones";
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="clientes" element={<RequirePermission clave="clientes.ver"><Clientes /></RequirePermission>} />
         <Route path="vehiculos" element={<RequirePermission clave="vehiculos.ver"><Vehiculos /></RequirePermission>} />
         <Route path="servicios" element={<RequirePermission clave="servicios.ver"><Servicios /></RequirePermission>} />
+        <Route path="servicios/nueva" element={<RequirePermission clave="servicios.crear"><NuevaOrden /></RequirePermission>} />
         <Route path="servicios/:id" element={<RequirePermission clave="servicios.ver"><ServicioDetalle /></RequirePermission>} />
         <Route path="cotizaciones" element={<RequirePermission clave="cotizaciones.ver"><Cotizaciones /></RequirePermission>} />
         <Route path="cotizaciones/:id" element={<RequirePermission clave="cotizaciones.ver"><CotizacionDetalle /></RequirePermission>} />

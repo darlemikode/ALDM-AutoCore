@@ -286,7 +286,7 @@ export default function Servicios() {
           <h1><IconoModulo ruta="/servicios" /> Órdenes de servicio</h1>
           <div className="subtitle">{servicios.length} orden(es)</div>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>
+        <button className="btn btn-primary" onClick={() => (verificacion2Pasos ? openCreate() : navigate("/servicios/nueva"))}>
           🔧 Nueva orden
         </button>
       </div>

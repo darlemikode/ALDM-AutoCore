@@ -504,6 +504,13 @@ button {
 .kpi-card-accion .kpi-icono { background: rgba(255,255,255,0.22); color: #fff; box-shadow: none; }
 .kpi-accion-mas { font-family: var(--font-display); font-size: 30px; font-weight: 700; margin-top: 10px; }
 .kpi-accion-sub { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+.buscador-select input { width: 100%; padding-right: 30px; }
+.buscador-limpiar { position: absolute; right: 8px; bottom: 8px; border: none; background: none; color: var(--ink-500); font-size: 20px; line-height: 1; cursor: pointer; }
+.buscador-lista { position: absolute; z-index: 60; left: 0; right: 0; top: calc(100% + 4px); max-height: 280px; overflow-y: auto; background: var(--paper-100); border: 1.5px solid var(--petrol-500); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.35); }
+.buscador-item { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; border: none; background: none; color: var(--ink-900); padding: 9px 12px; cursor: pointer; border-bottom: 1px solid var(--contorno); }
+.buscador-item small { color: var(--ink-500); font-size: 12px; }
+.buscador-item:hover, .buscador-item.activo { background: color-mix(in srgb, var(--petrol-500) 18%, transparent); }
+.buscador-vacio { padding: 12px; color: var(--ink-500); font-size: 13px; }
 .h1-icono {
   --ico: var(--petrol-500);
   display: inline-flex; align-items: center; justify-content: center;
