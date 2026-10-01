@@ -6,6 +6,7 @@ import BuscadorSelect from "./BuscadorSelect";
 import ClienteFormModal from "./ClienteFormModal";
 import FormModal from "./FormModal";
 import ModalPortal from "./ModalPortal";
+import { Icono } from "./Icono";
 
 /*
  * Ventana emergente para fijar el cliente y el vehículo de una orden:
@@ -102,23 +103,30 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
   return (
     <ModalPortal>
       <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCerrar()}>
-        <div className="modal" style={{ maxWidth: 520, overflow: "visible" }}>
-          <h2 style={{ fontSize: 20 }}>Cliente y vehículo de la orden</h2>
+        <div className="modal ecv-modal" style={{ maxWidth: 560, overflow: "visible" }}>
+          <div className="ecv-cabecera">
+            <span className="ecv-icono"><Icono nombre="construct" size={22} /></span>
+            <div><h2 style={{ fontSize: 22, margin: 0 }}>Cliente y vehículo</h2><div className="subtitle">Elige o agrega a quién se le hace el servicio</div></div>
+          </div>
+          <div className="ecv-pasos">
+            <span className={"ecv-paso" + (idCliente ? " listo" : " activo")}>1 · Cliente{idCliente ? " ✓" : ""}</span>
+            <span className={"ecv-paso" + (idVehiculo ? " listo" : idCliente ? " activo" : "")}>2 · Vehículo{idVehiculo ? " ✓" : ""}</span>
+          </div>
           <BuscadorSelect label="Cliente" opciones={opcionesCliente} value={idCliente} onChange={elegirCliente} placeholder="Buscar por nombre, cuenta o teléfono…" />
           {hasPermission("clientes.crear") && (
-            <button type="button" className="btn btn-secondary btn-sm" style={{ margin: "6px 0 14px" }} onClick={() => setNuevoCliente(true)}>＋ Agregar cliente</button>
+            <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoCliente(true)}>＋ Agregar cliente nuevo</button>
           )}
           {cliente && (
             <>
               <BuscadorSelect label="Vehículo" opciones={opcionesVehiculo} value={idVehiculo} onChange={elegirVehiculo} placeholder="Buscar por marca, modelo o placas…" vacio="Este cliente no tiene vehículos" />
               {hasPermission("vehiculos.crear") && (
-                <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 6 }} onClick={() => setNuevoVehiculo(true)}>＋ Agregar vehículo</button>
+                <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoVehiculo(true)}>＋ Agregar vehículo nuevo</button>
               )}
             </>
           )}
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={onCerrar}>Cancelar</button>
-            <button className="btn btn-primary" onClick={confirmar} disabled={guardando || !idCliente}>{guardando ? "Guardando…" : "Aceptar"}</button>
+            <button className="btn btn-primary" onClick={confirmar} disabled={guardando || !idCliente}>{guardando ? "Guardando…" : "Aceptar y continuar"}</button>
           </div>
         </div>
       </div>

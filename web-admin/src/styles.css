@@ -504,6 +504,16 @@ button {
 .kpi-card-accion .kpi-icono { background: rgba(255,255,255,0.22); color: #fff; box-shadow: none; }
 .kpi-accion-mas { font-family: var(--font-display); font-size: 30px; font-weight: 700; margin-top: 10px; }
 .kpi-accion-sub { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+.ecv-cabecera { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.ecv-icono { width: 48px; height: 48px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; background: linear-gradient(135deg, var(--petrol-500), var(--teal-600)); box-shadow: 0 6px 18px color-mix(in srgb, var(--petrol-500) 45%, transparent); }
+.ecv-pasos { display: flex; gap: 8px; margin-bottom: 16px; }
+.ecv-paso { flex: 1; text-align: center; padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 700; letter-spacing: 0.03em;
+  background: color-mix(in srgb, var(--ink-500) 14%, transparent); color: var(--ink-500); }
+.ecv-paso.activo { background: color-mix(in srgb, var(--petrol-500) 24%, transparent); color: var(--ink-900); box-shadow: inset 0 0 0 1.5px var(--petrol-500); }
+.ecv-paso.listo { background: color-mix(in srgb, var(--teal-600) 26%, transparent); color: var(--ink-900); }
+.ecv-agregar { width: 100%; justify-content: center; margin: 8px 0 16px; padding: 11px; font-weight: 700; border-style: dashed; }
+.ecv-modal .modal-actions .btn { padding: 12px 20px; font-size: 15px; }
 .buscador-select input { width: 100%; padding-right: 30px; }
 .buscador-limpiar { position: absolute; right: 8px; bottom: 8px; border: none; background: none; color: var(--ink-500); font-size: 20px; line-height: 1; cursor: pointer; }
 .buscador-lista { position: absolute; z-index: 60; left: 0; right: 0; top: calc(100% + 4px); max-height: 280px; overflow-y: auto; background: var(--paper-100); border: 1.5px solid var(--petrol-500); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.35); }
@@ -1397,6 +1407,38 @@ tbody td:last-child {
 .permiso-toggle:focus-within { outline: 2px solid var(--acc); outline-offset: 1px; }
 
 /* ---------------- Clientes — rediseño ---------------- */
+/* ---- Tarjetas de cliente (versión llamativa) ---- */
+.clientes-lista { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px !important; }
+.cliente-card {
+  display: flex !important; flex-direction: column; align-items: stretch !important; gap: 12px !important;
+  padding: 18px !important; border-radius: 16px !important; position: relative; overflow: hidden;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 14%, var(--paper-100)) 0%, var(--paper-100) 55%) !important;
+  border: 1px solid color-mix(in srgb, var(--acc) 35%, var(--contorno)) !important;
+}
+.cliente-card::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 4px; background: var(--acc); }
+.cliente-card:hover { transform: translateY(-3px) !important; box-shadow: 0 12px 28px rgba(0,0,0,0.28) !important; }
+.cliente-top { display: flex; align-items: center; gap: 14px; }
+.cliente-avatar { width: 54px !important; height: 54px !important; font-size: 18px !important; border-radius: 16px !important;
+  background: color-mix(in srgb, var(--acc) 26%, transparent) !important; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--acc) 55%, transparent); }
+.cliente-nombre { font-size: 17px !important; font-family: var(--font-display); letter-spacing: 0.02em; }
+.cliente-nombre a { text-decoration: none; }
+.cliente-sub { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 5px; }
+.cliente-datos { flex-direction: column; gap: 6px !important; }
+.cliente-dato { color: var(--ink-700); }
+.cliente-dato svg { color: var(--acc); flex: none; }
+.cliente-rapidas { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.cliente-rapida {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 8px; border-radius: 10px;
+  font-size: 13px; font-weight: 700; text-decoration: none; color: var(--ink-900);
+  background: color-mix(in srgb, var(--acc) 16%, transparent); border: 1px solid color-mix(in srgb, var(--acc) 40%, transparent);
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+.cliente-rapida:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--acc) 30%, transparent); }
+.cliente-rapida { cursor: pointer; font-family: inherit; }
+.cliente-rapida-fuerte { background: var(--petrol-500); border-color: var(--petrol-500); color: #fff; }
+.cliente-rapida-wa { background: color-mix(in srgb, #25d366 22%, transparent); border-color: color-mix(in srgb, #25d366 55%, transparent); }
+.cliente-acciones { justify-content: flex-end; padding-top: 4px; border-top: 1px solid var(--contorno); }
+
 .clientes-lista {
   display: flex;
   flex-direction: column;

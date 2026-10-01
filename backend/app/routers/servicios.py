@@ -183,7 +183,7 @@ def _exigir_cliente_y_vehiculo(servicio):
 @router.post("/", response_model=schemas.ServicioCompletoOut, status_code=201)
 def crear(payload: schemas.ServicioIn, db: Session = Depends(get_db), user=Depends(require_permission("servicios.crear"))):
     if payload.id_vehiculo is not None or payload.id_cliente is not None or payload.es_garantia:
-        _validar_cliente_vehiculo(db, payload.id_cliente, payload.id_vehiculo, exigir_ambos=True)
+        _validar_cliente_vehiculo(db, payload.id_cliente, payload.id_vehiculo, exigir_ambos=payload.es_garantia)
     # La autorización del cliente (con código) es OPCIONAL — depende del
     # interruptor "Verificación en 2 pasos" en Datos del taller. Antes esto
     # era obligatorio siempre, lo cual hacía inútil ese interruptor.
