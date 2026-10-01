@@ -374,9 +374,9 @@ class VehiculoIn(BaseModel):
         return v or None
 
     id_color: Optional[int] = None
-    cilindraje_vehiculo: Optional[str] = None
-    id_year_vehiculo: Optional[str] = None
-    km_vehiculo: Optional[str] = None
+    cilindraje_vehiculo: KmTexto = None
+    id_year_vehiculo: KmTexto = None
+    km_vehiculo: KmTexto = None
     comentarios: Optional[str] = None
     estado_vehiculo: str = "activo"  # "activo" | "vendido"
 
