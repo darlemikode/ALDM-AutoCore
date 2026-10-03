@@ -29,13 +29,13 @@ INK_2 = colors.HexColor("#3a4452")
 MUTED = colors.HexColor("#6b7480")
 LINE = colors.HexColor("#d9dee4")
 SOFT = colors.HexColor("#eef2f4")
-PANEL = colors.HexColor("#f7f9fa")
-SOMBRA = colors.HexColor("#d3dae0")
-FONDO_PAGINA = colors.HexColor("#eceff2")
-BORDE_TARJETA = colors.HexColor("#c3ccd5")
+PANEL = colors.HexColor("#eef2f5")
+SOMBRA = colors.HexColor("#b4bfca")
+FONDO_PAGINA = colors.HexColor("#dde3e9")
+BORDE_TARJETA = colors.HexColor("#8795a3")
 # Azul petróleo: color de marca de los documentos
 ACCENT = colors.HexColor("#0f5c6e")
-ACCENT_SOFT = colors.HexColor("#e1eff2")
+ACCENT_SOFT = colors.HexColor("#cfe5ea")
 # Rojo: solo para estados (Mal, cancelada, sin validez fiscal)
 ROJO = colors.HexColor("#c8372d")
 ROJO_SOFT = colors.HexColor("#fdecea")
@@ -213,7 +213,7 @@ class Sombra(Flowable):
     """Dibuja un bloque con sombreado (sombra desplazada abajo-derecha)
     para que cada división del documento se distinga a simple vista."""
 
-    def __init__(self, contenido, desplazamiento=0, radio=6):
+    def __init__(self, contenido, desplazamiento=1.4, radio=6):
         super().__init__()
         self.contenido = contenido
         self.hAlign = getattr(contenido, "hAlign", "LEFT")
@@ -281,7 +281,7 @@ def tarjeta(campos, ancho: float, columnas: int = 3, fondo=colors.white, borde=N
     ]
     if fondo is not None:
         estilo.append(("BACKGROUND", (0, 0), (-1, -1), fondo))
-    estilo.append(("BOX", (0, 0), (-1, -1), 1, borde or BORDE_TARJETA))
+    estilo.append(("BOX", (0, 0), (-1, -1), 1.2, borde or BORDE_TARJETA))
     t.setStyle(TableStyle(estilo))
     return Sombra(t)
 
@@ -325,7 +325,7 @@ def tabla_conceptos(encabezados, filas, anchos, alinear_derecha=(), vacio="Sin c
         estilo.append(("BACKGROUND", (0, i), (-1, i), colors.white if i % 2 else PANEL))
     if len(cuerpo) == 1 and not filas:
         estilo.append(("SPAN", (0, 1), (-1, 1)))
-    estilo.append(("BOX", (0, 0), (-1, -1), 1, BORDE_TARJETA))
+    estilo.append(("BOX", (0, 0), (-1, -1), 1.2, BORDE_TARJETA))
     t.setStyle(TableStyle(estilo))
     return Sombra(t, radio=6)
 
@@ -352,7 +352,7 @@ def totales(filas, ancho_total: float, destacar_ultima: bool = True, color_final
         estilo += [("BACKGROUND", (0, u), (-1, u), color_final),
                    ("TOPPADDING", (0, u), (-1, u), 6), ("BOTTOMPADDING", (0, u), (-1, u), 6)]
     t = Table(datos, colWidths=[ancho * 0.55, ancho * 0.45], hAlign="RIGHT")
-    estilo = [("BACKGROUND", (0, 0), (-1, -1), colors.white), ("BOX", (0, 0), (-1, -1), 1, BORDE_TARJETA), ("ROUNDEDCORNERS", [8, 8, 8, 8])] + estilo
+    estilo = [("BACKGROUND", (0, 0), (-1, -1), colors.white), ("BOX", (0, 0), (-1, -1), 1.2, BORDE_TARJETA), ("ROUNDEDCORNERS", [8, 8, 8, 8])] + estilo
     t.setStyle(TableStyle(estilo))
     return Sombra(t, radio=6)
 
