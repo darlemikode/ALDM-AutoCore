@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
+import FiltroChips, { colorGrupo, contarPor } from "../components/FiltroChips";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
@@ -244,13 +245,8 @@ export default function Inventario() {
             onChange={(e) => setQ(e.target.value)}
             style={{ flex: 1, minWidth: 220 }}
           />
-          <div className="field" style={{ maxWidth: 260, marginBottom: 0 }}>
-            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
-              <option value="">Todas las categorías</option>
-              {categoriasDisponibles.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
         </div>
+        <FiltroChips items={contarPor(filas, (r) => r.refaccion?.categoria || "Sin categoría")} valor={filtroCategoria} onChange={setFiltroCategoria} total={filas.length} />
         {loading ? (
           <div className="loading-text">Cargando…</div>
         ) : filasFiltradas.length === 0 ? (
@@ -266,6 +262,7 @@ export default function Inventario() {
                 {cat}
               </div>
               <DataTable
+                acentoFila={() => colorGrupo(cat)}
                 columns={columns}
                 rows={gruposPorCategoria[cat]}
                 onEdit={hasPermission("refacciones.editar") ? (r) => { setEditing(r); setCompatNueva({ id_marca_vehiculo: "", id_modelo_vehiculo: "" }); } : undefined}

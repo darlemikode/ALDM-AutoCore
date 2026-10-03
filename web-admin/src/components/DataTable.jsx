@@ -1,6 +1,8 @@
 // Mismo ciclo de acentos que Roles y Clientes — cada fila toma un color
 // distinto (borde izquierdo) para que las tablas largas se lean más rápido
 // y no se vean todas iguales.
+import { Icono } from "./Icono";
+
 const COLORES = ["petrol", "teal", "warn", "violet", "blue"];
 function acentoDe(indice) {
   const c = COLORES[indice % COLORES.length];
@@ -15,7 +17,7 @@ function acentoDe(indice) {
  * extraActions?(row): opcional, regresa JSX extra para la columna de acciones
  * emptyMessage: texto cuando no hay filas
  */
-export default function DataTable({ columns, rows, onEdit, onDelete, extraActions, emptyMessage = "Sin registros todavía." }) {
+export default function DataTable({ columns, rows, onEdit, onDelete, extraActions, acentoFila, emptyMessage = "Sin registros todavía." }) {
   if (!rows || rows.length === 0) {
     return <div className="empty-state">{emptyMessage}</div>;
   }
@@ -32,7 +34,7 @@ export default function DataTable({ columns, rows, onEdit, onDelete, extraAction
       </thead>
       <tbody>
         {rows.map((row, i) => (
-          <tr key={row.id ?? i} style={acentoDe(i)}>
+          <tr key={row.id ?? i} style={acentoFila ? { "--acc": acentoFila(row) } : acentoDe(i)}>
             {columns.map((col) => (
               <td key={col.key}>{col.render ? col.render(row) : row[col.key]}</td>
             ))}
@@ -41,13 +43,13 @@ export default function DataTable({ columns, rows, onEdit, onDelete, extraAction
                 <div className="row-actions">
                   {extraActions && extraActions(row)}
                   {onEdit && (
-                    <button className="btn btn-secondary btn-sm" onClick={() => onEdit(row)}>
-                      Editar
+                    <button className="btn-icono" title="Editar" aria-label="Editar" onClick={() => onEdit(row)}>
+                      <Icono nombre="pencil" size={18} />
                     </button>
                   )}
                   {onDelete && (
-                    <button className="btn btn-danger btn-sm" onClick={() => onDelete(row)}>
-                      Eliminar
+                    <button className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => onDelete(row)}>
+                      <Icono nombre="trash" size={18} />
                     </button>
                   )}
                 </div>

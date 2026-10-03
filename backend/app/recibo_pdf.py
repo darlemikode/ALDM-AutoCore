@@ -46,27 +46,35 @@ def descripcion_vehiculo(v) -> str:
     return " ".join(filter(None, partes)) or "—"
 
 
-def bloques_cliente_vehiculo(servicio, extra_vehiculo=()):
-    """Tarjetas Cliente | Vehículo, compartidas por recibo y nota de remisión."""
+def bloques_cliente_vehiculo(servicio, extra_vehiculo=(), con_comentario=False):
+    """Tarjetas Cliente | Vehículo del mismo tamaño, compartidas por recibo y nota de remisión."""
     c, v = servicio.cliente, servicio.vehiculo
     nombre = " ".join(filter(None, [c.nombre_cliente, c.paterno_cliente, c.materno_cliente])) if c else "—"
+    ancho_tarjeta = (ANCHO - 5 * mm) / 2
+    alto_fila = 12.5 * mm
     cliente = tarjeta([
         ("Nombre", nombre),
-        ("Cuenta", c.numero_cuenta if c else "—"),
         ("Teléfono", (c.telefono1 if c else None) or "—"),
         ("Correo", (c.correo_cliente if c else None) or "—"),
-    ], (ANCHO - 5 * mm) / 2, columnas=2)
+    ], ancho_tarjeta, columnas=1, alto_fila=alto_fila)
     vehiculo = tarjeta([
         ("Vehículo", descripcion_vehiculo(v)),
         ("Placas", (v.placas_vehiculo if v else None) or "—"),
         ("Color", (v.color.nombre_color if v and v.color else None) or "—"),
-        ("Cuenta vehículo", v.numero_cuenta if v else "—"),
-        *extra_vehiculo,
-    ], (ANCHO - 5 * mm) / 2, columnas=2)
+        ("VIN", (v.numserie_vehiculo if v else None) or "—"),
+        ("Km de llegada", servicio.km_llegada or "—"),
+        ("Km próximo servicio", servicio.km_proximo_servicio or "—"),
+    ], ancho_tarjeta, columnas=2, alto_fila=alto_fila)
     encabezados = dos_columnas(
         Paragraph("CLIENTE", E["etiqueta"]), Paragraph("VEHÍCULO", E["etiqueta"]), ANCHO,
     )
-    return [encabezados, Spacer(1, 1.5 * mm), dos_columnas(cliente, vehiculo, ANCHO)]
+    bloques = [encabezados, Spacer(1, 1.5 * mm), dos_columnas(cliente, vehiculo, ANCHO)]
+    if con_comentario:
+        bloques += [
+            Spacer(1, 4 * mm), Paragraph("COMENTARIO", E["etiqueta"]), Spacer(1, 1.5 * mm),
+            caja_texto(servicio.comentarios_finales or "Sin comentarios.", ANCHO),
+        ]
+    return bloques
 
 
 def generar_recibo_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion=None) -> bytes:
@@ -82,22 +90,23 @@ def generar_recibo_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion
     doc = plantilla.documento(buffer)
     story = []
 
-    story += bloques_cliente_vehiculo(servicio, extra_vehiculo=[("Km de llegada", servicio.km_llegada or "—")])
+    story += bloques_cliente_vehiculo(servicio, con_comentario=True)
 
-    story += seccion("Conceptos", ANCHO, derecha=f"{len(servicio.detalles)} concepto(s)")
+    story += seccion("Refacciones", ANCHO, derecha=f"{len(servicio.detalles)} refacción(es)")
     filas = []
     for d in servicio.detalles:
         refaccion = nombre_refaccion(d)
+        principal = refaccion or d.descripcion or "Refacción"
         concepto = Paragraph(
-            esc(d.descripcion or refaccion or "Concepto") + (f"<br/><font size='7.5' color='#6b7480'>Refacción: {esc(refaccion)}</font>" if refaccion else ""),
+            f"<b>{esc(principal)}</b>" + (f"<br/><font size='7.5' color='#6b7480'>{esc(d.descripcion)}</font>" if d.descripcion and d.descripcion != principal else ""),
             E["celda"],
         )
         importe = (d.costo_mano_obra or 0) + (d.costo_refaccion or 0) + (d.costo_extra or 0)
         cant = d.cantidad or 1
-        filas.append([concepto, str(cant), fmt(importe / cant), Paragraph(f"<b>{fmt(importe)}</b>", E["celda_der"])])
+        filas.append([concepto, str(cant), fmt(importe / cant), Paragraph(f"<b>{fmt(importe)}</b>", E["celda_centro"])])
     story.append(tabla_conceptos(
-        ["Concepto", "Cant.", "Precio unitario", "Importe"], filas,
-        [ANCHO * w for w in (0.52, 0.10, 0.19, 0.19)], alinear_derecha=(1, 2, 3),
+        ["Refacción", "Cant.", "Precio unitario", "Importe"], filas,
+        [ANCHO * w for w in (0.46, 0.14, 0.20, 0.20)], alinear_centro=(1, 2, 3),
     ))
     story.append(Spacer(1, 5 * mm))
 
@@ -123,10 +132,6 @@ def generar_recibo_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion
     bloque = Table([[izquierda, derecha]], colWidths=[ANCHO - 82 * mm, 82 * mm])
     bloque.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
     story.append(bloque)
-
-    if servicio.comentarios_finales:
-        story += seccion("Comentarios", ANCHO)
-        story.append(caja_texto(servicio.comentarios_finales, ANCHO))
 
     story.append(Spacer(1, 8 * mm))
     story.append(Paragraph(
@@ -155,20 +160,21 @@ def generar_cotizacion_pdf(cotizacion, costos, taller=None) -> bytes:
         ("Vigencia", pastilla(vigencia, OK, OK_SOFT) if cotizacion.vigente_hasta else vigencia),
     ], ANCHO, columnas=3)]
 
-    story += seccion("Conceptos", ANCHO)
+    story += seccion("Refacciones", ANCHO)
     filas = []
     for d in cotizacion.detalles:
         refaccion = d.refaccion.nombre_refaccion if d.refaccion else None
+        principal = refaccion or d.descripcion or "Refacción"
         concepto = Paragraph(
-            esc(d.descripcion or refaccion or "Concepto") + (f"<br/><font size='7.5' color='#6b7480'>Refacción: {esc(refaccion)}</font>" if refaccion else ""),
+            f"<b>{esc(principal)}</b>" + (f"<br/><font size='7.5' color='#6b7480'>{esc(d.descripcion)}</font>" if d.descripcion and d.descripcion != principal else ""),
             E["celda"],
         )
         importe = (d.costo_mano_obra or 0) + (d.costo_refaccion or 0) + (d.costo_extra or 0)
         cant = d.cantidad or 1
-        filas.append([concepto, str(cant), fmt(importe / cant), Paragraph(f"<b>{fmt(importe)}</b>", E["celda_der"])])
+        filas.append([concepto, str(cant), fmt(importe / cant), Paragraph(f"<b>{fmt(importe)}</b>", E["celda_centro"])])
     story.append(tabla_conceptos(
-        ["Concepto", "Cant.", "Precio unitario", "Importe"], filas,
-        [ANCHO * w for w in (0.52, 0.10, 0.19, 0.19)], alinear_derecha=(1, 2, 3),
+        ["Refacción", "Cant.", "Precio unitario", "Importe"], filas,
+        [ANCHO * w for w in (0.46, 0.14, 0.20, 0.20)], alinear_centro=(1, 2, 3),
     ))
     story.append(Spacer(1, 5 * mm))
     story.append(totales([

@@ -1,11 +1,47 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import DataTable from "../components/DataTable";
+import { Icono } from "../components/Icono";
+import FiltroChips, { colorGrupo as colorCategoria, contarPor } from "../components/FiltroChips";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 import IconoModulo from "../components/IconoModulo";
+
+// Dato que se edita con un toque: texto, número o lista
+function Editable({ valor, mostrar, tipo = "text", opciones, puede, onGuardar }) {
+  const [editando, setEditando] = useState(false);
+  const [borrador, setBorrador] = useState("");
+  if (!puede) return <>{mostrar}</>;
+  const abrir = () => { setBorrador(valor ?? ""); setEditando(true); };
+  const guardar = (nuevo) => {
+    setEditando(false);
+    if (String(nuevo ?? "") !== String(valor ?? "")) onGuardar(nuevo);
+  };
+  if (editando) {
+    if (opciones) {
+      return (
+        <select className="inline-input" autoFocus value={borrador} onChange={(e) => guardar(e.target.value)} onBlur={() => setEditando(false)}>
+          <option value="">— Ninguna —</option>
+          {opciones.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      );
+    }
+    return (
+      <input
+        className="inline-input" autoFocus type={tipo} value={borrador}
+        onChange={(e) => setBorrador(e.target.value)}
+        onBlur={() => guardar(borrador)}
+        onKeyDown={(e) => { if (e.key === "Enter") guardar(borrador); if (e.key === "Escape") setEditando(false); }}
+      />
+    );
+  }
+  return (
+    <span className="inline-ed" role="button" tabIndex={0} title="Toca para cambiar" onClick={abrir} onKeyDown={(e) => e.key === "Enter" && abrir()}>
+      {mostrar}<span className="inline-ed-lapiz"><Icono nombre="pencil" size={13} /></span>
+    </span>
+  );
+}
 
 export default function Refacciones() {
   const { confirmDialog, notify } = useUI();
@@ -21,6 +57,7 @@ export default function Refacciones() {
   const [editing, setEditing] = useState(null);
   const [compatNueva, setCompatNueva] = useState({ id_marca_vehiculo: "", id_modelo_vehiculo: "" });
   const [loading, setLoading] = useState(true);
+  const [catSel, setCatSel] = useState("");
 
   async function load() {
     setLoading(true);
@@ -142,6 +179,30 @@ export default function Refacciones() {
     }
   }
 
+  // Cambia un solo dato desde la lista (el API pide la refacción completa)
+  async function actualizarCampo(r, cambios) {
+    const base = {
+      id_marca_refaccion: r.id_marca_refaccion, id_proveedor: r.id_proveedor, nombre_refaccion: r.nombre_refaccion,
+      numero_refaccion: r.numero_refaccion, categoria: r.categoria, subcategoria: r.subcategoria,
+      preciopropio_refaccion: r.preciopropio_refaccion, preciocliente_refaccion: r.preciocliente_refaccion,
+      cantidad_refaccion: r.cantidad_refaccion, umbral_naranja: r.umbral_naranja, umbral_rojo: r.umbral_rojo,
+      posicion: r.posicion, id_marca_vehiculo_compatible: r.id_marca_vehiculo_compatible,
+      id_modelo_vehiculo_compatible: r.id_modelo_vehiculo_compatible, sku_interno: r.sku_interno,
+      codigo_barras: r.codigo_barras, ubicacion_fisica: r.ubicacion_fisica, zona_abc: r.zona_abc,
+    };
+    try {
+      const nueva = await api.put(`/refacciones/${r.id_refaccion}`, { ...base, ...cambios });
+      setRefacciones((prev) => prev.map((x) => (x.id_refaccion === r.id_refaccion ? { ...x, ...nueva } : x)));
+      notify("Actualizado.", "success");
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
+
+  const puedeEditar = hasPermission("refacciones.editar");
+  const conteoCat = contarPor(refacciones, (r) => r.categoria || "Sin categoría");
+  const visibles = catSel ? refacciones.filter((r) => (r.categoria || "Sin categoría") === catSel) : refacciones;
+
   function nombreMarca(id) { return marcas.find((m) => m.id_marca_refaccion === id)?.nombre_marca || "—"; }
   const fmt = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
@@ -163,30 +224,65 @@ export default function Refacciones() {
           </button>
         </div>
 
+        <FiltroChips items={conteoCat} valor={catSel} onChange={setCatSel} total={refacciones.length} />
+
         {loading ? (
           <div className="loading-text">Cargando…</div>
+        ) : visibles.length === 0 ? (
+          <div className="empty-state">No hay refacciones registradas.</div>
         ) : (
-          <DataTable
-            columns={[
-              { key: "nombre_refaccion", label: "Nombre" },
-              { key: "numero_refaccion", label: "Número de parte" },
-              { key: "categoria", label: "Categoría", render: (r) => r.categoria ? `${r.categoria}${r.subcategoria ? " / " + r.subcategoria : ""}` : "—" },
-              { key: "marca", label: "Marca", render: (r) => nombreMarca(r.id_marca_refaccion) },
-              {
-                key: "cantidad_refaccion", label: "Stock",
-                render: (r) => (
-                  <span className={`badge ${r.cantidad_refaccion <= 3 ? "badge-red" : "badge-teal"}`}>
-                    {r.cantidad_refaccion}
-                  </span>
-                ),
-              },
-              { key: "preciocliente_refaccion", label: "Precio cliente", render: (r) => fmt(r.preciocliente_refaccion) },
-            ]}
-            rows={refacciones}
-            onEdit={abrirParaEditar}
-            onDelete={hasPermission("refacciones.eliminar") ? handleDelete : undefined}
-            emptyMessage="No hay refacciones registradas."
-          />
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Número de parte</th><th>Categoría</th><th>Marca</th><th>Stock</th><th>Precio cliente</th><th></th></tr>
+            </thead>
+            <tbody>
+              {visibles.map((r) => {
+                const cat = r.categoria || "Sin categoría";
+                const col = colorCategoria(cat);
+                return (
+                  <tr key={r.id_refaccion} style={{ "--acc": col }}>
+                    <td><Editable puede={puedeEditar} valor={r.nombre_refaccion} mostrar={r.nombre_refaccion} onGuardar={(v) => v.trim() && actualizarCampo(r, { nombre_refaccion: v.trim() })} /></td>
+                    <td><Editable puede={puedeEditar} valor={r.numero_refaccion} mostrar={r.numero_refaccion || "—"} onGuardar={(v) => actualizarCampo(r, { numero_refaccion: v.trim() || null })} /></td>
+                    <td>
+                      <Editable
+                        puede={puedeEditar} valor={categoriasRefaccion.find((c) => c.nombre_categoria === r.categoria)?.id_categoria_refaccion ?? ""}
+                        opciones={categoriasRefaccion.map((c) => ({ value: c.id_categoria_refaccion, label: c.nombre_categoria }))}
+                        mostrar={<span className="cat-pill" style={{ "--c": col }}>{cat}</span>}
+                        onGuardar={(v) => actualizarCampo(r, { categoria: v ? categoriasRefaccion.find((c) => c.id_categoria_refaccion === Number(v))?.nombre_categoria || null : null })}
+                      />
+                    </td>
+                    <td>
+                      <Editable
+                        puede={puedeEditar} valor={r.id_marca_refaccion ?? ""}
+                        opciones={marcas.map((m) => ({ value: m.id_marca_refaccion, label: m.nombre_marca }))}
+                        mostrar={nombreMarca(r.id_marca_refaccion)}
+                        onGuardar={(v) => actualizarCampo(r, { id_marca_refaccion: v ? Number(v) : null })}
+                      />
+                    </td>
+                    <td>
+                      <Editable puede={puedeEditar} tipo="number" valor={r.cantidad_refaccion}
+                        mostrar={<span className={`badge ${r.cantidad_refaccion <= 3 ? "badge-red" : "badge-teal"}`}>{r.cantidad_refaccion}</span>}
+                        onGuardar={(v) => actualizarCampo(r, { cantidad_refaccion: Math.max(0, parseInt(v, 10) || 0) })} />
+                    </td>
+                    <td>
+                      <Editable puede={puedeEditar} tipo="number" valor={r.preciocliente_refaccion} mostrar={fmt(r.preciocliente_refaccion)}
+                        onGuardar={(v) => actualizarCampo(r, { preciocliente_refaccion: Math.max(0, parseFloat(v) || 0) })} />
+                    </td>
+                    <td>
+                      <div className="row-actions">
+                        {puedeEditar && (
+                          <button className="btn-icono" title="Editar todo" aria-label="Editar" onClick={() => abrirParaEditar(r)}><Icono nombre="pencil" size={18} /></button>
+                        )}
+                        {hasPermission("refacciones.eliminar") && (
+                          <button className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => handleDelete(r)}><Icono nombre="trash" size={18} /></button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 

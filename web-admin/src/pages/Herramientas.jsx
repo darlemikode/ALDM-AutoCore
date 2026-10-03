@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
+import FiltroChips, { colorGrupo, contarPor } from "../components/FiltroChips";
 import FormModal from "../components/FormModal";
 import ModalPortal from "../components/ModalPortal";
 import FotoGaleria from "../components/FotoGaleria";
@@ -16,6 +17,7 @@ export default function Herramientas() {
   const [editing, setEditing] = useState(null);
   const [fotosDe, setFotosDe] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [marcaSel, setMarcaSel] = useState("");
 
   async function load() {
     setLoading(true);
@@ -74,6 +76,8 @@ export default function Herramientas() {
     }
   }
 
+  const nomMarca = (h) => marcas.find((m) => m.id_herramienta_marca === h.id_herramienta_marca)?.nombre_marca || "Sin marca";
+  const visibles = marcaSel ? herramientas.filter((h) => nomMarca(h) === marcaSel) : herramientas;
   function nombreMarca(id) { return marcas.find((m) => m.id_herramienta_marca === id)?.nombre_marca || "—"; }
 
   return (
@@ -90,10 +94,11 @@ export default function Herramientas() {
       </div>
 
       <div className="panel">
+        <FiltroChips items={contarPor(herramientas, nomMarca)} valor={marcaSel} onChange={setMarcaSel} total={herramientas.length} etiquetaTodas="Todas las marcas" />
         {loading ? (
           <div className="loading-text">Cargando…</div>
         ) : (
-          <DataTable
+          <DataTable acentoFila={(h) => colorGrupo(nomMarca(h))}
             columns={[
               { key: "nombre_herramienta", label: "Nombre" },
               { key: "marca", label: "Marca", render: (h) => nombreMarca(h.id_herramienta_marca) },
@@ -102,7 +107,7 @@ export default function Herramientas() {
               { key: "costo_herramienta", label: "Costo", render: (h) => `$${(h.costo_herramienta ?? 0).toLocaleString("es-MX")}` },
               { key: "fotos", label: "", render: (h) => <button className="btn btn-secondary btn-sm" onClick={() => setFotosDe(h)}>📷 Fotos</button> },
             ]}
-            rows={herramientas}
+            rows={visibles}
             onEdit={hasPermission("herramientas.editar") ? setEditing : undefined}
             onDelete={hasPermission("herramientas.eliminar") ? handleDelete : undefined}
             emptyMessage="No hay herramientas registradas."

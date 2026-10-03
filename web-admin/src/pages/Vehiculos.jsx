@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
+import FiltroChips, { colorGrupo, contarPor } from "../components/FiltroChips";
 import FormModal from "../components/FormModal";
 import ModalPortal from "../components/ModalPortal";
 import FotoGaleria from "../components/FotoGaleria";
@@ -23,6 +24,7 @@ export default function Vehiculos() {
   const [colores, setColores] = useState([]);
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [marcaSel, setMarcaSel] = useState("");
   const [fotosDe, setFotosDe] = useState(null); // vehículo cuyas fotos se están viendo
   const [ofrecerSiguiente, setOfrecerSiguiente] = useState(null); // vehículo recién creado
 
@@ -174,6 +176,8 @@ export default function Vehiculos() {
     }
   }
 
+  const nomMarcaV = (v) => marcas.find((m) => m.id_marca_vehiculo === v.id_marca_vehiculo)?.nombre_marca || "Sin marca";
+  const visibles = marcaSel ? vehiculos.filter((v) => nomMarcaV(v) === marcaSel) : vehiculos;
   function nombreMarca(id) { return marcas.find((m) => m.id_marca_vehiculo === id)?.nombre_marca || "—"; }
   function nombreModelo(id) { return modelos.find((m) => m.id_modelo_vehiculo === id)?.nombre_modelo || "—"; }
 
@@ -199,10 +203,11 @@ export default function Vehiculos() {
       </div>
 
       <div className="panel">
+        <FiltroChips items={contarPor(vehiculos, nomMarcaV)} valor={marcaSel} onChange={setMarcaSel} total={vehiculos.length} etiquetaTodas="Todas las marcas" />
         {loading ? (
           <div className="loading-text">Cargando…</div>
         ) : (
-          <DataTable
+          <DataTable acentoFila={(v) => colorGrupo(nomMarcaV(v))}
             columns={[
               {
                 key: "cuenta",
@@ -216,7 +221,7 @@ export default function Vehiculos() {
               { key: "cliente", label: "Cliente", render: (v) => v.cliente ? `${v.cliente.nombre_cliente} ${v.cliente.paterno_cliente || ""}` : "—" },
               { key: "km_vehiculo", label: "Kilometraje" },
             ]}
-            rows={vehiculos}
+            rows={visibles}
             onEdit={setEditing}
             onDelete={hasPermission("vehiculos.eliminar") ? handleDelete : undefined}
             extraActions={(v) => (

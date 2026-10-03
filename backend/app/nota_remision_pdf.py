@@ -34,11 +34,7 @@ def generar_nota_remision_pdf(servicio, costos: ServicioCostos, taller=None, ins
                            + (f" Motivo: {esc(servicio.motivo_garantia)}" if servicio.motivo_garantia else ""), ANCHO))
         story.append(Spacer(1, 4 * mm))
 
-    v = servicio.vehiculo
-    story += bloques_cliente_vehiculo(servicio, extra_vehiculo=[
-        ("VIN", (v.numserie_vehiculo if v else None) or "—"),
-        ("Km de llegada", servicio.km_llegada or "—"),
-    ])
+    story += bloques_cliente_vehiculo(servicio)
 
     media = (ANCHO - 5 * mm) / 2
     story.append(dos_columnas(
@@ -58,10 +54,10 @@ def generar_nota_remision_pdf(servicio, costos: ServicioCostos, taller=None, ins
         )
         importe = (d.costo_mano_obra or 0) + (d.costo_refaccion or 0) + (d.costo_extra or 0)
         cant = d.cantidad or 1
-        filas.append([nombre, str(cant), fmt(importe / cant), fmt(importe)])
+        filas.append([nombre, str(cant), fmt(importe / cant), Paragraph(f"<b>{fmt(importe)}</b>", E["celda_centro"])])
     story.append(tabla_conceptos(
-        ["Nombre", "Cant.", "Precio unitario", "Importe"], filas,
-        [ANCHO * w for w in (0.46, 0.10, 0.22, 0.22)], alinear_derecha=(1, 2, 3),
+        ["Refacción", "Cant.", "Precio unitario", "Importe"], filas,
+        [ANCHO * w for w in (0.46, 0.14, 0.20, 0.20)], alinear_centro=(1, 2, 3),
     ))
     story.append(Spacer(1, 4 * mm))
     izquierda = []

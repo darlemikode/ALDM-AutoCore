@@ -31,6 +31,8 @@ LINE = colors.HexColor("#d9dee4")
 SOFT = colors.HexColor("#eef2f4")
 PANEL = colors.HexColor("#f7f9fa")
 SOMBRA = colors.HexColor("#d3dae0")
+FONDO_PAGINA = colors.HexColor("#eceff2")
+BORDE_TARJETA = colors.HexColor("#c3ccd5")
 # Azul petróleo: color de marca de los documentos
 ACCENT = colors.HexColor("#0f5c6e")
 ACCENT_SOFT = colors.HexColor("#e1eff2")
@@ -55,6 +57,7 @@ E = {
     "parrafo": ParagraphStyle("parrafo", parent=_base, fontSize=9.5, leading=14, textColor=INK_2),
     "celda": ParagraphStyle("celda", parent=_base, fontSize=8.8, leading=11.5),
     "celda_sub": ParagraphStyle("celda_sub", parent=_base, fontSize=7.5, leading=10, textColor=MUTED),
+    "celda_centro": ParagraphStyle("celda_centro", parent=_base, fontSize=8.8, leading=11.5, alignment=1),
     "celda_der": ParagraphStyle("celda_der", parent=_base, fontSize=8.8, leading=11.5, alignment=TA_RIGHT),
     "seccion": ParagraphStyle("seccion", parent=_base, fontSize=8, leading=10, fontName="Helvetica-Bold", textColor=INK),
     "nota": ParagraphStyle("nota", parent=_base, fontSize=7.5, leading=10.5, textColor=MUTED),
@@ -120,6 +123,10 @@ class PlantillaDocumento:
         ancho, alto = letter
         c.saveState()
 
+        # Fondo de la hoja: un tono por debajo del blanco para que los recuadros se distingan
+        c.setFillColor(FONDO_PAGINA)
+        c.rect(0, 0, ancho, alto, stroke=0, fill=1)
+
         if self.marca_agua:
             c.saveState()
             c.setFillColor(self.color_marca)
@@ -133,34 +140,41 @@ class PlantillaDocumento:
             c.restoreState()
 
         # Panel de fondo del encabezado
-        c.setFillColor(PANEL)
+        c.setFillColor(colors.white)
         c.rect(0, alto - ALTO_ENCABEZADO - 2 * mm, ancho, ALTO_ENCABEZADO + 2 * mm, stroke=0, fill=1)
 
         # Franja superior
-        c.setFillColor(INK)
-        c.rect(0, alto - 5 * mm, ancho, 5 * mm, stroke=0, fill=1)
         c.setFillColor(ACCENT)
-        c.rect(0, alto - 5 * mm, 42 * mm, 5 * mm, stroke=0, fill=1)
+        c.rect(0, alto - 3.5 * mm, ancho, 3.5 * mm, stroke=0, fill=1)
+        c.setFillColor(colors.HexColor("#14a8a0"))
+        c.rect(0, alto - 3.5 * mm, 60 * mm, 3.5 * mm, stroke=0, fill=1)
 
-        top = alto - 5 * mm - 7 * mm  # línea base superior del contenido del encabezado
-        x = MARGEN_X
+        top = alto - 3.5 * mm - 8 * mm  # línea base superior del contenido del encabezado
+        # Recuadro de los datos del taller (con énfasis)
+        caja_x, caja_w, caja_h = MARGEN_X, 112 * mm, 24 * mm
+        caja_y = top - 20 * mm
+        c.setFillColor(ACCENT_SOFT)
+        c.setStrokeColor(ACCENT)
+        c.setLineWidth(1.2)
+        c.roundRect(caja_x, caja_y, caja_w, caja_h, 3 * mm, stroke=1, fill=1)
+        x = caja_x + 4 * mm
         if self.t["logo"]:
             try:
-                c.drawImage(self.t["logo"], x, top - 18 * mm, width=22 * mm, height=20 * mm,
+                c.drawImage(self.t["logo"], x, caja_y + 2 * mm, width=22 * mm, height=20 * mm,
                             preserveAspectRatio=True, anchor="w", mask="auto")
                 x += 26 * mm
             except Exception:  # noqa: BLE001 — un logo dañado no debe impedir generar el documento
                 pass
 
         c.setFillColor(INK)
-        c.setFont("Helvetica-Bold", 14.5)
-        c.drawString(x, top - 5 * mm, self.t["nombre"][:48])
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(x, caja_y + caja_h - 8 * mm, self.t["nombre"][:36])
         c.setFont("Helvetica", 8)
-        c.setFillColor(MUTED)
+        c.setFillColor(INK_2)
         if self.t["linea1"]:
-            c.drawString(x, top - 10 * mm, self.t["linea1"][:95])
+            c.drawString(x, caja_y + caja_h - 13 * mm, self.t["linea1"][:72])
         if self.t["linea2"]:
-            c.drawString(x, top - 14 * mm, self.t["linea2"][:95])
+            c.drawString(x, caja_y + caja_h - 17.5 * mm, self.t["linea2"][:72])
 
         # Bloque derecho: tipo de documento + folio
         derecha = ancho - MARGEN_X
@@ -197,7 +211,7 @@ class Sombra(Flowable):
     """Dibuja un bloque con sombreado (sombra desplazada abajo-derecha)
     para que cada división del documento se distinga a simple vista."""
 
-    def __init__(self, contenido, desplazamiento=1.6, radio=5):
+    def __init__(self, contenido, desplazamiento=0, radio=6):
         super().__init__()
         self.contenido = contenido
         self.hAlign = getattr(contenido, "hAlign", "LEFT")
@@ -237,11 +251,12 @@ def seccion(titulo: str, ancho: float, derecha: str | None = None):
         ("LEFTPADDING", (1, 0), (1, 0), 8), ("RIGHTPADDING", (2, 0), (2, 0), 8),
         ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ROUNDEDCORNERS", [4, 4, 4, 4]),
     ]))
-    return [Spacer(1, 4.5 * mm), t, Spacer(1, 2.2 * mm)]
+    return [Spacer(1, 5.5 * mm), t, Spacer(1, 2.6 * mm)]
 
 
-def tarjeta(campos, ancho: float, columnas: int = 3, fondo=SOFT, borde=None, proporciones=None):
+def tarjeta(campos, ancho: float, columnas: int = 3, fondo=colors.white, borde=None, proporciones=None, alto_fila=None):
     """Rejilla de etiqueta/valor dentro de un recuadro suave.
     campos: [(etiqueta, valor), ...] — el valor puede ser str o Paragraph."""
     celdas, fila = [], []
@@ -255,16 +270,16 @@ def tarjeta(campos, ancho: float, columnas: int = 3, fondo=SOFT, borde=None, pro
         fila += [""] * (columnas - len(fila))
         celdas.append(fila)
     anchos = [ancho * p for p in proporciones] if proporciones else [ancho / columnas] * columnas
-    t = Table(celdas, colWidths=anchos)
+    t = Table(celdas, colWidths=anchos, rowHeights=[alto_fila] * len(celdas) if alto_fila else None)
     estilo = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 9), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("ROUNDEDCORNERS", [5, 5, 5, 5]),
+        ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("ROUNDEDCORNERS", [8, 8, 8, 8]),
     ]
     if fondo is not None:
         estilo.append(("BACKGROUND", (0, 0), (-1, -1), fondo))
-    estilo.append(("BOX", (0, 0), (-1, -1), 0.8, borde or LINE))
+    estilo.append(("BOX", (0, 0), (-1, -1), 1, borde or BORDE_TARJETA))
     t.setStyle(TableStyle(estilo))
     return Sombra(t)
 
@@ -281,37 +296,36 @@ def dos_columnas(izq, der, ancho: float, separacion: float = 5 * mm):
     return t
 
 
-def tabla_conceptos(encabezados, filas, anchos, alinear_derecha=(), vacio="Sin conceptos registrados"):
+def tabla_conceptos(encabezados, filas, anchos, alinear_derecha=(), vacio="Sin conceptos registrados", alinear_centro=()):
     """Tabla con encabezado oscuro, filas alternadas y solo líneas horizontales."""
     cab = [Paragraph(f"<font color='white'><b>{_espaciado(h)}</b></font>",
-                     ParagraphStyle("h", parent=E["etiqueta"], alignment=TA_RIGHT if i in alinear_derecha else 0))
+                     ParagraphStyle("h", parent=E["etiqueta"], alignment=TA_RIGHT if i in alinear_derecha else (1 if i in alinear_centro else 0)))
            for i, h in enumerate(encabezados)]
     cuerpo = []
     for f in filas:
         cuerpo.append([
-            celda if hasattr(celda, "wrap") else Paragraph(esc(celda), E["celda_der"] if i in alinear_derecha else E["celda"])
+            celda if hasattr(celda, "wrap") else Paragraph(esc(celda), E["celda_der"] if i in alinear_derecha else (E["celda_centro"] if i in alinear_centro else E["celda"]))
             for i, celda in enumerate(f)
         ])
     if not cuerpo:
         cuerpo = [[Paragraph(vacio, E["celda_sub"])] + [""] * (len(encabezados) - 1)]
     t = Table([cab] + cuerpo, colWidths=anchos, repeatRows=1)
     estilo = [
-        ("BACKGROUND", (0, 0), (-1, 0), INK),
-        ("TOPPADDING", (0, 0), (-1, 0), 6), ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-        ("TOPPADDING", (0, 1), (-1, -1), 4.5), ("BOTTOMPADDING", (0, 1), (-1, -1), 4.5),
+        ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
+        ("TOPPADDING", (0, 0), (-1, 0), 7), ("BOTTOMPADDING", (0, 0), (-1, 0), 7),
+        ("TOPPADDING", (0, 1), (-1, -1), 6), ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
         ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LINEBELOW", (0, 1), (-1, -1), 0.5, LINE),
-        ("ROUNDEDCORNERS", [4, 4, 0, 0]),
+        ("LINEBELOW", (0, 1), (-1, -2), 0.4, LINE),
+        ("ROUNDEDCORNERS", [6, 6, 6, 6]),
     ]
     for i in range(1, len(cuerpo) + 1):
-        if i % 2 == 0:
-            estilo.append(("BACKGROUND", (0, i), (-1, i), PANEL))
+        estilo.append(("BACKGROUND", (0, i), (-1, i), colors.white if i % 2 else PANEL))
     if len(cuerpo) == 1 and not filas:
         estilo.append(("SPAN", (0, 1), (-1, 1)))
-    estilo.append(("BOX", (0, 0), (-1, -1), 0.8, LINE))
+    estilo.append(("BOX", (0, 0), (-1, -1), 1, BORDE_TARJETA))
     t.setStyle(TableStyle(estilo))
-    return Sombra(t, radio=4)
+    return Sombra(t, radio=6)
 
 
 def totales(filas, ancho_total: float, destacar_ultima: bool = True, color_final=INK, extra=None):
@@ -336,9 +350,9 @@ def totales(filas, ancho_total: float, destacar_ultima: bool = True, color_final
         estilo += [("BACKGROUND", (0, u), (-1, u), color_final),
                    ("TOPPADDING", (0, u), (-1, u), 6), ("BOTTOMPADDING", (0, u), (-1, u), 6)]
     t = Table(datos, colWidths=[ancho * 0.55, ancho * 0.45], hAlign="RIGHT")
-    estilo = [("BACKGROUND", (0, 0), (-1, -1), PANEL), ("BOX", (0, 0), (-1, -1), 0.8, LINE)] + estilo
+    estilo = [("BACKGROUND", (0, 0), (-1, -1), colors.white), ("BOX", (0, 0), (-1, -1), 1, BORDE_TARJETA), ("ROUNDEDCORNERS", [8, 8, 8, 8])] + estilo
     t.setStyle(TableStyle(estilo))
-    return Sombra(t, radio=0)
+    return Sombra(t, radio=6)
 
 
 def aviso(texto: str, ancho: float, color=WARN, fondo=WARN_SOFT):

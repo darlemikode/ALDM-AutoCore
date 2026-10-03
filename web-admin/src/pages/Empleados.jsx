@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
+import FiltroChips, { colorGrupo, contarPor } from "../components/FiltroChips";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
@@ -30,6 +31,7 @@ export default function Empleados() {
   const [usuarios, setUsuarios] = useState([]);
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [puestoSel, setPuestoSel] = useState("");
 
   async function load() {
     setLoading(true);
@@ -90,10 +92,11 @@ export default function Empleados() {
       </div>
 
       <div className="panel">
+        <FiltroChips items={contarPor(empleados, (e) => e.puesto)} valor={puestoSel} onChange={setPuestoSel} total={empleados.length} etiquetaTodas="Todos" />
         {loading ? (
           <div className="loading-text">Cargando…</div>
         ) : (
-          <DataTable
+          <DataTable acentoFila={(e) => colorGrupo(e.puesto || "Sin asignar")}
             columns={[
               { key: "nombre", label: "Nombre", render: (e) => `${e.nombre} ${e.paterno || ""}` },
               { key: "puesto", label: "Puesto", render: (e) => e.puesto || "—" },
@@ -107,7 +110,7 @@ export default function Empleados() {
                 render: (e) => <span className={`badge ${e.activo ? "badge-teal" : "badge-grey"}`}>{e.activo ? "Activo" : "Inactivo"}</span>,
               },
             ]}
-            rows={empleados}
+            rows={puestoSel ? empleados.filter((e) => (e.puesto || "Sin asignar") === puestoSel) : empleados}
             onEdit={hasPermission("empleados.editar") ? setEditing : undefined}
             onDelete={hasPermission("empleados.eliminar") ? handleDelete : undefined}
             emptyMessage="No hay empleados registrados todavía."

@@ -189,9 +189,9 @@ button {
   transition: transform 0.12s ease, background 0.12s ease;
 }
 .nav-link:hover .nav-link-icono { transform: scale(1.08); background: color-mix(in srgb, var(--ico) 32%, transparent); }
-.nav-link.active .nav-link-icono { background: rgba(255,255,255,0.92); color: #0c2a30; box-shadow: none; }
+.nav-link.active .nav-link-icono { background: color-mix(in srgb, var(--petrol-500) 85%, #000); color: #fff; box-shadow: none; }
 .nav-link-icono svg { display: block; }
-.nav-link.active { box-shadow: 0 4px 14px color-mix(in srgb, var(--petrol-500) 45%, transparent); }
+.nav-link.active { box-shadow: inset 3px 0 0 var(--petrol-500); }
 .nav-link-boton {
   width: 100%;
   border: none;
@@ -199,7 +199,7 @@ button {
   cursor: pointer;
   font-family: inherit;
 }
-.nav-link.active { background: var(--petrol-500); color: var(--sidebar-text); font-weight: 700; }
+.nav-link.active { background: color-mix(in srgb, var(--petrol-500) 24%, transparent); color: var(--sidebar-text); font-weight: 700; }
 
 .nav-badge {
   background: var(--red-600);
@@ -2355,3 +2355,26 @@ div.sa-item { cursor: default; }
 .modal-cliente .bloques-grid > :nth-child(3) { grid-column: 2; grid-row: 1 / span 2; }
 @media (max-width: 900px) { .modal-cliente .bloques-grid { grid-template-columns: 1fr; } .modal-cliente .bloques-grid > :nth-child(3) { grid-column: auto; grid-row: auto; } .bloques-grid { grid-template-columns: 1fr; } }
 .field .req { color: var(--red-600); font-weight: 900; }
+
+/* Filtros por grupo (categoría, marca, puesto…): colores suaves */
+.cat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.cat-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 99px; cursor: pointer; font-size: 13.5px; font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--c) 28%, transparent); background: color-mix(in srgb, var(--c) 7%, transparent); color: var(--ink-700);
+  transition: transform .15s ease, background .15s ease, border-color .15s ease; }
+.cat-chip:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.cat-chip b { font-size: 11.5px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--ink-500) 18%, transparent); color: var(--ink-700); }
+.cat-chip-on { background: color-mix(in srgb, var(--c) 20%, transparent); border-color: color-mix(in srgb, var(--c) 70%, transparent); color: var(--ink-900); }
+.cat-chip-on b { background: color-mix(in srgb, var(--c) 35%, transparent); color: var(--ink-900); }
+.cat-punto { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.cat-pill { display: inline-block; padding: 3px 11px; border-radius: 99px; font-size: 12.5px; font-weight: 600; color: var(--ink-900);
+  background: color-mix(in srgb, var(--c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); }
+.inline-ed { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 2px 6px; margin: -2px -6px; transition: background .15s ease; }
+.inline-ed:hover, .inline-ed:focus-visible { background: color-mix(in srgb, var(--petrol-500) 16%, transparent); outline: none; }
+.inline-ed-lapiz { opacity: 0; color: var(--petrol-600); display: inline-flex; transition: opacity .15s ease; }
+.inline-ed:hover .inline-ed-lapiz, .inline-ed:focus-visible .inline-ed-lapiz { opacity: 1; }
+.inline-input { width: 100%; min-width: 90px; max-width: 220px; padding: 6px 8px !important; font-size: 14px; border: 2px solid var(--petrol-500) !important; border-radius: 8px; }
+.btn-icono { width: 38px; height: 38px; display: inline-grid; place-items: center; border-radius: 12px; cursor: pointer; border: 1px solid var(--contorno);
+  background: var(--paper-100); color: var(--petrol-600); transition: transform .15s ease, background .15s ease, color .15s ease; }
+.btn-icono:hover { transform: translateY(-2px); background: var(--petrol-500); color: #fff; border-color: var(--petrol-500); }
+.btn-icono-peligro { color: var(--red-600); }
+.btn-icono-peligro:hover { background: var(--red-600); border-color: var(--red-600); color: #fff; }
