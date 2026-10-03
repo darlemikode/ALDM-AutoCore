@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ResponsiveContainer, BarChart, Bar, Cell, LabelList,
@@ -32,6 +32,28 @@ function ChartTooltip({ active, payload, label, formatter }) {
       ))}
     </div>
   );
+}
+
+// Número que "sube" desde 0 al cargar: llama la atención y se entiende de un vistazo
+function Contar({ valor, formato }) {
+  const [v, setV] = useState(0);
+  const prev = useRef(0);
+  useEffect(() => {
+    const meta = Number(valor) || 0;
+    const ini = prev.current;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setV(meta); prev.current = meta; return; }
+    const t0 = performance.now();
+    let raf;
+    const paso = (t) => {
+      const k = Math.min(1, (t - t0) / 900);
+      const e = 1 - Math.pow(1 - k, 3);
+      setV(ini + (meta - ini) * e);
+      if (k < 1) raf = requestAnimationFrame(paso); else prev.current = meta;
+    };
+    raf = requestAnimationFrame(paso);
+    return () => cancelAnimationFrame(raf);
+  }, [valor]);
+  return <>{formato ? formato(v) : Math.round(v)}</>;
 }
 
 export default function Dashboard() {
@@ -145,40 +167,40 @@ export default function Dashboard() {
           <Link to="/clientes" className="kpi-card kpi-card-link">
             <span className="kpi-icono"><Icono nombre="people" size={22} /></span>
             <div className="kpi-label">Clientes activos</div>
-            <div className="kpi-value">{data.total_clientes}</div>
+            <div className="kpi-value"><Contar valor={data.total_clientes} /></div>
           </Link>
         )}
         <Link to="/vehiculos" className="kpi-card kpi-card-link">
           <span className="kpi-icono"><Icono nombre="car" size={22} /></span>
           <div className="kpi-label">Vehículos registrados</div>
-          <div className="kpi-value">{data.total_vehiculos}</div>
+          <div className="kpi-value"><Contar valor={data.total_vehiculos} /></div>
         </Link>
         <Link to="/servicios?status=abierto" className="kpi-card kpi-card-link">
           <span className="kpi-icono"><Icono nombre="construct" size={22} /></span>
           <div className="kpi-label">Órdenes abiertas</div>
-          <div className="kpi-value">{data.servicios_abiertos}</div>
+          <div className="kpi-value"><Contar valor={data.servicios_abiertos} /></div>
         </Link>
         <Link to="/servicios" className="kpi-card kpi-card-link">
           <span className="kpi-icono"><Icono nombre="calendar" size={22} /></span>
           <div className="kpi-label">Servicios este mes</div>
-          <div className="kpi-value">{data.servicios_este_mes}</div>
+          <div className="kpi-value"><Contar valor={data.servicios_este_mes} /></div>
         </Link>
         <Link to="/refacciones" className={`kpi-card kpi-card-link ${data.refacciones_bajo_stock > 0 ? "alert" : "ok"}`}>
           <span className="kpi-icono"><Icono nombre="cube" size={22} /></span>
           <div className="kpi-label">Refacciones con poco stock</div>
-          <div className="kpi-value">{data.refacciones_bajo_stock}</div>
+          <div className="kpi-value"><Contar valor={data.refacciones_bajo_stock} /></div>
         </Link>
         {hasPermission("dashboard.ver_por_cobrar") && (
           <Link to="/servicios?status=abierto" className={`kpi-card kpi-card-link ${data.saldo_pendiente_clientes > 0 ? "alert" : "ok"}`}>
             <span className="kpi-icono"><Icono nombre="card" size={22} /></span>
           <div className="kpi-label">Por cobrar</div>
-            <div className="kpi-value">{fmt(data.saldo_pendiente_clientes)}</div>
+            <div className="kpi-value"><Contar valor={data.saldo_pendiente_clientes} formato={fmt} /></div>
           </Link>
         )}
         <Link to="/proveedores" className={`kpi-card kpi-card-link ${data.deuda_con_proveedores > 0 ? "alert" : "ok"}`}>
           <span className="kpi-icono"><Icono nombre="business" size={22} /></span>
           <div className="kpi-label">Deuda con proveedores</div>
-          <div className="kpi-value">{fmt(data.deuda_con_proveedores)}</div>
+          <div className="kpi-value"><Contar valor={data.deuda_con_proveedores} formato={fmt} /></div>
         </Link>
         {data.solicitudes_recuperacion_pendientes > 0 && (
           <div className="kpi-card alert">
@@ -200,7 +222,7 @@ export default function Dashboard() {
               <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "currentColor", fontWeight: 600 }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(23,182,174,0.08)" }} />
-              <Bar dataKey="cantidad" name="Órdenes" fill={COLORS.petrol} radius={[8, 8, 0, 0]}>
+              <Bar dataKey="cantidad" name="Órdenes" animationDuration={1100} animationEasing="ease-out" fill={COLORS.petrol} radius={[8, 8, 0, 0]}>
                 <LabelList dataKey="cantidad" position="top" style={{ fontSize: 16, fontWeight: 700, fill: "currentColor" }} />
               </Bar>
             </BarChart>
@@ -215,7 +237,7 @@ export default function Dashboard() {
               <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "currentColor", fontWeight: 600 }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip content={<ChartTooltip formatter={fmtCorto} />} cursor={{ fill: "rgba(47,125,91,0.08)" }} />
-              <Bar dataKey="ingresos" name="Ingresos" fill={COLORS.green} radius={[8, 8, 0, 0]}>
+              <Bar dataKey="ingresos" name="Ingresos" animationDuration={1100} animationEasing="ease-out" fill={COLORS.green} radius={[8, 8, 0, 0]}>
                 <LabelList dataKey="ingresos" position="top" formatter={fmtCorto} style={{ fontSize: 14, fontWeight: 700, fill: "currentColor" }} />
               </Bar>
             </BarChart>
@@ -231,10 +253,10 @@ export default function Dashboard() {
             const total = porEstado.reduce((t, e) => t + e.cantidad, 0) || 1;
             const NOMBRES = { Abierto: "En el taller", Cerrado: "Terminadas", Cancelado: "Canceladas" };
             return porEstado.map((e) => (
-              <div key={e.estado} className="estado-fila">
+              <div key={e.estado} className="estado-fila" style={{ animationDelay: `${porEstado.indexOf(e) * 120}ms` }}>
                 <div className="estado-cab">
                   <span>{NOMBRES[e.estado] || e.estado}</span>
-                  <strong style={{ color: ESTADO_COLORS[e.estado] || COLORS.grey }}>{e.cantidad}</strong>
+                  <strong style={{ color: ESTADO_COLORS[e.estado] || COLORS.grey }}><Contar valor={e.cantidad} /></strong>
                 </div>
                 <div className="estado-barra"><div style={{ width: `${(e.cantidad / total) * 100}%`, background: ESTADO_COLORS[e.estado] || COLORS.grey }} /></div>
               </div>
@@ -254,7 +276,7 @@ export default function Dashboard() {
               <XAxis type="number" hide />
               <YAxis type="category" dataKey="nombre" width={190} tick={{ fontSize: 14, fill: "currentColor" }} axisLine={false} tickLine={false} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-              <Bar dataKey="stock" name="Piezas en stock" radius={[0, 8, 8, 0]} barSize={26}>
+              <Bar dataKey="stock" name="Piezas en stock" animationDuration={1100} animationEasing="ease-out" radius={[0, 8, 8, 0]} barSize={26}>
                 {bajoStock.map((entry, i) => (
                   <Cell key={i} fill={entry.stock <= 3 ? COLORS.red : COLORS.petrolLight} />
                 ))}

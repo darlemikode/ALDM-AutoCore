@@ -2308,3 +2308,23 @@ div.sa-item { cursor: default; }
 .estado-cab strong { font-size: 26px; font-family: var(--font-display); }
 .estado-barra { height: 16px; border-radius: 99px; background: var(--ink-300); overflow: hidden; }
 .estado-barra > div { height: 100%; border-radius: 99px; min-width: 6px; }
+
+/* Animaciones del panel */
+@keyframes subir { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes crecer { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes brillo { 0% { transform: translateX(-120%) skewX(-20deg); } 60%, 100% { transform: translateX(260%) skewX(-20deg); } }
+@keyframes latido { 0%, 100% { box-shadow: 0 10px 26px color-mix(in srgb, var(--petrol-600) 45%, transparent), 0 0 0 0 color-mix(in srgb, var(--petrol-500) 55%, transparent); } 50% { box-shadow: 0 10px 26px color-mix(in srgb, var(--petrol-600) 45%, transparent), 0 0 0 14px transparent; } }
+@keyframes balanceo { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-14deg); } 92% { transform: rotate(12deg); } }
+.hero-orden { position: relative; overflow: hidden; animation: subir .5s ease both, latido 2.8s ease-in-out 1s infinite; }
+.hero-orden::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent); animation: brillo 4s ease-in-out 1.2s infinite; pointer-events: none; }
+.hero-orden-icono { animation: balanceo 4s ease-in-out 1.5s infinite; }
+.hero-orden-flecha { transition: transform .2s ease; }
+.hero-orden:hover .hero-orden-flecha { transform: translateX(8px); }
+.kpi-grid .kpi-card { animation: subir .5s ease both; transition: transform .18s ease, box-shadow .18s ease; }
+.kpi-grid .kpi-card:nth-child(2) { animation-delay: .06s; } .kpi-grid .kpi-card:nth-child(3) { animation-delay: .12s; } .kpi-grid .kpi-card:nth-child(4) { animation-delay: .18s; }
+.kpi-grid .kpi-card:nth-child(5) { animation-delay: .24s; } .kpi-grid .kpi-card:nth-child(6) { animation-delay: .30s; } .kpi-grid .kpi-card:nth-child(7) { animation-delay: .36s; } .kpi-grid .kpi-card:nth-child(8) { animation-delay: .42s; }
+.kpi-grid .kpi-card-link:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 24px rgba(0,0,0,0.18); }
+.dash-2col .panel, .estado-lista { animation: subir .6s ease .3s both; }
+.estado-fila { animation: subir .5s ease both; }
+.estado-barra > div { transform-origin: left; animation: crecer 1s cubic-bezier(.2,.8,.2,1) .4s both; }
+@media (prefers-reduced-motion: reduce) { .hero-orden, .hero-orden::after, .hero-orden-icono, .kpi-grid .kpi-card, .dash-2col .panel, .estado-lista, .estado-fila, .estado-barra > div { animation: none !important; } }
