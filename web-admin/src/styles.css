@@ -813,8 +813,8 @@ tbody td:last-child {
   position: fixed; inset: 0;
   background: rgba(20, 24, 28, 0.55);
   backdrop-filter: blur(2px);
-  display: flex; align-items: flex-start; justify-content: center;
-  padding: 40px 16px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
   overflow-y: auto;
   z-index: 200;
 }
@@ -828,6 +828,10 @@ tbody td:last-child {
   max-width: 900px;
   padding: 24px;
   box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+  /* Siempre cabe en la pantalla: si hay mucho contenido, se desplaza adentro
+     y los botones quedan fijos abajo. */
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
 }
 
 /* Modal "grande" — para la selección de refacciones por tarjetas, que
@@ -2328,3 +2332,26 @@ div.sa-item { cursor: default; }
 .estado-fila { animation: subir .5s ease both; }
 .estado-barra > div { transform-origin: left; animation: crecer 1s cubic-bezier(.2,.8,.2,1) .4s both; }
 @media (prefers-reduced-motion: reduce) { .hero-orden, .hero-orden::after, .hero-orden-icono, .kpi-grid .kpi-card, .dash-2col .panel, .estado-lista, .estado-fila, .estado-barra > div { animation: none !important; } }
+
+/* ---- Ventanas que se ven completas ---- */
+.modal .modal-actions {
+  position: sticky; bottom: -24px; z-index: 5;
+  background: var(--paper-100);
+  margin: 14px -24px -24px; padding: 12px 24px;
+  border-top: 1px solid var(--ink-300);
+  border-radius: 0 0 14px 14px;
+}
+.modal-grande .modal-actions, .insp-modal .modal-actions { position: static; margin: 12px 0 0; padding: 0; border: 0; }
+.modal.modal-ancho { width: 96vw; max-width: 1180px; padding: 18px 22px; }
+.modal.modal-ancho .modal-actions { bottom: -18px; margin: 10px -22px -18px; padding: 10px 22px; }
+.modal.modal-ancho h2 { margin-bottom: 0; }
+.modal-ancho .modal-header-icono, .modal-ancho .cliente-modal-header { margin-bottom: 12px; }
+.bloques-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 14px; align-items: start; }
+.bloques-grid > .nota-bloque { margin-bottom: 0; }
+.modal-ancho .nota-bloque-header { padding: 9px 16px; }
+.modal-ancho .nota-bloque-body { padding: 14px 16px; }
+.modal-ancho .form-grid { gap: 10px 12px; }
+.modal-cliente .bloques-grid { grid-template-columns: 1fr 1fr; }
+.modal-cliente .bloques-grid > :nth-child(3) { grid-column: 2; grid-row: 1 / span 2; }
+@media (max-width: 900px) { .modal-cliente .bloques-grid { grid-template-columns: 1fr; } .modal-cliente .bloques-grid > :nth-child(3) { grid-column: auto; grid-row: auto; } .bloques-grid { grid-template-columns: 1fr; } }
+.field .req { color: var(--red-600); font-weight: 900; }

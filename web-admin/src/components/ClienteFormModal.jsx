@@ -123,7 +123,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
 
   return createPortal(
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className="modal modal-ancho modal-cliente">
         <div className="cliente-modal-header">
           <div className="cliente-avatar" style={{ "--acc": "var(--petrol-600)", "--acc-soft": "var(--petrol-100)", width: 46, height: 46, fontSize: 17 }}>
             {iniciales || "🧑"}
@@ -134,6 +134,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
           </div>
         </div>
         <form onSubmit={handleSubmit}>
+          <div className="bloques-grid">
           <div className="nota-bloque">
             <div className="nota-bloque-header">
               <span className="icono">🧑</span>
@@ -141,7 +142,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
             </div>
             <div className="nota-bloque-body form-grid">
               <div className="field">
-                <label>Nombres</label>
+                <label>Nombres<span className="req" aria-hidden="true"> *</span></label>
                 <input value={values.nombre_cliente} onChange={(e) => update("nombre_cliente", e.target.value)} required />
               </div>
               <div className="field">
@@ -268,6 +269,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
                 <textarea value={values.comentarios || ""} onChange={(e) => update("comentarios", e.target.value)} />
               </div>
             </div>
+          </div>
           </div>
           {error && <div className="error-text">{error}</div>}
           <div className="modal-actions">

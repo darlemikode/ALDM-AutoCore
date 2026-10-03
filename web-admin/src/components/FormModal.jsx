@@ -59,6 +59,9 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
       : f
   );
 
+  // Los campos obligatorios se muestran primero (el orden relativo se conserva)
+  const camposOrdenados = [...camposConOpcionesOrdenadas.filter((f) => f.required), ...camposConOpcionesOrdenadas.filter((f) => !f.required)];
+
   function update(name, value) {
     setValues((v) => {
       const siguiente = { ...v, [name]: value };
@@ -156,7 +159,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
   function renderCampo(f) {
     return (
       <div className={`field ${f.full ? "full" : ""} ${camposFaltantes.includes(f.name) ? "campo-con-error" : ""}`} key={f.name}>
-        <label>{f.label}</label>
+        <label>{f.label}{f.required && <span className="req" aria-hidden="true"> *</span>}</label>
         {f.type === "buscable" ? (
           <ComboBuscable
             options={f.options}
@@ -282,15 +285,16 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
   if (grupos) {
     const usados = new Set(Object.keys(grupos));
     bloques = Object.entries(grupos)
-      .map(([clave, meta]) => ({ clave, ...meta, campos: camposConOpcionesOrdenadas.filter((f) => f.grupo === clave) }))
+      .map(([clave, meta]) => ({ clave, ...meta, campos: camposOrdenados.filter((f) => f.grupo === clave) }))
       .filter((b) => b.campos.length > 0);
-    const resto = camposConOpcionesOrdenadas.filter((f) => !f.grupo || !usados.has(f.grupo));
+    const resto = camposOrdenados.filter((f) => !f.grupo || !usados.has(f.grupo));
     if (resto.length > 0) bloques.push({ clave: "__otros", icono: "📝", titulo: "Otros datos", campos: resto });
+    bloques = [...bloques.filter((b) => b.campos.some((c) => c.required)), ...bloques.filter((b) => !b.campos.some((c) => c.required))];
   }
 
   return createPortal(
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className={`modal ${bloques ? "modal-ancho" : ""}`}>
         <div className="modal-header-icono">
           <div className="modal-avatar-icono" style={{ "--acc": `var(--${colorAcento}-600)`, "--acc-soft": `var(--${colorAcento}-100)` }}>
             {icono || "📝"}
@@ -302,7 +306,8 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
         </div>
         <form onSubmit={handleSubmit}>
           {bloques ? (
-            bloques.map((b) => (
+            <div className="bloques-grid">
+            {bloques.map((b) => (
               <div className={`nota-bloque ${b.acento || ""}`} key={b.clave}>
                 <div className="nota-bloque-header">
                   <span className="icono">{b.icono}</span>
@@ -312,10 +317,11 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
                   {b.campos.map((f) => renderCampo(f))}
                 </div>
               </div>
-            ))
+            ))}
+            </div>
           ) : (
             <div className="form-grid">
-              {camposConOpcionesOrdenadas.map((f) => renderCampo(f))}
+              {camposOrdenados.map((f) => renderCampo(f))}
             </div>
           )}
           {error && <div className="error-text">{error}</div>}
