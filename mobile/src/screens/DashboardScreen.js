@@ -158,6 +158,18 @@ export default function DashboardScreen({ navigation }) {
         <Text style={styles.vacioTexto}>Cargando…</Text>
       ) : (
         <>
+          {/* Botón principal: orden rápida */}
+          {hasPermission("servicios.crear") && (
+            <TouchableOpacity style={styles.heroOrden} onPress={() => ir("Servicio", "NuevaOrden")} activeOpacity={0.85} accessibilityLabel="Nueva orden de servicio">
+              <View style={styles.heroOrdenIcono}><Ionicons name="add" size={38} color={colors.paper100} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroOrdenTitulo}>Nueva orden</Text>
+                <Text style={styles.heroOrdenSub}>Toca aquí para abrir una orden rápida</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={28} color={colors.paper100} />
+            </TouchableOpacity>
+          )}
+
           {/* Hero: lo que importa hoy */}
           <View style={[styles.hero, { backgroundColor: colors.sidebarBg }]}>
             <View style={[styles.circulo, { backgroundColor: alfa(colors.petrol500, 0.22), width: 180, height: 180, right: -50, top: -60 }]} />
@@ -197,9 +209,8 @@ export default function DashboardScreen({ navigation }) {
           </View>
 
           {/* Accesos rápidos */}
-          {(hasPermission("servicios.crear") || hasPermission("clientes.crear") || hasPermission("cotizaciones.ver") || hasPermission("refacciones.ver")) && (
+          {(hasPermission("clientes.crear") || hasPermission("cotizaciones.ver") || hasPermission("refacciones.ver")) && (
             <View style={styles.acciones}>
-              {hasPermission("servicios.crear") && <Accion principal icono="add" texto="Nueva orden" onPress={() => ir("Servicio", "NuevaOrden")} />}
               {hasPermission("clientes.crear") && <Accion icono="person-add-outline" texto="Registrar cliente" onPress={() => ir("Clientes", "ClienteForm")} />}
               {hasPermission("cotizaciones.ver") && <Accion icono="document-text-outline" texto="Cotizar" onPress={() => ir("Más", "Cotizaciones")} />}
               {hasPermission("refacciones.ver") && <Accion icono="cube-outline" texto="Inventario" onPress={() => ir("Refacciones")} />}
@@ -412,10 +423,14 @@ const styles = crearEstilos({
   heroDato: { flex: 1, gap: 2 },
   heroNumero: { fontFamily: "BarlowCondensed_700Bold", fontSize: 26, lineHeight: 28 },
   heroTexto: { fontSize: 11.5 },
+  heroOrden: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: colors.petrol600, borderRadius: 22, paddingVertical: 18, paddingHorizontal: 18, marginBottom: 16, shadowColor: colors.petrol600, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  heroOrdenIcono: { width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center" },
+  heroOrdenTitulo: { fontSize: 24, fontWeight: "800", color: colors.paper100 },
+  heroOrdenSub: { fontSize: 14, color: colors.paper100, opacity: 0.92, marginTop: 2 },
   acciones: { flexDirection: "row", justifyContent: "space-between", marginBottom: 18 },
   accion: { width: "23%", alignItems: "center", gap: 7 },
   accionIcono: { width: 56, height: 56, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  accionTexto: { fontSize: 12, fontWeight: "600", color: colors.ink700, textAlign: "center" },
+  accionTexto: { fontSize: 14, fontWeight: "600", color: colors.ink700, textAlign: "center" },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12, marginBottom: 16 },
   kpi: { width: "48.3%", backgroundColor: colors.paper100, borderRadius: 16, padding: 14, gap: 4 },
   kpiTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
@@ -433,13 +448,13 @@ const styles = crearEstilos({
   leyenda: { flexDirection: "row", flexWrap: "wrap", marginTop: 12, rowGap: 8 },
   leyendaItem: { width: "50%", flexDirection: "row", alignItems: "center", gap: 7, paddingRight: 10 },
   leyendaPunto: { width: 10, height: 10, borderRadius: 3 },
-  leyendaTexto: { flex: 1, fontSize: 13, color: colors.ink700 },
-  leyendaNumero: { fontSize: 13.5, fontWeight: "700", color: colors.ink900 },
+  leyendaTexto: { flex: 1, fontSize: 15, color: colors.ink700 },
+  leyendaNumero: { fontSize: 16.5, fontWeight: "700", color: colors.ink900 },
   proporcion: { flexDirection: "row", height: 8, borderRadius: 4, overflow: "hidden", gap: 2, marginBottom: 10 },
   segmentado: { flexDirection: "row", gap: 6, marginBottom: 6 },
   segmento: { flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 12 },
   segmentoNumero: { fontFamily: "BarlowCondensed_700Bold", fontSize: 24, lineHeight: 26 },
-  segmentoTexto: { fontSize: 11.5, fontWeight: "600", color: colors.ink500 },
+  segmentoTexto: { fontSize: 13.5, fontWeight: "600", color: colors.ink500 },
   orden: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
   divisor: { borderTopWidth: 1, borderTopColor: colors.linea },
   ordenBarra: { width: 4, alignSelf: "stretch", borderRadius: 2 },
@@ -456,17 +471,17 @@ const styles = crearEstilos({
   toggleTextoActiva: { color: colors.paper100 },
   grafica: { flexDirection: "row", height: 170, gap: 8, marginTop: 4 },
   columna: { flex: 1, alignItems: "center" },
-  columnaValor: { fontSize: 11.5, fontWeight: "700", color: colors.ink700, marginBottom: 4 },
+  columnaValor: { fontSize: 14.5, fontWeight: "700", color: colors.ink700, marginBottom: 4 },
   columnaRiel: { flex: 1, width: "100%", justifyContent: "flex-end", borderRadius: 8, backgroundColor: colors.paper0, overflow: "hidden" },
   columnaBarra: { width: "100%", borderRadius: 8 },
-  columnaMes: { fontSize: 12, color: colors.ink500, marginTop: 6 },
+  columnaMes: { fontSize: 14, color: colors.ink500, marginTop: 6 },
   todoBien: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 },
   todoBienTexto: { flex: 1, fontSize: 13.5, color: colors.ink700 },
   stockFila: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
-  stockNombre: { fontSize: 14, fontWeight: "600", color: colors.ink900, marginBottom: 6 },
+  stockNombre: { fontSize: 16, fontWeight: "600", color: colors.ink900, marginBottom: 6 },
   stockRiel: { height: 6, borderRadius: 3, backgroundColor: colors.paper0, overflow: "hidden" },
   stockBarra: { height: "100%", borderRadius: 3 },
-  stockCant: { fontSize: 13.5, fontWeight: "700", minWidth: 50, textAlign: "right" },
+  stockCant: { fontSize: 16.5, fontWeight: "700", minWidth: 50, textAlign: "right" },
   botonChico: { backgroundColor: colors.paper0, borderRadius: 10, paddingVertical: 7, paddingHorizontal: 10 },
   botonChicoTexto: { fontSize: 12, fontWeight: "600", color: colors.ink900 },
 });

@@ -2281,3 +2281,30 @@ a.sa-tab { text-decoration: none; display: inline-block; }
 .sa-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 10px 0; border: none; border-bottom: 1px solid var(--contorno); background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 div.sa-item { cursor: default; }
 .sa-check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; }
+
+/* Botón principal: orden rápida */
+.hero-orden {
+  display: flex; align-items: center; gap: 18px;
+  padding: 20px 26px; margin-bottom: 20px; border-radius: 20px;
+  background: linear-gradient(135deg, var(--petrol-500), var(--petrol-600) 55%, color-mix(in srgb, var(--petrol-600) 70%, #000));
+  color: #fff; text-decoration: none;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--petrol-600) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.35);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.hero-orden:hover { transform: translateY(-2px); box-shadow: 0 14px 32px color-mix(in srgb, var(--petrol-600) 55%, transparent), inset 0 1px 0 rgba(255,255,255,0.35); }
+.hero-orden:active { transform: translateY(0); }
+.hero-orden-icono { width: 64px; height: 64px; border-radius: 18px; background: rgba(255,255,255,0.22); display: grid; place-items: center; flex-shrink: 0; }
+.hero-orden-textos { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.hero-orden-titulo { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.15; }
+.hero-orden-sub { font-size: 16px; opacity: 0.92; }
+.hero-orden-flecha { font-size: 38px; font-weight: 700; flex-shrink: 0; }
+@media (max-width: 600px) { .hero-orden { padding: 16px; gap: 12px; } .hero-orden-titulo { font-size: 20px; } .hero-orden-sub { font-size: 14px; } .hero-orden-icono { width: 52px; height: 52px; } }
+
+/* Gráficas legibles */
+.graf-titulo { font-size: 20px; margin: 0 0 2px; }
+.graf-sub { font-size: 15px; color: var(--ink-700); margin-bottom: 12px; }
+.estado-lista { display: flex; flex-direction: column; gap: 16px; }
+.estado-cab { display: flex; justify-content: space-between; align-items: baseline; font-size: 18px; margin-bottom: 6px; }
+.estado-cab strong { font-size: 26px; font-family: var(--font-display); }
+.estado-barra { height: 16px; border-radius: 99px; background: var(--ink-300); overflow: hidden; }
+.estado-barra > div { height: 100%; border-radius: 99px; min-width: 6px; }

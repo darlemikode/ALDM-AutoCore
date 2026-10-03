@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, BarChart, Bar, Cell, LabelList,
+  XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
@@ -85,6 +85,17 @@ export default function Dashboard() {
           <div className="subtitle">Resumen del taller en tiempo real</div>
         </div>
       </div>
+
+      {hasPermission("servicios.crear") && (
+        <Link to="/servicios?nueva=1" className="hero-orden">
+          <span className="hero-orden-icono"><Icono nombre="construct" size={34} /></span>
+          <span className="hero-orden-textos">
+            <span className="hero-orden-titulo">Nueva orden de servicio</span>
+            <span className="hero-orden-sub">Toca aquí para abrir una orden rápida</span>
+          </span>
+          <span className="hero-orden-flecha">→</span>
+        </Link>
+      )}
 
       {proximos.length > 0 && (
         <div className="panel" style={{ borderLeft: "4px solid var(--petrol-500)" }}>
@@ -182,59 +193,72 @@ export default function Dashboard() {
 
       <div className="dash-2col">
         <div className="panel">
-          <h2 style={{ fontSize: 16, marginBottom: 14 }}>Órdenes e ingresos — últimos 6 meses</h2>
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={mensual} margin={{ top: 4, right: 12, left: -12, bottom: 0 }}>
-              <CartesianGrid stroke="#e2e5e6" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "#63737b" }} axisLine={{ stroke: "#aebac0" }} tickLine={false} />
-              <YAxis yAxisId="left" tick={{ fontSize: 12, fill: "#63737b" }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, fill: "#63737b" }} axisLine={false} tickLine={false} tickFormatter={fmtCorto} />
-              <Tooltip content={<ChartTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line yAxisId="left" type="monotone" dataKey="cantidad" name="Órdenes" stroke={COLORS.petrol} strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line yAxisId="right" type="monotone" dataKey="ingresos" name="Ingresos" stroke={COLORS.green} strokeWidth={2.5} dot={{ r: 3 }} />
-            </LineChart>
+          <h2 className="graf-titulo">Órdenes por mes</h2>
+          <div className="graf-sub">Cuántos trabajos entraron cada mes</div>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={mensual} margin={{ top: 24, right: 8, left: 8, bottom: 0 }}>
+              <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "#4d6b74", fontWeight: 600 }} axisLine={false} tickLine={false} />
+              <YAxis hide />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(23,182,174,0.08)" }} />
+              <Bar dataKey="cantidad" name="Órdenes" fill={COLORS.petrol} radius={[8, 8, 0, 0]}>
+                <LabelList dataKey="cantidad" position="top" style={{ fontSize: 16, fontWeight: 700, fill: "#132a33" }} />
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="panel">
-          <h2 style={{ fontSize: 16, marginBottom: 14 }}>Órdenes por estado</h2>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={porEstado}
-                dataKey="cantidad"
-                nameKey="estado"
-                innerRadius={55}
-                outerRadius={90}
-                paddingAngle={2}
-              >
-                {porEstado.map((entry) => (
-                  <Cell key={entry.estado} fill={ESTADO_COLORS[entry.estado] || COLORS.grey} />
-                ))}
-              </Pie>
-              <Tooltip content={<ChartTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-            </PieChart>
+          <h2 className="graf-titulo">Dinero que entró por mes</h2>
+          <div className="graf-sub">Total cobrado en cada mes</div>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={mensual} margin={{ top: 24, right: 8, left: 8, bottom: 0 }}>
+              <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "#4d6b74", fontWeight: 600 }} axisLine={false} tickLine={false} />
+              <YAxis hide />
+              <Tooltip content={<ChartTooltip formatter={fmtCorto} />} cursor={{ fill: "rgba(47,125,91,0.08)" }} />
+              <Bar dataKey="ingresos" name="Ingresos" fill={COLORS.green} radius={[8, 8, 0, 0]}>
+                <LabelList dataKey="ingresos" position="top" formatter={fmtCorto} style={{ fontSize: 14, fontWeight: 700, fill: "#132a33" }} />
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="panel">
-        <h2 style={{ fontSize: 16, marginBottom: 14 }}>Refacciones con menor stock</h2>
+        <h2 className="graf-titulo">Estado de las órdenes</h2>
+        <div className="graf-sub">Cuántas hay en cada situación</div>
+        <div className="estado-lista">
+          {(() => {
+            const total = porEstado.reduce((t, e) => t + e.cantidad, 0) || 1;
+            const NOMBRES = { Abierto: "En el taller", Cerrado: "Terminadas", Cancelado: "Canceladas" };
+            return porEstado.map((e) => (
+              <div key={e.estado} className="estado-fila">
+                <div className="estado-cab">
+                  <span>{NOMBRES[e.estado] || e.estado}</span>
+                  <strong style={{ color: ESTADO_COLORS[e.estado] || COLORS.grey }}>{e.cantidad}</strong>
+                </div>
+                <div className="estado-barra"><div style={{ width: `${(e.cantidad / total) * 100}%`, background: ESTADO_COLORS[e.estado] || COLORS.grey }} /></div>
+              </div>
+            ));
+          })()}
+        </div>
+      </div>
+
+      <div className="panel">
+        <h2 className="graf-titulo">Refacciones que se están acabando</h2>
+        <div className="graf-sub">En rojo: quedan 3 piezas o menos</div>
         {bajoStock.length === 0 ? (
           <div className="empty-state">Sin datos de inventario todavía.</div>
         ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={bajoStock} layout="vertical" margin={{ left: 20, right: 20 }}>
-              <CartesianGrid stroke="#e2e5e6" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 12, fill: "#63737b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <YAxis type="category" dataKey="nombre" width={160} tick={{ fontSize: 12, fill: "#1b2226" }} axisLine={false} tickLine={false} />
-              <Tooltip content={<ChartTooltip />} />
-              <Bar dataKey="stock" name="Piezas en stock" radius={[0, 4, 4, 0]}>
+          <ResponsiveContainer width="100%" height={Math.max(200, bajoStock.length * 48)}>
+            <BarChart data={bajoStock} layout="vertical" margin={{ left: 8, right: 40 }}>
+              <XAxis type="number" hide />
+              <YAxis type="category" dataKey="nombre" width={190} tick={{ fontSize: 14, fill: "#132a33" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+              <Bar dataKey="stock" name="Piezas en stock" radius={[0, 8, 8, 0]} barSize={26}>
                 {bajoStock.map((entry, i) => (
                   <Cell key={i} fill={entry.stock <= 3 ? COLORS.red : COLORS.petrolLight} />
                 ))}
+                <LabelList dataKey="stock" position="right" style={{ fontSize: 16, fontWeight: 700, fill: "#132a33" }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -244,7 +268,6 @@ export default function Dashboard() {
       <div className="panel">
         <h2 style={{ marginBottom: 12, fontSize: 18 }}>Accesos rápidos</h2>
         <div className="toolbar">
-          <Link className="btn btn-primary" to="/servicios">Nueva orden de servicio</Link>
           <Link className="btn btn-secondary" to="/clientes">Registrar cliente</Link>
           <Link className="btn btn-secondary" to="/refacciones">Ver inventario de refacciones</Link>
         </div>

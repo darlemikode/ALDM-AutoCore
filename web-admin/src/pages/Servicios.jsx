@@ -85,6 +85,14 @@ export default function Servicios() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (searchParams.get("nueva") === "1") {
+      window.history.replaceState({}, "");
+      nuevaOrdenDirecta();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function openCreate() {
     const [c, v, e, t] = await Promise.all([
       api.get("/clientes/?solo_activos=true"), api.get("/vehiculos/"),
