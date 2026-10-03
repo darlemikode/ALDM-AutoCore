@@ -197,11 +197,11 @@ export default function Dashboard() {
           <div className="graf-sub">Cuántos trabajos entraron cada mes</div>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={mensual} margin={{ top: 24, right: 8, left: 8, bottom: 0 }}>
-              <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "#4d6b74", fontWeight: 600 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "currentColor", fontWeight: 600 }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(23,182,174,0.08)" }} />
               <Bar dataKey="cantidad" name="Órdenes" fill={COLORS.petrol} radius={[8, 8, 0, 0]}>
-                <LabelList dataKey="cantidad" position="top" style={{ fontSize: 16, fontWeight: 700, fill: "#132a33" }} />
+                <LabelList dataKey="cantidad" position="top" style={{ fontSize: 16, fontWeight: 700, fill: "currentColor" }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -212,11 +212,11 @@ export default function Dashboard() {
           <div className="graf-sub">Total cobrado en cada mes</div>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={mensual} margin={{ top: 24, right: 8, left: 8, bottom: 0 }}>
-              <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "#4d6b74", fontWeight: 600 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "currentColor", fontWeight: 600 }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip content={<ChartTooltip formatter={fmtCorto} />} cursor={{ fill: "rgba(47,125,91,0.08)" }} />
               <Bar dataKey="ingresos" name="Ingresos" fill={COLORS.green} radius={[8, 8, 0, 0]}>
-                <LabelList dataKey="ingresos" position="top" formatter={fmtCorto} style={{ fontSize: 14, fontWeight: 700, fill: "#132a33" }} />
+                <LabelList dataKey="ingresos" position="top" formatter={fmtCorto} style={{ fontSize: 14, fontWeight: 700, fill: "currentColor" }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -252,13 +252,13 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={Math.max(200, bajoStock.length * 48)}>
             <BarChart data={bajoStock} layout="vertical" margin={{ left: 8, right: 40 }}>
               <XAxis type="number" hide />
-              <YAxis type="category" dataKey="nombre" width={190} tick={{ fontSize: 14, fill: "#132a33" }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="nombre" width={190} tick={{ fontSize: 14, fill: "currentColor" }} axisLine={false} tickLine={false} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
               <Bar dataKey="stock" name="Piezas en stock" radius={[0, 8, 8, 0]} barSize={26}>
                 {bajoStock.map((entry, i) => (
                   <Cell key={i} fill={entry.stock <= 3 ? COLORS.red : COLORS.petrolLight} />
                 ))}
-                <LabelList dataKey="stock" position="right" style={{ fontSize: 16, fontWeight: 700, fill: "#132a33" }} />
+                <LabelList dataKey="stock" position="right" style={{ fontSize: 16, fontWeight: 700, fill: "currentColor" }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
