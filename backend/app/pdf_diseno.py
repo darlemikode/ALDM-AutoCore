@@ -151,12 +151,10 @@ class PlantillaDocumento:
 
         top = alto - 3.5 * mm - 8 * mm  # línea base superior del contenido del encabezado
         # Recuadro de los datos del taller (con énfasis)
-        caja_x, caja_w, caja_h = MARGEN_X, 112 * mm, 24 * mm
+        caja_x, caja_w, caja_h = MARGEN_X, 118 * mm, 24 * mm
         caja_y = top - 20 * mm
         c.setFillColor(ACCENT_SOFT)
-        c.setStrokeColor(ACCENT)
-        c.setLineWidth(1.2)
-        c.roundRect(caja_x, caja_y, caja_w, caja_h, 3 * mm, stroke=1, fill=1)
+        c.roundRect(caja_x, caja_y, caja_w, caja_h, 3 * mm, stroke=0, fill=1)
         x = caja_x + 4 * mm
         if self.t["logo"]:
             try:
@@ -169,12 +167,16 @@ class PlantillaDocumento:
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 16)
         c.drawString(x, caja_y + caja_h - 8 * mm, self.t["nombre"][:36])
-        c.setFont("Helvetica", 8)
         c.setFillColor(INK_2)
-        if self.t["linea1"]:
-            c.drawString(x, caja_y + caja_h - 13 * mm, self.t["linea1"][:72])
-        if self.t["linea2"]:
-            c.drawString(x, caja_y + caja_h - 17.5 * mm, self.t["linea2"][:72])
+        disponible = caja_x + caja_w - 4 * mm - x
+        for linea, dy in ((self.t["linea1"], 13), (self.t["linea2"], 17.5)):
+            if not linea:
+                continue
+            tam = 8
+            while tam > 6 and c.stringWidth(linea, "Helvetica", tam) > disponible:
+                tam -= 0.25  # reduce la letra para que quepa dentro de la caja
+            c.setFont("Helvetica", tam)
+            c.drawString(x, caja_y + caja_h - dy * mm, linea)
 
         # Bloque derecho: tipo de documento + folio
         derecha = ancho - MARGEN_X
