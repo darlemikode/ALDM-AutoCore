@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -61,7 +62,7 @@ export default function Layout() {
   if (puedeVerUsuarios) navAdmin.push({ to: "/asignacion-roles", label: "Asignación de roles" });
   if (puedeVerRoles) navAdmin.push({ to: "/roles", label: "Roles y permisos" });
 
-  const nav = [...NAV, { group: "⚙️ Configuración", items: navAdmin }];
+  const nav = [...NAV, { group: "Configuración", items: navAdmin }];
 
   return (
     <div className="app-shell">
@@ -70,7 +71,7 @@ export default function Layout() {
           ALDM <span>AutoCore</span>
         </div>
         {nav.map((section) => {
-          const esConfiguracion = section.group === "⚙️ Configuración";
+          const esConfiguracion = section.group === "Configuración";
           const desplegado = !esConfiguracion || configAbierta;
           return (
             <div key={section.group}>
@@ -111,7 +112,7 @@ export default function Layout() {
               ))}
               {esConfiguracion && desplegado && (
                 <label className="nav-tema-toggle">
-                  <span>🌙 Tema oscuro</span>
+                  <span><IconoAuto valor="🌙" size={18} /> Tema oscuro</span>
                   <input type="checkbox" checked={temaOscuro} onChange={(e) => setTemaOscuro(e.target.checked)} />
                 </label>
               )}

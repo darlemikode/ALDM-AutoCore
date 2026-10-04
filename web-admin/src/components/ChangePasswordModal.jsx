@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { marcarCampo } from "../validacion";
 import { createPortal } from "react-dom";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
@@ -15,7 +16,8 @@ export default function ChangePasswordModal({ onClose }) {
     e.preventDefault();
     setError("");
     if (passwordNueva !== confirmacion) {
-      setError("La confirmación no coincide con la nueva contraseña.");
+      const campos = e.currentTarget.querySelectorAll("input[type=password]");
+      marcarCampo(campos[campos.length - 1], "La confirmación no coincide con la nueva contraseña");
       return;
     }
     setSaving(true);

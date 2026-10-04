@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
@@ -5,6 +6,7 @@ import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 // Mismo ciclo de acentos que Roles y Super Admin — cada catálogo toma un color.
 const COLORES = ["petrol", "teal", "warn", "violet", "blue"];
@@ -47,7 +49,7 @@ const CATALOGS = {
     fields: [{ name: "nombre_color", label: "Nombre", required: true }],
   },
   marcasVehiculos: {
-    label: "Marcas de vehículo", grupo: "Vehículos", icono: "🚗", descripcion: "Armadoras (Nissan, Chevrolet, VW…).",
+    label: "Marcas de vehículo", grupo: "Vehículos", icono: "🏷", descripcion: "Armadoras (Nissan, Chevrolet, VW…).",
     endpoint: "/vehiculos-marcas", idField: "id_marca_vehiculo", nombreField: "nombre_marca", notaField: "comentarios",
     fields: [{ name: "nombre_marca", label: "Nombre", required: true }, { name: "comentarios", label: "Comentarios", type: "textarea", full: true }],
   },
@@ -123,7 +125,7 @@ export default function Catalogos() {
         className={`rol-card ${tab === k ? "activo" : ""}`}
         style={acentoDe(CLAVES.indexOf(k))}
       >
-        <span className="rol-card-icono">{c.icono}</span>
+        <span className="rol-card-icono"><IconoAuto valor={c.icono} size={18} /></span>
         <span className="rol-card-info">
           <span className="rol-card-nombre">{c.label}</span>
           <span className="rol-card-meta">{n === undefined ? "…" : `${n} registro${n === 1 ? "" : "s"}`}</span>
@@ -276,18 +278,17 @@ export default function Catalogos() {
         <div className="panel">
           <div className="cat-cabecera">
             <div>
-              <h2>{config.icono} {config.label}</h2>
+              <h2><IconoAuto valor={config.icono} size={18} /> {config.label}</h2>
               <div className="cat-descripcion">{config.descripcion}</div>
             </div>
             {puedeCrear && (
-              <button className="btn btn-primary" onClick={() => setEditing(config.padre && filtroPadre ? { [config.padre.campo]: Number(filtroPadre) } : {})}>
-                ➕ Nuevo registro
-              </button>
+              <button className="btn btn-primary btn-nuevo" onClick={() => setEditing(config.padre && filtroPadre ? { [config.padre.campo]: Number(filtroPadre) } : {})}>
+                <span className="btn-nuevo-icono"><Icono nombre="doc-add" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo registro</button>
             )}
           </div>
 
           <div className="cat-filtros">
-            <input className="search-input" placeholder={`🔍 Buscar en ${config.label.toLowerCase()}…`} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+            <input className="search-input" placeholder={`Buscar en ${config.label.toLowerCase()}…`} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
             {config.padre && (
               <select value={filtroPadre} onChange={(e) => setFiltroPadre(e.target.value)}>
                 <option value="">{config.padre.label === "Marca" ? "Todas las" : "Todos los"} {config.padre.plural}</option>
@@ -300,7 +301,7 @@ export default function Catalogos() {
 
           <div className="modulo-card" style={acentoDe(indice)}>
             <div className="modulo-card-header">
-              <span className="modulo-card-icono">{config.icono}</span>
+              <span className="modulo-card-icono"><IconoAuto valor={config.icono} size={18} /></span>
               <span className="modulo-card-titulo">
                 {config.label}
                 {config.padre && filtroPadre && ` · ${padres.find((p) => String(p[config.padre.idField]) === filtroPadre)?.[config.padre.nombre] || ""}`}

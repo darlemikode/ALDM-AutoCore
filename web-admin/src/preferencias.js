@@ -83,3 +83,25 @@ export function escucharSidebar(callback) {
   window.addEventListener(EVENTO_SIDEBAR, callback);
   return () => window.removeEventListener(EVENTO_SIDEBAR, callback);
 }
+
+// Atajos de teclado (activados por defecto)
+const CLAVE_ATAJOS = "sm_atajos";
+const EVENTO_ATAJOS = "sm-atajos-cambio";
+
+export function atajosActivos() {
+  return localStorage.getItem(CLAVE_ATAJOS) !== "false";
+}
+
+export function setAtajosActivos(activo) {
+  try {
+    localStorage.setItem(CLAVE_ATAJOS, activo ? "true" : "false");
+  } catch {
+    /* almacenamiento no disponible */
+  }
+  window.dispatchEvent(new Event(EVENTO_ATAJOS));
+}
+
+export function escucharAtajos(callback) {
+  window.addEventListener(EVENTO_ATAJOS, callback);
+  return () => window.removeEventListener(EVENTO_ATAJOS, callback);
+}

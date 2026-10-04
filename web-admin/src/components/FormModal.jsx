@@ -1,6 +1,8 @@
+import Combo from "./Combo";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api";
+import { IconoAuto, Icono } from "./Icono";
 
 /**
  * Modal con formulario genérico, dirigido por configuración.
@@ -170,26 +172,13 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
           />
         ) : f.type === "select" ? (
           <div className="select-with-add">
-            <select
+            <Combo
               required={f.required}
               disabled={f.disabled}
               value={values[f.name] ?? ""}
-              onChange={(e) => {
-                if (e.target.value === "") return update(f.name, null);
-                // Conserva el tipo de la opción: ids numéricos como número y
-                // opciones de texto ("transferencia", "prueba"…) como texto
-                // (antes todo se pasaba a Number y los textos quedaban NaN).
-                const opcion = f.options.find((o) => String(o.value) === e.target.value);
-                update(f.name, opcion ? opcion.value : e.target.value);
-              }}
-            >
-              <option value="">-- Selecciona --</option>
-              {f.options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              opciones={f.options}
+              onChange={(v) => update(f.name, v === null || v === "" ? null : v)}
+            />
             {f.creatable && !f.disabled && (
               <button
                 type="button"
@@ -268,7 +257,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
             );
             return iconoCampo ? (
               <div className="input-icono">
-                <span className="icono-prefijo">{iconoCampo}</span>
+                <span className="icono-prefijo"><IconoAuto valor={iconoCampo} size={17} /></span>
                 {input}
               </div>
             ) : input;
@@ -297,7 +286,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
       <div className={`modal ${bloques ? "modal-ancho" : ""}`}>
         <div className="modal-header-icono">
           <div className="modal-avatar-icono" style={{ "--acc": `var(--${colorAcento}-600)`, "--acc-soft": `var(--${colorAcento}-100)` }}>
-            {icono || "📝"}
+            <IconoAuto valor={icono || "📝"} size={24} />
           </div>
           <div>
             <h2>{title}</h2>
@@ -310,7 +299,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
             {bloques.map((b) => (
               <div className={`nota-bloque ${b.acento || ""}`} key={b.clave}>
                 <div className="nota-bloque-header">
-                  <span className="icono">{b.icono}</span>
+                  <span className="icono"><IconoAuto valor={b.icono} size={18} /></span>
                   <h2>{b.titulo}</h2>
                 </div>
                 <div className="nota-bloque-body form-grid">
@@ -328,10 +317,10 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
           {footerExtra}
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>
-              ✕ Cancelar
+              <span className="btn-ico"><Icono nombre="close" size={20} /></span>Cancelar
             </button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Guardando..." : "✓ Guardar"}
+              {saving ? "Guardando…" : <><span className="btn-ico"><Icono nombre="save" size={20} /></span>Guardar</>}
             </button>
           </div>
         </form>
@@ -353,7 +342,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
               {quickAddError && <div className="error-text">{quickAddError}</div>}
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setQuickAdd(null)}>
-                  ✕ Cancelar
+                  <span className="btn-ico"><Icono nombre="close" size={20} /></span>Cancelar
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={quickAddSaving}>
                   {quickAddSaving ? "Guardando..." : "Agregar"}

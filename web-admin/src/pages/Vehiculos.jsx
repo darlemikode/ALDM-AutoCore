@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
@@ -9,6 +10,7 @@ import FotoGaleria from "../components/FotoGaleria";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 export default function Vehiculos() {
   const [params, setParams] = useSearchParams();
@@ -87,6 +89,8 @@ export default function Vehiculos() {
         type: "select",
         required: true,
         grupo: "identificacion",
+        // Al cambiar de marca, se limpia el modelo si ya no le corresponde
+        onElegir: (idMarca, v) => (v.id_modelo_vehiculo && modelos.find((m) => m.id_modelo_vehiculo === v.id_modelo_vehiculo)?.id_marca_vehiculo !== idMarca ? { id_modelo_vehiculo: null } : {}),
         options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca })),
         creatable: {
           endpoint: "/vehiculos-marcas/",
@@ -98,13 +102,18 @@ export default function Vehiculos() {
       },
       {
         name: "id_modelo_vehiculo",
-        label: values.id_marca_vehiculo ? "Modelo" : "Modelo (elige una marca primero)",
+        label: "Modelo",
         type: "select",
         required: true,
         grupo: "identificacion",
+        // Al elegir un modelo, la marca se hereda sola
+        onElegir: (idModelo) => {
+          const m = modelos.find((x) => x.id_modelo_vehiculo === idModelo);
+          return m ? { id_marca_vehiculo: m.id_marca_vehiculo } : {};
+        },
         options: modelos
           .filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo)
-          .map((m) => ({ value: m.id_modelo_vehiculo, label: m.nombre_modelo })),
+          .map((m) => ({ value: m.id_modelo_vehiculo, label: values.id_marca_vehiculo ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim() })),
         creatable: values.id_marca_vehiculo
           ? {
               endpoint: "/vehiculos-modelos/",
@@ -196,9 +205,8 @@ export default function Vehiculos() {
               Quitar filtro
             </button>
           )}
-          <button className="btn btn-primary" onClick={() => setEditing({ id_cliente: idCliente ? Number(idCliente) : undefined })}>
-            🚗 Nuevo vehículo
-          </button>
+          <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({ id_cliente: idCliente ? Number(idCliente) : undefined })}>
+            <span className="btn-nuevo-icono"><Icono nombre="car" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo vehículo</button>
         </div>
       </div>
 
@@ -207,30 +215,30 @@ export default function Vehiculos() {
         {loading ? (
           <div className="loading-text">Cargando…</div>
         ) : (
-          <DataTable acentoFila={(v) => colorGrupo(nomMarcaV(v))}
-            columns={[
-              {
-                key: "cuenta",
-                label: "Cuenta",
-                render: (v) => <span className="mono" style={{ fontSize: 12, color: "var(--ink-500)" }}>{v.numero_cuenta}</span>,
-              },
-              { key: "placas", label: "Placas", render: (v) => v.placas_vehiculo || "—" },
-              { key: "marca", label: "Marca", render: (v) => nombreMarca(v.id_marca_vehiculo) },
-              { key: "modelo", label: "Modelo", render: (v) => nombreModelo(v.id_modelo_vehiculo) },
-              { key: "id_year_vehiculo", label: "Año" },
-              { key: "cliente", label: "Cliente", render: (v) => v.cliente ? `${v.cliente.nombre_cliente} ${v.cliente.paterno_cliente || ""}` : "—" },
-              { key: "km_vehiculo", label: "Kilometraje" },
-            ]}
-            rows={visibles}
-            onEdit={setEditing}
-            onDelete={hasPermission("vehiculos.eliminar") ? handleDelete : undefined}
-            extraActions={(v) => (
-              <button className="btn btn-secondary btn-sm" onClick={() => setFotosDe(v)}>
-                📷 Fotos
-              </button>
-            )}
-            emptyMessage="No hay vehículos registrados todavía."
-          />
+          <div className="ordenes-lista">
+            {visibles.length === 0 && <div className="empty-state">No hay vehículos registrados todavía.</div>}
+            {visibles.map((v) => (
+              <div key={v.id_vehiculo} className="orden-fila fila-acciones" style={{ "--acc": colorGrupo(nomMarcaV(v)) }} onClick={() => setEditing(v)}>
+                <div className="cliente-avatar"><Icono nombre="car" size={26} /></div>
+                <div className="orden-main">
+                  <div className="orden-titulo">{nombreMarca(v.id_marca_vehiculo)} {nombreModelo(v.id_modelo_vehiculo)} {v.id_year_vehiculo || ""}</div>
+                  <div className="orden-meta">
+                    <span><Icono nombre="hash" size={15} /> {v.placas_vehiculo || "Sin placas"}</span>
+                    <span><Icono nombre="user" size={15} /> {v.cliente ? `${v.cliente.nombre_cliente} ${v.cliente.paterno_cliente || ""}` : "Sin cliente"}</span>
+                    <span><Icono nombre="chart" size={15} /> {v.km_vehiculo ? `${Number(v.km_vehiculo).toLocaleString("es-MX")} km` : "— km"}</span>
+                  </div>
+                </div>
+                <div className="orden-estado"><span className="cliente-cuenta">{v.numero_cuenta}</span></div>
+                <div className="row-actions" onClick={(e) => e.stopPropagation()}>
+                  <button className="btn-icono" title="Fotos" aria-label="Fotos" onClick={() => setFotosDe(v)}><IconoAuto valor="📷" size={18} /></button>
+                  <button className="btn-icono" title="Editar" aria-label="Editar" onClick={() => setEditing(v)}><Icono nombre="pencil" size={18} /></button>
+                  {hasPermission("vehiculos.eliminar") && (
+                    <button className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => handleDelete(v)}><Icono nombre="trash" size={18} /></button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -265,7 +273,7 @@ export default function Vehiculos() {
         <ModalPortal>
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setOfrecerSiguiente(null)}>
           <div className="modal" style={{ maxWidth: 400 }}>
-            <h2 style={{ fontSize: 18 }}>Vehículo registrado 🎉</h2>
+            <h2 style={{ fontSize: 18 }}>Vehículo registrado </h2>
             <p style={{ color: "var(--ink-500)", fontSize: 13.5, lineHeight: 1.5 }}>
               ¿Quieres crear su primera orden de una vez?
             </p>
@@ -275,7 +283,7 @@ export default function Vehiculos() {
                 className="btn btn-primary"
                 onClick={() => navigate(`/servicios?id_cliente=${ofrecerSiguiente.id_cliente}&id_vehiculo=${ofrecerSiguiente.id_vehiculo}&abrir_nuevo=1`)}
               >
-                🔧 Crear orden
+                <IconoAuto valor="🔧" size={18} /> Crear orden
               </button>
             </div>
           </div>

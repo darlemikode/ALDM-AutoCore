@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { marcarCampo } from "../validacion";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
@@ -35,6 +36,11 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     setClientes(c); setVehiculos(v); setMarcas(m); setModelos(mo);
   }
   useEffect(() => { cargar(); }, []);
+  useEffect(() => {
+    const esc = (e) => { if (e.key === "Escape" && !nuevoCliente && !nuevoVehiculo) onCerrar(); };
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [nuevoCliente, nuevoVehiculo, onCerrar]);
 
   const nombreVeh = (v) => `${v.marca?.nombre_marca || ""} ${v.modelo?.nombre_modelo || ""}`.trim() || v.numero_cuenta;
   const cliente = clientes.find((c) => c.id_cliente === Number(idCliente));
@@ -72,10 +78,15 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
   function camposVehiculo(values) {
     return [
       { name: "id_marca_vehiculo", label: "Marca", type: "select", required: true,
+        onElegir: (idMarca, v) => (v.id_modelo_vehiculo && modelos.find((m) => m.id_modelo_vehiculo === v.id_modelo_vehiculo)?.id_marca_vehiculo !== idMarca ? { id_modelo_vehiculo: null } : {}),
         options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca })),
         creatable: { endpoint: "/vehiculos-marcas/", createField: "nombre_marca", idField: "id_marca_vehiculo", label: "marca", onCreated: (n) => setMarcas((p) => [...p, n]) } },
       { name: "id_modelo_vehiculo", label: "Modelo", type: "select", required: true,
-        options: modelos.filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo).map((m) => ({ value: m.id_modelo_vehiculo, label: m.nombre_modelo })),
+        onElegir: (idModelo) => {
+          const m = modelos.find((x) => x.id_modelo_vehiculo === idModelo);
+          return m ? { id_marca_vehiculo: m.id_marca_vehiculo } : {};
+        },
+        options: modelos.filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo).map((m) => ({ value: m.id_modelo_vehiculo, label: values.id_marca_vehiculo ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim() })),
         creatable: values.id_marca_vehiculo ? { endpoint: "/vehiculos-modelos/", createField: "nombre_modelo", idField: "id_modelo_vehiculo", label: "modelo",
           extraFields: (v) => ({ id_marca_vehiculo: v.id_marca_vehiculo }), onCreated: (n) => setModelos((p) => [...p, n]) } : null },
       { name: "placas_vehiculo", label: "Placas" },
@@ -91,7 +102,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
   }
 
   async function confirmar() {
-    if (!idCliente) { notify("Elige el cliente.", "error"); return; }
+    if (!idCliente) { marcarCampo(document.querySelector(".ecv-modal .buscador-select input"), "Elige un cliente"); return; }
     setGuardando(true);
     try {
       await onConfirmar({ id_cliente: Number(idCliente), id_vehiculo: idVehiculo ? Number(idVehiculo) : null });

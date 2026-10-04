@@ -6,6 +6,7 @@ import ModalPortal from "../components/ModalPortal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { IconoAuto, Icono } from "../components/Icono";
 
 /**
  * Facturación electrónica (CFDI 4.0).
@@ -166,7 +167,7 @@ export default function Facturacion() {
         </div>
         {puedeEmitir && tab === "facturas" && (
           <button className="btn btn-primary" onClick={() => setEligiendoOrden(true)}>
-            ➕ Facturar orden
+            <IconoAuto valor="➕" size={18} /> Facturar orden
           </button>
         )}
       </div>
@@ -179,14 +180,14 @@ export default function Facturacion() {
       </div>
 
       <div className="sa-tabs">
-        <button type="button" className={`sa-tab ${tab === "facturas" ? "sa-tab-activo" : ""}`} onClick={() => setTab("facturas")}>🧾 Facturas</button>
-        <button type="button" className={`sa-tab ${tab === "configuracion" ? "sa-tab-activo" : ""}`} onClick={() => setTab("configuracion")}>⚙️ Configuración fiscal</button>
+        <button type="button" className={`sa-tab ${tab === "facturas" ? "sa-tab-activo" : ""}`} onClick={() => setTab("facturas")}><IconoAuto valor="🧾" size={18} /> Facturas</button>
+        <button type="button" className={`sa-tab ${tab === "configuracion" ? "sa-tab-activo" : ""}`} onClick={() => setTab("configuracion")}><IconoAuto valor="⚙️" size={18} /> Configuración fiscal</button>
       </div>
 
       {tab === "facturas" && (
         <div className="panel">
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-            <input className="search-input" style={{ flex: 1, minWidth: 220 }} placeholder="🔍 Buscar por receptor, RFC, UUID o folio…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+            <input className="search-input" style={{ flex: 1, minWidth: 220 }} placeholder="Buscar por receptor, RFC, UUID o folio…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
             <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ maxWidth: 220 }}>
               <option value="">Todos los estados</option>
               <option value="timbrada">Timbradas</option>
@@ -371,7 +372,7 @@ function EmitirModal({ inicial, catalogos, config, notify, onClose, onEmitida })
       <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !timbrando && onClose()}>
         <div className="modal" style={{ width: "94vw", maxWidth: 1100 }}>
           <div className="modal-header-icono">
-            <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}>📑</div>
+            <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}><IconoAuto valor="📑" size={24} /></div>
             <div>
               <h2>Facturar orden #{form.id_servicio}</h2>
               <div className="modal-subtitulo">
@@ -382,7 +383,7 @@ function EmitirModal({ inicial, catalogos, config, notify, onClose, onEmitida })
 
           <form onSubmit={timbrar}>
             <div className="nota-bloque">
-              <div className="nota-bloque-header"><span className="icono">🏷️</span><h2>Receptor</h2></div>
+              <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🏷️" size={18} /></span><h2>Receptor</h2></div>
               <div className="nota-bloque-body form-grid">
                 <div className="field full">
                   <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -431,7 +432,7 @@ function EmitirModal({ inicial, catalogos, config, notify, onClose, onEmitida })
             </div>
 
             <div className="nota-bloque acento-ambar">
-              <div className="nota-bloque-header"><span className="icono">💳</span><h2>Pago</h2></div>
+              <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="💳" size={18} /></span><h2>Pago</h2></div>
               <div className="nota-bloque-body form-grid">
                 <div className="field">
                   <label>Método de pago</label>
@@ -460,7 +461,7 @@ function EmitirModal({ inicial, catalogos, config, notify, onClose, onEmitida })
 
             <div className="nota-bloque">
               <div className="nota-bloque-header">
-                <span className="icono">🧩</span><h2>Conceptos</h2>
+                <span className="icono"><IconoAuto valor="🧩" size={18} /></span><h2>Conceptos</h2>
                 <span className="field-hint" style={{ marginLeft: "auto", fontSize: 12 }}>
                   Cantidades e importes vienen de la orden · reábrela si necesitas cambiarlos
                 </span>
@@ -501,9 +502,9 @@ function EmitirModal({ inicial, catalogos, config, notify, onClose, onEmitida })
 
             {error && <div className="error-text">{error}</div>}
             <div className="modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={timbrando}>✕ Cancelar</button>
+              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={timbrando}><span className="btn-ico"><Icono nombre="close" size={20} /></span>Cancelar</button>
               <button type="submit" className="btn btn-primary" disabled={timbrando || form.conceptos.length === 0 || totales.total <= 0}>
-                {timbrando ? "Timbrando…" : `✓ Timbrar factura por ${fmt(totales.total)}`}
+                {timbrando ? "Timbrando…" : `Timbrar factura por ${fmt(totales.total)}`}
               </button>
             </div>
           </form>
@@ -535,13 +536,13 @@ function SelectorOrdenes({ notify, onElegir, onClose }) {
       <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
         <div className="modal" style={{ maxWidth: 760 }}>
           <div className="modal-header-icono">
-            <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}>📑</div>
+            <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}><IconoAuto valor="📑" size={24} /></div>
             <div>
               <h2>Facturar orden</h2>
               <div className="modal-subtitulo">Solo aparecen órdenes finalizadas que aún no tienen factura.</div>
             </div>
           </div>
-          <input className="search-input" style={{ width: "100%", marginBottom: 12 }} autoFocus placeholder="🔍 Buscar por # de orden, cliente, RFC o vehículo…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="search-input" style={{ width: "100%", marginBottom: 12 }} autoFocus placeholder="Buscar por # de orden, cliente, RFC o vehículo…" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="fact-ordenes">
             {ordenes === null ? (
               <div className="loading-text">Cargando…</div>
@@ -652,7 +653,7 @@ function ConfiguracionFiscal({ config, catalogos, editable, notify, onGuardada }
   return (
     <form onSubmit={guardar}>
       <div className="nota-bloque">
-        <div className="nota-bloque-header"><span className="icono">🔌</span><h2>Proveedor de timbrado (PAC)</h2></div>
+        <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🔌" size={18} /></span><h2>Proveedor de timbrado (PAC)</h2></div>
         <div className="nota-bloque-body form-grid">
           <div className="field">
             <label>Proveedor</label>
@@ -671,14 +672,14 @@ function ConfiguracionFiscal({ config, catalogos, editable, notify, onGuardada }
             <div className="field full field-hint">
               Para timbrar de verdad: 1) crea tu organización en Facturapi y sube tu CSD (.cer, .key y contraseña) — no tu e.firma;
               2) copia la llave secreta en <span className="mono">backend/.env</span> como <span className="mono">FACTURAPI_API_KEY=sk_test_…</span> (pruebas) o <span className="mono">sk_live_…</span> (producción);
-              3) reinicia el backend. {config.pac_llave_detectada ? "✅ Llave detectada en el servidor." : "⚠️ Aún no se detecta la llave en el servidor."}
+              3) reinicia el backend. {config.pac_llave_detectada ? "Llave detectada en el servidor." : "Aún no se detecta la llave en el servidor."}
             </div>
           )}
         </div>
       </div>
 
       <div className="nota-bloque">
-        <div className="nota-bloque-header"><span className="icono">🏢</span><h2>Emisor</h2></div>
+        <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🏢" size={18} /></span><h2>Emisor</h2></div>
         <div className="nota-bloque-body form-grid">
           <div className="field"><label>RFC</label><input className="mono" disabled={!editable} value={form.rfc_emisor || ""} maxLength={13} onChange={(e) => set("rfc_emisor", e.target.value.toUpperCase().trim())} /></div>
           <div className="field"><label>Razón social (como en la constancia)</label><input disabled={!editable} value={form.razon_social_emisor || ""} onChange={(e) => set("razon_social_emisor", e.target.value.toUpperCase())} /></div>
@@ -694,7 +695,7 @@ function ConfiguracionFiscal({ config, catalogos, editable, notify, onGuardada }
       </div>
 
       <div className="nota-bloque acento-ambar">
-        <div className="nota-bloque-header"><span className="icono">🔢</span><h2>Serie, folio y claves SAT por defecto</h2></div>
+        <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🔢" size={18} /></span><h2>Serie, folio y claves SAT por defecto</h2></div>
         <div className="nota-bloque-body form-grid">
           <div className="field"><label>Serie</label><input disabled={!editable} value={form.serie || ""} maxLength={10} onChange={(e) => set("serie", e.target.value.toUpperCase())} /></div>
           <div className="field"><label>Folio siguiente</label><input type="number" min="1" disabled={!editable} value={form.folio_siguiente} onChange={(e) => set("folio_siguiente", e.target.value)} /></div>

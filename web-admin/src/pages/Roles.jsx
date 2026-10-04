@@ -1,3 +1,5 @@
+import { IconoAuto } from "../components/Icono";
+import { marcarCampo } from "../validacion";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
@@ -5,6 +7,7 @@ import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { AccionesModulo, ICONO_ROL_BASE, detalleModulo, infoModulo } from "../components/permisosUI";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 // Ciclo de acentos de color — igual que los badges del resto de la app,
 // más violeta/azul para tener variedad suficiente entre roles y módulos
@@ -110,7 +113,7 @@ export default function Roles() {
 
   async function guardar() {
     if (!borrador.nombre.trim()) {
-      notify("Ponle un nombre al rol.", "error");
+      marcarCampo(document.querySelector(".form-grid .field input"), "Ponle un nombre al rol");
       return;
     }
     try {
@@ -167,7 +170,7 @@ export default function Roles() {
             <div className="subtitle">Administrador General, Jefe de Taller, Asesor de Servicio, Técnico, y cualquier rol adicional que necesites</div>
           </div>
         </div>
-        {puedeEditar && <button className="btn btn-primary" onClick={iniciarNuevoRol}>➕ Nuevo rol</button>}
+        {puedeEditar && <button className="btn btn-primary btn-nuevo" onClick={iniciarNuevoRol}><span className="btn-nuevo-icono"><Icono nombre="doc-add" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo rol</button>}
       </div>
 
       <div className="roles-layout">
@@ -181,7 +184,7 @@ export default function Roles() {
                 className={`rol-card ${seleccionado === r.id_rol && !creando ? "activo" : ""}`}
                 style={acentoDe(i)}
               >
-                <span className="rol-card-icono">{ICONO_ROL_BASE[r.nombre] || "🛡️"}</span>
+                <span className="rol-card-icono"><IconoAuto valor={ICONO_ROL_BASE[r.nombre] || "🛡️"} size={20} /></span>
                 <span className="rol-card-info">
                   <span className="rol-card-nombre">
                     {r.nombre}
@@ -194,7 +197,7 @@ export default function Roles() {
           </div>
           {puedeEditar && (
             <button type="button" className="btn-nuevo-rol" onClick={iniciarNuevoRol}>
-              ➕ Crear rol nuevo
+              <IconoAuto valor="➕" size={18} /> Crear rol nuevo
             </button>
           )}
         </div>
@@ -238,7 +241,7 @@ export default function Roles() {
                 </div>
                 {!creando && puedeEditar && (
                   <div className={`guardado-auto ${estadoGuardado}`}>
-                    {estadoGuardado === "guardando" ? "Guardando…" : estadoGuardado === "guardado" ? "✓ Guardado" : "Se guarda al dar clic"}
+                    {estadoGuardado === "guardando" ? "Guardando…" : estadoGuardado === "guardado" ? "Guardado" : "Se guarda al dar clic"}
                   </div>
                 )}
                 <div className="permisos-resumen-barra">
@@ -250,7 +253,7 @@ export default function Roles() {
                 <input
                   className="search-input"
                   style={{ maxWidth: 220 }}
-                  placeholder="🔍 Buscar módulo o permiso…"
+                  placeholder="Buscar módulo o permiso…"
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                 />
@@ -265,7 +268,7 @@ export default function Roles() {
                 return (
                   <div key={modulo} className="modulo-card" style={acentoDe(indiceModulo)}>
                     <div className="modulo-card-header">
-                      <span className="modulo-card-icono">{infoModulo(modulo).icono}</span>
+                      <span className="modulo-card-icono"><IconoAuto valor={infoModulo(modulo).icono} size={18} /></span>
                       <span className="modulo-card-titulo">
                         {infoModulo(modulo).nombre}
                         {detalleModulo(permisosModulo) && <span className="modulo-card-detalle">{detalleModulo(permisosModulo)}</span>}

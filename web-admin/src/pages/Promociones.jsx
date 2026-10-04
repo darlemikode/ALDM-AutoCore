@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api";
@@ -6,6 +7,7 @@ import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 const CAMPOS = [
   { name: "titulo", label: "Título", required: true, full: true, grupo: "contenido" },
@@ -126,10 +128,10 @@ export default function Promociones() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn btn-secondary" onClick={() => setPrevisualizando(true)}>
-            👁️ Ver como cliente
+            <IconoAuto valor="👁️" size={18} /> Ver como cliente
           </button>
           {hasPermission("promociones.crear") && (
-            <button className="btn btn-primary" onClick={() => setEditing({})}>🏷️ Nueva promoción</button>
+            <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="pricetag" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva promoción</button>
           )}
         </div>
       </div>
@@ -169,7 +171,7 @@ export default function Promociones() {
             extraActions={(p) =>
               hasPermission("promociones.editar") && (
                 <button className="btn btn-secondary btn-sm" onClick={() => elegirImagenPara(p)}>
-                  📷 Imagen
+                  <IconoAuto valor="📷" size={18} /> Imagen
                 </button>
               )
             }
@@ -210,7 +212,7 @@ function VistaPreviaCliente({ promociones, onClose }) {
         <div style={{ background: "#fff", padding: "16px 16px 8px", position: "sticky", top: 0, zIndex: 2, borderBottom: "1px solid #e2e5e6" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase" }}>Mi<span style={{ color: "var(--petrol-500)" }}>Taller</span></div>
-            <button onClick={onClose} style={{ border: "none", background: "none", fontSize: 13, color: "var(--ink-500)", cursor: "pointer" }}>Cerrar ✕</button>
+            <button onClick={onClose} style={{ border: "none", background: "none", fontSize: 13, color: "var(--ink-500)", cursor: "pointer" }}>Cerrar <IconoAuto valor="✕" size={18} /></button>
           </div>
           <div style={{ fontSize: 11, color: "var(--ink-500)", marginTop: 8 }}>Así se ve el inicio de la app de tus clientes ahora mismo:</div>
         </div>

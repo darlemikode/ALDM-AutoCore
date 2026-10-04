@@ -1,3 +1,4 @@
+import { IconoAuto } from "./Icono";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -8,6 +9,7 @@ import { ICONOS, COLORES_ICONO } from "../iconos";
 import { Icono } from "./Icono";
 import { escucharSidebar, escucharTema, setSidebarCompacta, sidebarCompactaActiva, temaOscuroActivo } from "../preferencias";
 import CampanaNotificaciones from "./CampanaNotificaciones";
+import Atajos from "./Atajos";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 
 // permisoRequerido: si se define, el enlace solo se muestra a quien tenga
@@ -15,15 +17,14 @@ import { useActualizacionGlobal } from "../useActualizacionGlobal";
 // puede entrar (antes solo la ruta lo bloqueaba, pero el enlace se veía
 // igual y llevaba a un redirect confuso).
 const NAV = [
-  { group: "General", items: [{ to: "/", label: "Panel", end: true }, { to: "/mi-dashboard", label: "Mi dashboard" }] },
+  { group: "General", items: [{ to: "/", label: "Panel", end: true }, { to: "/citas", label: "Citas solicitadas" }, { to: "/mi-dashboard", label: "Mi dashboard" }] },
   {
     group: "Operación",
     items: [
       { to: "/servicios", label: "Órdenes de servicio", permisoRequerido: "servicios.ver" },
-      { to: "/cotizaciones", label: "Cotizaciones", permisoRequerido: "cotizaciones.ver" },
-      { to: "/citas", label: "Citas solicitadas" },
       { to: "/clientes", label: "Clientes", permisoRequerido: "clientes.ver" },
       { to: "/vehiculos", label: "Vehículos", permisoRequerido: "vehiculos.ver" },
+      { to: "/cotizaciones", label: "Cotizaciones", permisoRequerido: "cotizaciones.ver" },
     ],
   },
   {
@@ -94,9 +95,10 @@ export default function Layout() {
 
   return (
     <div className={"app-shell" + (sidebarCompacta ? " sidebar-compacta-shell" : "")}>
+      <Atajos />
       <div className="topbar-movil">
         <button type="button" className="topbar-movil-hamburguesa" title="Abrir menú" onClick={() => setMenuMovilAbierto(true)}>
-          ☰
+          <IconoAuto valor="☰" size={18} />
         </button>
         <span className="topbar-movil-marca">ALDM AutoCore</span>
       </div>

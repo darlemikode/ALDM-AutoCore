@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
@@ -7,6 +8,7 @@ import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 const STATUS_BADGE = {
   abierto: "badge-petrol",
@@ -110,6 +112,14 @@ export default function Servicios() {
   async function nuevaOrdenDirecta() {
     if (verificacion2Pasos) { openCreate(); return; } // con verificación en 2 pasos se conserva el formulario con código
     try {
+      // Solo se permite 1 orden abierta sin cliente: si ya existe, se va a esa.
+      const abiertas = await api.get("/servicios/?status=abierto");
+      const vacia = abiertas.find((o) => !o.id_cliente && !o.cliente);
+      if (vacia) {
+        notify(`Ya tienes la orden #${vacia.id_servicio} abierta sin cliente — te llevo a ella.`, "info");
+        navigate(`/servicios/${vacia.id_servicio}`);
+        return;
+      }
       const s = await api.post("/servicios/", { nombre_servicio: "Servicio general", iva_porcentaje: 0, tipos_mantenimiento_ids: [], autorizado_cliente: false });
       navigate(`/servicios/${s.id_servicio}`);
     } catch (err) {
@@ -305,20 +315,15 @@ export default function Servicios() {
           <h1><IconoModulo ruta="/servicios" /> Órdenes de servicio</h1>
           <div className="subtitle">{servicios.length} orden(es)</div>
         </div>
-        <button className="btn btn-primary" onClick={nuevaOrdenDirecta}>
-          🔧 Nueva orden
-        </button>
+        <button className="btn btn-primary btn-nuevo" onClick={nuevaOrdenDirecta}>
+          <span className="btn-nuevo-icono"><Icono nombre="doc-add" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva orden</button>
       </div>
 
       <div className="panel">
-        <div className="toolbar">
-          {["", "abierto", "cerrado", "cancelado"].map((s) => (
-            <button
-              key={s}
-              className={`btn btn-sm ${status === s ? "btn-primary" : "btn-secondary"}`}
-              onClick={() => setStatus(s)}
-            >
-              {s === "" ? "Todas" : s[0].toUpperCase() + s.slice(1)}
+        <div className="cat-chips">
+          {[["", "Todas", "var(--petrol-500)"], ["abierto", "Abierto", "#3ddc97"], ["cerrado", "Cerrado", "#6aa7ff"], ["cancelado", "Cancelado", "#ff7a70"]].map(([v, t, c]) => (
+            <button type="button" key={v} className={`cat-chip ${status === v ? "cat-chip-on" : ""}`} style={{ "--c": c }} onClick={() => setStatus(v)}>
+              <span className="cat-punto" />{t}
             </button>
           ))}
         </div>
@@ -328,43 +333,37 @@ export default function Servicios() {
         ) : servicios.length === 0 ? (
           <div className="empty-state">No hay órdenes de servicio con este filtro.</div>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Orden</th>
-                <th>Cliente</th>
-                <th>Vehículo</th>
-                <th>Entrada</th>
-                <th>Estado</th>
-                {puedeVerPrecios && <th>Total</th>}
-                {puedeVerPorCobrar && <th>Saldo</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {servicios.map((s) => (
-                <tr key={s.id_servicio} style={{ cursor: "pointer" }} onClick={() => navigate(`/servicios/${s.id_servicio}`)}>
-                  <td>
-                    <Link to={`/servicios/${s.id_servicio}`}>{s.es_garantia && "🛡️ "}#{s.id_servicio} · {s.nombre_servicio}</Link>
-                  </td>
-                  <td>{s.cliente ? `${s.cliente.nombre_cliente} ${s.cliente.paterno_cliente || ""}` : "—"}</td>
-                  <td>{s.vehiculo?.placas_vehiculo || "—"}</td>
-                  <td>{new Date(s.fecha_entrada_servicio).toLocaleDateString("es-MX")}</td>
-                  <td>
+          <div className="ordenes-lista">
+            {servicios.map((s) => {
+              const cli = s.cliente ? `${s.cliente.nombre_cliente} ${s.cliente.paterno_cliente || ""}`.trim() : null;
+              return (
+                <div key={s.id_servicio} className={`orden-fila est-${s.status}`} onClick={() => navigate(`/servicios/${s.id_servicio}`)}>
+                  <div className="orden-num">#{s.id_servicio}</div>
+                  <div className="orden-main">
+                    <div className="orden-titulo">{s.es_garantia && <><IconoAuto valor="🛡️" size={16} />{" "}</>}{s.nombre_servicio}</div>
+                    <div className="orden-meta">
+                      <span><Icono nombre="user" size={15} /> {cli || "Sin cliente"}</span>
+                      <span><Icono nombre="car" size={15} /> {s.vehiculo?.placas_vehiculo || "Sin vehículo"}</span>
+                      <span><Icono nombre="calendar" size={15} /> {new Date(s.fecha_entrada_servicio).toLocaleDateString("es-MX")}</span>
+                    </div>
+                  </div>
+                  <div className="orden-estado">
                     <span className={`badge ${STATUS_BADGE[s.status] || "badge-grey"}`}>{s.status}</span>
-                    {s.status === "abierto" && s.etapa && (
-                      <div style={{ fontSize: 11, color: "var(--ink-500)", marginTop: 3 }}>{ETIQUETAS_ETAPA[s.etapa] || s.etapa}</div>
-                    )}
-                  </td>
-                  {puedeVerPrecios && <td className="mono">{fmt(s.costos.total)}</td>}
-                  {puedeVerPorCobrar && (
-                    <td className="mono">
-                      {s.pagado ? <span className="badge badge-teal">Pagado</span> : fmt(s.costos.saldo_pendiente)}
-                    </td>
+                    {s.status === "abierto" && s.etapa && <div className="orden-etapa">{ETIQUETAS_ETAPA[s.etapa] || s.etapa}</div>}
+                  </div>
+                  {(puedeVerPrecios || puedeVerPorCobrar) && (
+                    <div className="orden-dinero">
+                      {puedeVerPrecios && <div className="orden-total mono">{fmt(s.costos.total)}</div>}
+                      {puedeVerPorCobrar && (s.pagado
+                        ? <span className="badge badge-teal">Pagado</span>
+                        : <div className="orden-saldo">Saldo {fmt(s.costos.saldo_pendiente)}</div>)}
+                    </div>
                   )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  <div className="orden-flecha">›</div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 

@@ -452,6 +452,7 @@ class RefaccionIn(BaseModel):
     codigo_barras: Optional[str] = None
     ubicacion_fisica: Optional[str] = None
     zona_abc: Optional[str] = None
+    proveedores_ids: List[int] = []  # proveedores adicionales (además del principal)
 
 
 class RefaccionCompatibilidadIn(BaseModel):

@@ -7,6 +7,7 @@ import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 const CAMPOS = [
   { name: "nombre", label: "Nombre", required: true, grupo: "personal" },
@@ -87,7 +88,7 @@ export default function Empleados() {
           </div>
         </div>
         {hasPermission("empleados.crear") && (
-          <button className="btn btn-primary" onClick={() => setEditing({})}>👷 Nuevo empleado</button>
+          <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="id-card" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo empleado</button>
         )}
       </div>
 

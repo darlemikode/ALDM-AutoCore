@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
@@ -110,7 +111,7 @@ export default function AsignacionRoles() {
 
       <div className="roles-layout">
         <div>
-          <input className="search-input" style={{ width: "100%", marginBottom: 8 }} placeholder="🔍 Buscar usuario o rol…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <input className="search-input" style={{ width: "100%", marginBottom: 8 }} placeholder="Buscar usuario o rol…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
           <div className="roles-lista">
             {filtrados.map((u) => {
               const indiceRol = roles.findIndex((r) => r.id_rol === u.rol?.id_rol);
@@ -131,7 +132,7 @@ export default function AsignacionRoles() {
                       {!u.activo && <span className="badge badge-grey">Inactivo</span>}
                     </span>
                     <span className="rol-card-meta">
-                      {ICONO_ROL_BASE[u.rol?.nombre] || "🛡️"} {u.rol?.nombre || "Sin rol"} · @{u.username}
+                      <IconoAuto valor={ICONO_ROL_BASE[u.rol?.nombre] || "🛡️"} size={20} /> {u.rol?.nombre || "Sin rol"} · @{u.username}
                     </span>
                   </span>
                 </button>
@@ -140,7 +141,7 @@ export default function AsignacionRoles() {
             {filtrados.length === 0 && <div className="empty-state">Ningún usuario coincide.</div>}
           </div>
           <Link to="/usuarios" className="btn-nuevo-rol" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
-            👤 Administrar usuarios
+            <IconoAuto valor="👤" size={18} /> Administrar usuarios
           </Link>
         </div>
 
@@ -183,7 +184,7 @@ export default function AsignacionRoles() {
                     className={`asig-rol ${rolElegido === r.id_rol ? "activo" : ""}`}
                     style={acentoDe(i)}
                   >
-                    <span className="asig-rol-icono">{ICONO_ROL_BASE[r.nombre] || "🛡️"}</span>
+                    <span className="asig-rol-icono"><IconoAuto valor={ICONO_ROL_BASE[r.nombre] || "🛡️"} size={20} /></span>
                     <span className="asig-rol-nombre">{r.nombre}</span>
                     <span className="asig-rol-meta">{r.permisos.length} permiso{r.permisos.length === 1 ? "" : "s"}</span>
                     {usuario.rol?.id_rol === r.id_rol && <span className="asig-rol-actual">Actual</span>}
@@ -211,7 +212,7 @@ export default function AsignacionRoles() {
                     return (
                       <div key={modulo} className="modulo-card" style={acentoDe(i)}>
                         <div className="modulo-card-header">
-                          <span className="modulo-card-icono">{infoModulo(modulo).icono}</span>
+                          <span className="modulo-card-icono"><IconoAuto valor={infoModulo(modulo).icono} size={18} /></span>
                           <span className="modulo-card-titulo">
                             {infoModulo(modulo).nombre}
                             {detalleModulo(permisosModulo) && <span className="modulo-card-detalle">{detalleModulo(permisosModulo)}</span>}

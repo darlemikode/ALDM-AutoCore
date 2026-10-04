@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { marcarCampo } from "../validacion";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, getToken } from "../api";
 import FormModal from "../components/FormModal";
@@ -12,12 +13,13 @@ import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
 import ElegirClienteVehiculo from "../components/ElegirClienteVehiculo";
+import { Icono, IconoAuto } from "../components/Icono";
 
 function BloqueNota({ icono, titulo, acento, accion, children }) {
   return (
     <div className={`nota-bloque ${acento ? `acento-${acento}` : ""}`}>
       <div className="nota-bloque-header">
-        <span className="icono">{icono}</span>
+        <span className="icono"><IconoAuto valor={icono} size={18} /></span>
         <h2>{titulo}</h2>
         {accion}
       </div>
@@ -34,6 +36,7 @@ export default function ServicioDetalle() {
   const [servicio, setServicio] = useState(null);
   const [comentariosFinales, setComentariosFinales] = useState("");
   const [guardandoComentarios, setGuardandoComentarios] = useState(false);
+  const [comentariosGuardados, setComentariosGuardados] = useState("");
   const [tipos, setTipos] = useState([]);
   const [refacciones, setRefacciones] = useState([]);
   const [inventarioVehiculo, setInventarioVehiculo] = useState([]); // filas de InventarioRefaccion que coinciden con marca+modelo de ESTE vehículo
@@ -61,6 +64,7 @@ export default function ServicioDetalle() {
   const [fotoVehiculo, setFotoVehiculo] = useState(null);
   const [datosTaller, setDatosTaller] = useState(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
+  const [pdfTipo, setPdfTipo] = useState("recibo");
   const [searchParams, setSearchParams] = useSearchParams();
   const [eligiendoCV, setEligiendoCV] = useState(false);
 
@@ -97,6 +101,7 @@ export default function ServicioDetalle() {
     const s = await api.get(`/servicios/${id}`);
     setServicio(s);
     setComentariosFinales(s.comentarios_finales || "");
+    setComentariosGuardados(s.comentarios_finales || "");
     if (!s.es_garantia) {
       api.get(`/servicios/${id}/reclamaciones`).then(setReclamaciones);
     } else {
@@ -144,6 +149,24 @@ export default function ServicioDetalle() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Guardado automático: 1 segundo después de dejar de escribir
+  useEffect(() => {
+    if (!servicio || comentariosFinales === comentariosGuardados) return undefined;
+    const t = setTimeout(async () => {
+      setGuardandoComentarios(true);
+      try {
+        await api.put(`/servicios/${id}`, { comentarios_finales: comentariosFinales });
+        setComentariosGuardados(comentariosFinales);
+      } catch (err) {
+        notify(err.message, "error");
+      } finally {
+        setGuardandoComentarios(false);
+      }
+    }, 1000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comentariosFinales, comentariosGuardados, servicio]);
+
   if (!servicio) return <div className="loading-text">Cargando orden…</div>;
 
   const fmt = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
@@ -170,7 +193,7 @@ export default function ServicioDetalle() {
       if (actualizado.alertas_stock?.length > 0) {
         actualizado.alertas_stock.forEach((a) => {
           notify(
-            `${a.nivel === "critico" ? "🔴 Stock crítico" : "🟠 Stock bajo"}: "${a.nombre_refaccion}" — quedan ${a.cantidad_actual}`,
+            `${a.nivel === "critico" ? " Stock crítico" : " Stock bajo"}: "${a.nombre_refaccion}" — quedan ${a.cantidad_actual}`,
             a.nivel === "critico" ? "error" : "info"
           );
         });
@@ -265,6 +288,19 @@ export default function ServicioDetalle() {
     }
   }
 
+  async function borrarTodasRefacciones() {
+    const n = servicio.detalles.length;
+    const ok = await confirmDialog(`¿Borrar las ${n} refacción(es) y concepto(s) de esta orden? Lo que se descontó del inventario se regresa. Esta acción no se puede deshacer.`, { danger: true });
+    if (!ok) return;
+    try {
+      await api.del(`/servicios/${id}/detalles`);
+      notify("Se quitaron todas las refacciones de la orden.", "success");
+      load();
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
+
   async function handleDeleteDetalle(detalleId) {
     const ok = await confirmDialog("¿Quitar este concepto de la orden? Si usaba una refacción, se regresa al inventario.", { danger: true });
     if (!ok) return;
@@ -310,7 +346,7 @@ export default function ServicioDetalle() {
         actualizado.alertas_stock.forEach((a) => {
           const proveedorTexto = a.proveedor ? ` · Proveedor: ${a.proveedor.nombre}${a.proveedor.telefono ? " (" + a.proveedor.telefono + ")" : ""}` : "";
           notify(
-            `${a.nivel === "critico" ? "🔴 Stock crítico" : "🟠 Stock bajo"}: "${a.nombre_refaccion}"${a.numero_refaccion ? " (" + a.numero_refaccion + ")" : ""} — quedan ${a.cantidad_actual}${proveedorTexto}`,
+            `${a.nivel === "critico" ? " Stock crítico" : " Stock bajo"}: "${a.nombre_refaccion}"${a.numero_refaccion ? " (" + a.numero_refaccion + ")" : ""} — quedan ${a.cantidad_actual}${proveedorTexto}`,
             a.nivel === "critico" ? "error" : "info"
           );
         });
@@ -378,7 +414,7 @@ export default function ServicioDetalle() {
 
   async function confirmarCierre() {
     if (textoConfirmar !== "CONFIRMAR") {
-      notify("Escribe la palabra CONFIRMAR, en mayúsculas, para finalizar la orden.", "error");
+      marcarCampo(document.querySelector(".modal-backdrop:last-of-type .modal input"), "Escribe CONFIRMAR, en mayúsculas");
       return;
     }
     setCerrando(true);
@@ -403,16 +439,11 @@ export default function ServicioDetalle() {
     }
   }
 
-  async function guardarComentarios() {
-    setGuardandoComentarios(true);
-    try {
-      await api.put(`/servicios/${id}`, { comentarios_finales: comentariosFinales });
-      notify("Comentarios guardados — ya aparecerán en el recibo y la nota de remisión.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    } finally {
-      setGuardandoComentarios(false);
-    }
+  function nombrePdf(tipo) {
+    const cli = [servicio?.cliente?.nombre_cliente, servicio?.cliente?.paterno_cliente].filter(Boolean).join(" ") || `orden ${id}`;
+    const veh = [servicio?.vehiculo?.marca?.nombre_marca, servicio?.vehiculo?.modelo?.nombre_modelo, servicio?.vehiculo?.id_year_vehiculo].filter(Boolean).join(" ");
+    const base = [tipo === "remision" ? "Nota" : "Orden", cli, veh].filter(Boolean).join(" - ");
+    return `${base.replace(/[\\/:*?"<>|]/g, "")}.pdf`;
   }
 
   async function descargarPdf(tipo, modo = "descargar") {
@@ -435,12 +466,13 @@ export default function ServicioDetalle() {
         // Se muestra incrustado en un modal de la misma página — nada de
         // pestañas nuevas ni pop-ups: los navegadores las bloquean de
         // formas distintas e impredecibles, y así siempre funciona.
+        setPdfTipo(tipo);
         setPdfPreviewUrl(url);
         return;
       }
       const a = document.createElement("a");
       a.href = url;
-      a.download = tipo === "remision" ? `nota-remision-${id}.pdf` : `orden-${id}.pdf`;
+      a.download = nombrePdf(tipo);
       a.click();
       URL.revokeObjectURL(url);
       if (modo === "preview") notify("Se descargó la nota — tu celular la abre con su propio visor de PDF.", "success");
@@ -467,29 +499,31 @@ export default function ServicioDetalle() {
           </h1>
           <div className="orden-hero-herramientas">
             <span className="tip-envoltura" title={servicio.detalles.length > 0 ? "Vista previa de la nota (incluye la inspección, si ya se hizo)" : "La vista previa se activa cuando ya se capturaron refacciones o conceptos"}>
-              <button className="icon-btn" onClick={() => descargarPdf("recibo", "preview")} disabled={descargando || servicio.detalles.length === 0}>🔍</button>
+              <button className="icon-btn" onClick={() => descargarPdf("recibo", "preview")} disabled={descargando || servicio.detalles.length === 0}><IconoAuto valor="🔍" size={18} /></button>
             </span>
-            <span className="tip-envoltura" title={servicio.status === "cerrado" ? "Descargar el recibo en PDF" : "Disponible cuando la orden esté finalizada"}>
-              <button className="btn btn-secondary" onClick={() => descargarPdf("recibo")} disabled={descargando || servicio.status !== "cerrado"}>
-                🖨️ {descargando ? "Generando…" : "Descargar recibo"}
+            {servicio.status === "cerrado" && (
+            <span className="tip-envoltura" title="Descargar el recibo en PDF">
+              <button className="btn btn-secondary" onClick={() => descargarPdf("recibo")} disabled={descargando}>
+                <IconoAuto valor="🖨️" size={18} /> {descargando ? "Generando…" : "Descargar recibo"}
               </button>
             </span>
+            )}
           </div>
         </div>
 
         <div className="orden-hero-grid">
           <div className="orden-hero-bloque" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)", cursor: abierta ? "pointer" : "default" }}
             onClick={() => abierta && hasPermission("servicios.editar") && setEligiendoCV(true)} title={abierta ? "Elegir o cambiar el cliente y el vehículo" : undefined}>
-            <span className="orden-hero-icono">🧑</span>
+            <span className="orden-hero-icono"><IconoAuto valor="🧑" size={22} /></span>
             <div>
               <div className="orden-hero-etiqueta">Cliente</div>
               <div className="orden-hero-valor">{servicio.cliente ? `${servicio.cliente.nombre_cliente} ${servicio.cliente.paterno_cliente || ""}` : "Toca para elegir…"}</div>
-              <div className="orden-hero-meta">{servicio.cliente?.numero_cuenta}{servicio.cliente?.telefono1 ? ` · 📱 ${servicio.cliente.telefono1}` : ""}</div>
+              <div className="orden-hero-meta">{servicio.cliente?.numero_cuenta}{servicio.cliente?.telefono1 ? ` · ${servicio.cliente.telefono1}` : ""}</div>
             </div>
           </div>
           <div className="orden-hero-bloque" style={{ "--acc": "var(--blue-600)", "--acc-soft": "var(--blue-100)", cursor: abierta ? "pointer" : "default" }}
             onClick={() => abierta && hasPermission("servicios.editar") && setEligiendoCV(true)} title={abierta ? "Elegir o cambiar el cliente y el vehículo" : undefined}>
-            <span className="orden-hero-icono">🚗</span>
+            <span className="orden-hero-icono"><IconoAuto valor="🚗" size={22} /></span>
             <div>
               <div className="orden-hero-etiqueta">Vehículo</div>
               <div className="orden-hero-valor">
@@ -499,7 +533,7 @@ export default function ServicioDetalle() {
             </div>
           </div>
           <div className="orden-hero-bloque" style={{ "--acc": "var(--violet-600)", "--acc-soft": "var(--violet-100)" }}>
-            <span className="orden-hero-icono">👷</span>
+            <span className="orden-hero-icono"><IconoAuto valor="👷" size={22} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="orden-hero-etiqueta">Empleado responsable</div>
               {hasPermission("servicios.editar") ? (
@@ -520,7 +554,7 @@ export default function ServicioDetalle() {
 
       <div className="datos-3-bloques">
         <div className="nota-bloque">
-          <div className="nota-bloque-header"><span className="icono">🧑</span><h2>Datos del cliente</h2></div>
+          <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🧑" size={18} /></span><h2>Datos del cliente</h2></div>
           <div className="nota-bloque-body">
             <dl className="datos-lista">
               <dt>ID / Cuenta</dt><dd>{servicio.cliente?.numero_cuenta || "—"}</dd>
@@ -531,7 +565,7 @@ export default function ServicioDetalle() {
         </div>
 
         <div className="nota-bloque">
-          <div className="nota-bloque-header"><span className="icono">🚗</span><h2>Datos del vehículo</h2></div>
+          <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🚗" size={18} /></span><h2>Datos del vehículo</h2></div>
           <div className="nota-bloque-body datos-vehiculo-body">
             <dl className="datos-lista">
               <dt>Marca</dt><dd>{servicio.vehiculo?.marca?.nombre_marca || "—"}</dd>
@@ -553,7 +587,7 @@ export default function ServicioDetalle() {
         </div>
 
         <div className="nota-bloque">
-          <div className="nota-bloque-header"><span className="icono">🏢</span><h2>Datos del taller</h2></div>
+          <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🏢" size={18} /></span><h2>Datos del taller</h2></div>
           <div className="nota-bloque-body datos-vehiculo-body">
             {datosTaller ? (
               <dl className="datos-lista">
@@ -587,7 +621,7 @@ export default function ServicioDetalle() {
 
       {servicio.es_garantia && (
         <div className="panel" style={{ borderLeft: "4px solid #b5730a", padding: "12px 16px" }}>
-          🛡️ <b>Esta orden es una reclamación de garantía</b> de la{" "}
+          <IconoAuto valor="🛡️" size={18} /> <b>Esta orden es una reclamación de garantía</b> de la{" "}
           <Link to={`/servicios/${servicio.id_servicio_original}`}>orden #{servicio.id_servicio_original}</Link>.
           {servicio.motivo_garantia && <div style={{ marginTop: 6, fontSize: 13 }}>Motivo: {servicio.motivo_garantia}</div>}
         </div>
@@ -595,7 +629,7 @@ export default function ServicioDetalle() {
 
       {reclamaciones.length > 0 && (
         <div className="panel" style={{ borderLeft: "4px solid #b5730a" }}>
-          <h2 style={{ fontSize: 16, marginBottom: 10 }}>🛡️ Este vehículo volvió por esto ({reclamaciones.length})</h2>
+          <h2 style={{ fontSize: 16, marginBottom: 10 }}><IconoAuto valor="🛡️" size={18} /> Este vehículo volvió por esto ({reclamaciones.length})</h2>
           <table>
             <thead><tr><th>Orden</th><th>Fecha</th><th>Motivo</th><th>Estatus</th></tr></thead>
             <tbody>
@@ -617,8 +651,8 @@ export default function ServicioDetalle() {
         titulo="Resumen de costos"
         accion={
           hasPermission("servicios.editar") && !servicio.pagado && (
-            <button className="btn btn-secondary btn-sm" onClick={() => setAddingAbono(true)} disabled={!abierta}>
-              + Registrar abono
+            <button className="btn btn-agregar" onClick={() => setAddingAbono(true)} disabled={!abierta}>
+              <Icono nombre="cash" size={18} /> Registrar abono
             </button>
           )
         }
@@ -657,9 +691,16 @@ export default function ServicioDetalle() {
         icono="🔧"
         titulo="Refacciones"
         accion={
-          <button className="btn btn-primary btn-sm" onClick={() => setAddingDetalle(true)} disabled={!abierta}>
-            + Agregar refacción
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {hasPermission("servicios.editar") && abierta && servicio.detalles.length > 0 && (
+              <button className="btn btn-agregar btn-borrar-todo" onClick={borrarTodasRefacciones}>
+                <Icono nombre="trash" size={18} /> Borrar todas
+              </button>
+            )}
+            <button className="btn btn-agregar" onClick={() => setAddingDetalle(true)} disabled={!abierta}>
+              <Icono nombre="add" size={18} /> Agregar refacción
+            </button>
+          </div>
         }
       >
         {servicio.detalles.length === 0 ? (
@@ -775,9 +816,9 @@ export default function ServicioDetalle() {
             placeholder="Ej. Se recomienda revisar las balatas traseras en el próximo servicio."
           />
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={guardarComentarios} disabled={guardandoComentarios}>
-          {guardandoComentarios ? "Guardando…" : "Guardar comentarios"}
-        </button>
+        <div className="autoguardado">
+          {guardandoComentarios || comentariosFinales !== comentariosGuardados ? "Guardando…" : comentariosFinales ? "✓ Guardado automáticamente" : ""}
+        </div>
       </BloqueNota>
 
       <BloqueNota icono="📸" titulo="Fotos">
@@ -789,48 +830,48 @@ export default function ServicioDetalle() {
       <aside className="orden-aside">
         <div className="nota-bloque lateral-bloque">
           <div className="nota-bloque-header">
-            <span className="icono">🧾</span>
+            <span className="icono"><IconoAuto valor="🧾" size={18} /></span>
             <h2>Opciones de la nota</h2>
           </div>
           <div className="nota-bloque-body">
             <div className="lateral-acciones">
               {abierta && (
                 <button className="btn btn-primary" onClick={() => setModalCierre(true)} title="Cobrar, cerrar la orden, generar la nota y avisar al cliente">
-                  🧾 Finalizar y generar nota
+                  <IconoAuto valor="🧾" size={18} /> Finalizar y generar nota
                 </button>
               )}
               {servicio.detalles.length > 0 && (
                 <button className="btn btn-primary" onClick={() => imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo")} disabled={descargando} title="Imprimir la nota ahora">
-                  🖨️ Imprimir nota
+                  <IconoAuto valor="🖨️" size={18} /> Imprimir nota
                 </button>
               )}
               <button className="btn btn-secondary" onClick={enviarWhatsApp} title="Abrir WhatsApp con el resumen de la orden para el cliente">
-                💬 Enviar por WhatsApp
+                <IconoAuto valor="💬" size={18} /> Enviar por WhatsApp
               </button>
               {servicio.status === "cerrado" && (
                 <button className="btn btn-secondary" onClick={() => descargarPdf("remision")} disabled={descargando} title="Descargar la nota de remisión en PDF">
-                  📋 Nota de remisión
+                  <IconoAuto valor="📋" size={18} /> Nota de remisión
                 </button>
               )}
               {facturaOrden ? (
                 <Link className="btn btn-secondary" to="/facturacion" title="Ver la factura de esta orden">
-                  📑 Factura {facturaOrden.serie}-{facturaOrden.folio}{facturaOrden.estado !== "timbrada" ? " (cancelación pendiente)" : ""}
+                  <IconoAuto valor="📑" size={18} /> Factura {facturaOrden.serie}-{facturaOrden.folio}{facturaOrden.estado !== "timbrada" ? " (cancelación pendiente)" : ""}
                 </Link>
               ) : servicio.status === "cerrado" && hasPermission("facturacion.crear") && (
                 <button className="btn btn-secondary" onClick={() => navigate("/facturacion", { state: { idServicio: servicio.id_servicio } })} title="Emitir la factura (CFDI) de esta orden">
-                  📑 Facturar
+                  <IconoAuto valor="📑" size={18} /> Facturar
                 </button>
               )}
               {servicio.status === "cerrado" && !servicio.es_garantia && hasPermission("servicios.crear") && (
                 <button className="btn btn-secondary" onClick={() => navigate("/servicios", { state: { garantiaOriginal: servicio } })} title="Abrir una orden de garantía ligada a esta">
-                  🛡️ Reclamar garantía
+                  <IconoAuto valor="🛡️" size={18} /> Reclamar garantía
                 </button>
               )}
               {!abierta && (
                 <button className="btn btn-secondary" onClick={() => cambiarStatus("abierto")} title="Volver a abrir la orden para editarla">↺ Reabrir orden</button>
               )}
               {servicio.status !== "cancelado" && servicio.status !== "cerrado" && !(servicio.costos.total_abonado > 0 && servicio.costos.saldo_pendiente <= 0) && (
-                <button className="btn btn-danger" onClick={() => cambiarStatus("cancelado")} title="Cancelar la orden (solo si no está pagada)">✕ Cancelar orden</button>
+                <button className="btn btn-danger" onClick={() => cambiarStatus("cancelado")} title="Cancelar la orden (solo si no está pagada)"><IconoAuto valor="✕" size={18} /> Cancelar orden</button>
               )}
             </div>
           </div>
@@ -853,13 +894,13 @@ export default function ServicioDetalle() {
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null); } }}>
           <div className="modal modal-pdf">
             <div className="modal-pdf-header">
-              <span>📄 Vista previa de la nota</span>
+              <span><IconoAuto valor="📄" size={18} /> Vista previa de la nota</span>
               <div style={{ display: "flex", gap: 10 }}>
-                <a className="btn btn-secondary btn-sm" href={pdfPreviewUrl} download={`orden-${id}.pdf`}>Descargar</a>
-                <button className="btn btn-secondary btn-sm" onClick={() => { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null); }}>Cerrar ✕</button>
+                <a className="btn btn-secondary btn-sm" href={pdfPreviewUrl} download={nombrePdf(pdfTipo)}>Descargar</a>
+                <button className="btn btn-secondary btn-sm" onClick={() => { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null); }}>Cerrar <IconoAuto valor="✕" size={18} /></button>
               </div>
             </div>
-            <iframe src={pdfPreviewUrl} title="Vista previa de la nota" className="modal-pdf-frame" />
+            <iframe src={`${pdfPreviewUrl}#toolbar=0`} title="Vista previa de la nota" className="modal-pdf-frame" />
           </div>
         </div>
         </ModalPortal>
@@ -886,13 +927,13 @@ export default function ServicioDetalle() {
         onClick={() => { setChatAbierto((v) => !v); setEstatusAbierto(false); }}
         title="Chat de la orden"
       >
-        💬
+        <IconoAuto valor="💬" size={18} />
       </button>
       {chatAbierto && (
         <div className="chat-flotante">
           <div className="chat-flotante-header">
-            <span>💬 Chat de la orden</span>
-            <button className="chat-flotante-cerrar" title="Cerrar chat" onClick={() => setChatAbierto(false)}>✕</button>
+            <span><IconoAuto valor="💬" size={18} /> Chat de la orden</span>
+            <button className="chat-flotante-cerrar" title="Cerrar chat" onClick={() => setChatAbierto(false)}><IconoAuto valor="✕" size={18} /></button>
           </div>
           <div className="chat-flotante-body">
             <ChatOrden servicioId={servicio.id_servicio} nombreCliente={`${servicio.cliente?.nombre_cliente || ""} ${servicio.cliente?.paterno_cliente || ""}`.trim()} />
@@ -936,7 +977,7 @@ export default function ServicioDetalle() {
                 </div>
                 {filtroSubcategoriaMulti && (
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFiltroSubcategoriaMulti("")}>
-                    ✕ Quitar filtro "{filtroSubcategoriaMulti}"
+                    <IconoAuto valor="✕" size={18} /> Quitar filtro "{filtroSubcategoriaMulti}"
                   </button>
                 )}
               </div>

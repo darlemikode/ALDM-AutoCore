@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -56,6 +57,20 @@ function Contar({ valor, formato }) {
   return <>{formato ? formato(v) : Math.round(v)}</>;
 }
 
+function RelojVivo() {
+  const [ahora, setAhora] = useState(new Date());
+  useEffect(() => { const t = setInterval(() => setAhora(new Date()), 1000); return () => clearInterval(t); }, []);
+  return (
+    <div className="reloj-vivo">
+      <Icono nombre="clock" size={26} />
+      <div>
+        <div className="reloj-hora">{ahora.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</div>
+        <div className="reloj-fecha">{ahora.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { hasPermission } = useAuth();
   const { notify } = useUI();
@@ -106,6 +121,7 @@ export default function Dashboard() {
           <h1><IconoModulo ruta="/" /> Panel general</h1>
           <div className="subtitle">Resumen del taller en tiempo real</div>
         </div>
+        <RelojVivo />
       </div>
 
       {hasPermission("servicios.crear") && (
@@ -121,7 +137,7 @@ export default function Dashboard() {
 
       {proximos.length > 0 && (
         <div className="panel" style={{ borderLeft: "4px solid var(--petrol-500)" }}>
-          <h2 style={{ fontSize: 16, marginBottom: 4 }}>🔔 Próximos a dar servicio ({proximos.length})</h2>
+          <h2 style={{ fontSize: 16, marginBottom: 4 }}><IconoAuto valor="🔔" size={18} /> Próximos a dar servicio ({proximos.length})</h2>
           <div className="subtitle" style={{ marginBottom: 10 }}>
             Clientes que llevan 5+ meses sin volver — buen momento para invitarlos.
           </div>

@@ -1,19 +1,21 @@
+import { IconoAuto } from "./Icono";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import FotoGaleria from "./FotoGaleria";
+import { Icono } from "./Icono";
 
 const ESTADOS = {
-  bien: { icono: "✅", texto: "Bien" },
-  regular: { icono: "⚠️", texto: "Regular" },
-  mal: { icono: "❌", texto: "Mal" },
+  bien: { icono: "check-circle", texto: "Bien" },
+  regular: { icono: "warning", texto: "Regular" },
+  mal: { icono: "x-circle", texto: "Mal" },
 };
 
-// Ícono por categoría del checklist (las que no estén aquí usan 🔍)
+// Ícono por categoría del checklist (las que no estén aquí usan la lupa)
 const ICONO_CATEGORIA = {
-  "Llantas": "🛞", "Frenos": "🛑", "Luces": "💡", "Fluidos": "💧",
-  "Batería y eléctrico": "🔋", "Suspensión y dirección": "🔩", "Carrocería": "🚘",
+  "Llantas": "tire", "Frenos": "stop", "Luces": "bulb", "Fluidos": "drop",
+  "Batería y eléctrico": "battery", "Suspensión y dirección": "bolt", "Carrocería": "car",
 };
 
 /**
@@ -131,27 +133,30 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
   }
 
   const textoGuardado = {
-    guardando: "⏳ Guardando…",
-    guardado: "✓ Guardado",
-    error: "⚠️ No se guardó",
-  }[estadoGuardado] || (idInspeccion ? "✓ Guardado" : "Se guarda solo al tocar");
+    guardando: "Guardando…",
+    guardado: "Guardado",
+    error: "No se guardó",
+  }[estadoGuardado] || (idInspeccion ? "Guardado" : "Se guarda solo al tocar");
 
   return createPortal(
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && cerrar()}>
       <div className="modal insp-modal">
         <div className="insp-cabecera">
           <div className="modal-header-icono" style={{ marginBottom: 0 }}>
-            <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}>🔍</div>
+            <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}><Icono nombre="search" size={26} /></div>
             <div>
               <h2>Inspección digital</h2>
               <div className="modal-subtitulo">Toca el estado de cada punto; se guarda al instante. Lo que quede en "Mal" lo puedes ligar a la refacción que se necesita.</div>
             </div>
           </div>
           <div className="insp-contadores">
-            <span className="insp-cont bien">✅ <b>{conteo.bien}</b> Bien</span>
-            <span className="insp-cont regular">⚠️ <b>{conteo.regular}</b> Regular</span>
-            <span className="insp-cont mal">❌ <b>{conteo.mal}</b> Mal</span>
+            <span className="insp-cont bien"><Icono nombre="check-circle" size={18} /> <b>{conteo.bien}</b> Bien</span>
+            <span className="insp-cont regular"><Icono nombre="warning" size={18} /> <b>{conteo.regular}</b> Regular</span>
+            <span className="insp-cont mal"><Icono nombre="x-circle" size={18} /> <b>{conteo.mal}</b> Mal</span>
             <span className={`guardado-auto ${estadoGuardado || (idInspeccion ? "guardado" : "")}`}>{textoGuardado}</span>
+            <button type="button" className="btn-icono insp-cerrar" title="Cerrar" aria-label="Cerrar" onClick={cerrar} disabled={estadoGuardado === "guardando"}>
+              <Icono nombre="close" size={20} />
+            </button>
           </div>
         </div>
 
@@ -162,11 +167,11 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
             return (
               <section key={cat} className="insp-categoria">
                 <div className="insp-categoria-titulo">
-                  <span className="insp-categoria-icono">{ICONO_CATEGORIA[cat] || "🔍"}</span>
+                  <span className="insp-categoria-icono"><Icono nombre={ICONO_CATEGORIA[cat] || "search"} size={22} /></span>
                   <h3>{cat}</h3>
                   {malos > 0 && <span className="badge badge-red">{malos} mal</span>}
                   <button type="button" className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={() => marcarCategoria(cat, "bien")}>
-                    ✅ Todo bien
+                    <Icono nombre="check-circle" size={16} /> Todo bien
                   </button>
                 </div>
                 <div className="insp-grid">
@@ -183,7 +188,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
                               className={`insp-estado insp-estado-${estado} ${r.estado === estado ? "activo" : ""}`}
                               onClick={() => actualizar(item.id_item, "estado", estado)}
                             >
-                              <span className="insp-estado-icono">{e.icono}</span>
+                              <span className="insp-estado-icono"><Icono nombre={e.icono} size={24} /></span>
                               {e.texto}
                             </button>
                           ))}
@@ -191,7 +196,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
                         {r.estado !== "bien" && (
                           <div className="insp-detalle">
                             <input
-                              placeholder="📝 Comentario (opcional)"
+                              placeholder="Comentario (opcional)"
                               value={r.comentario}
                               onChange={(e) => actualizar(item.id_item, "comentario", e.target.value)}
                             />
@@ -200,7 +205,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
                                 value={r.id_refaccion_sugerida || ""}
                                 onChange={(e) => actualizar(item.id_item, "id_refaccion_sugerida", e.target.value ? Number(e.target.value) : null)}
                               >
-                                <option value="">🔧 Sugerir refacción (opcional)</option>
+                                <option value="">Sugerir refacción (opcional)</option>
                                 {refacciones.map((ref) => (
                                   <option key={ref.id_refaccion} value={ref.id_refaccion}>{ref.nombre_refaccion}</option>
                                 ))}
@@ -217,7 +222,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
           })}
 
           <div className="field full">
-            <label>📋 Comentario general</label>
+            <label><IconoAuto valor="📋" size={18} /> Comentario general</label>
             <textarea value={comentarioGeneral} onChange={(e) => { setComentarioGeneral(e.target.value); guardarLuego(900); }} placeholder="Observaciones generales de la inspección" />
           </div>
 
@@ -228,11 +233,6 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
           )}
         </div>
 
-        <div className="modal-actions insp-acciones">
-          <button type="button" className="btn btn-primary" onClick={cerrar} disabled={estadoGuardado === "guardando"}>
-            {estadoGuardado === "guardando" ? "Guardando…" : "Listo"}
-          </button>
-        </div>
       </div>
     </div>
   ,

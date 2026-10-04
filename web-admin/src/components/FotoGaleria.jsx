@@ -1,3 +1,4 @@
+import { Icono, IconoAuto } from "./Icono";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
@@ -73,8 +74,8 @@ export default function FotoGaleria({ entidadTipo, entidadId, puedeEditar }) {
         {puedeEditar && (
           <>
             <input ref={inputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={alElegirArchivo} />
-            <button className="btn btn-secondary btn-sm" onClick={() => inputRef.current?.click()} disabled={subiendo}>
-              {subiendo ? "Subiendo..." : "+ Agregar foto"}
+            <button className="btn-agregar btn-agregar-icono" title="Agregar foto" aria-label="Agregar foto" onClick={() => inputRef.current?.click()} disabled={subiendo}>
+              {subiendo ? <span style={{ fontSize: 13 }}>Subiendo…</span> : <Icono nombre="camera-add" size={26} />}
             </button>
           </>
         )}
@@ -104,7 +105,7 @@ export default function FotoGaleria({ entidadTipo, entidadId, puedeEditar }) {
                     border: "none", borderRadius: 100, width: 22, height: 22, cursor: "pointer", fontSize: 12, lineHeight: 1,
                   }}
                 >
-                  ✕
+                  <IconoAuto valor="✕" size={18} />
                 </button>
               )}
             </div>

@@ -6,6 +6,7 @@ import FormModal from "../components/FormModal";
 import { useAuth } from "../context/AuthContext";
 import { useUI } from "../context/UIContext";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 export default function Cotizaciones() {
   const { hasPermission } = useAuth();
@@ -52,7 +53,7 @@ export default function Cotizaciones() {
           <div className="subtitle">Presupuestos sin cliente ni vehículo ligado — para cuando solo preguntan cuánto costaría algo</div>
         </div>
         {hasPermission("cotizaciones.crear") && (
-          <button className="btn btn-primary" onClick={() => setCreating(true)}>🧾 Nueva cotización</button>
+          <button className="btn btn-primary btn-nuevo" onClick={() => setCreating(true)}><span className="btn-nuevo-icono"><Icono nombre="document-text" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva cotización</button>
         )}
       </div>
 

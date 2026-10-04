@@ -325,6 +325,14 @@ class RefaccionSubcategoria(CatalogoCompartidoMixin, Base):
     categoria = relationship("RefaccionCategoria", back_populates="subcategorias")
 
 
+class RefaccionProveedor(TenantMixin, Base):
+    """Una refacción puede surtirse con varios proveedores."""
+    __tablename__ = "refacciones_proveedores"
+
+    id_refaccion = Column(Integer, ForeignKey("refacciones.id_refaccion"), primary_key=True)
+    id_proveedor = Column(Integer, ForeignKey("proveedores.id_proveedor"), primary_key=True)
+
+
 class InventarioRefaccion(TenantMixin, Base):
     """Cada fila es un registro de inventario para UNA refacción del catálogo
     (Refaccion), con su propio stock, precio, marca de refacción y proveedor.
@@ -542,6 +550,11 @@ class Refaccion(TenantMixin, Base):
     marca_vehiculo_compatible = relationship("VehiculoMarca", foreign_keys=[id_marca_vehiculo_compatible])
     modelo_vehiculo_compatible = relationship("VehiculoModelo", foreign_keys=[id_modelo_vehiculo_compatible])
     compatibilidades = relationship("RefaccionCompatibilidad", cascade="all, delete-orphan")
+    proveedores = relationship("Proveedor", secondary="refacciones_proveedores")
+
+    @property
+    def proveedores_ids(self):
+        return [p.id_proveedor for p in self.proveedores]
 
 
 class RefaccionCompatibilidad(TenantMixin, Base):

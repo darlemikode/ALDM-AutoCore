@@ -6,6 +6,7 @@ import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 const FIELDS = [
   { name: "nombre_proveedor", label: "Nombre", required: true, full: true, grupo: "general" },
@@ -75,7 +76,7 @@ export default function Proveedores() {
             {!hasPermission("proveedores.crear") && <span className="role-badge">Solo lectura</span>}
           </div>
         </div>
-        {hasPermission("proveedores.crear") && <button className="btn btn-primary" onClick={() => setEditing({})}>🚚 Nuevo proveedor</button>}
+        {hasPermission("proveedores.crear") && <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="business" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo proveedor</button>}
       </div>
 
       <div className="panel">

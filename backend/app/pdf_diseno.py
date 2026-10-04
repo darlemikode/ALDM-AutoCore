@@ -24,15 +24,16 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 # --- Paleta -----------------------------------------------------------------
-INK = colors.HexColor("#141a22")
+INK = colors.HexColor("#1f2833")
 INK_2 = colors.HexColor("#3a4452")
 MUTED = colors.HexColor("#6b7480")
 LINE = colors.HexColor("#d9dee4")
 SOFT = colors.HexColor("#eef2f4")
-PANEL = colors.HexColor("#eef2f5")
+PANEL = colors.HexColor("#e3e9ee")
 SOMBRA = colors.HexColor("#b4bfca")
-FONDO_PAGINA = colors.HexColor("#dde3e9")
-BORDE_TARJETA = colors.HexColor("#8795a3")
+FONDO_PAGINA = colors.HexColor("#cfd7df")
+PAPEL = colors.HexColor("#f1f4f6")
+BORDE_TARJETA = colors.HexColor("#6f7f90")
 # Azul petróleo: color de marca de los documentos
 ACCENT = colors.HexColor("#0f5c6e")
 ACCENT_SOFT = colors.HexColor("#cfe5ea")
@@ -235,7 +236,7 @@ class Sombra(Flowable):
         c.setStrokeColor(SOMBRA)
         c.roundRect(self.d, 0, self.ancho, self.alto, self.radio, stroke=0, fill=1)
         # Fondo blanco bajo el bloque: las celdas sin color no dejan ver la sombra
-        c.setFillColor(colors.white)
+        c.setFillColor(PAPEL)
         c.roundRect(0, self.d, self.ancho, self.alto, self.radio, stroke=0, fill=1)
         c.restoreState()
         self.contenido.drawOn(c, 0, self.d)
@@ -258,7 +259,7 @@ def seccion(titulo: str, ancho: float, derecha: str | None = None):
     return [Spacer(1, 5.5 * mm), t, Spacer(1, 2.6 * mm)]
 
 
-def tarjeta(campos, ancho: float, columnas: int = 3, fondo=colors.white, borde=None, proporciones=None, alto_fila=None):
+def tarjeta(campos, ancho: float, columnas: int = 3, fondo=PAPEL, borde=None, proporciones=None, alto_fila=None):
     """Rejilla de etiqueta/valor dentro de un recuadro suave.
     campos: [(etiqueta, valor), ...] — el valor puede ser str o Paragraph."""
     celdas, fila = [], []
@@ -322,7 +323,7 @@ def tabla_conceptos(encabezados, filas, anchos, alinear_derecha=(), vacio="Sin c
         ("ROUNDEDCORNERS", [6, 6, 6, 6]),
     ]
     for i in range(1, len(cuerpo) + 1):
-        estilo.append(("BACKGROUND", (0, i), (-1, i), colors.white if i % 2 else PANEL))
+        estilo.append(("BACKGROUND", (0, i), (-1, i), PAPEL if i % 2 else PANEL))
     if len(cuerpo) == 1 and not filas:
         estilo.append(("SPAN", (0, 1), (-1, 1)))
     estilo.append(("BOX", (0, 0), (-1, -1), 1.2, BORDE_TARJETA))
@@ -352,7 +353,7 @@ def totales(filas, ancho_total: float, destacar_ultima: bool = True, color_final
         estilo += [("BACKGROUND", (0, u), (-1, u), color_final),
                    ("TOPPADDING", (0, u), (-1, u), 6), ("BOTTOMPADDING", (0, u), (-1, u), 6)]
     t = Table(datos, colWidths=[ancho * 0.55, ancho * 0.45], hAlign="RIGHT")
-    estilo = [("BACKGROUND", (0, 0), (-1, -1), colors.white), ("BOX", (0, 0), (-1, -1), 1.2, BORDE_TARJETA), ("ROUNDEDCORNERS", [8, 8, 8, 8])] + estilo
+    estilo = [("BACKGROUND", (0, 0), (-1, -1), PAPEL), ("BOX", (0, 0), (-1, -1), 1.2, BORDE_TARJETA), ("ROUNDEDCORNERS", [8, 8, 8, 8])] + estilo
     t.setStyle(TableStyle(estilo))
     return Sombra(t, radio=6)
 

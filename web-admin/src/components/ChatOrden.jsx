@@ -1,3 +1,4 @@
+import { IconoAuto } from "./Icono";
 import { useEffect, useRef, useState } from "react";
 import { api, getToken } from "../api";
 import { useUI } from "../context/UIContext";
@@ -128,7 +129,7 @@ export default function ChatOrden({ servicioId, nombreCliente }) {
       <div className="chat-orden-mensajes">
         {mensajes.length === 0 && (
           <div className="chat-orden-vacio">
-            <div style={{ fontSize: 34 }}>💬</div>
+            <div style={{ color: "var(--petrol-500)" }}><IconoAuto valor="💬" size={36} /></div>
             Aún no hay mensajes. Escribe al cliente o mándale una foto del avance.
           </div>
         )}
@@ -142,13 +143,13 @@ export default function ChatOrden({ servicioId, nombreCliente }) {
               {separador && <div className="chat-orden-dia"><span>{d}</span></div>}
               <div className={`chat-burbuja ${mio ? "mia" : "suya"} ${m.tipo === "alerta" ? "alerta" : ""}`}>
                 {!mio && <div className="chat-burbuja-autor">{m.autor_nombre || "Cliente"}</div>}
-                {m.tipo === "alerta" && <div className="chat-burbuja-alerta">🚨 Aviso urgente</div>}
+                {m.tipo === "alerta" && <div className="chat-burbuja-alerta"><IconoAuto valor="🚨" size={18} /> Aviso urgente</div>}
                 {m.ruta_foto && (
                   <button type="button" className="chat-burbuja-foto" onClick={() => setFotoGrande(`/uploads/${m.ruta_foto}`)} title="Ver foto completa">
                     <img src={`/uploads/${m.ruta_foto}`} alt={m.texto || "Foto"} loading="lazy" />
                   </button>
                 )}
-                {!(m.ruta_foto && m.texto === "📷 Foto") && <div className="chat-burbuja-texto">{m.texto}</div>}
+                {!(m.ruta_foto && m.texto === "Foto") && <div className="chat-burbuja-texto">{m.texto}</div>}
                 <div className="chat-burbuja-hora">{hora(m.fecha)}</div>
               </div>
             </div>
@@ -160,7 +161,7 @@ export default function ChatOrden({ servicioId, nombreCliente }) {
       <div className="chat-orden-escribir">
         <input ref={archivoRef} type="file" accept="image/*" multiple hidden onChange={(e) => enviarFotos(e.target.files)} />
         <button type="button" className="icon-btn" onClick={() => archivoRef.current?.click()} disabled={subiendo} title="Enviar fotos (también puedes pegarlas o arrastrarlas aquí)">
-          {subiendo ? "⏳" : "📷"}
+          <IconoAuto valor={subiendo ? "⏳" : "📷"} size={20} />
         </button>
         <textarea
           value={texto}
@@ -171,11 +172,11 @@ export default function ChatOrden({ servicioId, nombreCliente }) {
           rows={1}
         />
         <button type="button" className="chat-orden-enviar" onClick={enviar} disabled={!texto.trim()} title="Enviar mensaje (Enter)">
-          ➤
+          
         </button>
       </div>
 
-      {arrastrando && <div className="chat-orden-soltar">📷 Suelta la foto para enviarla</div>}
+      {arrastrando && <div className="chat-orden-soltar"><IconoAuto valor="📷" size={18} /> Suelta la foto para enviarla</div>}
 
       {fotoGrande && (
         <div className="chat-foto-grande" onClick={() => setFotoGrande(null)} title="Cerrar">

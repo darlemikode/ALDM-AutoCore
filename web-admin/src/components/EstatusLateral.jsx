@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
+import { IconoAuto } from "./Icono";
 
 // Etapas del servicio con su ícono — mismo catálogo que el backend
 const ETAPAS = [
@@ -48,7 +49,7 @@ export default function EstatusLateral({ servicio, puedeEditar, onActualizado })
   return (
     <div className="nota-bloque lateral-bloque">
       <div className="nota-bloque-header">
-        <span className="icono">🛠️</span>
+        <span className="icono"><IconoAuto valor="🛠️" size={18} /></span>
         <h2>Estatus del servicio</h2>
       </div>
       <div className="nota-bloque-body">
@@ -68,7 +69,7 @@ export default function EstatusLateral({ servicio, puedeEditar, onActualizado })
                   onClick={() => { setEligiendo(eligiendo === e.clave ? null : e.clave); setComentario(""); }}
                   title={estado === "actual" ? "Etapa actual" : editable ? `Cambiar a "${e.etiqueta}"` : e.etiqueta}
                 >
-                  <span className="estatus-paso-icono">{estado === "hecho" ? "✓" : e.icono}</span>
+                  <span className="estatus-paso-icono"><IconoAuto valor={estado === "hecho" ? "✓" : e.icono} size={18} /></span>
                   <span className="estatus-paso-texto">
                     {e.etiqueta}
                     {estado === "actual" && <span className="estatus-paso-actual">Actual</span>}
@@ -99,7 +100,7 @@ export default function EstatusLateral({ servicio, puedeEditar, onActualizado })
         {historial.length > 0 && (
           <div className="estatus-historial">
             <button type="button" className="estatus-historial-toggle" onClick={() => setVerHistorial((v) => !v)}>
-              🕘 Historial ({historial.length}) {verHistorial ? "▲" : "▼"}
+              <IconoAuto valor="🕘" size={18} /> Historial ({historial.length}) {verHistorial ? "▲" : "▼"}
             </button>
             {verHistorial && historial.map((h) => (
               <div key={h.id_registro} className="estatus-historial-item">

@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
@@ -6,6 +7,7 @@ import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 /**
  * Inventario — cada renglón es un registro de stock/precio para una
@@ -232,7 +234,7 @@ export default function Inventario() {
           <div className="subtitle">Stock y precio por refacción, con las marcas/modelos de vehículo con las que es compatible</div>
         </div>
         {hasPermission("refacciones.crear") && (
-          <button className="btn btn-primary" onClick={() => { setEditing({}); setCompatNueva({ id_marca_vehiculo: "", id_modelo_vehiculo: "" }); setCompatibilidadesNuevas([]); }}>📦 Nuevo registro</button>
+          <button className="btn btn-primary btn-nuevo" onClick={() => { setEditing({}); setCompatNueva({ id_marca_vehiculo: "", id_modelo_vehiculo: "" }); setCompatibilidadesNuevas([]); }}><span className="btn-nuevo-icono"><Icono nombre="cube" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo registro</button>
         )}
       </div>
 
@@ -297,7 +299,7 @@ export default function Inventario() {
                           {esEdicion ? c.marca_vehiculo?.nombre_marca : marcasVehiculo.find((m) => m.id_marca_vehiculo === c.id_marca_vehiculo)?.nombre_marca}{" "}
                           {esEdicion ? (c.modelo_vehiculo?.nombre_modelo || "") : (modelosVehiculo.find((m) => m.id_modelo_vehiculo === c.id_modelo_vehiculo)?.nombre_modelo || "")}
                         </span>
-                        <button type="button" title="Quitar" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--red-600)" }} onClick={() => esEdicion ? quitarCompatibilidad(c.id_compatibilidad) : quitarCompatibilidadLocal(c.tempId)}>🗑️</button>
+                        <button type="button" title="Quitar" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--red-600)" }} onClick={() => esEdicion ? quitarCompatibilidad(c.id_compatibilidad) : quitarCompatibilidadLocal(c.tempId)}><IconoAuto valor="🗑️" size={18} /></button>
                       </div>
                     ))}
                   </div>
@@ -311,7 +313,7 @@ export default function Inventario() {
                     <option value="">-- Modelo (opcional) --</option>
                     {modelosVehiculo.filter((mo) => mo.id_marca_vehiculo === Number(compatNueva.id_marca_vehiculo)).map((mo) => <option key={mo.id_modelo_vehiculo} value={mo.id_modelo_vehiculo}>{mo.nombre_modelo}</option>)}
                   </select>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={esEdicion ? agregarCompatibilidad : agregarCompatibilidadLocal}>+ Compatible con</button>
+                  <button type="button" className="btn btn-agregar" onClick={esEdicion ? agregarCompatibilidad : agregarCompatibilidadLocal}><Icono nombre="add" size={18} /> Compatible con</button>
                 </div>
               </div>
             );

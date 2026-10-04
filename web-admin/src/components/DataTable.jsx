@@ -22,42 +22,46 @@ export default function DataTable({ columns, rows, onEdit, onDelete, extraAction
     return <div className="empty-state">{emptyMessage}</div>;
   }
 
+  const hayAcc = onEdit || onDelete || extraActions;
+  const [primera, ...resto] = columns;
   return (
-    <table>
-      <thead>
-        <tr>
-          {columns.map((col) => (
-            <th key={col.key}>{col.label}</th>
-          ))}
-          {(onEdit || onDelete || extraActions) && <th></th>}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, i) => (
-          <tr key={row.id ?? i} style={acentoFila ? { "--acc": acentoFila(row) } : acentoDe(i)}>
-            {columns.map((col) => (
-              <td key={col.key}>{col.render ? col.render(row) : row[col.key]}</td>
-            ))}
-            {(onEdit || onDelete || extraActions) && (
-              <td>
-                <div className="row-actions">
-                  {extraActions && extraActions(row)}
-                  {onEdit && (
-                    <button className="btn-icono" title="Editar" aria-label="Editar" onClick={() => onEdit(row)}>
-                      <Icono nombre="pencil" size={18} />
-                    </button>
-                  )}
-                  {onDelete && (
-                    <button className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => onDelete(row)}>
-                      <Icono nombre="trash" size={18} />
-                    </button>
-                  )}
-                </div>
-              </td>
+    <div className="ordenes-lista">
+      {rows.map((row, i) => (
+        <div key={row.id ?? i} className="orden-fila fila-tabla" style={acentoFila ? { "--acc": acentoFila(row) } : acentoDe(i)}>
+          <div className="orden-main">
+            <div className="orden-titulo">{primera.render ? primera.render(row) : row[primera.key]}</div>
+            {resto.length > 0 && (
+              <div className="fila-datos">
+                {resto.map((col) => {
+                  const v = col.render ? col.render(row) : row[col.key];
+                  if (v === null || v === undefined || v === "") return null;
+                  return (
+                    <div key={col.key} className="fila-dato">
+                      <span className="fila-dato-etq">{col.label}</span>
+                      <span className="fila-dato-val">{v}</span>
+                    </div>
+                  );
+                })}
+              </div>
             )}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+          </div>
+          {hayAcc && (
+            <div className="row-actions" onClick={(e) => e.stopPropagation()}>
+              {extraActions && extraActions(row)}
+              {onEdit && (
+                <button className="btn-icono" title="Editar" aria-label="Editar" onClick={() => onEdit(row)}>
+                  <Icono nombre="pencil" size={18} />
+                </button>
+              )}
+              {onDelete && (
+                <button className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => onDelete(row)}>
+                  <Icono nombre="trash" size={18} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

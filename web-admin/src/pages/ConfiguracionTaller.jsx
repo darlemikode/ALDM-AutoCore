@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
@@ -5,6 +6,7 @@ import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import QrTaller from "../components/QrTaller";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 /**
  * Los datos que aparecen en el encabezado del recibo y la nota de
@@ -149,7 +151,7 @@ export default function ConfiguracionTaller() {
       <div className="cfg-layout">
         <section className="cfg-card">
           <div className="cfg-card-header">
-            <span className="cfg-card-icono">{SECCIONES[0].icono}</span>
+            <span className="cfg-card-icono"><IconoAuto valor={SECCIONES[0].icono} size={18} /></span>
             <div>
               <h2>{SECCIONES[0].titulo}</h2>
               <div className="cfg-card-desc">{SECCIONES[0].desc}</div>
@@ -160,7 +162,7 @@ export default function ConfiguracionTaller() {
             {data.ruta_logo ? (
               <img src={`/uploads/${data.ruta_logo}`} alt="Logo" className="cfg-logo" />
             ) : (
-              <div className="cfg-logo cfg-logo-vacio">🏢</div>
+              <div className="cfg-logo cfg-logo-vacio"><IconoAuto valor="🏢" size={34} /></div>
             )}
             <div>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => inputRef.current?.click()} disabled={subiendoLogo}>
@@ -189,7 +191,7 @@ export default function ConfiguracionTaller() {
 
         <section className="cfg-card">
           <div className="cfg-card-header">
-            <span className="cfg-card-icono">{SECCIONES[1].icono}</span>
+            <span className="cfg-card-icono"><IconoAuto valor={SECCIONES[1].icono} size={18} /></span>
             <div>
               <h2>{SECCIONES[1].titulo}</h2>
               <div className="cfg-card-desc">{SECCIONES[1].desc}</div>
@@ -231,14 +233,14 @@ export default function ConfiguracionTaller() {
           </div>
 
           <button className="btn btn-primary" onClick={guardar} disabled={guardando} style={{ marginTop: 16 }}>
-            {guardando ? "Guardando…" : "✓ Guardar datos del taller"}
+            {guardando ? "Guardando…" : <><span className="btn-ico"><Icono nombre="save" size={20} /></span>Guardar datos del taller</>}
           </button>
         </section>
 
         {!sinAccesoFiscal && (
           <section className="cfg-card cfg-card-fiscal">
             <div className="cfg-card-header">
-              <span className="cfg-card-icono cfg-card-icono-fiscal">{SECCIONES[2].icono}</span>
+              <span className="cfg-card-icono cfg-card-icono-fiscal"><IconoAuto valor={SECCIONES[2].icono} size={18} /></span>
               <div>
                 <h2>{SECCIONES[2].titulo}</h2>
                 <div className="cfg-card-desc">{SECCIONES[2].desc}</div>
@@ -276,10 +278,10 @@ export default function ConfiguracionTaller() {
                   </div>
                 </div>
                 <div className="field-hint" style={{ marginTop: 4, marginBottom: 12 }}>
-                  Serie, folio y demás ajustes de timbrado están en Facturación → ⚙️ Configuración fiscal.
+                  Serie, folio y demás ajustes de timbrado están en Facturación → <IconoAuto valor="⚙️" size={18} /> Configuración fiscal.
                 </div>
                 <button className="btn btn-primary" onClick={guardarFiscal} disabled={guardandoFiscal}>
-                  {guardandoFiscal ? "Guardando…" : "✓ Guardar datos fiscales"}
+                  {guardandoFiscal ? "Guardando…" : <><span className="btn-ico"><Icono nombre="save" size={20} /></span>Guardar datos fiscales</>}
                 </button>
               </>
             )}
@@ -288,7 +290,7 @@ export default function ConfiguracionTaller() {
 
         <section className="cfg-card">
           <div className="cfg-card-header">
-            <span className="cfg-card-icono">{SECCIONES[3].icono}</span>
+            <span className="cfg-card-icono"><IconoAuto valor={SECCIONES[3].icono} size={18} /></span>
             <div>
               <h2>{SECCIONES[3].titulo}</h2>
             </div>
@@ -311,7 +313,7 @@ export default function ConfiguracionTaller() {
         {user?.qr_taller && (
           <section className="cfg-card">
             <div className="cfg-card-header">
-              <span className="cfg-card-icono">📱</span>
+              <span className="cfg-card-icono"><IconoAuto valor="📱" size={24} /></span>
               <div>
                 <h2>QR para tus clientes</h2>
                 <div className="cfg-card-desc">Tus clientes lo escanean con su celular para entrar a la app de tu taller</div>

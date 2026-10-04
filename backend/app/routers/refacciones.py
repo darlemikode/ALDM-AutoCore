@@ -11,6 +11,12 @@ from ..security import get_current_user, require_permission
 router = APIRouter(prefix="/api/refacciones", tags=["refacciones"])
 
 
+def _asignar_proveedores(db: Session, refaccion, ids_extra):
+    """Proveedor principal + adicionales, sin repetir y solo los que existen."""
+    ids = list(dict.fromkeys(([refaccion.id_proveedor] if refaccion.id_proveedor else []) + list(ids_extra)))
+    refaccion.proveedores = db.query(models.Proveedor).filter(models.Proveedor.id_proveedor.in_(ids)).all() if ids else []
+
+
 @router.get("/", response_model=list[schemas.RefaccionOut])
 def listar(
     q: Optional[str] = None,
@@ -40,9 +46,12 @@ def obtener(refaccion_id: int, db: Session = Depends(get_db), user=Depends(requi
 @router.post("/", response_model=schemas.RefaccionOut, status_code=201)
 def crear(payload: schemas.RefaccionIn, db: Session = Depends(get_db), user=Depends(require_permission("refacciones.crear"))):
     data = payload.model_dump()
+    ids_prov = data.pop("proveedores_ids", []) or []
     data["fecha_refaccion"] = data.get("fecha_refaccion") or date.today()
     refaccion = models.Refaccion(**data)
     db.add(refaccion)
+    db.flush()
+    _asignar_proveedores(db, refaccion, ids_prov)
     db.commit()
     db.refresh(refaccion)
     return refaccion
@@ -54,11 +63,13 @@ def actualizar(refaccion_id: int, payload: schemas.RefaccionIn, db: Session = De
     if not refaccion:
         raise HTTPException(status_code=404, detail="Refacción no encontrada")
     data = payload.model_dump()
+    ids_prov = data.pop("proveedores_ids", []) or []
     # No dejar que un "fecha" vacío borre la fecha de alta original
     if not data.get("fecha_refaccion"):
         data.pop("fecha_refaccion", None)
     for key, value in data.items():
         setattr(refaccion, key, value)
+    _asignar_proveedores(db, refaccion, ids_prov)
     db.commit()
     db.refresh(refaccion)
     return refaccion

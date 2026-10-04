@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { Icono } from "../components/Icono";
@@ -104,7 +105,7 @@ export default function Refacciones() {
           : null,
       },
       {
-        name: "id_proveedor", label: "Proveedor", type: "select", grupo: "proveedor",
+        name: "id_proveedor", label: "Proveedor principal", type: "select", grupo: "proveedor",
         options: proveedores.map((p) => ({ value: p.id_proveedor, label: p.nombre_proveedor })),
         creatable: hasPermission("proveedores.crear")
           ? {
@@ -112,6 +113,10 @@ export default function Refacciones() {
               onCreated: (nuevo) => setProveedores((prev) => [...prev, nuevo]),
             }
           : null,
+      },
+      {
+        name: "proveedores_ids", label: "Otros proveedores (puedes elegir varios)", type: "multiselect", grupo: "proveedor",
+        options: proveedores.map((p) => ({ value: p.id_proveedor, label: p.nombre_proveedor })),
       },
       { name: "cantidad_refaccion", label: "Cantidad en stock", type: "number", grupo: "precios" },
       { name: "preciopropio_refaccion", label: "Precio de costo", type: "number", grupo: "precios" },
@@ -189,6 +194,7 @@ export default function Refacciones() {
       posicion: r.posicion, id_marca_vehiculo_compatible: r.id_marca_vehiculo_compatible,
       id_modelo_vehiculo_compatible: r.id_modelo_vehiculo_compatible, sku_interno: r.sku_interno,
       codigo_barras: r.codigo_barras, ubicacion_fisica: r.ubicacion_fisica, zona_abc: r.zona_abc,
+      proveedores_ids: (r.proveedores_ids || []).filter((x) => x !== r.id_proveedor),
     };
     try {
       const nueva = await api.put(`/refacciones/${r.id_refaccion}`, { ...base, ...cambios });
@@ -213,7 +219,7 @@ export default function Refacciones() {
           <h1><IconoModulo ruta="/refacciones" /> Refacciones</h1>
           <div className="subtitle">Inventario de partes del taller</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setEditing({})}>⚙️ Nueva refacción</button>
+        <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="cube" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva refacción</button>
       </div>
 
       <div className="panel">
@@ -231,45 +237,37 @@ export default function Refacciones() {
         ) : visibles.length === 0 ? (
           <div className="empty-state">No hay refacciones registradas.</div>
         ) : (
-          <table>
-            <thead>
-              <tr><th>Nombre</th><th>Número de parte</th><th>Categoría</th><th>Marca</th><th>Stock</th><th>Precio cliente</th><th></th></tr>
-            </thead>
-            <tbody>
-              {visibles.map((r) => {
-                const cat = r.categoria || "Sin categoría";
-                const col = colorCategoria(cat);
-                return (
-                  <tr key={r.id_refaccion} style={{ "--acc": col }}>
-                    <td><Editable puede={puedeEditar} valor={r.nombre_refaccion} mostrar={r.nombre_refaccion} onGuardar={(v) => v.trim() && actualizarCampo(r, { nombre_refaccion: v.trim() })} /></td>
-                    <td><Editable puede={puedeEditar} valor={r.numero_refaccion} mostrar={r.numero_refaccion || "—"} onGuardar={(v) => actualizarCampo(r, { numero_refaccion: v.trim() || null })} /></td>
-                    <td>
-                      <Editable
+          <div className="ordenes-lista">
+            {visibles.map((r) => {
+              const cat = r.categoria || "Sin categoría";
+              const col = colorCategoria(cat);
+              return (
+                <div key={r.id_refaccion} className="orden-fila fila-tabla" style={{ "--acc": col }}>
+                  <div className="orden-main">
+                    <div className="orden-titulo"><Editable puede={puedeEditar} valor={r.nombre_refaccion} mostrar={r.nombre_refaccion} onGuardar={(v) => v.trim() && actualizarCampo(r, { nombre_refaccion: v.trim() })} /></div>
+                    <div className="fila-datos">
+                      <div className="fila-dato"><span className="fila-dato-etq">N.º de parte</span><span className="fila-dato-val"><Editable puede={puedeEditar} valor={r.numero_refaccion} mostrar={r.numero_refaccion || "—"} onGuardar={(v) => actualizarCampo(r, { numero_refaccion: v.trim() || null })} /></span></div>
+                      <div className="fila-dato"><span className="fila-dato-etq">Categoría</span><span className="fila-dato-val"><Editable
                         puede={puedeEditar} valor={categoriasRefaccion.find((c) => c.nombre_categoria === r.categoria)?.id_categoria_refaccion ?? ""}
                         opciones={categoriasRefaccion.map((c) => ({ value: c.id_categoria_refaccion, label: c.nombre_categoria }))}
                         mostrar={<span className="cat-pill" style={{ "--c": col }}>{cat}</span>}
                         onGuardar={(v) => actualizarCampo(r, { categoria: v ? categoriasRefaccion.find((c) => c.id_categoria_refaccion === Number(v))?.nombre_categoria || null : null })}
-                      />
-                    </td>
-                    <td>
-                      <Editable
+                      /></span></div>
+                      <div className="fila-dato"><span className="fila-dato-etq">Proveedores</span><span className="fila-dato-val">{(r.proveedores_ids || []).map((pid) => proveedores.find((p) => p.id_proveedor === pid)?.nombre_proveedor).filter(Boolean).join(", ") || "—"}</span></div>
+                      <div className="fila-dato"><span className="fila-dato-etq">Marca</span><span className="fila-dato-val"><Editable
                         puede={puedeEditar} valor={r.id_marca_refaccion ?? ""}
                         opciones={marcas.map((m) => ({ value: m.id_marca_refaccion, label: m.nombre_marca }))}
                         mostrar={nombreMarca(r.id_marca_refaccion)}
                         onGuardar={(v) => actualizarCampo(r, { id_marca_refaccion: v ? Number(v) : null })}
-                      />
-                    </td>
-                    <td>
-                      <Editable puede={puedeEditar} tipo="number" valor={r.cantidad_refaccion}
+                      /></span></div>
+                      <div className="fila-dato"><span className="fila-dato-etq">Stock</span><span className="fila-dato-val"><Editable puede={puedeEditar} tipo="number" valor={r.cantidad_refaccion}
                         mostrar={<span className={`badge ${r.cantidad_refaccion <= 3 ? "badge-red" : "badge-teal"}`}>{r.cantidad_refaccion}</span>}
-                        onGuardar={(v) => actualizarCampo(r, { cantidad_refaccion: Math.max(0, parseInt(v, 10) || 0) })} />
-                    </td>
-                    <td>
-                      <Editable puede={puedeEditar} tipo="number" valor={r.preciocliente_refaccion} mostrar={fmt(r.preciocliente_refaccion)}
-                        onGuardar={(v) => actualizarCampo(r, { preciocliente_refaccion: Math.max(0, parseFloat(v) || 0) })} />
-                    </td>
-                    <td>
-                      <div className="row-actions">
+                        onGuardar={(v) => actualizarCampo(r, { cantidad_refaccion: Math.max(0, parseInt(v, 10) || 0) })} /></span></div>
+                      <div className="fila-dato"><span className="fila-dato-etq">Precio cliente</span><span className="fila-dato-val"><Editable puede={puedeEditar} tipo="number" valor={r.preciocliente_refaccion} mostrar={fmt(r.preciocliente_refaccion)}
+                        onGuardar={(v) => actualizarCampo(r, { preciocliente_refaccion: Math.max(0, parseFloat(v) || 0) })} /></span></div>
+                    </div>
+                  </div>
+                  <div className="row-actions">
                         {puedeEditar && (
                           <button className="btn-icono" title="Editar todo" aria-label="Editar" onClick={() => abrirParaEditar(r)}><Icono nombre="pencil" size={18} /></button>
                         )}
@@ -277,12 +275,10 @@ export default function Refacciones() {
                           <button className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => handleDelete(r)}><Icono nombre="trash" size={18} /></button>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -305,7 +301,7 @@ export default function Refacciones() {
                     {editing.compatibilidades.map((c) => (
                       <div key={c.id_compatibilidad} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid var(--ink-300)" }}>
                         <span style={{ fontSize: 13.5 }}>{c.marca_vehiculo?.nombre_marca} {c.modelo_vehiculo?.nombre_modelo || ""}</span>
-                        <button type="button" title="Quitar" className="link-quitar" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--red-600)" }} onClick={() => quitarCompatibilidad(c.id_compatibilidad)}>🗑️</button>
+                        <button type="button" title="Quitar" className="link-quitar" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--red-600)" }} onClick={() => quitarCompatibilidad(c.id_compatibilidad)}><IconoAuto valor="🗑️" size={18} /></button>
                       </div>
                     ))}
                   </div>
@@ -319,7 +315,7 @@ export default function Refacciones() {
                     <option value="">-- Modelo (opcional) --</option>
                     {modelosVehiculo.filter((mo) => mo.id_marca_vehiculo === Number(compatNueva.id_marca_vehiculo)).map((mo) => <option key={mo.id_modelo_vehiculo} value={mo.id_modelo_vehiculo}>{mo.nombre_modelo}</option>)}
                   </select>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={agregarCompatibilidad}>+ Agregar</button>
+                  <button type="button" className="btn btn-agregar" onClick={agregarCompatibilidad}><Icono nombre="add" size={18} /> Agregar</button>
                 </div>
               </div>
             ) : (

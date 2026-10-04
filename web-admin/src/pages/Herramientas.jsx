@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
@@ -8,6 +9,7 @@ import FotoGaleria from "../components/FotoGaleria";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 export default function Herramientas() {
   const { confirmDialog, notify } = useUI();
@@ -90,7 +92,7 @@ export default function Herramientas() {
             {!hasPermission("herramientas.crear") && <span className="role-badge">Solo lectura</span>}
           </div>
         </div>
-        {hasPermission("herramientas.crear") && <button className="btn btn-primary" onClick={() => setEditing({})}>🛠️ Nueva herramienta</button>}
+        {hasPermission("herramientas.crear") && <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="hammer" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva herramienta</button>}
       </div>
 
       <div className="panel">
@@ -105,8 +107,8 @@ export default function Herramientas() {
               { key: "medida_herramienta", label: "Medida" },
               { key: "cantidad_herramienta", label: "Cantidad" },
               { key: "costo_herramienta", label: "Costo", render: (h) => `$${(h.costo_herramienta ?? 0).toLocaleString("es-MX")}` },
-              { key: "fotos", label: "", render: (h) => <button className="btn btn-secondary btn-sm" onClick={() => setFotosDe(h)}>📷 Fotos</button> },
             ]}
+            extraActions={(h) => <button className="btn-icono" title="Fotos" aria-label="Fotos" onClick={() => setFotosDe(h)}><IconoAuto valor="📷" size={18} /></button>}
             rows={visibles}
             onEdit={hasPermission("herramientas.editar") ? setEditing : undefined}
             onDelete={hasPermission("herramientas.eliminar") ? handleDelete : undefined}

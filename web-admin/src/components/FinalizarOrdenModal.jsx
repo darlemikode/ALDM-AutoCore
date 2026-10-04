@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { api } from "../api";
 import ModalPortal from "./ModalPortal";
+import { IconoAuto } from "./Icono";
 
 /**
  * Finalizar la orden en un solo paso: cobro del saldo (forma de pago, monto
@@ -84,7 +85,7 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
       <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !enviando && onClose()}>
         <div className="modal fin-modal">
           <div className="modal-header-icono">
-            <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}>🧾</div>
+            <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}><IconoAuto valor="🧾" size={24} /></div>
             <div>
               <h2>Finalizar orden #{servicio.id_servicio}</h2>
               <div className="modal-subtitulo">Cobro, cierre de la orden, nota de remisión y aviso al cliente.</div>
@@ -103,7 +104,7 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
               <div className="fin-formas">
                 {FORMAS.map((f) => (
                   <button type="button" key={f.valor} className={`fin-forma ${forma === f.valor ? "activo" : ""}`} onClick={() => { setForma(f.valor); setRecibido(""); }}>
-                    <span>{f.icono}</span>{f.texto}
+                    <span><IconoAuto valor={f.icono} size={18} /></span>{f.texto}
                   </button>
                 ))}
               </div>
@@ -131,8 +132,8 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
               )}
               {forma === "mixto" && (
                 <div className="form-grid" style={{ marginTop: 12 }}>
-                  <div className="field"><label>💵 Efectivo</label><input type="number" min="0" step="any" value={mixEfectivo} onChange={(e) => setMixEfectivo(e.target.value)} className="fin-monto" /></div>
-                  <div className="field"><label>💳 Tarjeta</label><input type="number" min="0" step="any" value={mixTarjeta} onChange={(e) => setMixTarjeta(e.target.value)} className="fin-monto" /></div>
+                  <div className="field"><label><IconoAuto valor="💵" size={18} /> Efectivo</label><input type="number" min="0" step="any" value={mixEfectivo} onChange={(e) => setMixEfectivo(e.target.value)} className="fin-monto" /></div>
+                  <div className="field"><label><IconoAuto valor="💳" size={18} /> Tarjeta</label><input type="number" min="0" step="any" value={mixTarjeta} onChange={(e) => setMixTarjeta(e.target.value)} className="fin-monto" /></div>
                 </div>
               )}
 
@@ -172,7 +173,7 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={onClose} disabled={enviando}>Cancelar</button>
             <button className="btn btn-primary" onClick={finalizar} disabled={!listo || enviando}>
-              {enviando ? "Finalizando…" : conSaldo ? `✓ Cobrar ${fmt(saldo)} y generar nota` : "✓ Finalizar y generar nota"}
+              {enviando ? "Finalizando…" : conSaldo ? `Cobrar ${fmt(saldo)} y generar nota` : "Finalizar y generar nota"}
             </button>
           </div>
         </div>

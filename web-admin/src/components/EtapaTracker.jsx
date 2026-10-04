@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
+import { IconoAuto } from "./Icono";
 
 const ETIQUETAS_ETAPA = {
   recibido: "Recibido",
@@ -42,7 +43,7 @@ export default function EtapaTracker({ servicio, etapas, puedeEditar, onActualiz
   return (
     <div className="nota-bloque">
       <div className="nota-bloque-header">
-        <span className="icono">🛠️</span>
+        <span className="icono"><IconoAuto valor="🛠️" size={18} /></span>
         <h2>Estatus del servicio</h2>
       </div>
       <div className="nota-bloque-body">

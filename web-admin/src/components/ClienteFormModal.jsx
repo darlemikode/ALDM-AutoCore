@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { marcarCampo } from "../validacion";
 import { createPortal } from "react-dom";
 import { api } from "../api";
+import { IconoAuto, Icono } from "./Icono";
 
 const ESTADOS_MEXICO = [
   "Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Chiapas",
@@ -106,7 +108,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
   async function handleSubmit(e) {
     e.preventDefault();
     if (!values.nombre_cliente.trim()) {
-      setError("Escribe el nombre del cliente.");
+      marcarCampo(e.currentTarget.querySelector("input"), "Escribe el nombre del cliente");
       return;
     }
     setSaving(true);
@@ -126,7 +128,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
       <div className="modal modal-ancho modal-cliente">
         <div className="cliente-modal-header">
           <div className="cliente-avatar" style={{ "--acc": "var(--petrol-600)", "--acc-soft": "var(--petrol-100)", width: 46, height: 46, fontSize: 17 }}>
-            {iniciales || "🧑"}
+            {iniciales || <IconoAuto valor="🧑" size={22} />}
           </div>
           <div>
             <h2>{title}</h2>
@@ -137,7 +139,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
           <div className="bloques-grid">
           <div className="nota-bloque">
             <div className="nota-bloque-header">
-              <span className="icono">🧑</span>
+              <span className="icono"><IconoAuto valor="🧑" size={18} /></span>
               <h2>Datos personales</h2>
             </div>
             <div className="nota-bloque-body form-grid">
@@ -158,42 +160,42 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
 
           <div className="nota-bloque acento-teal">
             <div className="nota-bloque-header">
-              <span className="icono">📇</span>
+              <span className="icono"><IconoAuto valor="📇" size={18} /></span>
               <h2>Contacto y empresa</h2>
             </div>
             <div className="nota-bloque-body form-grid">
               <div className="field">
                 <label>Teléfono principal</label>
                 <div className="input-icono">
-                  <span className="icono-prefijo">📱</span>
+                  <span className="icono-prefijo"><IconoAuto valor="📱" size={18} /></span>
                   <input value={values.telefono1 || ""} onChange={(e) => update("telefono1", e.target.value)} />
                 </div>
               </div>
               <div className="field">
                 <label>Teléfono secundario</label>
                 <div className="input-icono">
-                  <span className="icono-prefijo">☎️</span>
+                  <span className="icono-prefijo"><IconoAuto valor="☎️" size={18} /></span>
                   <input value={values.telefono2 || ""} onChange={(e) => update("telefono2", e.target.value)} />
                 </div>
               </div>
               <div className="field">
                 <label>Correo</label>
                 <div className="input-icono">
-                  <span className="icono-prefijo">✉️</span>
+                  <span className="icono-prefijo"><IconoAuto valor="✉️" size={18} /></span>
                   <input value={values.correo_cliente || ""} onChange={(e) => update("correo_cliente", e.target.value)} />
                 </div>
               </div>
               <div className="field">
                 <label>Empresa</label>
                 <div className="input-icono">
-                  <span className="icono-prefijo">🏢</span>
+                  <span className="icono-prefijo"><IconoAuto valor="🏢" size={18} /></span>
                   <input value={values.empresa_cliente || ""} onChange={(e) => update("empresa_cliente", e.target.value)} />
                 </div>
               </div>
               <div className="field">
                 <label>RFC</label>
                 <div className="input-icono">
-                  <span className="icono-prefijo">🧾</span>
+                  <span className="icono-prefijo"><IconoAuto valor="🧾" size={18} /></span>
                   <input value={values.rfc_cliente || ""} onChange={(e) => update("rfc_cliente", e.target.value)} />
                 </div>
               </div>
@@ -202,14 +204,14 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
 
           <div className="nota-bloque acento-ambar">
             <div className="nota-bloque-header">
-              <span className="icono">📍</span>
+              <span className="icono"><IconoAuto valor="📍" size={18} /></span>
               <h2>Dirección</h2>
             </div>
             <div className="nota-bloque-body form-grid">
               <div className="field">
                 <label>Código postal</label>
                 <div className="input-icono">
-                  <span className="icono-prefijo">📮</span>
+                  <span className="icono-prefijo"><IconoAuto valor="📮" size={18} /></span>
                   <input
                     value={values.cp_cliente || ""}
                     onChange={(e) => alCambiarCp(e.target.value)}
@@ -274,10 +276,10 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
           {error && <div className="error-text">{error}</div>}
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>
-              ✕ Cancelar
+              <span className="btn-ico"><Icono nombre="close" size={20} /></span>Cancelar
             </button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Guardando..." : "✓ Guardar"}
+              {saving ? "Guardando…" : <><span className="btn-ico"><Icono nombre="save" size={20} /></span>Guardar</>}
             </button>
           </div>
         </form>

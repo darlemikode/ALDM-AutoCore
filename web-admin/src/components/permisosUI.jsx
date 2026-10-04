@@ -1,3 +1,4 @@
+import { IconoAuto } from "./Icono";
 // Presentación compartida de permisos (Roles y permisos + Asignación de roles):
 // cada permiso se muestra como un ícono + un texto corto (Ver, Crear, Editar,
 // Eliminar…); la descripción completa queda en el tooltip.
@@ -77,7 +78,7 @@ export function AccionesModulo({ permisosModulo, activos, editable, onAlternar }
         return (
           <label key={p.clave} className={`accion-tile ${on ? "accion-tile-on" : ""}`} title={p.descripcion}>
             <input type="checkbox" disabled={!editable} checked={on} onChange={() => onAlternar?.(p.clave)} />
-            <span className="accion-tile-icono">{a.icono}</span>
+            <span className="accion-tile-icono"><IconoAuto valor={a.icono} size={18} /></span>
             <span className="accion-tile-texto">{a.texto}</span>
             <span className="accion-tile-check">{on ? "✓" : ""}</span>
           </label>

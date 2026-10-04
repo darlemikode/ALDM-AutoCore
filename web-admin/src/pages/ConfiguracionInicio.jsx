@@ -1,10 +1,13 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { ListaAtajos } from "../components/Atajos";
 import {
   AVISOS, avisoOmitido, escucharAvisos, escucharSidebar, escucharTema, omitirAviso,
   setSidebarCompacta, setTemaOscuro, sidebarCompactaActiva, temaOscuroActivo,
+  atajosActivos, escucharAtajos, setAtajosActivos,
 } from "../preferencias";
 
 // Mismo ciclo de acentos que Catálogos generales / Roles.
@@ -23,6 +26,8 @@ export default function ConfiguracionInicio() {
   const [, refrescarAvisos] = useState(0);
   useEffect(() => escucharTema(() => setTemaOscuroLocal(temaOscuroActivo())), []);
   useEffect(() => escucharSidebar(() => setSidebarCompactaLocal(sidebarCompactaActiva())), []);
+  const [atajos, setAtajosLocal] = useState(atajosActivos);
+  useEffect(() => escucharAtajos(() => setAtajosLocal(atajosActivos())), []);
   useEffect(() => escucharAvisos(() => refrescarAvisos((n) => n + 1)), []);
 
   const puedeConfigurar = hasPermission("configuracion.editar");
@@ -81,6 +86,14 @@ export default function ConfiguracionInicio() {
       activo: sidebarCompacta,
       onChange: (v) => setSidebarCompacta(v),
     },
+    {
+      clave: "atajos",
+      icono: "⌨️",
+      label: "Atajos de teclado",
+      descripcion: "Moverte por el sistema con el teclado (Alt + letra). Alt + ? muestra la lista.",
+      activo: atajos,
+      onChange: (v) => setAtajosActivos(v),
+    },
   ];
 
   const avisos = Object.entries(AVISOS).map(([clave, texto]) => ({
@@ -116,7 +129,7 @@ export default function ConfiguracionInicio() {
                     style={acentoDe(indiceGlobal)}
                     onClick={() => navigate(item.to)}
                   >
-                    <span className="cfg-inicio-icono">{item.icono}</span>
+                    <span className="cfg-inicio-icono"><IconoAuto valor={item.icono} size={18} /></span>
                     <span className="cfg-inicio-info">
                       <span className="cfg-inicio-nombre">{item.label}</span>
                       <span className="cfg-inicio-desc">{item.descripcion}</span>
@@ -140,7 +153,7 @@ export default function ConfiguracionInicio() {
                 style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}
                 onClick={() => item.onChange(!item.activo)}
               >
-                <span className="cfg-inicio-icono">{item.icono}</span>
+                <span className="cfg-inicio-icono"><IconoAuto valor={item.icono} size={18} /></span>
                 <span className="cfg-inicio-info">
                   <span className="cfg-inicio-nombre">{item.label}</span>
                   <span className="cfg-inicio-desc">{item.descripcion}</span>
@@ -149,6 +162,11 @@ export default function ConfiguracionInicio() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="cat-grupo">
+          <div className="cat-grupo-titulo">Atajos de teclado</div>
+          <ListaAtajos />
         </div>
 
         {avisos.length > 0 && (
@@ -164,7 +182,7 @@ export default function ConfiguracionInicio() {
                   onClick={() => item.onChange(!item.activo)}
                   title="Desmarcado = no se vuelve a preguntar"
                 >
-                  <span className="cfg-inicio-icono">{item.icono}</span>
+                  <span className="cfg-inicio-icono"><IconoAuto valor={item.icono} size={18} /></span>
                   <span className="cfg-inicio-info">
                     <span className="cfg-inicio-nombre">{item.label}</span>
                     <span className="cfg-inicio-desc">{item.descripcion}</span>

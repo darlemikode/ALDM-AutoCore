@@ -1,3 +1,4 @@
+import { Icono, IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
@@ -74,7 +75,7 @@ export default function ProveedorDetalle() {
       <div className="panel">
         <div className="toolbar" style={{ justifyContent: "space-between" }}>
           <h2 style={{ fontSize: 18 }}>Productos que ofrece</h2>
-          <button className="btn btn-primary btn-sm" onClick={() => setAddingProducto(true)}>📦 Agregar producto</button>
+          <button className="btn btn-agregar" onClick={() => setAddingProducto(true)}><Icono nombre="add" size={18} /> Agregar producto</button>
         </div>
         {productos.length === 0 ? (
           <div className="empty-state">Sin productos registrados.</div>
@@ -93,7 +94,7 @@ export default function ProveedorDetalle() {
       <div className="panel">
         <div className="toolbar" style={{ justifyContent: "space-between" }}>
           <h2 style={{ fontSize: 18 }}>Deuda / cuentas por pagar</h2>
-          {hasPermission("proveedores.editar") && <button className="btn btn-primary btn-sm" onClick={() => setAddingDeuda(true)}>💳 Registrar deuda</button>}
+          {hasPermission("proveedores.editar") && <button className="btn btn-primary btn-sm" onClick={() => setAddingDeuda(true)}><IconoAuto valor="💳" size={18} /> Registrar deuda</button>}
         </div>
         {deudas.length === 0 ? (
           <div className="empty-state">Sin adeudos registrados.</div>

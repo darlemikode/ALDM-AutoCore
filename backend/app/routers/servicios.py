@@ -382,6 +382,27 @@ def actualizar_detalle(servicio_id: int, detalle_id: int, payload: schemas.Servi
     return _con_costos(_get_servicio_o_404(db, servicio_id))
 
 
+@router.delete("/{servicio_id}/detalles", response_model=schemas.ServicioCompletoOut)
+def eliminar_todos_los_detalles(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.editar"))):
+    """Quita todas las refacciones/conceptos de la orden y regresa al inventario lo que se había descontado."""
+    servicio = _get_servicio_o_404(db, servicio_id)
+    _exigir_orden_abierta(servicio)
+    detalles = db.query(models.ServicioDetalle).filter(models.ServicioDetalle.id_servicio == servicio_id).all()
+    for detalle in detalles:
+        if detalle.id_refaccion and not detalle.id_inventario_refaccion:
+            refaccion = db.query(models.Refaccion).filter(models.Refaccion.id_refaccion == detalle.id_refaccion).first()
+            if refaccion:
+                refaccion.cantidad_refaccion += detalle.cantidad or 1
+        if detalle.id_inventario_refaccion:
+            inventario = db.query(models.InventarioRefaccion).filter(models.InventarioRefaccion.id_inventario_refaccion == detalle.id_inventario_refaccion).first()
+            if inventario:
+                inventario.cantidad += detalle.cantidad or 1
+        db.delete(detalle)
+    db.commit()
+    _sincronizar_pagado(db, servicio_id)
+    return _con_costos(_get_servicio_o_404(db, servicio_id))
+
+
 @router.delete("/{servicio_id}/detalles/{detalle_id}", response_model=schemas.ServicioCompletoOut)
 def eliminar_detalle(servicio_id: int, detalle_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.editar"))):
     servicio = _get_servicio_o_404(db, servicio_id)
@@ -455,6 +476,22 @@ def eliminar_abono(servicio_id: int, abono_id: int, db: Session = Depends(get_db
     return _con_costos(_get_servicio_o_404(db, servicio_id))
 
 
+def _nombre_pdf(servicio, prefijo: str) -> str:
+    """Nombre de archivo: «Nota - Cliente - Marca Modelo Año.pdf» (sin caracteres raros)."""
+    import re
+    import unicodedata
+    c, v = servicio.cliente, servicio.vehiculo
+    cliente = " ".join(filter(None, [getattr(c, "nombre_cliente", None), getattr(c, "paterno_cliente", None)])) or f"orden {servicio.id_servicio}"
+    veh = " ".join(str(x) for x in [
+        getattr(v.marca, "nombre_marca", None) if v and v.marca else None,
+        getattr(v.modelo, "nombre_modelo", None) if v and v.modelo else None,
+        getattr(v, "id_year_vehiculo", None) if v else None,
+    ] if x)
+    crudo = " - ".join(filter(None, [prefijo, cliente, veh]))
+    ascii_ = unicodedata.normalize("NFKD", crudo).encode("ascii", "ignore").decode()
+    return re.sub(r"[^A-Za-z0-9 _.\-]", "", ascii_).strip() + ".pdf"
+
+
 # --- Recibo en PDF ------------------------------------------------------------
 @router.get("/{servicio_id}/recibo")
 def descargar_recibo(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
@@ -469,7 +506,7 @@ def descargar_recibo(servicio_id: int, db: Session = Depends(get_db), user=Depen
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="orden-{servicio.id_servicio}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{_nombre_pdf(servicio, "Orden")}"'},
     )
 
 
@@ -490,7 +527,7 @@ def descargar_nota_remision(servicio_id: int, db: Session = Depends(get_db), use
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="nota-remision-{servicio.id_servicio}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{_nombre_pdf(servicio, "Nota")}"'},
     )
 
 

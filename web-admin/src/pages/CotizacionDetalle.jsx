@@ -6,12 +6,13 @@ import ModalPortal from "../components/ModalPortal";
 import { useAuth } from "../context/AuthContext";
 import { useUI } from "../context/UIContext";
 import IconoModulo from "../components/IconoModulo";
+import { Icono, IconoAuto } from "../components/Icono";
 
 function BloqueNota({ icono, titulo, acento, accion, children }) {
   return (
     <div className={`nota-bloque ${acento ? `acento-${acento}` : ""}`}>
       <div className="nota-bloque-header">
-        <span className="icono">{icono}</span>
+        <span className="icono"><IconoAuto valor={icono} size={18} /></span>
         <h2>{titulo}</h2>
         {accion}
       </div>
@@ -251,7 +252,7 @@ export default function CotizacionDetalle() {
         titulo="Conceptos"
         accion={
           puedeEditar && (
-            <button className="btn btn-primary btn-sm" onClick={() => setAddingDetalle(true)}>+ Agregar refacciones</button>
+            <button className="btn btn-agregar" onClick={() => setAddingDetalle(true)}><Icono nombre="add" size={18} /> Agregar refacciones</button>
           )
         }
       >
@@ -315,7 +316,7 @@ export default function CotizacionDetalle() {
 
       <div style={{ display: "flex", justifyContent: "center" }}>
         <button className="btn btn-primary btn-preview-fijo" onClick={() => descargarPdf("preview")} disabled={descargando}>
-          {descargando ? "Generando…" : "📄 Generar vista previa de la cotización"}
+          {descargando ? "Generando…" : "Generar vista previa de la cotización"}
         </button>
       </div>
 
@@ -324,10 +325,10 @@ export default function CotizacionDetalle() {
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null); } }}>
           <div className="modal modal-pdf">
             <div className="modal-pdf-header">
-              <span>📄 Vista previa de la cotización</span>
+              <span><IconoAuto valor="📄" size={18} /> Vista previa de la cotización</span>
               <div style={{ display: "flex", gap: 10 }}>
                 <a className="btn btn-secondary btn-sm" href={pdfPreviewUrl} download={`cotizacion-${id}.pdf`}>Descargar</a>
-                <button className="btn btn-secondary btn-sm" onClick={() => { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null); }}>Cerrar ✕</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => { URL.revokeObjectURL(pdfPreviewUrl); setPdfPreviewUrl(null); }}>Cerrar <IconoAuto valor="✕" size={18} /></button>
               </div>
             </div>
             <iframe src={pdfPreviewUrl} title="Vista previa de la cotización" className="modal-pdf-frame" />
@@ -363,7 +364,7 @@ export default function CotizacionDetalle() {
                 </div>
                 {filtroSubcategoriaMulti && (
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFiltroSubcategoriaMulti("")}>
-                    ✕ Quitar filtro "{filtroSubcategoriaMulti}"
+                    <IconoAuto valor="✕" size={18} /> Quitar filtro "{filtroSubcategoriaMulti}"
                   </button>
                 )}
               </div>

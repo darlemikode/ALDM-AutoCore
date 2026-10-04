@@ -1,3 +1,4 @@
+import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
@@ -8,10 +9,11 @@ import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 import IconoModulo from "../components/IconoModulo";
+import { Icono } from "../components/Icono";
 
 const TABS = [
-  { key: "usuarios", label: "🔑 Usuarios" },
-  { key: "clientes", label: "🧑 Clientes" },
+  { key: "usuarios", label: "Usuarios" },
+  { key: "clientes", label: "Clientes" },
 ];
 
 export default function Usuarios() {
@@ -202,7 +204,7 @@ export default function Usuarios() {
           </div>
         </div>
         {tab === "usuarios" && hasPermission("usuarios.crear") && (
-          <button className="btn btn-primary" onClick={() => setEditing({})}>👤 Nuevo usuario</button>
+          <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="person-circle" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo usuario</button>
         )}
       </div>
 
@@ -219,7 +221,7 @@ export default function Usuarios() {
           {solicitudes.length > 0 && (
             <div className="panel" style={{ borderLeft: "4px solid var(--red-600)" }}>
               <h2 style={{ fontSize: 16, marginBottom: 10 }}>
-                🔔 {solicitudes.length} solicitud{solicitudes.length > 1 ? "es" : ""} de recuperación de acceso
+                <IconoAuto valor="🔔" size={18} /> {solicitudes.length} solicitud{solicitudes.length > 1 ? "es" : ""} de recuperación de acceso
               </h2>
               <table>
                 <thead>
@@ -273,7 +275,7 @@ export default function Usuarios() {
           <div className="toolbar">
             <input
               className="search-input"
-              placeholder="🔍 Buscar por nombre, teléfono o correo…"
+              placeholder="Buscar por nombre, teléfono o correo…"
               value={qClientes}
               onChange={(e) => setQClientes(e.target.value)}
             />
