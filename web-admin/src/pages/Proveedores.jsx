@@ -35,7 +35,6 @@ export default function Proveedores() {
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    setLoading(true);
     setProveedores(await api.get("/proveedores/"));
     setLoading(false);
   }

@@ -153,7 +153,6 @@ export default function Catalogos() {
   }, []);
 
   async function load() {
-    setLoading(true);
     try {
       const depData = {};
       for (const name of config.deps || []) {

@@ -1,36 +1,37 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Clientes from "./pages/Clientes";
-import Vehiculos from "./pages/Vehiculos";
-import Servicios from "./pages/Servicios";
-import ServicioDetalle from "./pages/ServicioDetalle";
-import Citas from "./pages/Citas";
-import Promociones from "./pages/Promociones";
-import Asistente from "./pages/Asistente";
-import Empleados from "./pages/Empleados";
-import AsignacionRoles from "./pages/AsignacionRoles";
-import ConfiguracionTaller from "./pages/ConfiguracionTaller";
-import Comisiones from "./pages/Comisiones";
-import Inventario from "./pages/Inventario";
-import Errores from "./pages/Errores";
-import NuevaOrden from "./pages/NuevaOrden";
-import Sincronizacion from "./pages/Sincronizacion";
-import MiDashboard from "./pages/MiDashboard";
-import Refacciones from "./pages/Refacciones";
-import Proveedores from "./pages/Proveedores";
-import ProveedorDetalle from "./pages/ProveedorDetalle";
-import Herramientas from "./pages/Herramientas";
-import Catalogos from "./pages/Catalogos";
-import ConfiguracionInicio from "./pages/ConfiguracionInicio";
-import Usuarios from "./pages/Usuarios";
-import Roles from "./pages/Roles";
-import Cotizaciones from "./pages/Cotizaciones";
-import CotizacionDetalle from "./pages/CotizacionDetalle";
-import Facturacion from "./pages/Facturacion";
-import SuperAdmin from "./pages/superadmin/SuperAdmin";
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Clientes = lazy(() => import("./pages/Clientes"));
+const Vehiculos = lazy(() => import("./pages/Vehiculos"));
+const Servicios = lazy(() => import("./pages/Servicios"));
+const ServicioDetalle = lazy(() => import("./pages/ServicioDetalle"));
+const Citas = lazy(() => import("./pages/Citas"));
+const Promociones = lazy(() => import("./pages/Promociones"));
+const Asistente = lazy(() => import("./pages/Asistente"));
+const Empleados = lazy(() => import("./pages/Empleados"));
+const AsignacionRoles = lazy(() => import("./pages/AsignacionRoles"));
+const ConfiguracionTaller = lazy(() => import("./pages/ConfiguracionTaller"));
+const Comisiones = lazy(() => import("./pages/Comisiones"));
+const Inventario = lazy(() => import("./pages/Inventario"));
+const Errores = lazy(() => import("./pages/Errores"));
+const NuevaOrden = lazy(() => import("./pages/NuevaOrden"));
+const Sincronizacion = lazy(() => import("./pages/Sincronizacion"));
+const MiDashboard = lazy(() => import("./pages/MiDashboard"));
+const Refacciones = lazy(() => import("./pages/Refacciones"));
+const Proveedores = lazy(() => import("./pages/Proveedores"));
+const ProveedorDetalle = lazy(() => import("./pages/ProveedorDetalle"));
+const Herramientas = lazy(() => import("./pages/Herramientas"));
+const Catalogos = lazy(() => import("./pages/Catalogos"));
+const ConfiguracionInicio = lazy(() => import("./pages/ConfiguracionInicio"));
+const Usuarios = lazy(() => import("./pages/Usuarios"));
+const Roles = lazy(() => import("./pages/Roles"));
+const Cotizaciones = lazy(() => import("./pages/Cotizaciones"));
+const CotizacionDetalle = lazy(() => import("./pages/CotizacionDetalle"));
+const Facturacion = lazy(() => import("./pages/Facturacion"));
+const SuperAdmin = lazy(() => import("./pages/superadmin/SuperAdmin"));
 import ScrollToTop from "./components/ScrollToTop";
 
 function RequireAuth({ children }) {
@@ -56,6 +57,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <Suspense fallback={<div className="loading-text">Cargando…</div>}>
       <Routes>
       <Route path="/login" element={<Login />} />
       <Route
@@ -98,6 +100,7 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </>
   );
 }

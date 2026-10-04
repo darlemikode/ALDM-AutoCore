@@ -31,7 +31,6 @@ export default function Vehiculos() {
   const [ofrecerSiguiente, setOfrecerSiguiente] = useState(null); // vehículo recién creado
 
   async function loadAll() {
-    setLoading(true);
     const [v, c, m, mo, co] = await Promise.all([
       api.get(`/vehiculos/${idCliente ? `?id_cliente=${idCliente}` : ""}`),
       api.get("/clientes/?solo_activos=true"),

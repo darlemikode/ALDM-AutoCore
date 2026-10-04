@@ -47,7 +47,6 @@ export default function Clientes() {
   const [ofrecerVehiculo, setOfrecerVehiculo] = useState(null); // { id_cliente, nombre_cliente, numero_cuenta } tras crear un cliente
 
   async function load() {
-    setLoading(true);
     const data = await api.get(`/clientes/?${q ? `q=${encodeURIComponent(q)}&` : ""}solo_activos=true`);
     setClientes(data);
     setLoading(false);

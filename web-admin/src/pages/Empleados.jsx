@@ -35,7 +35,6 @@ export default function Empleados() {
   const [puestoSel, setPuestoSel] = useState("");
 
   async function load() {
-    setLoading(true);
     const [emps, usrs] = await Promise.all([api.get("/empleados/"), api.get("/auth/usuarios")]);
     setEmpleados(emps);
     setUsuarios(usrs);

@@ -32,7 +32,6 @@ export default function Roles() {
   const puedeEditar = hasPermission("roles.editar");
 
   async function load() {
-    setLoading(true);
     try {
       const [r, p] = await Promise.all([api.get("/auth/roles"), api.get("/auth/permisos")]);
       setRoles(r);

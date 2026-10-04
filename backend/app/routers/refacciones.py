@@ -2,7 +2,7 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from .. import models, schemas
 from ..database import get_db
@@ -24,7 +24,13 @@ def listar(
     db: Session = Depends(get_db),
     user=Depends(require_permission("refacciones.ver")),
 ):
-    query = db.query(models.Refaccion)
+    query = db.query(models.Refaccion).options(
+        selectinload(models.Refaccion.proveedores),
+        selectinload(models.Refaccion.compatibilidades).joinedload(models.RefaccionCompatibilidad.marca_vehiculo),
+        selectinload(models.Refaccion.compatibilidades).joinedload(models.RefaccionCompatibilidad.modelo_vehiculo),
+        joinedload(models.Refaccion.marca_vehiculo_compatible),
+        joinedload(models.Refaccion.modelo_vehiculo_compatible),
+    )
     if q:
         like = f"%{q}%"
         query = query.filter(

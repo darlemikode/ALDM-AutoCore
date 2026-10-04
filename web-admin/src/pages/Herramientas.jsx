@@ -22,7 +22,6 @@ export default function Herramientas() {
   const [marcaSel, setMarcaSel] = useState("");
 
   async function load() {
-    setLoading(true);
     const [h, m] = await Promise.all([api.get("/herramientas/"), api.get("/herramientas-marcas/")]);
     setHerramientas(h);
     setMarcas(m);

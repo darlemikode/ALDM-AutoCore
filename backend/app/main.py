@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
@@ -13,6 +14,7 @@ from .routers import auth, catalogos, clientes, vehiculos, proveedores, refaccio
 from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
+from . import indices
 from . import ws_router
 from fastapi.exceptions import RequestValidationError
 from .errores import MENSAJE_SOPORTE, registrar_error
@@ -47,6 +49,7 @@ app.add_exception_handler(
     lambda request, exc: JSONResponse(status_code=429, content={"detail": "Demasiadas peticiones desde esta IP. Espera un momento e intenta de nuevo."}),
 )
 app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=1024)  # respuestas JSON ~5x más ligeras
 
 
 # Métodos que cambian datos — cuando uno de estos responde 2xx, algo en la
@@ -147,6 +150,7 @@ def on_startup():
     seed.run()
     seed_codigos_postales.run()
     seed_marcas_modelos.run()
+    indices.asegurar()
 
 
 app.include_router(auth.router)

@@ -56,7 +56,6 @@ export default function Promociones() {
   const inputRef = useRef(null);
 
   async function load() {
-    setLoading(true);
     const data = await api.get("/promociones/");
     setPromociones(data);
     setLoading(false);

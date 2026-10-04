@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { marcarCampo } from "../validacion";
+import { marcarCampo, propsContacto, limpiarValorContacto } from "../validacion";
 import { createPortal } from "react-dom";
 import { api } from "../api";
 import { IconoAuto, Icono } from "./Icono";
@@ -168,21 +168,21 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
                 <label>Teléfono principal</label>
                 <div className="input-icono">
                   <span className="icono-prefijo"><IconoAuto valor="📱" size={18} /></span>
-                  <input value={values.telefono1 || ""} onChange={(e) => update("telefono1", e.target.value)} />
+                  <input value={values.telefono1 || ""} {...propsContacto("telefono1")} onChange={(e) => update("telefono1", limpiarValorContacto("telefono1", e.target.value))} />
                 </div>
               </div>
               <div className="field">
                 <label>Teléfono secundario</label>
                 <div className="input-icono">
                   <span className="icono-prefijo"><IconoAuto valor="☎️" size={18} /></span>
-                  <input value={values.telefono2 || ""} onChange={(e) => update("telefono2", e.target.value)} />
+                  <input value={values.telefono2 || ""} {...propsContacto("telefono2")} onChange={(e) => update("telefono2", limpiarValorContacto("telefono2", e.target.value))} />
                 </div>
               </div>
               <div className="field">
                 <label>Correo</label>
                 <div className="input-icono">
                   <span className="icono-prefijo"><IconoAuto valor="✉️" size={18} /></span>
-                  <input value={values.correo_cliente || ""} onChange={(e) => update("correo_cliente", e.target.value)} />
+                  <input value={values.correo_cliente || ""} {...propsContacto("correo_cliente")} onChange={(e) => update("correo_cliente", limpiarValorContacto("correo_cliente", e.target.value))} />
                 </div>
               </div>
               <div className="field">

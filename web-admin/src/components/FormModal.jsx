@@ -1,4 +1,5 @@
 import Combo from "./Combo";
+import { propsContacto, limpiarValorContacto } from "../validacion";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api";
@@ -243,6 +244,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
                 required={f.required}
                 disabled={f.disabled}
                 value={values[f.name] ?? ""}
+                {...propsContacto(f.name)}
                 onChange={(e) => {
                   if (f.type === "number") {
                     // Si se deja vacío, se guarda vacío (no 0) — si no,
@@ -250,7 +252,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
                     // del "0" en vez de reemplazarlo (ej. "010").
                     update(f.name, e.target.value === "" ? "" : Number(e.target.value));
                   } else {
-                    update(f.name, e.target.value);
+                    update(f.name, limpiarValorContacto(f.name, e.target.value));
                   }
                 }}
               />

@@ -17,7 +17,6 @@ export default function Cotizaciones() {
   const [creating, setCreating] = useState(false);
 
   async function load() {
-    setLoading(true);
     setCotizaciones(await api.get("/cotizaciones/"));
     setLoading(false);
   }

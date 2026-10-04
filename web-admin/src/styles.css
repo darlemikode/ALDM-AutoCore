@@ -2740,3 +2740,57 @@ kbd { font-family: inherit; font-size: 13px; font-weight: 800; color: var(--ink-
   border-color: #e0544a !important; border-width: 1.5px; box-shadow: 0 0 0 3px rgba(224,84,74,.28) !important;
 }
 .field.campo-con-error::after { content: "Este campo es obligatorio"; display: block; margin-top: 4px; font-size: 13px; font-weight: 800; color: #e0544a; }
+
+/* Atajos de teclado — tarjetas con personalidad */
+.atajos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+.atajos-grupo { border-radius: 16px; border: 1.5px solid color-mix(in srgb, var(--acc) 40%, var(--contorno)); border-top: 4px solid var(--acc); background: color-mix(in srgb, var(--acc) 6%, var(--paper-0)); overflow: hidden; }
+.atajos-grupo-cab { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: color-mix(in srgb, var(--acc) 14%, transparent); }
+.atajos-grupo-icono { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, color-mix(in srgb, var(--acc) 80%, #fff), var(--acc)); box-shadow: 0 4px 12px color-mix(in srgb, var(--acc) 40%, transparent); }
+.atajos-grupo-titulo { font-size: 18px; font-weight: 800; letter-spacing: .02em; color: var(--ink-900); }
+.atajos-grupo-sub { font-size: 13px; font-weight: 600; color: var(--ink-500); }
+.atajos-lista { padding: 6px 10px 10px; }
+.atajo-fila { display: flex; align-items: center; gap: 14px; padding: 9px 8px; border-radius: 10px; border: 0; transition: background .12s ease; }
+.atajo-fila:hover { background: color-mix(in srgb, var(--acc) 12%, transparent); }
+.atajo-teclas { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 118px; }
+.atajo-desc { font-size: 15px; font-weight: 600; color: var(--ink-900); text-align: left; }
+.atajo-fila kbd { font-family: inherit; font-size: 14px; font-weight: 800; color: #fff; background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 85%, #fff), var(--acc)); border: 0; border-bottom: 3px solid color-mix(in srgb, var(--acc) 60%, #000); border-radius: 8px; padding: 3px 9px; min-width: 30px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,.25); }
+
+/* Atajos: tonos suaves, sin brillo */
+.atajos-grupo { background: color-mix(in srgb, var(--acc) 4%, var(--paper-0)); border-color: color-mix(in srgb, var(--acc) 28%, var(--contorno)); border-top-width: 3px; }
+.atajos-grupo-cab { background: color-mix(in srgb, var(--acc) 8%, transparent); }
+.atajos-grupo-icono { background: color-mix(in srgb, var(--acc) 18%, transparent); color: var(--acc); box-shadow: none; border: 1.5px solid color-mix(in srgb, var(--acc) 40%, transparent); }
+.atajo-fila:hover { background: color-mix(in srgb, var(--acc) 7%, transparent); }
+.atajo-desc { flex: 1; text-align: left !important; }
+.atajo-fila kbd {
+  color: var(--ink-900); background: color-mix(in srgb, var(--acc) 14%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--acc) 38%, transparent); border-bottom-width: 3px;
+  box-shadow: none; font-weight: 800;
+}
+
+/* Botones de agregar: transparentes (última palabra) */
+.btn-agregar, .btn.btn-nuevo {
+  background: color-mix(in srgb, var(--petrol-500) 14%, transparent) !important;
+  color: var(--petrol-600) !important;
+  border: 1.5px solid color-mix(in srgb, var(--petrol-500) 50%, transparent) !important;
+  box-shadow: none !important; font-weight: 800 !important;
+}
+:root[data-theme="dark"] .btn-agregar, :root[data-theme="dark"] .btn.btn-nuevo { color: var(--petrol-300) !important; }
+.btn-agregar:hover:not(:disabled), .btn.btn-nuevo:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--petrol-500) 26%, transparent) !important;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--petrol-500) 22%, transparent) !important;
+}
+.btn.btn-nuevo .btn-nuevo-icono { background: color-mix(in srgb, var(--petrol-500) 26%, transparent) !important; color: inherit !important; }
+.btn.btn-nuevo .btn-nuevo-mas { color: #fff !important; }
+.btn-agregar.btn-borrar-todo {
+  background: color-mix(in srgb, var(--red-600) 10%, transparent) !important; color: var(--red-600) !important;
+  border-color: color-mix(in srgb, var(--red-600) 45%, transparent) !important; box-shadow: none !important;
+}
+
+/* Nueva orden (panel): aún más transparente */
+.hero-orden {
+  background: color-mix(in srgb, var(--petrol-500) 5%, transparent) !important;
+  border: 1.5px solid color-mix(in srgb, var(--petrol-500) 35%, transparent) !important;
+}
+.hero-orden:hover { background: color-mix(in srgb, var(--petrol-500) 11%, transparent) !important; }
+.hero-orden::after { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--petrol-500) 8%, transparent), transparent) !important; }
+.hero-orden-icono { background: color-mix(in srgb, var(--petrol-500) 12%, transparent) !important; }
