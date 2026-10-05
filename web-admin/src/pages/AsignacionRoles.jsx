@@ -37,7 +37,6 @@ export default function AsignacionRoles() {
   const puedeEditar = hasPermission("usuarios.editar");
 
   async function load(idMantener) {
-    setLoading(true);
     try {
       const [u, r, p] = await Promise.all([api.get("/auth/usuarios"), api.get("/auth/roles"), api.get("/auth/permisos")]);
       setUsuarios(u);

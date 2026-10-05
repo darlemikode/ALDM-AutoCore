@@ -1,3 +1,5 @@
+import BadgeIcono from "../ui/BadgeIcono";
+import { moduloPorTitulo } from "../iconosModulo";
 import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Switch, ActivityIndicator, TextInput, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +21,7 @@ const ITEMS = [
   { to: "Cotizaciones", label: "Cotizaciones", desc: "Presupuestos para el cliente, con PDF", icono: "document-text-outline", permiso: "cotizaciones.ver" },
   { to: "Vehículos", label: "Vehículos", desc: "Por marca, modelo y color", icono: "car-outline", permiso: "vehiculos.ver" },
   { to: "Catálogos", label: "Catálogos", desc: "Marcas, modelos, colores y refacciones", icono: "list-outline", permiso: "catalogos.ver" },
+  { to: "Refacciones", label: "Refacciones", desc: "Catálogo de partes, precios y stock", icono: "cube-outline", permiso: "refacciones.ver" },
   { to: "InventarioLista", label: "Inventario", desc: "Compatibilidad, proveedor, precios y ubicación", icono: "file-tray-stacked-outline", permiso: "refacciones.ver" },
   { to: "Herramientas", label: "Herramientas", desc: "Inventario de herramientas del taller", icono: "hammer-outline", permiso: "herramientas.ver" },
   { to: "Proveedores", label: "Proveedores", desc: "Contactos, productos y deudas", icono: "business-outline", permiso: "proveedores.ver" },
@@ -31,7 +34,12 @@ function Fila({ icono, titulo, desc, onPress, derecha, primera }) {
   const Contenedor = onPress ? TouchableOpacity : View;
   return (
     <Contenedor style={[styles.fila, !primera && styles.divisor]} onPress={onPress} activeOpacity={0.6}>
-      <View style={styles.filaIcono}><Ionicons name={icono} size={18} color={colors.petrol600} /></View>
+      {(() => {
+        const mod = moduloPorTitulo(titulo);
+        return mod
+          ? <BadgeIcono icono={mod.icono} color={mod.color} size={36} />
+          : <View style={styles.filaIcono}><Ionicons name={icono} size={18} color={colors.petrol600} /></View>;
+      })()}
       <View style={{ flex: 1 }}>
         <Text style={styles.rowTitle}>{titulo}</Text>
         {desc ? <Text style={styles.rowSubtitle}>{desc}</Text> : null}
@@ -202,17 +210,21 @@ export default function MasScreen({ navigation }) {
     }
   }
 
-  const cuenta = [
-    { key: "MiDashboard", icono: "person-circle-outline", titulo: "Mi dashboard", desc: "Tus servicios como responsable", ir: "MiDashboard" },
-    hasPermission("usuarios.ver") && { key: "Usuarios", icono: "key-outline", titulo: "Usuarios", desc: "Cuentas de acceso", ir: "Usuarios" },
-    hasPermission("empleados.ver") && { key: "Empleados", icono: "id-card-outline", titulo: "Empleados", desc: "Personal del taller", ir: "Empleados" },
-    hasPermission("nomina.ver") && { key: "Nomina", icono: "cash-outline", titulo: "Nómina", desc: "Sueldos y pagos del personal", ir: "Nomina" },
-    hasPermission("roles.ver") && { key: "GestionRoles", icono: "shield-checkmark-outline", titulo: "Roles y permisos", desc: "Qué puede hacer cada rol", ir: "GestionRoles" },
-  ].filter(Boolean);
   const taller = [
     hasPermission("configuracion.editar") && { key: "DatosTaller", icono: "storefront-outline", titulo: "Datos del taller", desc: "Nombre, dirección, RFC y logo", ir: "DatosTaller" },
     hasPermission("configuracion.editar") && { key: "Comisiones", icono: "card-outline", titulo: "Comisiones por tipo de pago", desc: "Efectivo, tarjeta y mixto", ir: "Comisiones" },
   ].filter(Boolean);
+  const accesos = [
+    hasPermission("roles.ver") && { key: "GestionRoles", icono: "shield-checkmark-outline", titulo: "Roles y permisos", desc: "Qué puede hacer cada rol", ir: "GestionRoles" },
+    hasPermission("usuarios.ver") && { key: "Usuarios", icono: "key-outline", titulo: "Usuarios de la aplicación", desc: "Cuentas de acceso", ir: "Usuarios" },
+  ].filter(Boolean);
+  const personal = [
+    hasPermission("empleados.ver") && { key: "Empleados", icono: "id-card-outline", titulo: "Empleados", desc: "Personal del taller", ir: "Empleados" },
+    hasPermission("nomina.ver") && { key: "Nomina", icono: "cash-outline", titulo: "Nómina", desc: "Sueldos y pagos del personal", ir: "Nomina" },
+  ].filter(Boolean);
+  const otros = [
+    { key: "MiDashboard", icono: "person-circle-outline", titulo: "Mi dashboard", desc: "Tus servicios como responsable", ir: "MiDashboard" },
+  ];
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}>
@@ -232,17 +244,37 @@ export default function MasScreen({ navigation }) {
         </View>
       </View>
 
-      <Grupo titulo="Cuenta y equipo">
-        {cuenta.map((c, i) => (
-          <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
-        ))}
-      </Grupo>
+      {taller.length > 0 && (
+        <Grupo titulo="Taller">
+          {taller.map((c, i) => (
+            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
+          ))}
+        </Grupo>
+      )}
 
-      <Grupo titulo="Taller">
-        {taller.map((c, i) => (
-          <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
-        ))}
-      </Grupo>
+      {accesos.length > 0 && (
+        <Grupo titulo="Accesos">
+          {accesos.map((c, i) => (
+            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
+          ))}
+        </Grupo>
+      )}
+
+      {personal.length > 0 && (
+        <Grupo titulo="Personal">
+          {personal.map((c, i) => (
+            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
+          ))}
+        </Grupo>
+      )}
+
+      {otros.length > 0 && (
+        <Grupo titulo="Otros">
+          {otros.map((c, i) => (
+            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
+          ))}
+        </Grupo>
+      )}
 
       <Grupo titulo="Módulos">
         {ITEMS.filter((item) => !item.permiso || hasPermission(item.permiso)).map((item, i) => (
@@ -304,72 +336,6 @@ export default function MasScreen({ navigation }) {
           desc="Pide un código al cliente al crear órdenes"
           derecha={<Switch value={verificacion2PasosActiva} onValueChange={alternarVerificacion2Pasos} trackColor={{ true: colors.petrol500 }} thumbColor="#fff" />}
         />
-      </Grupo>
-
-      <Grupo titulo="Datos">
-        <View style={styles.bloque}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View style={styles.filaIcono}><Ionicons name="sync-outline" size={18} color={colors.petrol600} /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>Sincronización</Text>
-              <Text style={styles.rowSubtitle}>Última: {formatearFechaSync(ultimaSync)}</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={[styles.syncBtn, sincronizando && { opacity: 0.6 }]} onPress={manejarSincronizar} disabled={sincronizando}>
-            {sincronizando ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncBtnTexto}>Sincronizar ahora</Text>}
-          </TouchableOpacity>
-        </View>
-
-        {modoLocal && (
-          <View style={[styles.bloque, styles.divisor]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={styles.filaIcono}><Ionicons name="cloud-offline-outline" size={18} color={colors.warn600} /></View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>Sin conexión con el servidor</Text>
-                <Text style={styles.rowSubtitle}>Trabajando en modo local. En cuanto vuelva la conexión, se sube solo.</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={[styles.syncBtnSecundario, verificandoConexion && { opacity: 0.6 }]} onPress={manejarRevisarConexion} disabled={verificandoConexion}>
-              {verificandoConexion ? <ActivityIndicator color={colors.petrol600} /> : <Text style={styles.syncBtnSecundarioTexto}>Revisar conexión ahora</Text>}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {(modoLocal || pendientes > 0) && (
-          <View style={[styles.bloque, styles.divisor]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={styles.filaIcono}><Ionicons name="cloud-upload-outline" size={18} color={colors.petrol600} /></View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>Cambios pendientes</Text>
-                <Text style={styles.rowSubtitle}>{pendientes} registro(s) guardados solo en el celular{!modoLocal && pendientes > 0 ? " (se reintentará solo)" : ""}</Text>
-              </View>
-            </View>
-
-            {!mostrarFormSubida ? (
-              <TouchableOpacity
-                style={[styles.syncBtnSecundario, pendientes === 0 && { opacity: 0.5 }]}
-                onPress={() => setMostrarFormSubida(true)}
-                disabled={pendientes === 0}
-              >
-                <Text style={styles.syncBtnSecundarioTexto}>{pendientes === 0 ? "Nada pendiente" : "Subir al servidor ahora"}</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={{ marginTop: 12 }}>
-                <Text style={styles.rowSubtitle}>Usuario y contraseña del servidor real (solo si la sesión guardada ya venció):</Text>
-                <TextInput style={styles.input} placeholder="Usuario" placeholderTextColor={colors.ink500} autoCapitalize="none" value={userSubida} onChangeText={setUserSubida} />
-                <TextInput style={styles.input} placeholder="Contraseña" placeholderTextColor={colors.ink500} secureTextEntry value={passSubida} onChangeText={setPassSubida} />
-                <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-                  <TouchableOpacity style={[styles.syncBtnSecundario, { flex: 1, marginTop: 0 }]} onPress={() => setMostrarFormSubida(false)} disabled={subiendo}>
-                    <Text style={styles.syncBtnSecundarioTexto}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.syncBtn, { flex: 1, marginTop: 0 }]} onPress={manejarSubirPendientes} disabled={subiendo}>
-                    {subiendo ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncBtnTexto}>Subir</Text>}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
       </Grupo>
 
       <TouchableOpacity

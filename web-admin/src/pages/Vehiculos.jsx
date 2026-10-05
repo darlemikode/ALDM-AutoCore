@@ -31,7 +31,6 @@ export default function Vehiculos() {
   const [ofrecerSiguiente, setOfrecerSiguiente] = useState(null); // vehículo recién creado
 
   async function loadAll() {
-    setLoading(true);
     const [v, c, m, mo, co] = await Promise.all([
       api.get(`/vehiculos/${idCliente ? `?id_cliente=${idCliente}` : ""}`),
       api.get("/clientes/?solo_activos=true"),
@@ -143,15 +142,14 @@ export default function Vehiculos() {
       { name: "numserie_vehiculo", label: "Número de serie (VIN)", grupo: "identificacion" },
       { name: "id_year_vehiculo", label: "Año", grupo: "identificacion" },
       { name: "cilindraje_vehiculo", label: "Cilindraje", grupo: "identificacion" },
-      { name: "km_vehiculo", label: "Kilometraje", required: true, type: "number", grupo: "estado" },
-      { name: "comentarios", label: "Comentarios", type: "textarea", full: true, grupo: "estado" },
+      { name: "km_vehiculo", label: "Kilometraje", required: true, type: "number", grupo: "identificacion" },
+      { name: "comentarios", label: "Comentarios", type: "textarea", full: true, grupo: "propietario" },
     ];
   }
 
   const gruposVehiculo = {
-    propietario: { icono: "🧑", titulo: "Propietario" },
-    identificacion: { icono: "🚗", titulo: "Identificación del vehículo", acento: "acento-teal" },
-    estado: { icono: "🔢", titulo: "Estado y notas", acento: "acento-ambar" },
+    propietario: { icono: "🧑", titulo: "Propietario y notas", completo: true },
+    identificacion: { icono: "🚗", titulo: "Identificación del vehículo", acento: "acento-teal", completo: true, columnas: 3, grande: true },
   };
 
   async function handleSave(values) {

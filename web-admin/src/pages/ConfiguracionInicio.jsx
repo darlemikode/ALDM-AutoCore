@@ -62,7 +62,6 @@ export default function ConfiguracionInicio() {
     {
       grupo: "Sistema",
       items: [
-        { to: "/sincronizacion", icono: "🔄", label: "Sincronización", descripcion: "Estado de la sincronización con la app y el portal del cliente." },
       ],
     },
   ].filter((g) => g.items.length > 0);

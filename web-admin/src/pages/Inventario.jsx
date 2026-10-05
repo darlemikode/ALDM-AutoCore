@@ -35,7 +35,6 @@ export default function Inventario() {
   const [filtroCategoria, setFiltroCategoria] = useState("");
 
   async function load() {
-    setLoading(true);
     const [inv, refs, cat, marcasRef, marcasVeh, modelosVeh, provs] = await Promise.all([
       api.get("/inventario-refacciones/"),
       api.get("/refacciones/"),

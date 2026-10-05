@@ -1,3 +1,5 @@
+import BadgeIcono from "../ui/BadgeIcono";
+import { colorPorIcono } from "../iconosModulo";
 import { useCallback, useState } from "react";
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -57,9 +59,13 @@ function Kpi({ icono, label, value, tono = "petrol500", alerta, onPress }) {
 function Accion({ icono, texto, onPress, principal }) {
   return (
     <TouchableOpacity style={styles.accion} onPress={onPress} activeOpacity={0.75}>
-      <View style={[styles.accionIcono, principal ? { backgroundColor: colors.petrol500 } : { backgroundColor: alfa(colors.petrol500, 0.14) }]}>
-        <Ionicons name={icono} size={22} color={principal ? colors.paper100 : colors.petrol600} />
-      </View>
+      {!principal && colorPorIcono(icono) ? (
+        <BadgeIcono icono={icono} color={colorPorIcono(icono)} size={56} />
+      ) : (
+        <View style={[styles.accionIcono, principal ? { backgroundColor: colors.petrol500 } : { backgroundColor: alfa(colors.petrol500, 0.14) }]}>
+          <Ionicons name={icono} size={22} color={principal ? colors.paper100 : colors.petrol600} />
+        </View>
+      )}
       <Text style={styles.accionTexto} numberOfLines={2}>{texto}</Text>
     </TouchableOpacity>
   );

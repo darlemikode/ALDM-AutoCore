@@ -1,3 +1,4 @@
+import ScrollCampos from "../ui/ScrollCampos";
 import { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet } from "react-native";
 import { Picker } from "../ui/Picker";
@@ -159,7 +160,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
         <Text style={styles.guardadoAuto}>{textoGuardado}</Text>
       </View>
 
-      <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
+      <ScrollCampos style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
         <Text style={styles.hint}>Toca el estado de cada punto; se guarda al instante. Lo que quede en "Mal" lo puedes ligar a la refacción que se necesita.</Text>
 
         {categorias.map((cat) => {
@@ -237,7 +238,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
             <FotoGaleria entidadTipo="inspeccion" entidadId={idInspeccion} />
           </View>
         )}
-      </ScrollView>
+      </ScrollCampos>
     </Modal>
   );
 }

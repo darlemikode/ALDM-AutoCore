@@ -6,6 +6,7 @@ import { useTema } from "../context/TemaContext";
 import { colors } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
+import BadgeIcono from "../ui/BadgeIcono";
 
 const TEMAS = [
   { valor: "sistema", icono: "phone-portrait-outline", label: "Sistema" },
@@ -37,16 +38,16 @@ export default function MasScreen({ navigation }) {
 
       <Text style={styles.seccion}>Contacto</Text>
       <View style={styles.grupo}>
-        <Renglon icono="call-outline" etiqueta="Teléfono" valor={cliente?.telefono1 || "Sin registrar"} />
-        <Renglon icono="mail-outline" etiqueta="Correo" valor={cliente?.correo_cliente || "Sin registrar"} ultimo />
+        <Renglon color="#5ad1ff" icono="call-outline" etiqueta="Teléfono" valor={cliente?.telefono1 || "Sin registrar"} />
+        <Renglon color="#c39bff" icono="mail-outline" etiqueta="Correo" valor={cliente?.correo_cliente || "Sin registrar"} ultimo />
       </View>
       <Text style={styles.nota}>Para actualizar tus datos, pídeselo al taller en tu próxima visita o por el chat de tu servicio.</Text>
 
       <Text style={styles.seccion}>Accesos</Text>
       <View style={styles.grupo}>
-        <Renglon icono="home-outline" etiqueta="Mi vehículo en el taller" onPress={() => ir("Inicio")} />
-        <Renglon icono="car-outline" etiqueta="Mis vehículos" onPress={() => ir("Vehículos")} />
-        <Renglon icono="calendar-outline" etiqueta="Agendar una cita" onPress={() => ir("Agendar")} ultimo />
+        <Renglon color="#ffb454" icono="construct-outline" etiqueta="Mi vehículo en el taller" onPress={() => ir("Inicio")} />
+        <Renglon color="#ff7a6b" icono="car-outline" etiqueta="Mis vehículos" onPress={() => ir("Vehículos")} />
+        <Renglon color="#ff8fb1" icono="calendar-outline" etiqueta="Agendar una cita" onPress={() => ir("Agendar")} ultimo />
       </View>
 
       <Text style={styles.seccion}>Apariencia</Text>
@@ -71,11 +72,11 @@ export default function MasScreen({ navigation }) {
   );
 }
 
-function Renglon({ icono, etiqueta, valor, onPress, ultimo }) {
+function Renglon({ icono, color = colors.petrol600, etiqueta, valor, onPress, ultimo }) {
   const Cont = onPress ? TouchableOpacity : View;
   return (
     <Cont style={[styles.renglon, !ultimo && styles.renglonLinea]} onPress={onPress}>
-      <Ionicons name={icono} size={19} color={colors.petrol600} />
+      <BadgeIcono icono={icono} color={color} size={36} />
       <View style={{ flex: 1 }}>
         <Text style={styles.renglonEtiqueta}>{etiqueta}</Text>
         {valor ? <Text style={styles.meta} selectable>{valor}</Text> : null}

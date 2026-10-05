@@ -37,7 +37,6 @@ export default function Usuarios() {
   const [accesoCliente, setAccesoCliente] = useState(null); // { nombre, identificador, password_temporal }
 
   async function load() {
-    setLoading(true);
     try {
       const [u, r, s, e] = await Promise.all([
         api.get("/auth/usuarios"),

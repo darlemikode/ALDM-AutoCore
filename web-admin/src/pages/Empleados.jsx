@@ -9,6 +9,14 @@ import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
 import { Icono } from "../components/Icono";
 
+export const ESTATUS_EMPLEADO = [
+  { value: "activo", label: "Activo", badge: "badge-teal" },
+  { value: "vacaciones", label: "Vacaciones", badge: "badge-blue" },
+  { value: "incapacidad", label: "Incapacidad", badge: "badge-amber" },
+  { value: "suspendido", label: "Suspendido", badge: "badge-red" },
+  { value: "baja", label: "Baja", badge: "badge-grey" },
+];
+
 const CAMPOS = [
   { name: "nombre", label: "Nombre", required: true, grupo: "personal" },
   { name: "paterno", label: "Apellido paterno", grupo: "personal" },
@@ -17,12 +25,24 @@ const CAMPOS = [
   { name: "correo", label: "Correo", grupo: "contacto" },
   { name: "puesto", label: "Puesto (ej. Mecánico, Hojalatero)", grupo: "trabajo" },
   { name: "fecha_ingreso", label: "Fecha de ingreso", type: "date", grupo: "trabajo" },
+  { name: "estatus", label: "Estatus", type: "select", grupo: "trabajo", options: ESTATUS_EMPLEADO.map(({ value, label }) => ({ value, label })) },
+  { name: "esquema_pago", label: "Esquema de pago", type: "select", grupo: "nomina", options: [
+    { value: "fijo", label: "Sueldo fijo" }, { value: "mixto", label: "Sueldo + comisión" },
+    { value: "comision", label: "Solo comisión por órdenes" }, { value: "destajo", label: "Destajo (por trabajo)" },
+  ] },
+  { name: "sueldo_base", label: "Sueldo base (por periodo)", type: "number", grupo: "nomina" },
+  { name: "porcentaje_comision", label: "% de comisión sobre mano de obra", type: "number", grupo: "nomina" },
+  { name: "aplicar_impuestos", label: "Retener ISR e IMSS (estimado)", type: "checkbox", grupo: "nomina" },
+  { name: "rfc_empleado", label: "RFC", grupo: "nomina" },
+  { name: "curp", label: "CURP", grupo: "nomina" },
+  { name: "nss", label: "No. de seguro social (NSS)", grupo: "nomina" },
 ];
 
 const GRUPOS_EMPLEADO = {
   personal: { icono: "🧑", titulo: "Datos personales" },
   contacto: { icono: "📇", titulo: "Contacto", acento: "acento-ambar" },
   trabajo: { icono: "👷", titulo: "Trabajo en el taller", acento: "acento-teal" },
+  nomina: { icono: "💵", titulo: "Pago y nómina", acento: "acento-ambar" },
 };
 
 export default function Empleados() {
@@ -35,7 +55,6 @@ export default function Empleados() {
   const [puestoSel, setPuestoSel] = useState("");
 
   async function load() {
-    setLoading(true);
     const [emps, usrs] = await Promise.all([api.get("/empleados/"), api.get("/auth/usuarios")]);
     setEmpleados(emps);
     setUsuarios(usrs);
@@ -65,13 +84,16 @@ export default function Empleados() {
     load();
   }
 
-  async function handleDelete(emp) {
-    const ok = await confirmDialog(`¿Dar de baja a ${emp.nombre}? Su historial como responsable de servicios se conserva.`, { danger: true });
-    if (!ok) return;
+  async function cambiarEstatus(emp, estatus) {
+    if (estatus === emp.estatus) return;
+    if (estatus === "baja") {
+      const ok = await confirmDialog(`¿Dar de baja a ${emp.nombre}? Su historial se conserva y ya no saldrá en nómina ni como responsable.`, { danger: true });
+      if (!ok) return;
+    }
     try {
-      await api.del(`/empleados/${emp.id_empleado}`);
+      await api.put(`/empleados/${emp.id_empleado}/estatus`, { estatus });
+      notify("Estatus actualizado.", "success");
       load();
-      notify("Empleado dado de baja.", "success");
     } catch (err) {
       notify(err.message, "error");
     }
@@ -107,13 +129,20 @@ export default function Empleados() {
                 render: (e) => e.id_usuario ? <span className="badge badge-teal">Ligada</span> : <span className="badge badge-grey">Sin cuenta</span>,
               },
               {
-                key: "activo", label: "Estado",
-                render: (e) => <span className={`badge ${e.activo ? "badge-teal" : "badge-grey"}`}>{e.activo ? "Activo" : "Inactivo"}</span>,
+                key: "estatus", label: "Estatus",
+                render: (e) => {
+                  const actual = ESTATUS_EMPLEADO.find((x) => x.value === (e.estatus || "activo")) || ESTATUS_EMPLEADO[0];
+                  return hasPermission("empleados.editar") ? (
+                    <select className={`badge ${actual.badge}`} style={{ border: "none", cursor: "pointer", fontWeight: 700 }} value={actual.value}
+                      onChange={(ev) => cambiarEstatus(e, ev.target.value)}>
+                      {ESTATUS_EMPLEADO.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+                    </select>
+                  ) : <span className={`badge ${actual.badge}`}>{actual.label}</span>;
+                },
               },
             ]}
             rows={puestoSel ? empleados.filter((e) => (e.puesto || "Sin asignar") === puestoSel) : empleados}
             onEdit={hasPermission("empleados.editar") ? setEditing : undefined}
-            onDelete={hasPermission("empleados.eliminar") ? handleDelete : undefined}
             emptyMessage="No hay empleados registrados todavía."
           />
         )}

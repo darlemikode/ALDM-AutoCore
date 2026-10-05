@@ -1,3 +1,4 @@
+import ScrollCampos from "../ui/ScrollCampos";
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Modal, KeyboardAvoidingView, ScrollView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -331,7 +332,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
       <Modal visible={modalAbierto} transparent animationType="slide" onRequestClose={() => setModalAbierto(false)}>
         <KeyboardAvoidingView style={styles.modalBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={styles.modalSheet}>
-            <ScrollView contentContainerStyle={{ paddingBottom: 4 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollCampos contentContainerStyle={{ paddingBottom: 4 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>{editando ? "Editar usuario" : "Nuevo usuario"}</Text>
               <Text style={styles.label}>Usuario</Text>
               <TextInput
@@ -400,7 +401,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
               {editando && esUsuarioActual && (
                 <Text style={styles.notaPropia}>No puedes desactivar tu propia cuenta.</Text>
               )}
-            </ScrollView>
+            </ScrollCampos>
           </View>
         </KeyboardAvoidingView>
       </Modal>

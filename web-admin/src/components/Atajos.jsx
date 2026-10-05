@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ModalPortal from "./ModalPortal";
+import { Icono } from "./Icono";
 import { marcarCampo } from "../validacion";
 import {
   atajosActivos, escucharAtajos, setSidebarCompacta, setTemaOscuro,
@@ -9,13 +10,13 @@ import {
 
 const RUTAS = {
   KeyP: "/", KeyO: "/servicios", KeyC: "/clientes", KeyV: "/vehiculos", KeyT: "/cotizaciones",
-  KeyF: "/facturacion", KeyR: "/refacciones", KeyI: "/inventario", KeyA: "/citas", KeyB: "/asistente",
+  KeyF: "/facturacion", KeyR: "/refacciones", KeyI: "/inventario", KeyH: "/herramientas", KeyA: "/citas", KeyB: "/asistente",
 };
 
 export const ATAJOS = [
   { grupo: "Ir a", items: [
     ["Alt + P", "Panel"], ["Alt + O", "Órdenes de servicio"], ["Alt + C", "Clientes"], ["Alt + V", "Vehículos"],
-    ["Alt + T", "Cotizaciones"], ["Alt + F", "Facturación"], ["Alt + R", "Refacciones"], ["Alt + I", "Inventario"],
+    ["Alt + T", "Cotizaciones"], ["Alt + F", "Facturación"], ["Alt + R", "Refacciones"], ["Alt + I", "Inventario"], ["Alt + H", "Herramientas"],
     ["Alt + A", "Citas solicitadas"], ["Alt + B", "Asistente (chat del mecánico)"],
   ] },
   { grupo: "Acciones", items: [
@@ -29,20 +30,39 @@ export const ATAJOS = [
   ] },
 ];
 
+const ACENTO_GRUPO = {
+  "Ir a": { acc: "var(--petrol-600)", soft: "var(--petrol-100)", icono: "map", sub: "Salta de módulo sin tocar el mouse" },
+  "Acciones": { acc: "var(--teal-600)", soft: "var(--teal-100)", icono: "hammer", sub: "Lo que más haces, a una tecla" },
+  "Órdenes y ventanas": { acc: "var(--violet-600)", soft: "var(--violet-100)", icono: "list", sub: "Esc cancela, Enter guarda" },
+};
+
 export function ListaAtajos() {
   return (
     <div className="atajos-grid">
-      {ATAJOS.map((g) => (
-        <div key={g.grupo} className="atajos-grupo">
-          <div className="cat-grupo-titulo">{g.grupo}</div>
-          {g.items.map(([teclas, desc]) => (
-            <div key={teclas} className="atajo-fila">
-              <span className="atajo-teclas">{teclas.split(/\s*\+\s*/).map((t, i) => <kbd key={i}>{t.trim()}</kbd>)}</span>
-              <span className="atajo-desc">{desc}</span>
+      {ATAJOS.map((g) => {
+        const c = ACENTO_GRUPO[g.grupo] || ACENTO_GRUPO["Ir a"];
+        return (
+          <div key={g.grupo} className="atajos-grupo" style={{ "--acc": c.acc, "--acc-soft": c.soft }}>
+            <div className="atajos-grupo-cab">
+              <span className="atajos-grupo-icono"><Icono nombre={c.icono} size={22} /></span>
+              <div>
+                <div className="atajos-grupo-titulo">{g.grupo}</div>
+                <div className="atajos-grupo-sub">{c.sub}</div>
+              </div>
             </div>
-          ))}
-        </div>
-      ))}
+            <div className="atajos-lista">
+              {g.items.map(([teclas, desc]) => (
+                <div key={teclas} className="atajo-fila">
+                  <span className="atajo-teclas">
+                    {teclas.split(/\s*(?:\+|ó)\s*/).map((t, i) => <kbd key={i}>{t.trim()}</kbd>)}
+                  </span>
+                  <span className="atajo-desc">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -67,7 +87,7 @@ export default function Atajos() {
       const el = e.target;
       const campo = el.closest(".field") || el.parentElement;
       const visible = el.classList.contains("combo-requerido") ? campo?.querySelector("input:not(.combo-requerido)") : el;
-      marcarCampo(visible || el, el.validity?.valueMissing ? "Este campo es obligatorio" : (el.validationMessage || "Dato no válido"));
+      marcarCampo(visible || el, el.validity?.valueMissing ? "Este campo es obligatorio" : (el.dataset?.msg || el.validationMessage || "Dato no válido"));
     }
     document.addEventListener("invalid", invalido, true);
     return () => document.removeEventListener("invalid", invalido, true);
@@ -76,17 +96,20 @@ export default function Atajos() {
   // Esc = cancelar y Enter = guardar en todas las ventanas (siempre activo).
   useEffect(() => {
     function onKey(e) {
-      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
       if (e.key !== "Escape" && e.key !== "Enter") return;
-      if (document.querySelector(".combo-lista, .buscador-lista")) return; // la lista abierta maneja su propia tecla
+      if (e.key === "Enter" && e.defaultPrevented) return;
+      // si el foco está dentro de un selector con la lista abierta, ese selector maneja su propia tecla
+      if (document.querySelector(".combo-lista, .buscador-lista") && e.target?.closest?.(".combo, .buscador-select")) return;
       const modales = document.querySelectorAll(".modal-backdrop");
       const modal = modales[modales.length - 1];
       const el = e.target;
       const tag = (el?.tagName || "").toLowerCase();
       if (e.key === "Escape") {
         if (modal) {
-          const cancelar = [...modal.querySelectorAll(".modal-actions button")]
-            .find((b) => !b.disabled && !/btn-(primary|danger)/.test(b.className));
+          const botones = [...modal.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+          const cancelar = botones.find((b) => /^\s*(cancelar|cerrar|volver|no)\s*$/i.test(b.textContent || "") && !/btn-primary/.test(b.className))
+            || [...modal.querySelectorAll(".modal-actions button")].find((b) => !b.disabled && !/btn-(primary|danger)/.test(b.className));
           e.preventDefault();
           if (cancelar) cancelar.click(); else modal.click();
         } else if (tag === "input" || tag === "textarea" || tag === "select") {
@@ -102,8 +125,8 @@ export default function Atajos() {
       const ok = modal.querySelector(".modal-actions .btn-primary:not([disabled])");
       if (ok) { e.preventDefault(); ok.click(); }
     }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
   }, [navigate]);
 
   useEffect(() => {

@@ -131,7 +131,7 @@ export default function VehiculosScreen({ navigation }) {
         }}
         ListEmptyComponent={
           <View style={styles.vacio}>
-            <Ionicons name="car-outline" size={36} color={colors.ink500} />
+            <Ionicons name="car-outline" size={44} color="#ff7a6b" />
             <Text style={styles.vacioTexto}>{q ? "Ningún vehículo coincide." : "Aún no hay vehículos."}</Text>
           </View>
         }

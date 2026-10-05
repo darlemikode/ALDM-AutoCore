@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import ScrollCampos from "../ui/ScrollCampos";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Platform, Modal, Switch, Image, ActivityIndicator, KeyboardAvoidingView } from "react-native";
 import { Picker } from "../ui/Picker";
 import { useFocusEffect } from "@react-navigation/native";
@@ -135,6 +136,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
   const [comentariosFinales, setComentariosFinales] = useState("");
   const [guardandoComentarios, setGuardandoComentarios] = useState(false);
+  const [comentariosGuardados, setComentariosGuardados] = useState("");
   const [descargando, setDescargando] = useState(null);
   const [descargandoFactura, setDescargandoFactura] = useState(null);
   const [mostrandoInspeccion, setMostrandoInspeccion] = useState(false);
@@ -180,6 +182,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     const s = await api.get(`/servicios/${id}`);
     setServicio(s);
     setComentariosFinales(s.comentarios_finales || "");
+    setComentariosGuardados(s.comentarios_finales || "");
     if (!s.es_garantia) api.get(`/servicios/${id}/reclamaciones`).then(setReclamaciones).catch(() => setReclamaciones([]));
     else setReclamaciones([]);
     api.get(`/inspecciones/?id_servicio=${id}`).then((l) => setInspeccionActual(l[0] || null)).catch(() => {});
@@ -239,19 +242,73 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     } else hacer();
   }
 
-  async function guardarComentarios() {
-    setGuardandoComentarios(true);
-    await actualizar({ comentarios_finales: comentariosFinales }, "Comentarios guardados — ya aparecerán en el recibo y la nota de remisión.");
-    setGuardandoComentarios(false);
+  // Guardado automático: 1 segundo después de dejar de escribir
+  useEffect(() => {
+    if (!servicio || comentariosFinales === comentariosGuardados) return undefined;
+    const t = setTimeout(async () => {
+      setGuardandoComentarios(true);
+      try {
+        await api.put(`/servicios/${id}`, { comentarios_finales: comentariosFinales });
+        setComentariosGuardados(comentariosFinales);
+      } catch (err) {
+        alerta("Error", err.message);
+      } finally {
+        setGuardandoComentarios(false);
+      }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [comentariosFinales, comentariosGuardados, servicio, id]);
+
+  // Los cambios a un concepto se mandan UNO TRAS OTRO (cola) y cada uno parte
+  // de lo último que respondió el servidor. Antes, si escribías un monto y
+  // tocabas + enseguida, las dos peticiones se cruzaban y el monto se perdía.
+  // `cambios` puede ser un objeto o una función (detalleActual) => objeto.
+  const servicioRef = useRef(null);
+  const colaDetalles = useRef(Promise.resolve());
+  useEffect(() => { servicioRef.current = servicio; }, [servicio]);
+  // Aplica el cambio en pantalla al instante (sin esperar al servidor) y
+  // recalcula los totales localmente; el servidor confirma después.
+  function aplicarLocal(idDetalle, payload) {
+    const base = servicioRef.current;
+    if (!base) return;
+    const detalles = base.detalles.map((x) => {
+      if (x.id_servicio_detalle !== idDetalle) return x;
+      const n = { ...x, ...payload };
+      if (payload.cantidad != null && payload.costo_refaccion === undefined && (x.cantidad || 1) > 0) {
+        n.costo_refaccion = Math.round(((Number(x.costo_refaccion) || 0) / (x.cantidad || 1)) * payload.cantidad * 100) / 100;
+      }
+      return n;
+    });
+    const subtotal = detalles.reduce((t, x) => t + (Number(x.costo_mano_obra) || 0) + (Number(x.costo_refaccion) || 0) + (Number(x.costo_extra) || 0), 0);
+    const iva = subtotal * (base.iva_porcentaje || 0) / 100;
+    const total = subtotal + iva;
+    const abonado = base.costos?.total_abonado || 0;
+    const r = (v) => Math.round(v * 100) / 100;
+    const local = { ...base, detalles, costos: { ...base.costos, subtotal: r(subtotal), iva: r(iva), total: r(total), saldo_pendiente: r(total - abonado) } };
+    servicioRef.current = local;
+    setServicio(local);
   }
 
-  async function actualizarDetalle(idDetalle, cambios) {
-    try {
-      setServicio(await api.put(`/servicios/${id}/detalles/${idDetalle}`, cambios));
-    } catch (err) {
-      alerta("Error", err.message);
-      load();
-    }
+  const pendientesDetalle = useRef(0);
+  function actualizarDetalle(idDetalle, cambios) {
+    const actual = servicioRef.current?.detalles?.find((x) => x.id_servicio_detalle === idDetalle);
+    const payload = typeof cambios === "function" ? cambios(actual) : cambios;
+    if (!payload) return Promise.resolve();
+    aplicarLocal(idDetalle, payload);
+    pendientesDetalle.current += 1;
+    colaDetalles.current = colaDetalles.current.then(async () => {
+      try {
+        const nuevo = await api.put(`/servicios/${id}/detalles/${idDetalle}`, payload);
+        // solo se pisa con la respuesta del servidor cuando ya no hay más cambios en cola
+        if (pendientesDetalle.current <= 1) { servicioRef.current = nuevo; setServicio(nuevo); }
+      } catch (err) {
+        alerta("Error", err.message);
+        load();
+      } finally {
+        pendientesDetalle.current -= 1;
+      }
+    });
+    return colaDetalles.current;
   }
 
   function quitarDetalle(idDetalle) {
@@ -521,7 +578,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
+      <ScrollCampos contentContainerStyle={{ padding: spacing.lg, paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
         {!abierta && (
           <View style={[styles.aviso, { borderLeftColor: colors.red600 }]}>
             <Text style={styles.avisoTexto}>
@@ -565,11 +622,11 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                       </View>
                       <View style={styles.conceptoBarra}>
                         <View style={styles.contador}>
-                          <TouchableOpacity disabled={!editable || (d.cantidad || 1) <= 1} onPress={() => actualizarDetalle(d.id_servicio_detalle, { cantidad: (d.cantidad || 1) - 1 })} hitSlop={8}>
+                          <TouchableOpacity disabled={!editable || (d.cantidad || 1) <= 1} onPress={() => actualizarDetalle(d.id_servicio_detalle, (x) => ((x?.cantidad || 1) > 1 ? { cantidad: (x.cantidad || 1) - 1 } : null))} hitSlop={8}>
                             <Ionicons name="remove-circle-outline" size={28} color={editable && (d.cantidad || 1) > 1 ? colors.petrol600 : colors.ink300} />
                           </TouchableOpacity>
                           <Text style={styles.contadorTexto}>{d.cantidad || 1}</Text>
-                          <TouchableOpacity disabled={!editable} onPress={() => actualizarDetalle(d.id_servicio_detalle, { cantidad: (d.cantidad || 1) + 1 })} hitSlop={8}>
+                          <TouchableOpacity disabled={!editable} onPress={() => actualizarDetalle(d.id_servicio_detalle, (x) => ({ cantidad: (x?.cantidad || 1) + 1 }))} hitSlop={8}>
                             <Ionicons name="add-circle-outline" size={28} color={editable ? colors.petrol600 : colors.ink300} />
                           </TouchableOpacity>
                           <Text style={styles.contadorUnidad}>{(d.cantidad || 1) === 1 ? "pieza" : "piezas"}</Text>
@@ -589,10 +646,19 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                           </View>
                         ) : null}
                         {d.id_refaccion || Number(d.costo_refaccion) > 0 ? (
-                          <View style={styles.conceptoCampo}>
-                            <Text style={styles.conceptoEtiqueta} numberOfLines={1}>Precio final</Text>
-                            <NumeroEditable key={`r${d.costo_refaccion}`} valor={d.costo_refaccion || 0} editable={editable} onGuardar={(v) => actualizarDetalle(d.id_servicio_detalle, { costo_refaccion: v })} />
-                          </View>
+                          <>
+                            <View style={styles.conceptoCampo}>
+                              <Text style={styles.conceptoEtiqueta} numberOfLines={1}>Precio unitario</Text>
+                              <NumeroEditable
+                                key={`u${d.costo_refaccion}-${d.cantidad || 1}`}
+                                valor={Math.round(((Number(d.costo_refaccion) || 0) / (d.cantidad || 1)) * 100) / 100}
+                                editable={editable}
+                                onGuardar={(v) => actualizarDetalle(d.id_servicio_detalle, (x) => (v === 0
+                                  ? { costo_refaccion: 0, cantidad: 1 }
+                                  : { costo_refaccion: Math.round(v * (x?.cantidad || 1) * 100) / 100 }))}
+                              />
+                            </View>
+                          </>
                         ) : null}
                         {!d.id_refaccion || Number(d.costo_mano_obra) > 0 ? (
                           <View style={styles.conceptoCampo}>
@@ -733,7 +799,9 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               <Text style={styles.filaSub}>Aparecen en el recibo y la nota de remisión.</Text>
               <TextInput style={[styles.textarea, { marginTop: 8 }]} value={comentariosFinales} onChangeText={setComentariosFinales} multiline editable={puedeEditar}
                 placeholder="Ej. Se recomienda revisar las balatas traseras en el próximo servicio." placeholderTextColor={colors.ink500} />
-              {puedeEditar && <Boton chico icono="save-outline" texto="Guardar comentarios" onPress={guardarComentarios} cargando={guardandoComentarios} estilo={{ alignSelf: "flex-start", marginTop: 10 }} />}
+              <Text style={[styles.filaSub, { marginTop: 6, minHeight: 18 }]}>
+                {guardandoComentarios || comentariosFinales !== comentariosGuardados ? "Guardando…" : comentariosFinales ? "✓ Guardado automáticamente" : ""}
+              </Text>
             </Bloque>
 
             {servicio.es_garantia && (
@@ -795,7 +863,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
             )}
           </>
         )}
-      </ScrollView>
+      </ScrollCampos>
 
       {/* ===== Barra de acciones fija ===== */}
       {abierta && puedeEditar && (
@@ -852,7 +920,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
           </View>
           {modoAgregar === "libre" ? (
             <>
-              <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12 }} keyboardShouldPersistTaps="handled">
+              <ScrollCampos contentContainerStyle={{ padding: spacing.lg, gap: 12 }} keyboardShouldPersistTaps="handled">
                 <Text style={styles.filaSub}>Para mano de obra, diagnósticos o cualquier cargo que no esté en el catálogo de refacciones.</Text>
                 <View>
                   <Text style={styles.label}>Descripción *</Text>
@@ -890,7 +958,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                 <Text style={styles.resultadoPago}>
                   Precio final: {fmt((Number(libre.costo_mano_obra) || 0) + (Number(libre.costo_refaccion) || 0))}
                 </Text>
-              </ScrollView>
+              </ScrollCampos>
               <View style={styles.modalPie}>
                 <Boton texto="Cancelar" onPress={() => setModalRefacciones(false)} estilo={{ flex: 1 }} />
                 <Boton tipo="primario" icono="add" texto="Agregar a la orden" onPress={guardarConceptoLibre} cargando={guardandoRefacciones} estilo={{ flex: 1.6 }} />
@@ -951,7 +1019,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       {/* Registrar abono */}
       <Modal visible={modalAbono} transparent animationType="slide" onRequestClose={() => setModalAbono(false)}>
         <View style={styles.modalBackdrop}>
-          <ScrollView style={styles.modalSheet} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+          <ScrollCampos style={styles.modalSheet} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
             <Text style={styles.modalTitulo}>Registrar abono</Text>
             <Text style={styles.filaSub}>Pago a cuenta de la orden #{servicio.id_servicio} · saldo {fmt(saldoFinal)}</Text>
             <Text style={[styles.label, { marginTop: spacing.md }]}>Tipo de pago</Text>
@@ -980,14 +1048,14 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               <Boton texto="Cancelar" onPress={() => setModalAbono(false)} estilo={{ flex: 1 }} />
               <Boton tipo="primario" texto="Registrar" onPress={registrarAbono} cargando={guardandoAbono} estilo={{ flex: 1.4 }} />
             </View>
-          </ScrollView>
+          </ScrollCampos>
         </View>
       </Modal>
 
       {/* Finalizar orden */}
       <Modal visible={modalCierre} transparent animationType="slide" onRequestClose={() => setModalCierre(false)}>
         <View style={styles.modalBackdrop}>
-          <ScrollView style={styles.modalSheet} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+          <ScrollCampos style={styles.modalSheet} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
             <Text style={styles.modalTitulo}>Finalizar orden #{id}</Text>
             <Text style={styles.filaSub}>Cobro del saldo, cierre de la orden, nota de remisión y aviso al cliente.</Text>
 
@@ -1030,7 +1098,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               <Boton tipo="primario" texto={conSaldoFinal ? `Cobrar y finalizar` : "Finalizar"} onPress={confirmarCierre} cargando={cerrando}
                 deshabilitado={textoConfirmar !== "CONFIRMAR" || !pagoFinalListo} estilo={{ flex: 1.4 }} />
             </View>
-          </ScrollView>
+          </ScrollCampos>
         </View>
       </Modal>
     </View>
@@ -1085,16 +1153,16 @@ const styles = crearEstilos({
   grupoTitulo: { fontSize: 12.5, fontWeight: "700", color: colors.petrol600, backgroundColor: colors.paper0, paddingVertical: 5, paddingHorizontal: 8, borderRadius: 6, marginTop: 6, marginBottom: 4 },
   concepto: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.ink300 },
   conceptoTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  conceptoBarra: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 },
-  conceptoCampos: { flexDirection: "row", gap: 8, marginTop: 10 },
-  conceptoCampo: { flex: 1, minWidth: 0, gap: 4 },
+  conceptoBarra: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2 },
+  conceptoCampos: { flexDirection: "row", gap: 8, marginTop: 4 },
+  conceptoCampo: { flex: 1, minWidth: 0, gap: 2 },
   contadorUnidad: { fontSize: 12.5, color: colors.ink500, marginLeft: 2 },
   ivaChip: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", borderRadius: 100, borderWidth: 1, borderColor: colors.ink300, paddingVertical: 5, paddingHorizontal: 10 },
   ivaChipActivo: { borderColor: colors.petrol500, backgroundColor: colors.petrol100 },
   ivaChipTexto: { fontSize: 12.5, fontWeight: "600", color: colors.ink700 },
   conceptoEtiqueta: { fontSize: 10.5, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.4 },
-  conceptoValorFijo: { fontSize: 13.5, color: colors.ink700, paddingVertical: 5 },
-  numInput: { borderWidth: 1, borderColor: colors.petrol300, borderRadius: 7, paddingVertical: 5, paddingHorizontal: 8, fontSize: 13.5, color: colors.ink900, backgroundColor: colors.paper100 },
+  conceptoValorFijo: { fontSize: 13.5, color: colors.ink700, paddingVertical: 3 },
+  numInput: { borderWidth: 1, borderColor: colors.petrol300, borderRadius: 7, paddingVertical: 3, paddingHorizontal: 8, fontSize: 13.5, color: colors.ink900, backgroundColor: colors.paper100 },
   subtitulo: { fontSize: 12.5, fontWeight: "700", color: colors.ink700, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.ink300 },
   filaLista: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
   divisor: { borderTopWidth: 1, borderTopColor: colors.ink300 },
@@ -1156,7 +1224,7 @@ const styles = crearEstilos({
   pestanaActiva: { borderBottomColor: colors.petrol500 },
   pestanaTexto: { fontSize: 11.5, fontWeight: "600", color: colors.ink500 },
   pestanaTextoActiva: { color: colors.petrol600 },
-  itemCard: { backgroundColor: colors.paper100, borderRadius: 12, padding: 14, marginBottom: 10 },
+  itemCard: { backgroundColor: colors.paper100, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 6 },
   importe: { fontSize: 15.5, fontWeight: "700", color: colors.ink900 },
   quitar: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingLeft: 8 },
   quitarTexto: { fontSize: 12.5, fontWeight: "600", color: colors.red600 },

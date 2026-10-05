@@ -2,7 +2,8 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/
 import { estadoGuardado, guardarEstado } from "./estadoNavegacion";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
+import BadgeIcono from "../ui/BadgeIcono";
 
 import MisServiciosScreen from "../screens/MisServiciosScreen";
 import ServicioDetalleScreen from "../screens/ServicioDetalleScreen";
@@ -41,11 +42,12 @@ const VehiculosPila = pila(VehiculosStack, "MisVehiculos", MisVehiculosScreen, "
 const AgendarPila = pila(AgendarStack, "AgendarCita", AgendarScreen, "AGENDAR");
 const CuentaPila = pila(CuentaStack, "MiCuenta", MasScreen, "MI CUENTA");
 
+// Mismos íconos y colores que la web y la app del taller
 const ICONOS = {
-  Inicio: ["home", "home-outline"],
-  Vehículos: ["car", "car-outline"],
-  Agendar: ["calendar", "calendar-outline"],
-  Cuenta: ["person-circle", "person-circle-outline"],
+  Inicio: ["construct-outline", "#ffb454"],
+  Vehículos: ["car-outline", "#ff7a6b"],
+  Agendar: ["calendar-outline", "#ff8fb1"],
+  Cuenta: ["person-circle-outline", "#7aa8ff"],
 };
 
 export default function AppNavigator() {
@@ -57,7 +59,7 @@ export default function AppNavigator() {
           headerShown: false,
           tabBarActiveTintColor: colors.petrol600,
           tabBarInactiveTintColor: colors.ink500,
-          tabBarIcon: ({ focused, color }) => <Ionicons name={ICONOS[route.name][focused ? 0 : 1]} size={23} color={color} />,
+          tabBarIcon: ({ focused }) => <View style={{ opacity: focused ? 1 : 0.7 }}><BadgeIcono icono={ICONOS[route.name][0]} color={ICONOS[route.name][1]} size={32} activo={focused} /></View>,
           tabBarStyle: { backgroundColor: colors.paper100, borderTopColor: colors.ink300, height: 64, paddingBottom: 8, paddingTop: 6 },
           tabBarLabelStyle: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
         })}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { marcarCampo } from "../validacion";
+import { marcarCampo, propsContacto, limpiarValorContacto } from "../validacion";
 import { createPortal } from "react-dom";
 import { api } from "../api";
 import { IconoAuto, Icono } from "./Icono";
@@ -33,6 +33,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
   const [error, setError] = useState("");
   const [buscandoCp, setBuscandoCp] = useState(false);
   const [coloniasSugeridas, setColoniasSugeridas] = useState([]);
+  const [filtrarColonia, setFiltrarColonia] = useState(false); // solo filtra si el usuario está escribiendo
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
   function update(name, value) {
@@ -168,21 +169,21 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
                 <label>Teléfono principal</label>
                 <div className="input-icono">
                   <span className="icono-prefijo"><IconoAuto valor="📱" size={18} /></span>
-                  <input value={values.telefono1 || ""} onChange={(e) => update("telefono1", e.target.value)} />
+                  <input value={values.telefono1 || ""} {...propsContacto("telefono1")} onChange={(e) => update("telefono1", limpiarValorContacto("telefono1", e.target.value))} />
                 </div>
               </div>
               <div className="field">
                 <label>Teléfono secundario</label>
                 <div className="input-icono">
                   <span className="icono-prefijo"><IconoAuto valor="☎️" size={18} /></span>
-                  <input value={values.telefono2 || ""} onChange={(e) => update("telefono2", e.target.value)} />
+                  <input value={values.telefono2 || ""} {...propsContacto("telefono2")} onChange={(e) => update("telefono2", limpiarValorContacto("telefono2", e.target.value))} />
                 </div>
               </div>
               <div className="field">
                 <label>Correo</label>
                 <div className="input-icono">
                   <span className="icono-prefijo"><IconoAuto valor="✉️" size={18} /></span>
-                  <input value={values.correo_cliente || ""} onChange={(e) => update("correo_cliente", e.target.value)} />
+                  <input value={values.correo_cliente || ""} {...propsContacto("correo_cliente")} onChange={(e) => update("correo_cliente", limpiarValorContacto("correo_cliente", e.target.value))} />
                 </div>
               </div>
               <div className="field">
@@ -236,8 +237,9 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
                 <label>Colonia</label>
                 <input
                   value={values.colonia_cliente || ""}
-                  onChange={(e) => { update("colonia_cliente", e.target.value); setMostrarSugerencias(true); }}
-                  onFocus={() => setMostrarSugerencias(true)}
+                  onChange={(e) => { update("colonia_cliente", e.target.value); setFiltrarColonia(true); setMostrarSugerencias(true); }}
+                  onFocus={() => { setFiltrarColonia(false); setMostrarSugerencias(true); }}
+                  onClick={() => { setFiltrarColonia(false); setMostrarSugerencias(true); }}
                   onBlur={() => setTimeout(() => setMostrarSugerencias(false), 150)}
                   placeholder="Escribe o elige del CP"
                   autoComplete="off"
@@ -245,9 +247,9 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
                 {mostrarSugerencias && coloniasSugeridas.length > 0 && (
                   <div className="suggestions">
                     {coloniasSugeridas
-                      .filter((c) => c.toLowerCase().includes((values.colonia_cliente || "").toLowerCase()))
+                      .filter((c) => !filtrarColonia || c.toLowerCase().includes((values.colonia_cliente || "").toLowerCase()))
                       .map((c) => (
-                        <div key={c} className="suggestion-item" onMouseDown={() => update("colonia_cliente", c)}>
+                        <div key={c} className="suggestion-item" onMouseDown={(e) => { e.preventDefault(); update("colonia_cliente", c); setMostrarSugerencias(false); }}>
                           {c}
                         </div>
                       ))}

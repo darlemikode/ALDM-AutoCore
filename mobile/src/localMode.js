@@ -33,6 +33,7 @@ export function suscribirModoLocal(fn) {
 // Solo debe llamarla conexion.js (o pruebas). No se exporta como parte de
 // la API pública que usan las pantallas.
 export function _establecerModoLocal(valor) {
+  return; // todo en línea: el modo local queda deshabilitado
   if (FORZADO) return; // pruebas QA: se queda en local, no se deja apagar por conexion.js
   if (valor === MODO_LOCAL) return;
   MODO_LOCAL = valor;

@@ -61,7 +61,6 @@ export default function Refacciones() {
   const [catSel, setCatSel] = useState("");
 
   async function load() {
-    setLoading(true);
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (soloBajoStock) params.set("bajo_stock", "true");

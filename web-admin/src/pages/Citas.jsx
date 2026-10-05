@@ -17,7 +17,6 @@ export default function Citas() {
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    setLoading(true);
     const data = await api.get(`/citas/?estado=${estado}`);
     setCitas(data);
     setLoading(false);

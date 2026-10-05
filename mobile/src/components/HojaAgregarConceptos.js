@@ -1,3 +1,4 @@
+import ScrollCampos from "../ui/ScrollCampos";
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -129,7 +130,7 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
             </ScrollView>
           </>
         ) : (
-          <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12 }} keyboardShouldPersistTaps="handled">
+          <ScrollCampos contentContainerStyle={{ padding: spacing.lg, gap: 12 }} keyboardShouldPersistTaps="handled">
             <Text style={styles.meta}>Para mano de obra, diagnósticos o cualquier cargo que no esté en el catálogo.</Text>
             <View>
               <Text style={styles.label}>Descripción *</Text>
@@ -169,7 +170,7 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
               </View>
             </View>
             <Text style={styles.importe}>Importe: {fmt(importeLibre)}</Text>
-          </ScrollView>
+          </ScrollCampos>
         )}
 
         <View style={styles.pie}>

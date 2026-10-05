@@ -50,7 +50,6 @@ export default function Servicios() {
   const location = useLocation();
 
   async function load() {
-    setLoading(true);
     const data = await api.get(`/servicios/${status ? `?status=${status}` : ""}`);
     setServicios(data);
     setLoading(false);
