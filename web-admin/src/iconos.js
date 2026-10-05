@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 // Un solo lugar con el ícono de cada módulo — así la barra lateral y el
 // título de cada página siempre usan el mismo, sin tener que repetirlo.
 // Nombres de src/components/Icono.jsx — mismo lenguaje visual que los
@@ -60,3 +61,67 @@ export const COLORES_ICONO = {
   "/roles": "#6bdc8c",
   "/configuracion": "#9fb3ba",
 };
+=======
+// Un solo lugar con el ícono de cada módulo — así la barra lateral y el
+// título de cada página siempre usan el mismo, sin tener que repetirlo.
+// Nombres de src/components/Icono.jsx — mismo lenguaje visual que los
+// Ionicons "-outline" que usa la app móvil (ver mobile/src/screens/MasScreen.js).
+export const ICONOS = {
+  "/": "grid",
+  "/mi-dashboard": "person-circle",
+  "/servicios": "construct",
+  "/cotizaciones": "document-text",
+  "/citas": "calendar",
+  "/clientes": "people",
+  "/vehiculos": "car",
+  "/refacciones": "cube",
+  "/inventario": "file-tray",
+  "/herramientas": "hammer",
+  "/proveedores": "business",
+  "/promociones": "pricetag",
+  "/asistente": "sparkles",
+  "/catalogos": "list",
+  "/configuracion-taller": "storefront",
+  "/comisiones": "card",
+  "/sincronizacion": "sync",
+  "/empleados": "id-card",
+  "/usuarios": "key",
+  "/asignacion-roles": "link",
+  "/roles": "shield-check",
+  "/facturacion": "document",
+  "/nomina": "cash",
+  "/superadmin": "shield-check",
+  "/errores": "warning",
+  "/configuracion": "settings",
+};
+
+// Color propio de cada módulo (insignia del menú lateral)
+export const COLORES_ICONO = {
+  "/": "#2de2d0",
+  "/mi-dashboard": "#7aa8ff",
+  "/servicios": "#ffb454",
+  "/cotizaciones": "#c39bff",
+  "/citas": "#ff8fb1",
+  "/clientes": "#5ad1ff",
+  "/vehiculos": "#ff7a6b",
+  "/facturacion": "#6bdc8c",
+  "/nomina": "#f2c94c",
+  "/refacciones": "#ffcc4d",
+  "/inventario": "#4dd6b0",
+  "/herramientas": "#ff9d5c",
+  "/proveedores": "#8ea2ff",
+  "/errores": "#ff6b6b",
+  "/promociones": "#ff8fd0",
+  "/asistente": "#b48cff",
+  "/superadmin": "#5ee0a0",
+  "/catalogos": "#7fd6ff",
+  "/configuracion-taller": "#ffd166",
+  "/comisiones": "#7be07b",
+  "/sincronizacion": "#6bc4ff",
+  "/empleados": "#ffa86b",
+  "/usuarios": "#ffd166",
+  "/asignacion-roles": "#a0b4ff",
+  "/roles": "#6bdc8c",
+  "/configuracion": "#9fb3ba",
+};
+>>>>>>> Stashed changes
