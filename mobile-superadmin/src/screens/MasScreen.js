@@ -9,7 +9,9 @@ import { crearEstilos } from "../ui/estilos";
 import { confirmar } from "../ui/comunes";
 import HojaFormulario from "../ui/HojaFormulario";
 import { alerta } from "../ui/Dialogo";
+import BadgeIcono from "../ui/BadgeIcono";
 
+const COLOR_OPCION = { Solicitudes: "#ff8fb1", Paquetes: "#ffb454", TiposCobro: "#5ad1ff", Modulos: "#8ea2ff", Configuracion: "#4dd6b0", Usuarios: "#ffd166" };
 const OPCIONES = [
   ["Solicitudes", "mail-outline", "Solicitudes de información", "Quién pidió una demo desde la página"],
   ["Paquetes", "layers-outline", "Paquetes y precios", "Crea planes, su precio por tipo de cobro y qué incluyen"],
@@ -36,7 +38,7 @@ export default function MasScreen({ navigation }) {
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}>
       {OPCIONES.map(([ruta, icono, titulo, desc]) => (
         <TouchableOpacity key={ruta} style={styles.item} onPress={() => navigation.navigate(ruta)}>
-          <View style={styles.icono}><Ionicons name={icono} size={20} color={colors.petrol600} /></View>
+          <BadgeIcono icono={icono} color={COLOR_OPCION[ruta] || colors.petrol500} size={40} />
           <View style={{ flex: 1 }}>
             <Text style={styles.titulo}>{titulo}</Text>
             <Text style={styles.desc}>{desc}</Text>
@@ -58,7 +60,7 @@ export default function MasScreen({ navigation }) {
       <Text style={styles.desc}>{usuario?.nombre_completo} (@{usuario?.username})</Text>
       <Text style={[styles.desc, { marginBottom: 12 }]}>Servidor: {servidorActual()}</Text>
       <TouchableOpacity style={styles.item} onPress={() => setCambiandoPassword(true)}>
-        <View style={styles.icono}><Ionicons name="key-outline" size={20} color={colors.petrol600} /></View>
+        <BadgeIcono icono="key-outline" color="#ffd166" size={40} />
         <View style={{ flex: 1 }}>
           <Text style={styles.titulo}>Cambiar mi contraseña</Text>
           <Text style={styles.desc}>Necesitas tu contraseña actual</Text>

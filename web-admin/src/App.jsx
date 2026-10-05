@@ -18,7 +18,6 @@ const Comisiones = lazy(() => import("./pages/Comisiones"));
 const Inventario = lazy(() => import("./pages/Inventario"));
 const Errores = lazy(() => import("./pages/Errores"));
 const NuevaOrden = lazy(() => import("./pages/NuevaOrden"));
-const Sincronizacion = lazy(() => import("./pages/Sincronizacion"));
 const MiDashboard = lazy(() => import("./pages/MiDashboard"));
 const Refacciones = lazy(() => import("./pages/Refacciones"));
 const Proveedores = lazy(() => import("./pages/Proveedores"));
@@ -30,6 +29,8 @@ const Usuarios = lazy(() => import("./pages/Usuarios"));
 const Roles = lazy(() => import("./pages/Roles"));
 const Cotizaciones = lazy(() => import("./pages/Cotizaciones"));
 const CotizacionDetalle = lazy(() => import("./pages/CotizacionDetalle"));
+const Nomina = lazy(() => import("./pages/Nomina"));
+const NominaDetalle = lazy(() => import("./pages/NominaDetalle"));
 const Facturacion = lazy(() => import("./pages/Facturacion"));
 const SuperAdmin = lazy(() => import("./pages/superadmin/SuperAdmin"));
 import ScrollToTop from "./components/ScrollToTop";
@@ -84,7 +85,6 @@ export default function App() {
         <Route path="configuracion-taller" element={<RequirePermission clave="configuracion.editar"><ConfiguracionTaller /></RequirePermission>} />
         <Route path="comisiones" element={<RequirePermission clave="configuracion.editar"><Comisiones /></RequirePermission>} />
         <Route path="errores" element={<RequirePermission clave="configuracion.editar"><Errores /></RequirePermission>} />
-        <Route path="sincronizacion" element={<Sincronizacion />} />
         <Route path="mi-dashboard" element={<MiDashboard />} />
         <Route path="refacciones" element={<RequirePermission clave="refacciones.ver"><Refacciones /></RequirePermission>} />
         <Route path="inventario" element={<RequirePermission clave="inventario.ver"><Inventario /></RequirePermission>} />
@@ -96,6 +96,8 @@ export default function App() {
         <Route path="usuarios" element={<RequirePermission clave="usuarios.ver"><Usuarios /></RequirePermission>} />
         <Route path="roles" element={<RequirePermission clave="roles.ver"><Roles /></RequirePermission>} />
         <Route path="superadmin/*" element={<RequireSuperadmin><SuperAdmin /></RequireSuperadmin>} />
+        <Route path="nomina" element={<RequirePermission clave="nomina.ver"><Nomina /></RequirePermission>} />
+        <Route path="nomina/:id" element={<RequirePermission clave="nomina.ver"><NominaDetalle /></RequirePermission>} />
         <Route path="facturacion" element={<RequirePermission clave="facturacion.ver"><Facturacion /></RequirePermission>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

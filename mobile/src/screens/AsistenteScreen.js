@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput,
 } from "react-native";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
@@ -26,6 +26,24 @@ const CONSULTAS = [
 export default function AsistenteScreen() {
   const [mensajes, setMensajes] = useState([]);
   const [cargando, setCargando] = useState(null);
+  const [pregunta, setPregunta] = useState("");
+
+  // Asistente del mecánico: vehículo + código de falla (ej. "Nissan Versa 2016 P0420")
+  async function preguntarMecanico() {
+    const texto = pregunta.trim();
+    if (!texto) return;
+    setMensajes((prev) => [...prev, { autor: "staff", texto }]);
+    setPregunta("");
+    setCargando("mecanico");
+    try {
+      const r = await api.post("/asistente/diagnostico", { mensaje: texto });
+      setMensajes((prev) => [...prev, { autor: "bot", texto: r.texto }]);
+    } catch (err) {
+      setMensajes((prev) => [...prev, { autor: "bot", texto: `⚠️ ${err.message}` }]);
+    } finally {
+      setCargando(null);
+    }
+  }
 
   async function consultar(consulta) {
     setMensajes((prev) => [...prev, { autor: "staff", texto: consulta.etiqueta }]);
@@ -116,6 +134,23 @@ export default function AsistenteScreen() {
         </View>
       )}
 
+      <Text style={styles.seccion}>Asistente del mecánico</Text>
+      <View style={styles.preguntaRow}>
+        <TextInput
+          style={styles.preguntaInput}
+          value={pregunta}
+          onChangeText={setPregunta}
+          placeholder="Ej. Nissan Versa 2016 P0420"
+          placeholderTextColor={colors.ink500}
+          autoCapitalize="characters"
+          returnKeyType="send"
+          onSubmitEditing={preguntarMecanico}
+        />
+        <TouchableOpacity style={styles.preguntaBoton} onPress={preguntarMecanico} disabled={!!cargando}>
+          <Text style={styles.preguntaBotonTexto}>Consultar</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.seccion}>¿Qué quieres saber?</Text>
       <View style={styles.opcionesRow}>
         {CONSULTAS.map((c) => (
@@ -140,6 +175,10 @@ const styles = crearEstilos({
   burbujaStaff: { backgroundColor: colors.petrol500, alignSelf: "flex-end" },
   burbujaBot: { backgroundColor: colors.paper0, alignSelf: "flex-start" },
   burbujaTexto: { fontSize: 13, color: colors.ink900, lineHeight: 19 },
+  preguntaRow: { flexDirection: "row", gap: 8, marginBottom: spacing.lg },
+  preguntaInput: { flex: 1, borderWidth: 1.5, borderColor: colors.petrol300, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: colors.ink900, backgroundColor: colors.paper100 },
+  preguntaBoton: { backgroundColor: colors.petrol500, borderRadius: 10, paddingHorizontal: 16, justifyContent: "center" },
+  preguntaBotonTexto: { color: "#fff", fontWeight: "800", fontSize: 14 },
   cargando: { fontSize: 12, color: colors.ink500, fontStyle: "italic" },
   opcionesRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.petrol300, borderRadius: 100, paddingVertical: 10, paddingHorizontal: 14 },

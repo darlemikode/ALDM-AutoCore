@@ -1,7 +1,8 @@
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
+import BadgeIcono from "../ui/BadgeIcono";
 import { colors, temaActivo } from "../theme";
 import InicioScreen from "../screens/InicioScreen";
 import TalleresScreen from "../screens/TalleresScreen";
@@ -72,10 +73,10 @@ function MasPila() {
 }
 
 const ICONOS = {
-  InicioTab: ["stats-chart", "stats-chart-outline"],
-  TalleresTab: ["business", "business-outline"],
-  PagosTab: ["cash", "cash-outline"],
-  MasTab: ["ellipsis-horizontal-circle", "ellipsis-horizontal-circle-outline"],
+  InicioTab: ["grid-outline", "#2de2d0"],
+  TalleresTab: ["business-outline", "#8ea2ff"],
+  PagosTab: ["cash-outline", "#f2c94c"],
+  MasTab: ["ellipsis-horizontal-circle-outline", "#c39bff"],
 };
 
 export default function AppNavigator() {
@@ -88,7 +89,7 @@ export default function AppNavigator() {
           tabBarActiveTintColor: colors.petrol600,
           tabBarInactiveTintColor: colors.ink500,
           tabBarStyle: { backgroundColor: colors.paper100, borderTopColor: colors.ink300 },
-          tabBarIcon: ({ focused, color }) => <Ionicons name={ICONOS[route.name][focused ? 0 : 1]} size={23} color={color} />,
+          tabBarIcon: ({ focused }) => <View style={{ opacity: focused ? 1 : 0.7 }}><BadgeIcono icono={ICONOS[route.name][0]} color={ICONOS[route.name][1]} size={32} activo={focused} /></View>,
         })}
       >
         <Tab.Screen name="InicioTab" component={InicioPila} options={{ title: "Inicio" }} />

@@ -8,6 +8,8 @@ import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { alerta, mostrarDialogo } from "../ui/Dialogo";
 import { useAuth } from "../context/AuthContext";
+import BadgeIcono from "../ui/BadgeIcono";
+import { MODULOS } from "../iconosModulo";
 
 // Agrupa el catálogo de permisos por módulo, para mostrarlos organizados
 // en vez de una lista plana de ~43 claves.
@@ -25,8 +27,20 @@ const ETIQUETA_MODULO = {
   refacciones: "Refacciones", herramientas: "Herramientas", proveedores: "Proveedores",
   catalogos: "Catálogos generales", usuarios: "Usuarios", promociones: "Promociones",
   empleados: "Empleados", nomina: "Nómina", configuracion: "Configuración", roles: "Roles y permisos",
+  dashboard: "Panel", cotizaciones: "Cotizaciones", facturacion: "Facturación", citas: "Citas solicitadas",
+  inventario: "Inventario", comisiones: "Comisiones", reportes: "Reportes", asistente: "Asistente",
+  errores: "Errores del sistema", taller: "Datos del taller", sincronizacion: "Sincronización",
+};
+const TITULO_ICONO = {
+  servicios: "Órdenes de servicio", catalogos: "Catálogos", roles: "Roles y permisos", usuarios: "Usuarios",
+  configuracion: "Datos del taller", taller: "Datos del taller", citas: "Citas solicitadas", errores: "Errores del sistema",
   dashboard: "Panel",
 };
+const tituloModulo = (m) => ETIQUETA_MODULO[m] || (m ? m.charAt(0).toUpperCase() + m.slice(1) : m);
+function infoModulo(m) {
+  const k = TITULO_ICONO[m] || tituloModulo(m);
+  return MODULOS[k] || { icono: "apps-outline", color: colors.petrol500 };
+}
 
 const ETIQUETA_ACCION = { ver: "Ver", crear: "Crear", editar: "Editar", eliminar: "Eliminar", ver_por_cobrar: "Ver por cobrar", ver_precios: "Ver precios" };
 const ICONO_ACCION = { ver: "eye-outline", crear: "add-circle-outline", editar: "create-outline", eliminar: "trash-outline", ver_por_cobrar: "cash-outline", ver_precios: "pricetag-outline" };
@@ -187,7 +201,7 @@ export default function GestionRolesScreen() {
                   ) : (
                     Object.keys(grupos).map((modulo) => (
                       <View key={modulo} style={styles.grupoModulo}>
-                        <Text style={styles.moduloNombre}>{ETIQUETA_MODULO[modulo] || modulo}</Text>
+                        <Text style={styles.moduloNombre}>{tituloModulo(modulo)}</Text>
                         <Text style={styles.moduloAcciones}>
                           {grupos[modulo].map((p) => ETIQUETA_ACCION[p.clave.split(".")[1]] || p.clave).join(", ")}
                         </Text>
@@ -206,26 +220,32 @@ export default function GestionRolesScreen() {
                       return (
                         <View key={modulo} style={styles.moduloCard}>
                           <View style={styles.moduloCardHeader}>
-                            <Text style={styles.moduloNombre}>{ETIQUETA_MODULO[modulo] || modulo}</Text>
-                            <Text style={styles.moduloContador}>{activosModulo}/{clavesModulo.length}</Text>
+                            <BadgeIcono icono={infoModulo(modulo).icono} color={infoModulo(modulo).color} size={36} activo={activosModulo > 0} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.moduloTitulo}>{tituloModulo(modulo)}</Text>
+                              <Text style={[styles.moduloContador, activosModulo === clavesModulo.length && { color: "#2e9e57" }]}>
+                                {activosModulo === clavesModulo.length ? "Acceso completo" : activosModulo === 0 ? "Sin acceso" : `${activosModulo} de ${clavesModulo.length} permisos`}
+                              </Text>
+                            </View>
                             <TouchableOpacity style={styles.botonChico} onPress={() => alternarModulo(rol, clavesModulo, todasActivas)}>
-                              <Ionicons name={todasActivas ? "close-circle-outline" : "checkmark-done-outline"} size={12} color={colors.ink700} />
+                              <Ionicons name={todasActivas ? "close-circle-outline" : "checkmark-done-outline"} size={16} color={colors.ink700} />
                               <Text style={styles.botonChicoTexto}>{todasActivas ? "Quitar todos" : "Marcar todos"}</Text>
                           </TouchableOpacity>
                         </View>
                           <View style={styles.chips}>
                             {permisosModulo.map((p) => {
                               const activo = activas.includes(p.clave);
+                              const cm = infoModulo(modulo).color;
                               return (
                                 <TouchableOpacity
                                   key={p.clave}
-                                  style={[styles.chip, activo && styles.chipActivo]}
+                                  style={[styles.chip, activo && { backgroundColor: `${cm}2e`, borderColor: cm }]}
                                   onPress={() => alternarPermiso(rol, p.clave)}
                                 >
                                   <Ionicons
-                                    name={ICONO_ACCION[p.clave.split(".")[1]] || "ellipse-outline"}
-                                    size={13}
-                                    color={activo ? "#fff" : colors.ink700}
+                                    name={activo ? "checkmark-circle" : (ICONO_ACCION[p.clave.split(".")[1]] || "ellipse-outline")}
+                                    size={18}
+                                    color={activo ? cm : colors.ink500}
                                   />
                                   <Text style={[styles.chipTexto, activo && styles.chipTextoActivo]}>
                                    {ETIQUETA_ACCION[p.clave.split(".")[1]] || p.clave}
@@ -286,12 +306,12 @@ const styles = crearEstilos({
   screen: { flex: 1, backgroundColor: colors.paper0 },
   centrado: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper0 },
   errorTexto: { color: colors.red600, fontSize: 14, textAlign: "center", padding: spacing.lg },
-  subtitulo: { fontSize: 12.5, color: colors.ink500, marginBottom: spacing.lg },
+  subtitulo: { fontSize: 14, color: colors.ink500, marginBottom: spacing.lg },
   card: { backgroundColor: colors.paper100, borderRadius: 10, marginBottom: spacing.sm, overflow: "hidden" },
   cardHeader: { flexDirection: "row", alignItems: "center", padding: spacing.md },
-  rolNombre: { fontSize: 15, fontWeight: "700", color: colors.ink900 },
+  rolNombre: { fontSize: 17, fontWeight: "700", color: colors.ink900 },
   badgeBase: { fontSize: 10, fontWeight: "800", color: colors.ink700, backgroundColor: colors.ink300, paddingHorizontal: 6, borderRadius: 6 },
-  rolDescripcion: { fontSize: 12, color: colors.ink500, marginTop: 2 },
+  rolDescripcion: { fontSize: 13.5, color: colors.ink500, marginTop: 2 },
   contador: { fontSize: 14, fontWeight: "800", color: colors.petrol600, marginLeft: 8 },
   detalle: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: colors.ink300 },
   guardando: { fontSize: 11, color: colors.petrol600, fontWeight: "700", marginTop: 8 },
@@ -299,16 +319,17 @@ const styles = crearEstilos({
   moduloNombre: { fontSize: 12.5, fontWeight: "700", color: colors.ink700 },
   moduloAcciones: { fontSize: 12, color: colors.ink500, marginTop: 1 },
   sinPermisos: { fontSize: 12.5, color: colors.ink500, fontStyle: "italic", marginTop: 10 },
-  moduloCard: { marginTop: 12, backgroundColor: colors.paper0, borderRadius: 8, padding: 10 },
-  moduloCardHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  moduloContador: { fontSize: 12, fontWeight: "800", color: colors.petrol600, marginLeft: "auto" },
-  botonChico: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.ink300, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8 },
-  botonChicoTexto: { fontSize: 10.5, fontWeight: "700", color: colors.ink700 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-  chip: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: colors.ink300, borderRadius: 100, paddingVertical: 5, paddingHorizontal: 10 },
+  moduloCard: { marginTop: 12, backgroundColor: colors.paper0, borderRadius: 12, padding: 12 },
+  moduloCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  moduloTitulo: { fontSize: 16, fontWeight: "800", color: colors.ink900 },
+  moduloContador: { fontSize: 13, fontWeight: "700", color: colors.ink500, marginTop: 1 },
+  botonChico: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.ink300, borderRadius: 8, paddingVertical: 7, paddingHorizontal: 10 },
+  botonChicoTexto: { fontSize: 12.5, fontWeight: "700", color: colors.ink700 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  chip: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1.5, borderColor: colors.ink300, backgroundColor: colors.paper100, borderRadius: 100, paddingVertical: 9, paddingHorizontal: 14, minWidth: 96 },
   chipActivo: { backgroundColor: colors.petrol500, borderColor: colors.petrol500 },
-  chipTexto: { fontSize: 11.5, fontWeight: "700", color: colors.ink700 },
-  chipTextoActivo: { color: "#fff" },
+  chipTexto: { fontSize: 14, fontWeight: "700", color: colors.ink500 },
+  chipTextoActivo: { color: colors.ink900 },
   notaBase: { fontSize: 11.5, color: colors.ink500, fontStyle: "italic", marginTop: 12 },
   botonEliminar: { marginTop: 14, borderWidth: 1, borderColor: colors.red600, borderRadius: 8, padding: 10, alignItems: "center" },
   botonEliminarTexto: { color: colors.red600, fontWeight: "800", fontSize: 12.5 },

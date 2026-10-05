@@ -40,3 +40,13 @@ def asegurar():
                 con.execute(text(f"CREATE INDEX ix_{tabla}_{columna} ON {tabla} ({columna})"))
         except Exception:
             pass
+
+
+def migrar_estatus_empleados():
+    """Una vez: los empleados ya marcados como inactivos pasan a estatus "baja"."""
+    try:
+        with engine.begin() as con:
+            con.execute(text("UPDATE empleados SET estatus='baja' WHERE activo = :f AND (estatus IS NULL OR estatus='activo')"), {"f": False})
+            con.execute(text("UPDATE empleados SET estatus='activo' WHERE estatus IS NULL"))
+    except Exception:
+        pass

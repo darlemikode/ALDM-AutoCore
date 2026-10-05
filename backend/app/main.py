@@ -151,6 +151,7 @@ def on_startup():
     seed_codigos_postales.run()
     seed_marcas_modelos.run()
     indices.asegurar()
+    indices.migrar_estatus_empleados()
 
 
 app.include_router(auth.router)

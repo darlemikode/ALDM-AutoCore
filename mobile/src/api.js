@@ -122,16 +122,8 @@ async function request(path, { method = "GET", body, isForm = false } = {}) {
     return await requestReal(path, method, body, isForm);
   } catch (err) {
     if (!esFalloDeRed(err)) throw await errorEstandar(err, path); // error real del servidor: se muestra, no se encola
-    // No hubo forma de llegar al servidor — se confirma con una
-    // verificación de conexión (enciende MODO_LOCAL si en efecto no hay
-    // servidor) y esta petición en particular se resuelve local para no
-    // perder lo que el usuario estaba haciendo.
-    await verificarConexion();
-    try {
-      return await solicitudLocal(path, method, body);
-    } catch (errLocal) {
-      throw await errorEstandar(errLocal, path);
-    }
+    // Todo va en línea: sin servidor no se guarda nada en el celular.
+    throw new Error("Sin conexión con el servidor. Revisa tu internet e intenta de nuevo.");
   }
 }
 
@@ -195,7 +187,6 @@ export async function login(username, password) {
     return data;
   } catch (err) {
     if (!esFalloDeRed(err)) throw err; // usuario/contraseña incorrectos: es real, se muestra
-    await verificarConexion();
-    return loginLocalFalso(username, password);
+    throw new Error("Sin conexión con el servidor. Revisa tu internet e intenta de nuevo.");
   }
 }

@@ -922,13 +922,21 @@ class Empleado(TenantMixin, Base):
     correo = Column(String(120), nullable=True)
     puesto = Column(String(80), nullable=True)  # ej. "Mecánico", "Hojalatero"
     fecha_ingreso = Column(Date, nullable=True)
-    activo = Column(Boolean, default=True)
+    activo = Column(Boolean, default=True)  # derivado: True solo si estatus == "activo" (únicos a quienes se asignan servicios)
+    estatus = Column(String(20), default="activo")  # activo | vacaciones | incapacidad | suspendido | baja
+    fecha_baja = Column(Date, nullable=True)
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)  # opcional
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
 
     # --- Nómina ---------------------------------------------------------
     sueldo_base = Column(Float, default=0)  # por periodo (según periodicidad_pago)
     periodicidad_pago = Column(String(20), default="quincenal")  # semanal | quincenal | mensual
+    esquema_pago = Column(String(20), default="fijo")  # fijo | comision | mixto | destajo
+    porcentaje_comision = Column(Float, default=0)  # % sobre la mano de obra de las órdenes cerradas que atendió
+    aplicar_impuestos = Column(Boolean, default=False)  # retener ISR e IMSS (estimado)
+    curp = Column(String(18), nullable=True)
+    rfc_empleado = Column(String(13), nullable=True)
+    nss = Column(String(11), nullable=True)
 
     usuario = relationship("Usuario")
     servicios_responsable = relationship("Servicio", back_populates="empleado_responsable")
@@ -951,6 +959,9 @@ class PeriodoNomina(TenantMixin, Base):
     status = Column(String(20), default="abierto")  # abierto | pagado
     fecha_pago = Column(DateTime, nullable=True)
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    recurrente = Column(Boolean, default=False)  # solo el último periodo de la cadena queda en True; al vencer genera el siguiente
+    dia_pago = Column(Integer, nullable=True)  # día de la semana de pago: 0=lunes … 6=domingo
+    empleados_ids = Column(String(500), nullable=True)  # ids separados por coma; vacío = todos los que cobran con esta periodicidad
 
     recibos = relationship("ReciboNomina", back_populates="periodo", cascade="all, delete-orphan")
 
@@ -969,6 +980,22 @@ class ReciboNomina(TenantMixin, Base):
     total_pagar = Column(Float, default=0)
     pagado = Column(Boolean, default=False)
     fecha_pago = Column(DateTime, nullable=True)
+    # --- Desglose (nómina completa) ---
+    dias_periodo = Column(Float, default=0)
+    faltas = Column(Float, default=0)  # días
+    horas_extra = Column(Float, default=0)
+    pago_horas_extra = Column(Float, default=0)
+    comisiones = Column(Float, default=0)
+    destajo = Column(Float, default=0)
+    destajo_nota = Column(String(255), nullable=True)
+    descuento_faltas = Column(Float, default=0)
+    percepciones = Column(Float, default=0)  # sueldo - faltas + extras + comisiones + destajo + bonos
+    isr = Column(Float, default=0)
+    subsidio = Column(Float, default=0)
+    imss = Column(Float, default=0)
+    prestamo = Column(Float, default=0)  # descuento por adelanto / préstamo
+    prestamo_nota = Column(String(255), nullable=True)
+    total_deducciones = Column(Float, default=0)
 
     periodo = relationship("PeriodoNomina", back_populates="recibos")
     empleado = relationship("Empleado", back_populates="recibos_nomina")

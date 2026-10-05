@@ -33,6 +33,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
   const [error, setError] = useState("");
   const [buscandoCp, setBuscandoCp] = useState(false);
   const [coloniasSugeridas, setColoniasSugeridas] = useState([]);
+  const [filtrarColonia, setFiltrarColonia] = useState(false); // solo filtra si el usuario está escribiendo
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
   function update(name, value) {
@@ -236,8 +237,9 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
                 <label>Colonia</label>
                 <input
                   value={values.colonia_cliente || ""}
-                  onChange={(e) => { update("colonia_cliente", e.target.value); setMostrarSugerencias(true); }}
-                  onFocus={() => setMostrarSugerencias(true)}
+                  onChange={(e) => { update("colonia_cliente", e.target.value); setFiltrarColonia(true); setMostrarSugerencias(true); }}
+                  onFocus={() => { setFiltrarColonia(false); setMostrarSugerencias(true); }}
+                  onClick={() => { setFiltrarColonia(false); setMostrarSugerencias(true); }}
                   onBlur={() => setTimeout(() => setMostrarSugerencias(false), 150)}
                   placeholder="Escribe o elige del CP"
                   autoComplete="off"
@@ -245,9 +247,9 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
                 {mostrarSugerencias && coloniasSugeridas.length > 0 && (
                   <div className="suggestions">
                     {coloniasSugeridas
-                      .filter((c) => c.toLowerCase().includes((values.colonia_cliente || "").toLowerCase()))
+                      .filter((c) => !filtrarColonia || c.toLowerCase().includes((values.colonia_cliente || "").toLowerCase()))
                       .map((c) => (
-                        <div key={c} className="suggestion-item" onMouseDown={() => update("colonia_cliente", c)}>
+                        <div key={c} className="suggestion-item" onMouseDown={(e) => { e.preventDefault(); update("colonia_cliente", c); setMostrarSugerencias(false); }}>
                           {c}
                         </div>
                       ))}

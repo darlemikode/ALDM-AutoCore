@@ -96,17 +96,20 @@ export default function Atajos() {
   // Esc = cancelar y Enter = guardar en todas las ventanas (siempre activo).
   useEffect(() => {
     function onKey(e) {
-      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
       if (e.key !== "Escape" && e.key !== "Enter") return;
-      if (document.querySelector(".combo-lista, .buscador-lista")) return; // la lista abierta maneja su propia tecla
+      if (e.key === "Enter" && e.defaultPrevented) return;
+      // si el foco está dentro de un selector con la lista abierta, ese selector maneja su propia tecla
+      if (document.querySelector(".combo-lista, .buscador-lista") && e.target?.closest?.(".combo, .buscador-select")) return;
       const modales = document.querySelectorAll(".modal-backdrop");
       const modal = modales[modales.length - 1];
       const el = e.target;
       const tag = (el?.tagName || "").toLowerCase();
       if (e.key === "Escape") {
         if (modal) {
-          const cancelar = [...modal.querySelectorAll(".modal-actions button")]
-            .find((b) => !b.disabled && !/btn-(primary|danger)/.test(b.className));
+          const botones = [...modal.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+          const cancelar = botones.find((b) => /^\s*(cancelar|cerrar|volver|no)\s*$/i.test(b.textContent || "") && !/btn-primary/.test(b.className))
+            || [...modal.querySelectorAll(".modal-actions button")].find((b) => !b.disabled && !/btn-(primary|danger)/.test(b.className));
           e.preventDefault();
           if (cancelar) cancelar.click(); else modal.click();
         } else if (tag === "input" || tag === "textarea" || tag === "select") {
@@ -122,8 +125,8 @@ export default function Atajos() {
       const ok = modal.querySelector(".modal-actions .btn-primary:not([disabled])");
       if (ok) { e.preventDefault(); ok.click(); }
     }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
   }, [navigate]);
 
   useEffect(() => {

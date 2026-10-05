@@ -7,7 +7,7 @@ import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import FormScroll from "../ui/FormScroll";
 import { mostrarDialogo, alerta } from "../ui/Dialogo";
-import { soloDigitos, telefonoValido, MENSAJE_TELEFONO_INVALIDO } from "../validaciones";
+import { soloDigitos, telefonoValido, MENSAJE_TELEFONO_INVALIDO, correoValido, MENSAJE_CORREO_INVALIDO } from "../validaciones";
 
 const ESTADOS_MEXICO = [
   "Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Chiapas",
@@ -52,6 +52,9 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
   const [buscandoCp, setBuscandoCp] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores] = useState([]);
+  const [masDatos, setMasDatos] = useState(
+    !!(clienteExistente && (clienteExistente.materno_cliente || clienteExistente.telefono2 || clienteExistente.empresa_cliente || clienteExistente.rfc_cliente || clienteExistente.cp_cliente || clienteExistente.calle_cliente || clienteExistente.comentarios))
+  );
 
   useEffect(() => {
     navigation?.setOptions?.({ title: editando ? "Editar cliente" : "Nuevo cliente" });
@@ -134,10 +137,12 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
     if (!telefono1.trim()) faltantes.push("telefono1");
     else if (!telefonoValido(telefono1)) faltantes.push("telefono1");
     if (telefono2.trim() && !telefonoValido(telefono2, { opcional: true })) faltantes.push("telefono2");
+    if (!correoValido(correo)) faltantes.push("correo");
     if (faltantes.length > 0) {
       // Sin alerta: se marca en rojo y se lleva a la persona directo al
       // primer campo que falta, con el teclado abierto.
       setErrores(faltantes);
+      if (faltantes.includes("telefono2")) setMasDatos(true);
       irACampo(faltantes[0]);
       return;
     }
@@ -193,6 +198,7 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
   const mensajeErrorCampo = (campo) => {
     const valor = campo === "telefono1" ? telefono1 : campo === "telefono2" ? telefono2 : "";
     if ((campo === "telefono1" || campo === "telefono2") && valor.trim()) return MENSAJE_TELEFONO_INVALIDO;
+    if (campo === "correo") return MENSAJE_CORREO_INVALIDO;
     return "Este dato es obligatorio";
   };
 
@@ -219,7 +225,8 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
   const limpiarError = (campo) => errores.includes(campo) && setErrores((prev) => prev.filter((c) => c !== campo));
 
   return (
-    <FormScroll ref={scrollRef} style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
+    <View style={styles.screen}>
+    <FormScroll ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 24 }}>
       <View ref={contenidoRef} collapsable={false}>
       <Campo label="Nombre *" error={errores.includes("nombre")}>
         <TextInput
@@ -233,14 +240,13 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
       </Campo>
       <Fila>
         <Campo label="Apellido paterno" flex>
-          <TextInput placeholderTextColor={colors.ink500} style={[styles.input, conError("paterno")]} value={paterno} onChangeText={setPaterno} placeholder="Pérez" />
+          <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={paterno} onChangeText={setPaterno} placeholder="Pérez" />
         </Campo>
         <Campo label="Apellido materno" flex>
           <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={materno} onChangeText={setMaterno} placeholder="López" />
         </Campo>
       </Fila>
-      <Fila>
-        <Campo label="Teléfono principal *" flex error={errores.includes("telefono1")} mensajeError={mensajeErrorCampo("telefono1")}>
+      <Campo label="Teléfono principal *" error={errores.includes("telefono1")} mensajeError={mensajeErrorCampo("telefono1")}>
           <TextInput
             ref={refs.telefono1}
             style={[styles.input, conError("telefono1")]}
@@ -252,7 +258,15 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
             placeholderTextColor={colors.ink500}
           />
         </Campo>
-        <Campo label="Teléfono secundario" flex error={errores.includes("telefono2")} mensajeError={mensajeErrorCampo("telefono2")}>
+      <Campo label="Correo" error={errores.includes("correo")} mensajeError={mensajeErrorCampo("correo")}>
+        <TextInput placeholderTextColor={colors.ink500} style={[styles.input, conError("correo")]} value={correo} onChangeText={(v) => { setCorreo(v); limpiarError("correo"); }} keyboardType="email-address" autoCapitalize="none" placeholder="correo@ejemplo.com" />
+      </Campo>
+      <TouchableOpacity style={styles.masDatos} onPress={() => setMasDatos((v) => !v)} activeOpacity={0.7}>
+        <Text style={styles.masDatosTexto}>{masDatos ? "▲ Ocultar datos opcionales" : "▼ Más datos (dirección, empresa, RFC…)"}</Text>
+      </TouchableOpacity>
+      {masDatos && (
+        <View>
+      <Campo label="Teléfono secundario" error={errores.includes("telefono2")} mensajeError={mensajeErrorCampo("telefono2")}>
           <TextInput
             ref={refs.telefono2}
             placeholderTextColor={colors.ink500}
@@ -264,10 +278,6 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
             placeholder="Opcional"
           />
         </Campo>
-      </Fila>
-      <Campo label="Correo">
-        <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={correo} onChangeText={setCorreo} keyboardType="email-address" autoCapitalize="none" placeholder="correo@ejemplo.com" />
-      </Campo>
       <Fila>
         <Campo label="Empresa" flex>
           <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={empresa} onChangeText={setEmpresa} placeholder="Opcional" />
@@ -335,11 +345,16 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
         <TextInput placeholderTextColor={colors.ink500} style={[styles.input, styles.textarea]} value={comentarios} onChangeText={setComentarios} multiline placeholder="Notas sobre el cliente" />
       </Campo>
 
+        </View>
+      )}
+      </View>
+    </FormScroll>
+    <View style={styles.pie}>
       <TouchableOpacity style={styles.button} onPress={guardar} disabled={guardando}>
         <Text style={styles.buttonText}>{guardando ? "Guardando…" : editando ? "Guardar cambios" : "Guardar cliente"}</Text>
       </TouchableOpacity>
-      </View>
-    </FormScroll>
+    </View>
+    </View>
   );
 }
 
@@ -374,6 +389,9 @@ const styles = crearEstilos({
   sugerenciaItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: "#f0f0ee" },
   sugerenciaTexto: { fontSize: 13, color: colors.ink900 },
   error: { color: colors.red600, fontSize: 13, marginBottom: spacing.sm },
-  button: { backgroundColor: colors.petrol500, borderRadius: 8, padding: 14, alignItems: "center", marginTop: spacing.md },
+  masDatos: { alignSelf: "flex-start", paddingVertical: 10, marginBottom: spacing.sm },
+  masDatosTexto: { fontSize: 14, fontWeight: "700", color: colors.petrol600 },
+  pie: { paddingHorizontal: spacing.lg, paddingTop: 8, paddingBottom: 14, borderTopWidth: 1, borderTopColor: colors.ink300, backgroundColor: colors.paper0 },
+  button: { backgroundColor: colors.petrol500, borderRadius: 8, padding: 14, alignItems: "center" },
   buttonText: { color: colors.paper100, fontWeight: "800", fontSize: 14, textTransform: "uppercase" },
 });

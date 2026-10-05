@@ -11,11 +11,8 @@ import BiometricLockScreen from "./src/screens/BiometricLockScreen";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { colors } from "./src/theme";
 import { DialogoHost } from "./src/ui/Dialogo";
-import { AvisoModoLocal } from "./src/ui/AvisoModoLocal";
 import { AvisoSuscripcion, PantallaBloqueo } from "./src/ui/AvisoSuscripcion";
 import SelectorTaller from "./src/ui/SelectorTaller";
-import { iniciarMonitoreoConexion } from "./src/conexion";
-import { iniciarAutoSincronizacion } from "./src/autoSync";
 import { iniciarActualizacionesGlobales } from "./src/actualizacionesGlobales";
 import { iniciarMonitoreoNotificaciones } from "./src/notificaciones";
 
@@ -27,8 +24,6 @@ function Root() {
   // (y lo vuelve a revisar cada tanto) y, en cuanto detecta que se
   // recuperó la conexión, sube lo pendiente y refresca el catálogo solo.
   useEffect(() => {
-    iniciarMonitoreoConexion();
-    iniciarAutoSincronizacion();
   }, []);
 
   // Se reconecta cada vez que cambia la sesión (login/logout) para usar
@@ -60,7 +55,6 @@ function Root() {
     <View key={tema} style={{ flex: 1, backgroundColor: colors.paper0 }}>
       {/* El login usa fondo --ink-900 (oscuro en tema claro, claro en tema oscuro), igual que la web */}
       <StatusBar style={(tema === "oscuro") !== !user ? "light" : "dark"} />
-      {user ? <AvisoModoLocal /> : null}
       {user ? <AvisoSuscripcion /> : null}
       {contenido}
       {user ? <SelectorTaller /> : null}

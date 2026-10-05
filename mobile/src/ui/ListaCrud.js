@@ -1,3 +1,5 @@
+import BadgeIcono from "./BadgeIcono";
+import { colorPorIcono } from "../iconosModulo";
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl, Modal, ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -29,7 +31,7 @@ export default function ListaCrud(props) {
   const {
     endpoint, idCampo, titulo, subtitulo, icono = "list-outline", etiqueta = "registro", campos, grupos,
     permisos = {}, buscarEn, prepararGuardar, valoresParaEditar, alTocar, badge, cargarExtra, hasPermission,
-    navigation, textoVacio, filtrarLista, despuesDeCrear, fotos, resumen,
+    navigation, textoVacio, filtrarLista, despuesDeCrear, fotos, resumen, valoresNuevo, derecha,
   } = props;
   const [fotosDe, setFotosDe] = useState(null);
   const [lista, setLista] = useState([]);
@@ -57,10 +59,12 @@ export default function ListaCrud(props) {
   const tabla = endpoint.replace(/^\/|\/$/g, "").split("/")[0];
   useActualizacionGlobal(tabla, () => load().catch(() => {}));
 
+  const base = endpoint.endsWith("/") ? endpoint : `${endpoint}/`;
+
   async function guardar(valores) {
     const cuerpo = prepararGuardar ? prepararGuardar(valores, editando) : valores;
     const eraNuevo = !editando?.[idCampo];
-    const guardado = eraNuevo ? await api.post(endpoint, cuerpo) : await api.put(`${endpoint}${editando[idCampo]}`, cuerpo);
+    const guardado = eraNuevo ? await api.post(endpoint, cuerpo) : await api.put(`${base}${editando[idCampo]}`, cuerpo);
     setEditando(null);
     await load();
     if (eraNuevo && despuesDeCrear && guardado) despuesDeCrear(guardado, navigation);
@@ -70,7 +74,7 @@ export default function ListaCrud(props) {
     alerta(`Eliminar ${etiqueta}`, `¿Eliminar "${titulo(item)}"? No se puede deshacer.`, [
       { text: "Cancelar", style: "cancel" },
       { text: "Eliminar", style: "destructive", onPress: async () => {
-        try { await api.del(`${endpoint}${item[idCampo]}`); load(); } catch (err) { alerta("Error", err.message); }
+        try { await api.del(`${base}${item[idCampo]}`); load(); } catch (err) { alerta("Error", err.message); }
       } },
     ]);
   }
@@ -116,13 +120,14 @@ export default function ListaCrud(props) {
           const tocar = alTocar ? () => alTocar(item, navigation) : puede(permisos.editar) ? () => setEditando(item) : null;
           return (
             <TouchableOpacity style={styles.tarjeta} onPress={tocar} disabled={!tocar} activeOpacity={0.75}>
-              <View style={styles.avatar}><Ionicons name={icono} size={19} color={colors.petrol600} /></View>
+              {colorPorIcono(icono) ? <BadgeIcono icono={icono} color={colorPorIcono(icono)} size={40} /> : <View style={styles.avatar}><Ionicons name={icono} size={19} color={colors.petrol600} /></View>}
               <View style={{ flex: 1 }}>
                 <Text style={styles.nombre}>{titulo(item)}</Text>
                 {subtitulo ? <Text style={styles.meta} numberOfLines={2}>{subtitulo(item) || "—"}</Text> : null}
                 {b ? <View style={[styles.badge, { backgroundColor: tonos[b.tono || "petrol"][0] }]}><Text style={[styles.badgeTexto, { color: tonos[b.tono || "petrol"][1] }]}>{b.texto}</Text></View> : null}
               </View>
               <View style={styles.acciones}>
+                {derecha ? derecha(item, load) : null}
                 {fotos ? (
                   <TouchableOpacity onPress={() => setFotosDe(item)} hitSlop={8} accessibilityLabel="Fotos"><Ionicons name="images-outline" size={20} color={colors.petrol600} /></TouchableOpacity>
                 ) : null}
@@ -171,7 +176,7 @@ export default function ListaCrud(props) {
         icono={icono}
         campos={campos}
         grupos={grupos}
-        valoresIniciales={editando?.[idCampo] ? (valoresParaEditar ? valoresParaEditar(editando) : editando) : {}}
+        valoresIniciales={editando?.[idCampo] ? (valoresParaEditar ? valoresParaEditar(editando) : editando) : (valoresNuevo || {})}
         onGuardar={guardar}
         onCerrar={() => setEditando(null)}
       />

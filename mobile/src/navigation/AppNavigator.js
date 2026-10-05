@@ -1,3 +1,5 @@
+import BadgeIcono from "../ui/BadgeIcono";
+import { moduloPorTitulo } from "../iconosModulo";
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { estadoGuardado, guardarEstado } from "./estadoNavegacion";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -159,7 +161,7 @@ function MasStackScreen() {
       <MasStack.Screen name="GestionRoles" component={GestionRolesScreen} options={{ title: "Roles y permisos" }} />
       <MasStack.Screen name="Comisiones" component={ComisionesScreen} options={{ title: "Comisiones" }} />
       <MasStack.Screen name="DatosTaller" component={DatosTallerScreen} options={{ title: "Datos del taller" }} />
-      <MasStack.Screen name="Usuarios" component={UsuariosScreen} options={{ title: "Usuarios" }} />
+      <MasStack.Screen name="Usuarios" component={UsuariosScreen} options={{ title: "Usuarios de la aplicación" }} />
       <MasStack.Screen name="Promociones" component={PromocionesScreen} options={{ title: "Promociones" }} />
       <MasStack.Screen name="InventarioLista" component={InventarioListaScreen} options={{ title: "Inventario" }} />
       <MasStack.Screen name="InventarioDetalleDesdeModulo" component={InventarioDetalleScreen} options={{ title: "Inventario" }} />
@@ -170,6 +172,7 @@ function MasStackScreen() {
   );
 }
 
+const COLOR_TAB = { Panel: "#2de2d0", Clientes: "#5ad1ff", Servicio: "#ffb454", Refacciones: "#ffcc4d", Más: "#9fb3ba" };
 const ICONOS_TAB = {
   Panel: ["grid", "grid-outline"],
   Clientes: ["people", "people-outline"],
@@ -196,13 +199,26 @@ function TallerTabs() {
   return (
     <Tab.Navigator
       id="TallerTabs"
+      screenListeners={({ navigation, route }) => ({
+        tabPress: (e) => {
+          // Tocar un módulo siempre abre su pantalla principal (lista), no donde te quedaste.
+          const raiz = RAIZ_TAB[route.name];
+          if (raiz && route.name !== "NuevaOrdenTab") {
+            e.preventDefault();
+            navigation.navigate(route.name, { screen: raiz, pop: true });
+          }
+        },
+      })}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.petrol600,
         tabBarInactiveTintColor: colors.ink500,
         tabBarIcon: ({ focused, color }) => {
           const par = ICONOS_TAB[route.name];
-          return par ? <Ionicons name={focused ? par[0] : par[1]} size={22} color={color} /> : null;
+          const colorModulo = COLOR_TAB[route.name];
+          return par && colorModulo
+            ? <View style={{ opacity: focused ? 1 : 0.7 }}><BadgeIcono icono={par[1]} color={colorModulo} size={32} activo={focused} /></View>
+            : par ? <Ionicons name={focused ? par[0] : par[1]} size={22} color={color} /> : null;
         },
         tabBarStyle: { backgroundColor: colors.paper100, borderTopColor: colors.ink300, borderTopWidth: 1, height: 64, paddingBottom: 8, paddingTop: 6, elevation: 0 },
         tabBarLabelStyle: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
@@ -210,6 +226,19 @@ function TallerTabs() {
     >
       <Tab.Screen name="Panel" component={DashboardScreen} />
       {hasPermission("clientes.ver") && <Tab.Screen name="Clientes" component={ClientesStackScreen} />}
+      {hasPermission("servicios.crear") && (
+        <Tab.Screen
+          name="NuevaOrdenTab"
+          component={ServicioStackScreen}
+          options={{ tabBarButton: (props) => <BotonServicioGrande {...props} />, tabBarIcon: undefined }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              e.preventDefault();
+              navigation.navigate("Servicio", { screen: "NuevaOrden", params: { resetear: Date.now() } });
+            },
+          })}
+        />
+      )}
       {hasPermission("servicios.ver") && (
         <Tab.Screen
           name="Servicio"
@@ -227,20 +256,9 @@ function TallerTabs() {
           })}
         />
       )}
-      {hasPermission("servicios.crear") && (
-        <Tab.Screen
-          name="NuevaOrdenTab"
-          component={ServicioStackScreen}
-          options={{ tabBarButton: (props) => <BotonServicioGrande {...props} />, tabBarIcon: undefined }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => {
-              e.preventDefault();
-              navigation.navigate("Servicio", { screen: "NuevaOrden", params: { resetear: Date.now() } });
-            },
-          })}
-        />
-      )}
-      {hasPermission("refacciones.ver") && <Tab.Screen name="Refacciones" component={RefaccionesStackScreen} />}
+      {hasPermission("refacciones.ver") && <Tab.Screen name="Refacciones" component={RefaccionesStackScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />}
+      {hasPermission("vehiculos.ver") && <Tab.Screen name="Vehículos" component={VehiculosStackScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />}
+      {hasPermission("catalogos.ver") && <Tab.Screen name="Catálogos" component={CatalogosStackScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />}
       <Tab.Screen name="Más" component={MasStackScreen} />
     </Tab.Navigator>
   );
@@ -255,10 +273,14 @@ function rutaActiva(state) {
   return r?.name;
 }
 
+// Pantalla principal (lista) de cada módulo: al entrar siempre se muestra ésta.
+const RAIZ_TAB = { "Vehículos": "VehiculosLista", "Catálogos": "CatalogosLista", Clientes: "ClientesLista", Servicio: "HistorialServicios", Refacciones: "RefaccionesLista", "Más": "MasMenu" };
+const RAIZ_DRAWER = { "Vehículos": "VehiculosLista", "Catálogos": "CatalogosLista" };
+
 function irA(navigation, destino) {
   const [raiz, tab, pantalla] = destino;
-  if (!tab) return navigation.navigate(raiz);
-  if (!pantalla) return navigation.navigate(raiz, { screen: tab });
+  if (!tab) return navigation.navigate(raiz, RAIZ_DRAWER[raiz] ? { screen: RAIZ_DRAWER[raiz], pop: true } : undefined);
+  if (!pantalla) return navigation.navigate(raiz, { screen: tab, params: RAIZ_TAB[tab] ? { screen: RAIZ_TAB[tab], pop: true } : undefined });
   // initial:false deja la pantalla raíz del stack debajo, así "atrás" regresa a ella
   return navigation.navigate(raiz, { screen: tab, params: { screen: pantalla, initial: false } });
 }
@@ -272,15 +294,16 @@ function ContenidoDrawer({ navigation, state }) {
   const nav = [
     { grupo: "General", items: [
       { label: "Panel", icono: "grid-outline", ruta: "Panel", destino: ["Taller", "Panel"] },
+      hasPermission("promociones.ver") && { label: "Citas solicitadas", icono: "calendar-outline", ruta: "Citas", destino: ["Taller", "Más", "Citas"] },
       { label: "Mi dashboard", icono: "person-circle-outline", ruta: "MiDashboard", destino: ["Taller", "Más", "MiDashboard"] },
-    ]},
+    ].filter(Boolean) },
     { grupo: "Operación", items: [
       hasPermission("servicios.ver") && { label: "Órdenes de servicio", icono: "construct-outline", ruta: "HistorialServicios", destino: ["Taller", "Servicio", "HistorialServicios"] },
-      hasPermission("servicios.crear") && { label: "Nueva orden", icono: "add-circle-outline", ruta: "NuevaOrden", destino: ["Taller", "Servicio", "NuevaOrden"] },
-      hasPermission("cotizaciones.ver") && { label: "Cotizaciones", icono: "document-text-outline", ruta: "Cotizaciones", destino: ["Taller", "Más", "Cotizaciones"] },
-      hasPermission("promociones.ver") && { label: "Citas solicitadas", icono: "calendar-outline", ruta: "Citas", destino: ["Taller", "Más", "Citas"] },
       hasPermission("clientes.ver") && { label: "Clientes", icono: "people-outline", ruta: "ClientesLista", destino: ["Taller", "Clientes"] },
-      hasPermission("vehiculos.ver") && { label: "Vehículos", icono: "car-outline", ruta: "VehiculosLista", destino: ["Vehículos"] },
+      hasPermission("vehiculos.ver") && { label: "Vehículos", icono: "car-outline", ruta: "VehiculosLista", destino: ["Taller", "Vehículos"] },
+      hasPermission("cotizaciones.ver") && { label: "Cotizaciones", icono: "document-text-outline", ruta: "Cotizaciones", destino: ["Taller", "Más", "Cotizaciones"] },
+      hasPermission("empleados.ver") && { label: "Empleados", icono: "id-card-outline", ruta: "Empleados", destino: ["Taller", "Más", "Empleados"] },
+      hasPermission("nomina.ver") && { label: "Nómina", icono: "cash-outline", ruta: "Nomina", destino: ["Taller", "Más", "Nomina"] },
     ].filter(Boolean) },
     { grupo: "Inventario", items: [
       hasPermission("refacciones.ver") && { label: "Refacciones", icono: "cube-outline", ruta: "RefaccionesLista", destino: ["Taller", "Refacciones"] },
@@ -293,12 +316,10 @@ function ContenidoDrawer({ navigation, state }) {
       hasPermission("promociones.ver") && { label: "Asistente (chatbot)", icono: "chatbubbles-outline", ruta: "Asistente", destino: ["Taller", "Más", "Asistente"] },
     ].filter(Boolean) },
     { grupo: "Configuración", items: [
-      hasPermission("catalogos.ver") && { label: "Catálogos", icono: "list-outline", ruta: "CatalogosLista", destino: ["Catálogos"] },
+      hasPermission("catalogos.ver") && { label: "Catálogos", icono: "list-outline", ruta: "CatalogosLista", destino: ["Taller", "Catálogos"] },
       hasPermission("configuracion.editar") && { label: "Datos del taller", icono: "storefront-outline", ruta: "DatosTaller", destino: ["Taller", "Más", "DatosTaller"] },
       hasPermission("configuracion.editar") && { label: "Comisiones", icono: "card-outline", ruta: "Comisiones", destino: ["Taller", "Más", "Comisiones"] },
-      hasPermission("empleados.ver") && { label: "Empleados", icono: "id-card-outline", ruta: "Empleados", destino: ["Taller", "Más", "Empleados"] },
-      hasPermission("nomina.ver") && { label: "Nómina", icono: "cash-outline", ruta: "Nomina", destino: ["Taller", "Más", "Nomina"] },
-      hasPermission("usuarios.ver") && { label: "Usuarios", icono: "key-outline", ruta: "Usuarios", destino: ["Taller", "Más", "Usuarios"] },
+      hasPermission("usuarios.ver") && { label: "Usuarios de la aplicación", icono: "key-outline", ruta: "Usuarios", destino: ["Taller", "Más", "Usuarios"] },
       hasPermission("roles.ver") && { label: "Roles y permisos", icono: "shield-checkmark-outline", ruta: "GestionRoles", destino: ["Taller", "Más", "GestionRoles"] },
     ].filter(Boolean) },
   ].filter((seccion) => seccion.items.length > 0);
@@ -344,7 +365,12 @@ function ContenidoDrawer({ navigation, state }) {
                   onPress={() => { irA(navigation, item.destino); navigation.closeDrawer(); }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name={item.icono} size={19} color={esActiva ? colors.sidebarTexto : colors.sidebarTextoTenue} />
+                  {(() => {
+                    const mod = moduloPorTitulo(item.label);
+                    return mod
+                      ? <BadgeIcono icono={mod.icono} color={mod.color} size={32} activo={esActiva} />
+                      : <Ionicons name={item.icono} size={19} color={esActiva ? colors.sidebarTexto : colors.sidebarTextoTenue} />;
+                  })()}
                   <Text style={[styles.linkTexto, { color: esActiva ? colors.sidebarTexto : colors.sidebarTextoTenue }, esActiva && styles.linkTextoActivo]}>
                     {item.label}
                   </Text>
@@ -423,8 +449,6 @@ export default function AppNavigator() {
         drawerContent={(props) => <ContenidoDrawer {...props} />}
       >
         <Drawer.Screen name="Taller" component={TallerTabs} />
-        <Drawer.Screen name="Vehículos" component={VehiculosStackScreen} />
-        <Drawer.Screen name="Catálogos" component={CatalogosStackScreen} />
       </Drawer.Navigator>
     </NavigationContainer>
   );
@@ -435,7 +459,7 @@ const styles = crearEstilos({
   tallerActual: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 14, marginTop: 10, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10 },
   tallerActualTexto: { flex: 1, fontSize: 13, fontWeight: "600" },
   tallerCambiar: { fontSize: 12.5, fontWeight: "700" },
-  tabItemBig: { flex: 1, alignItems: "center", justifyContent: "flex-end", paddingBottom: 8 },
+  tabItemBig: { flex: 1, alignItems: "center", justifyContent: "flex-end", paddingBottom: 3 },
   iconWrapBig: {
     width: 52, height: 52, borderRadius: 26, backgroundColor: colors.petrol500,
     alignItems: "center", justifyContent: "center", marginTop: -24, borderWidth: 4,

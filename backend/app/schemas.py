@@ -954,9 +954,21 @@ class EmpleadoIn(BaseModel):
     puesto: Optional[str] = None
     fecha_ingreso: Optional[date] = None
     activo: bool = True
+    estatus: str = "activo"
+    fecha_baja: Optional[date] = None
     id_usuario: Optional[int] = None
     sueldo_base: float = 0
     periodicidad_pago: str = "quincenal"
+    esquema_pago: str = "fijo"
+    porcentaje_comision: float = 0
+    aplicar_impuestos: bool = False
+    curp: Optional[str] = None
+    rfc_empleado: Optional[str] = None
+    nss: Optional[str] = None
+
+
+class EmpleadoEstatusIn(BaseModel):
+    estatus: str
 
 
 class EmpleadoOut(EmpleadoIn, ORMBase):
@@ -979,6 +991,21 @@ class ReciboNominaOut(ORMBase):
     total_pagar: float
     pagado: bool
     fecha_pago: Optional[datetime] = None
+    dias_periodo: float = 0
+    faltas: float = 0
+    horas_extra: float = 0
+    pago_horas_extra: float = 0
+    comisiones: float = 0
+    destajo: float = 0
+    destajo_nota: Optional[str] = None
+    descuento_faltas: float = 0
+    percepciones: float = 0
+    isr: float = 0
+    subsidio: float = 0
+    imss: float = 0
+    prestamo: float = 0
+    prestamo_nota: Optional[str] = None
+    total_deducciones: float = 0
     empleado: Optional[EmpleadoOut] = None
 
 
@@ -987,12 +1014,35 @@ class ReciboNominaUpdate(BaseModel):
     bonos_nota: Optional[str] = None
     deducciones: float = 0
     deducciones_nota: Optional[str] = None
+    faltas: float = 0
+    horas_extra: float = 0
+    comisiones: Optional[float] = None  # None = conservar la calculada
+    destajo: float = 0
+    destajo_nota: Optional[str] = None
+    prestamo: float = 0
+    prestamo_nota: Optional[str] = None
 
 
 class PeriodoNominaIn(BaseModel):
     fecha_inicio: date
     fecha_fin: date
     periodicidad: str = "quincenal"
+    recurrente: bool = False
+    dia_pago: Optional[int] = Field(default=None, ge=0, le=6)
+    empleados: Optional[list[int]] = None  # vacío/None = todos
+
+
+class PeriodoLoteIn(BaseModel):
+    desde: date
+    hasta: date
+    periodicidad: str = "semanal"
+    dia_pago: Optional[int] = Field(default=None, ge=0, le=6)
+    empleados: Optional[list[int]] = None
+
+
+class PeriodoRecurrenciaIn(BaseModel):
+    recurrente: bool
+    dia_pago: Optional[int] = Field(default=None, ge=0, le=6)
 
 
 class PeriodoNominaOut(ORMBase):
@@ -1003,6 +1053,9 @@ class PeriodoNominaOut(ORMBase):
     status: str
     fecha_pago: Optional[datetime] = None
     fecha_creacion: datetime
+    recurrente: bool = False
+    dia_pago: Optional[int] = None
+    empleados_ids: Optional[str] = None
     recibos: list[ReciboNominaOut] = []
 
 

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "./estilos";
 import { Picker } from "./Picker";
+import Calendario from "./Calendario";
 import { soloDigitos, telefonoValido, MENSAJE_TELEFONO_INVALIDO } from "../validaciones";
 
 /*
@@ -128,6 +129,7 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
   const posiciones = useRef({});
   const refs = useRef({});
   const [clave, setClave] = useState(0);
+  const [calendarioDe, setCalendarioDe] = useState(null);
 
   // Al abrir, se reinician los valores
   const [abiertoAntes, setAbiertoAntes] = useState(false);
@@ -228,7 +230,10 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
     } else if (c.type === "date") {
       control = (
         <>
-          <TextInput placeholderTextColor={colors.ink500} {...comunes} value={valor ? String(valor).slice(0, 10) : ""} onChangeText={(v) => actualizar(c, v)} placeholder="AAAA-MM-DD" keyboardType="numbers-and-punctuation" maxLength={10} />
+          <TouchableOpacity activeOpacity={0.8} disabled={c.disabled} onPress={() => setCalendarioDe(c)} style={[styles.input, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, conError && styles.inputError, c.disabled && { opacity: 0.55 }]}>
+            <Text style={{ fontSize: 16, color: valor ? colors.ink900 : colors.ink500 }}>{valor ? String(valor).slice(0, 10) : "Toca para elegir fecha"}</Text>
+            <Ionicons name="calendar-outline" size={22} color={colors.petrol500} />
+          </TouchableOpacity>
           <View style={[styles.chips, { marginTop: 6 }]}>
             {[["Hoy", 0], ["+7 días", 7], ["+30 días", 30]].map(([t, d]) => (
               <TouchableOpacity key={t} style={styles.chipChico} onPress={() => actualizar(c, hoyISO(d))}><Text style={styles.chipChicoTexto}>{t}</Text></TouchableOpacity>
@@ -310,6 +315,13 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
             </TouchableOpacity>
           </View>
         </View>
+      <Calendario
+          visible={!!calendarioDe}
+          titulo={calendarioDe?.label}
+          valor={calendarioDe ? valores[calendarioDe.name] : ""}
+          onCerrar={() => setCalendarioDe(null)}
+          onElegir={(f) => { const c = calendarioDe; setCalendarioDe(null); if (c) actualizar(c, f); }}
+        />
       </KeyboardAvoidingView>
     </Modal>
   );

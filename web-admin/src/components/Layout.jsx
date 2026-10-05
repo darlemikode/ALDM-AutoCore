@@ -25,6 +25,8 @@ const NAV = [
       { to: "/clientes", label: "Clientes", permisoRequerido: "clientes.ver" },
       { to: "/vehiculos", label: "Vehículos", permisoRequerido: "vehiculos.ver" },
       { to: "/cotizaciones", label: "Cotizaciones", permisoRequerido: "cotizaciones.ver" },
+      { to: "/empleados", label: "Empleados", permisoRequerido: "empleados.ver" },
+      { to: "/nomina", label: "Nómina", permisoRequerido: "nomina.ver" },
     ],
   },
   {
@@ -78,7 +80,7 @@ export default function Layout() {
   // Los sub-apartados de Configuración ya no se listan en la barra lateral
   // (viven como tarjetas grandes en /configuracion) — solo se usan aquí
   // para saber si el enlace debe verse "activo".
-  const rutasConfiguracion = ["/configuracion", "/catalogos", "/configuracion-taller", "/comisiones", "/sincronizacion", "/empleados", "/usuarios", "/asignacion-roles", "/roles"];
+  const rutasConfiguracion = ["/configuracion", "/catalogos", "/configuracion-taller", "/comisiones", "/empleados", "/usuarios", "/asignacion-roles", "/roles"];
   const enConfiguracion = rutasConfiguracion.some((r) => location.pathname === r || location.pathname.startsWith(r + "/"));
 
   const navBase = NAV.map((s) =>

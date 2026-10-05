@@ -299,12 +299,12 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
           {bloques ? (
             <div className="bloques-grid">
             {bloques.map((b) => (
-              <div className={`nota-bloque ${b.acento || ""}`} key={b.clave}>
+              <div className={`nota-bloque ${b.acento || ""} ${b.grande ? "bloque-grande" : ""}`} key={b.clave} style={{ ...(b.filas ? { gridRow: `span ${b.filas}` } : {}), ...(b.completo ? { gridColumn: "1 / -1" } : {}) }}>
                 <div className="nota-bloque-header">
                   <span className="icono"><IconoAuto valor={b.icono} size={18} /></span>
                   <h2>{b.titulo}</h2>
                 </div>
-                <div className="nota-bloque-body form-grid">
+                <div className="nota-bloque-body form-grid" style={b.columnas ? { gridTemplateColumns: `repeat(${b.columnas}, 1fr)` } : undefined}>
                   {b.campos.map((f) => renderCampo(f))}
                 </div>
               </div>

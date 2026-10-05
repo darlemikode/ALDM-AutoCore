@@ -714,7 +714,8 @@ export default function ServicioDetalle() {
                 <th>Refacción</th>
                 <th>Cantidad</th>
                 <th>Precio original</th>
-                <th>Importe</th>
+                <th>Precio unitario</th>
+                <th>Precio final</th>
                 <th></th>
               </tr>
             </thead>
@@ -735,7 +736,7 @@ export default function ServicioDetalle() {
                   <>
                     {clavesOrdenadas.length > 1 && (
                       <tr key={`grupo-${clave}`}>
-                        <td colSpan={7} style={{ background: "var(--paper-0)", fontWeight: 700, fontSize: 12.5, color: "var(--petrol-600)" }}>{clave}</td>
+                        <td colSpan={8} style={{ background: "var(--paper-0)", fontWeight: 700, fontSize: 12.5, color: "var(--petrol-600)" }}>{clave}</td>
                       </tr>
                     )}
                     {grupos[clave].map(({ d, ref }) => (
@@ -753,13 +754,21 @@ export default function ServicioDetalle() {
                         <td style={{ width: 100, color: "var(--ink-500)" }}>
                           {ref ? fmt(ref.preciopropio_refaccion || 0) : "—"}
                         </td>
-                        <td style={{ width: 100 }}>
+                        <td style={{ width: 110 }}>
                           <input
-                            key={`r-${d.id_servicio_detalle}-${d.costo_refaccion}`} type="number" defaultValue={d.costo_refaccion} disabled={!abierta}
+                            key={`u-${d.id_servicio_detalle}-${d.costo_refaccion}-${d.cantidad}`} type="number" step="0.01"
+                            defaultValue={Math.round(((d.costo_refaccion || 0) / (d.cantidad || 1)) * 100) / 100} disabled={!abierta}
                             style={{ width: "100%", padding: "4px 6px" }}
-                            onBlur={(e) => { const v = Number(e.target.value) || 0; if (v !== d.costo_refaccion) handleUpdateDetalle(d.id_servicio_detalle, { costo_refaccion: v }); }}
+                            onBlur={(e) => {
+                              const v = Number(e.target.value) || 0;
+                              const cant = d.cantidad || 1;
+                              if (v === 0) { handleUpdateDetalle(d.id_servicio_detalle, { costo_refaccion: 0, cantidad: 1 }); return; }
+                              const total = Math.round(v * cant * 100) / 100;
+                              if (total !== d.costo_refaccion) handleUpdateDetalle(d.id_servicio_detalle, { costo_refaccion: total, cantidad: cant });
+                            }}
                           />
                         </td>
+                        <td style={{ width: 100, fontWeight: 700 }}>{fmt(d.costo_refaccion || 0)}</td>
                         <td>
                           <button className="btn btn-danger btn-sm" onClick={() => handleDeleteDetalle(d.id_servicio_detalle)} disabled={!abierta}>Quitar</button>
                         </td>

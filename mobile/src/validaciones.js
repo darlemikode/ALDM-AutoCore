@@ -20,3 +20,12 @@ export function telefonoValido(texto, { opcional = false } = {}) {
 }
 
 export const MENSAJE_TELEFONO_INVALIDO = "El teléfono debe tener exactamente 10 dígitos.";
+
+// Correo: formato nombre@dominio.ext (opcional si va vacío).
+export function correoValido(texto, { opcional = true } = {}) {
+  const t = String(texto ?? "").trim();
+  if (!t) return opcional;
+  return /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(t);
+}
+
+export const MENSAJE_CORREO_INVALIDO = "Escribe un correo válido, por ejemplo nombre@correo.com";

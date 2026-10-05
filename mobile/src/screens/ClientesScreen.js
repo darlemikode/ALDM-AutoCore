@@ -52,7 +52,7 @@ export default function ClientesScreen({ navigation }) {
         )}
         ListEmptyComponent={
           <View style={styles.vacio}>
-            <Ionicons name="people-outline" size={36} color={colors.ink500} />
+            <Ionicons name="people-outline" size={44} color="#5ad1ff" />
             <Text style={styles.vacioTexto}>{q ? "Nadie coincide con la búsqueda." : "Aún no hay clientes."}</Text>
           </View>
         }

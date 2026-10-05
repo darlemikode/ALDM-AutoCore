@@ -105,7 +105,7 @@ export default function ServiciosScreen({ navigation }) {
         }}
         ListEmptyComponent={
           <View style={styles.vacio}>
-            <Ionicons name="construct-outline" size={36} color={colors.ink500} />
+            <Ionicons name="construct-outline" size={44} color="#ffb454" />
             <Text style={styles.vacioTexto}>{busqueda ? "Ninguna orden coincide." : "No hay órdenes en esta pestaña."}</Text>
           </View>
         }

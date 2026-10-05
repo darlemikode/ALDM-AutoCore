@@ -1,3 +1,4 @@
+import ScrollCampos from "../ui/ScrollCampos";
 import { useCallback, useState } from "react";
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Switch, Platform } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -98,7 +99,7 @@ export default function CotizacionDetalleScreen({ route }) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
+      <ScrollCampos contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
         {detalles.length === 0 ? (
           <View style={styles.vacio}>
             <Ionicons name="document-text-outline" size={34} color={colors.petrol600} />
@@ -149,7 +150,7 @@ export default function CotizacionDetalleScreen({ route }) {
             </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+      </ScrollCampos>
 
       <View style={styles.barra}>
         {puedeEditar && (

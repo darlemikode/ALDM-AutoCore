@@ -4,7 +4,7 @@ Catálogo de empleados — solo lo administra el Dueño (permiso
 puede ligar a un servicio como responsable, y si además tiene una cuenta
 de usuario ligada, puede entrar a ver su propio dashboard personal.
 """
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -15,6 +15,21 @@ from ..security import get_current_user, require_permission
 
 router = APIRouter(prefix="/api/empleados", tags=["empleados"])
 
+ESTATUS = ("activo", "vacaciones", "incapacidad", "suspendido", "baja")
+
+
+def _aplicar_estatus(empleado: models.Empleado, estatus: str) -> None:
+    """Fija el estatus y mantiene derivados: `activo` (solo los activos reciben
+    servicios) y la fecha de baja."""
+    if estatus not in ESTATUS:
+        raise HTTPException(status_code=400, detail="Estatus no válido.")
+    empleado.estatus = estatus
+    empleado.activo = estatus == "activo"
+    if estatus == "baja":
+        empleado.fecha_baja = empleado.fecha_baja or date.today()
+    else:
+        empleado.fecha_baja = None
+
 
 @router.get("/", response_model=list[schemas.EmpleadoOut])
 def listar(db: Session = Depends(get_db), user=Depends(require_permission("empleados.ver"))):
@@ -23,7 +38,12 @@ def listar(db: Session = Depends(get_db), user=Depends(require_permission("emple
 
 @router.post("/", response_model=schemas.EmpleadoOut, status_code=201)
 def crear(payload: schemas.EmpleadoIn, db: Session = Depends(get_db), user=Depends(require_permission("empleados.crear"))):
-    empleado = models.Empleado(**payload.model_dump())
+    datos = payload.model_dump()
+    estatus = datos.pop("estatus", "activo")
+    datos.pop("activo", None)
+    datos.pop("fecha_baja", None)
+    empleado = models.Empleado(**datos)
+    _aplicar_estatus(empleado, estatus)
     db.add(empleado)
     db.commit()
     db.refresh(empleado)
@@ -35,8 +55,24 @@ def actualizar(empleado_id: int, payload: schemas.EmpleadoIn, db: Session = Depe
     empleado = db.query(models.Empleado).filter(models.Empleado.id_empleado == empleado_id).first()
     if not empleado:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
-    for key, value in payload.model_dump().items():
+    datos = payload.model_dump()
+    estatus = datos.pop("estatus", empleado.estatus or "activo")
+    datos.pop("activo", None)
+    datos.pop("fecha_baja", None)
+    for key, value in datos.items():
         setattr(empleado, key, value)
+    _aplicar_estatus(empleado, estatus)
+    db.commit()
+    db.refresh(empleado)
+    return empleado
+
+
+@router.put("/{empleado_id}/estatus", response_model=schemas.EmpleadoOut)
+def cambiar_estatus(empleado_id: int, payload: schemas.EmpleadoEstatusIn, db: Session = Depends(get_db), user=Depends(require_permission("empleados.editar"))):
+    empleado = db.query(models.Empleado).filter(models.Empleado.id_empleado == empleado_id).first()
+    if not empleado:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    _aplicar_estatus(empleado, payload.estatus)
     db.commit()
     db.refresh(empleado)
     return empleado
@@ -49,7 +85,7 @@ def eliminar(empleado_id: int, db: Session = Depends(get_db), user=Depends(requi
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
     # Baja lógica: se desactiva en vez de borrar, para no perder el
     # historial de servicios donde ya quedó como responsable.
-    empleado.activo = False
+    _aplicar_estatus(empleado, "baja")
     db.commit()
     return None
 
