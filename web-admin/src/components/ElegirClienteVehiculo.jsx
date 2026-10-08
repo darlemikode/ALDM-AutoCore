@@ -115,9 +115,10 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     <ModalPortal>
       <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCerrar()}>
         <div className="modal ecv-modal" style={{ maxWidth: 560, overflow: "visible" }}>
+          <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={onCerrar}><Icono nombre="close" size={20} /></button>
           <div className="ecv-cabecera">
             <span className="ecv-icono"><Icono nombre="construct" size={22} /></span>
-            <div><h2 style={{ fontSize: 22, margin: 0 }}>Cliente y vehículo</h2><div className="subtitle">Elige o agrega a quién se le hace el servicio</div></div>
+            <div><h2 className="ecv-titulo">Cliente y vehículo</h2><div className="subtitle">Elige o agrega a quién se le hace el servicio</div></div>
           </div>
           <div className="ecv-pasos">
             <span className={"ecv-paso" + (idCliente ? " listo" : " activo")}>1 · Cliente{idCliente ? " ✓" : ""}</span>
@@ -125,13 +126,13 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
           </div>
           <BuscadorSelect label="Cliente" opciones={opcionesCliente} value={idCliente} onChange={elegirCliente} placeholder="Buscar por nombre, cuenta o teléfono…" />
           {hasPermission("clientes.crear") && (
-            <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoCliente(true)}>＋ Agregar cliente nuevo</button>
+            <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoCliente(true)}><Icono nombre="add" size={18} /> Agregar cliente nuevo</button>
           )}
           {cliente && (
             <>
               <BuscadorSelect label="Vehículo" opciones={opcionesVehiculo} value={idVehiculo} onChange={elegirVehiculo} placeholder="Buscar por marca, modelo o placas…" vacio="Este cliente no tiene vehículos" />
               {hasPermission("vehiculos.crear") && (
-                <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoVehiculo(true)}>＋ Agregar vehículo nuevo</button>
+                <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoVehiculo(true)}><Icono nombre="add" size={18} /> Agregar vehículo nuevo</button>
               )}
             </>
           )}

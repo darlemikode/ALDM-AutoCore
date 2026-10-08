@@ -1,5 +1,5 @@
 import { IconoAuto } from "../components/Icono";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import FormModal from "../components/FormModal";
@@ -35,6 +35,7 @@ export default function Servicios() {
   const [servicios, setServicios] = useState([]);
   const [status, setStatus] = useState(() => searchParams.get("status") || "");
   const [creating, setCreating] = useState(false);
+  const yaCreoDirecta = useRef(false);
   const [garantiaOriginal, setGarantiaOriginal] = useState(null); // servicio original si venimos de "Reclamar garantía"
   const [prefillVehiculo, setPrefillVehiculo] = useState(null); // { id_cliente, id_vehiculo } si venimos de "crear orden" tras dar de alta un vehículo
   const [clientes, setClientes] = useState([]);
@@ -65,10 +66,14 @@ export default function Servicios() {
   // Si llegamos aquí desde el botón "🛡️ Reclamar garantía" del detalle de
   // otra orden, abre la captura ya lista con ese cliente/vehículo.
   useEffect(() => {
-    if (location.state?.garantiaOriginal) {
-      setGarantiaOriginal(location.state.garantiaOriginal);
-      openCreate();
+    if (location.state?.garantiaOriginal && !yaCreoDirecta.current) {
+      yaCreoDirecta.current = true;
+      const g = location.state.garantiaOriginal;
       window.history.replaceState({}, ""); // evita que se reabra si recargas la página
+      crearDirectaConVehiculo({
+        id_cliente: g.id_cliente, id_vehiculo: g.id_vehiculo,
+        nombre_servicio: `Garantía — ${g.nombre_servicio}`, es_garantia: true, id_servicio_original: g.id_servicio,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -76,12 +81,12 @@ export default function Servicios() {
   // Si llegamos aquí desde "Vehículo registrado — ¿crear una orden?", abre
   // la captura ya lista con ese cliente y vehículo.
   useEffect(() => {
-    if (searchParams.get("abrir_nuevo") === "1" && searchParams.get("id_vehiculo")) {
-      setPrefillVehiculo({
+    if (searchParams.get("abrir_nuevo") === "1" && searchParams.get("id_vehiculo") && !yaCreoDirecta.current) {
+      yaCreoDirecta.current = true;
+      crearDirectaConVehiculo({
         id_cliente: Number(searchParams.get("id_cliente")),
         id_vehiculo: Number(searchParams.get("id_vehiculo")),
       });
-      openCreate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -108,6 +113,20 @@ export default function Servicios() {
   }
 
   // "Nueva orden": se abre la orden vacía y ahí mismo se elige/agrega cliente y vehículo
+  // Crea la orden ya con cliente y vehículo y manda directo a ella (sin pantalla intermedia)
+  async function crearDirectaConVehiculo({ id_cliente, id_vehiculo, nombre_servicio = "Servicio general", es_garantia = false, id_servicio_original = null }) {
+    try {
+      const s = await api.post("/servicios/", {
+        nombre_servicio, iva_porcentaje: 0, id_cliente, id_vehiculo, tipos_mantenimiento_ids: [],
+        es_garantia, id_servicio_original, autorizado_cliente: false,
+      });
+      notify(`Orden creada — #${s.id_servicio}.`, "success");
+      navigate(`/servicios/${s.id_servicio}`, { replace: true });
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
+
   async function nuevaOrdenDirecta() {
     if (verificacion2Pasos) { openCreate(); return; } // con verificación en 2 pasos se conserva el formulario con código
     try {

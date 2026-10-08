@@ -149,6 +149,8 @@ class PerfilOut(UsuarioOut):
     qr_taller: Optional[str] = None  # contenido del QR para la app de clientes
     talleres: List[TallerAccesoOut] = []
     estado_suscripcion: Optional[EstadoSuscripcionOut] = None
+    password_por_defecto: bool = False
+    password_actual_sugerida: Optional[str] = None
 
 
 class UsuarioCreate(BaseModel):
@@ -688,6 +690,7 @@ class ServicioUpdate(BaseModel):
     pagado: Optional[bool] = None
     iva_porcentaje: Optional[float] = None
     fecha_salida_servicio: Optional[datetime] = None
+    fecha_entrada_servicio: Optional[datetime] = None
     diagnostico: Optional[str] = None
     id_tipo_mantenimiento: Optional[int] = None
     tipos_mantenimiento_ids: Optional[List[int]] = None
@@ -1074,7 +1077,10 @@ class ConfiguracionTallerIn(BaseModel):
     nombre_taller: str = "Mi Taller"
     direccion: Optional[str] = None
     telefono: Optional[str] = None
+    telefono2: Optional[str] = None
+    telefono3: Optional[str] = None
     correo: Optional[str] = None
+    correo2: Optional[str] = None
     rfc: Optional[str] = None
     cp: Optional[str] = None
     calle: Optional[str] = None

@@ -1,3 +1,4 @@
+from ..busqueda import coincide
 from datetime import date
 from typing import Optional
 
@@ -31,14 +32,12 @@ def listar(
         joinedload(models.Refaccion.marca_vehiculo_compatible),
         joinedload(models.Refaccion.modelo_vehiculo_compatible),
     )
-    if q:
-        like = f"%{q}%"
-        query = query.filter(
-            (models.Refaccion.nombre_refaccion.ilike(like)) | (models.Refaccion.numero_refaccion.ilike(like))
-        )
     if bajo_stock:
         query = query.filter(models.Refaccion.cantidad_refaccion <= 3)
-    return query.order_by(models.Refaccion.nombre_refaccion).all()
+    lista = query.order_by(models.Refaccion.nombre_refaccion).all()
+    if q:
+        lista = [r for r in lista if coincide(q, r.nombre_refaccion, r.numero_refaccion)]
+    return lista
 
 
 @router.get("/{refaccion_id}", response_model=schemas.RefaccionOut)

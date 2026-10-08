@@ -141,6 +141,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
   return createPortal(
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && cerrar()}>
       <div className="modal insp-modal">
+        <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={cerrar} disabled={estadoGuardado === "guardando"}><Icono nombre="close" size={20} /></button>
         <div className="insp-cabecera">
           <div className="modal-header-icono" style={{ marginBottom: 0 }}>
             <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}><Icono nombre="search" size={26} /></div>
@@ -154,9 +155,6 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
             <span className="insp-cont regular"><Icono nombre="warning" size={18} /> <b>{conteo.regular}</b> Regular</span>
             <span className="insp-cont mal"><Icono nombre="x-circle" size={18} /> <b>{conteo.mal}</b> Mal</span>
             <span className={`guardado-auto ${estadoGuardado || (idInspeccion ? "guardado" : "")}`}>{textoGuardado}</span>
-            <button type="button" className="btn-icono insp-cerrar" title="Cerrar" aria-label="Cerrar" onClick={cerrar} disabled={estadoGuardado === "guardando"}>
-              <Icono nombre="close" size={20} />
-            </button>
           </div>
         </div>
 

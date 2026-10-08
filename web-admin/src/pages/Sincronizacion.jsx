@@ -38,7 +38,6 @@ export default function Sincronizacion() {
     <>
       <div className="page-header">
         <div className="page-header-titulo">
-          <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
             <h1><IconoModulo ruta="/sincronizacion" /> Sincronización</h1>
             <div className="subtitle">Guarda una copia local en este navegador para poder consultarla sin internet</div>

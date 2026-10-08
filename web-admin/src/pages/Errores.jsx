@@ -1,3 +1,4 @@
+import { contiene, norm } from "../lib/texto";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import IconoModulo from "../components/IconoModulo";
@@ -12,7 +13,7 @@ export default function Errores() {
     api.get("/errores/?limit=300").then(setFilas).catch(() => setFilas([])).finally(() => setCargando(false));
   }, []);
 
-  const visibles = filas.filter((e) => !q || `${e.codigo} ${e.ruta} ${e.mensaje}`.toLowerCase().includes(q.toLowerCase()));
+  const visibles = filas.filter((e) => !q || contiene(`${e.codigo} ${e.ruta} ${e.mensaje}`, q));
 
   return (
     <div>

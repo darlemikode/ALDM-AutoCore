@@ -1014,7 +1014,10 @@ class ConfiguracionTaller(TenantMixin, Base):
     nombre_taller = Column(String(150), default="Mi Taller")
     direccion = Column(String(255), nullable=True)
     telefono = Column(String(20), nullable=True)
+    telefono2 = Column(String(20), nullable=True)
+    telefono3 = Column(String(20), nullable=True)
     correo = Column(String(120), nullable=True)
+    correo2 = Column(String(120), nullable=True)
     rfc = Column(String(20), nullable=True)
     ruta_logo = Column(String(255), nullable=True)  # dentro de app/uploads/, igual que fotos/promociones
     cp = Column(String(5), nullable=True)

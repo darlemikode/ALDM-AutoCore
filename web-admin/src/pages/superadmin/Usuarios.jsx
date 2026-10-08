@@ -1,3 +1,4 @@
+import { contiene, norm } from "../../lib/texto";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
@@ -11,7 +12,7 @@ export default function Usuarios() {
   const [q, setQ] = useState("");
   const [nuevo, setNuevo] = useState(false);
   const { datos, error } = useCargar(() => api.get("/superadmin/usuarios"));
-  const lista = useMemo(() => (datos || []).filter((u) => !q || `${u.username} ${u.nombre_completo} ${u.correo || ""}`.toLowerCase().includes(q.toLowerCase())), [datos, q]);
+  const lista = useMemo(() => (datos || []).filter((u) => !q || contiene(`${u.username} ${u.nombre_completo} ${u.correo || ""}`, q)), [datos, q]);
 
   async function crear(v) {
     const u = await api.post("/superadmin/usuarios", {

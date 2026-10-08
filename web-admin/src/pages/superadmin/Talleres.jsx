@@ -1,3 +1,4 @@
+import { contiene, norm } from "../../lib/texto";
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../api";
@@ -48,7 +49,7 @@ export default function Talleres() {
 
   const lista = useMemo(() => (datos || []).filter((t) => {
     const texto = `${t.nombre_comercial} ${t.codigo || ""} ${t.contacto_nombre || ""} ${t.ciudad || ""}`.toLowerCase();
-    return coincide(t, filtro) && (!q || texto.includes(q.toLowerCase()));
+    return coincide(t, filtro) && (!q || contiene(texto, q));
   }), [datos, q, filtro]);
 
   async function abrirAlta() {

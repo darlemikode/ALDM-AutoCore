@@ -1,3 +1,4 @@
+import { contiene, norm } from "../lib/texto";
 import { IconoAuto } from "../components/Icono";
 import { marcarCampo } from "../validacion";
 import { Link } from "react-router-dom";
@@ -151,8 +152,8 @@ export default function Roles() {
     const q = busqueda.trim().toLowerCase();
     if (!q) return modulos;
     return modulos.filter((modulo) => {
-      if (modulo.toLowerCase().includes(q)) return true;
-      return permisos.some((p) => p.modulo === modulo && p.descripcion.toLowerCase().includes(q));
+      if (contiene(modulo, q)) return true;
+      return permisos.some((p) => p.modulo === modulo && contiene(p.descripcion, q));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busqueda, modulos, permisos]);
@@ -163,7 +164,6 @@ export default function Roles() {
     <>
       <div className="page-header">
         <div className="page-header-titulo">
-          <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
             <h1><IconoModulo ruta="/roles" /> Roles y permisos</h1>
             <div className="subtitle">Administrador General, Jefe de Taller, Asesor de Servicio, Técnico, y cualquier rol adicional que necesites</div>

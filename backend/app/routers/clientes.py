@@ -1,3 +1,4 @@
+from ..busqueda import coincide
 import os
 import uuid
 from typing import Optional
@@ -24,20 +25,12 @@ def listar(
     query = db.query(models.Cliente)
     if solo_activos:
         query = query.filter(models.Cliente.status_cliente == 1)
+    lista = query.order_by(models.Cliente.nombre_cliente).all()
     if q:
-        like = f"%{q}%"
-        query = query.filter(
-            or_(
-                models.Cliente.nombre_cliente.ilike(like),
-                models.Cliente.paterno_cliente.ilike(like),
-                models.Cliente.materno_cliente.ilike(like),
-                models.Cliente.empresa_cliente.ilike(like),
-                models.Cliente.telefono1.ilike(like),
-                models.Cliente.correo_cliente.ilike(like),
-                models.Cliente.numero_cuenta.ilike(like),
-            )
-        )
-    return query.order_by(models.Cliente.nombre_cliente).all()
+        lista = [c for c in lista if coincide(q, c.nombre_cliente, c.paterno_cliente, c.materno_cliente, c.empresa_cliente,
+                                              c.telefono1, c.correo_cliente, c.numero_cuenta,
+                                              f"{c.nombre_cliente or ''} {c.paterno_cliente or ''} {c.materno_cliente or ''}")]
+    return lista
 
 
 @router.get("/{cliente_id}", response_model=schemas.ClienteOut)

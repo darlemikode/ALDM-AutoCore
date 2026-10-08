@@ -1,3 +1,4 @@
+import { contiene, norm } from "../lib/texto";
 import { IconoAuto } from "../components/Icono";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
@@ -185,7 +186,7 @@ export default function Catalogos() {
     const q = busqueda.trim().toLowerCase();
     return rows
       .filter((r) => !filtroPadre || String(r[config.padre?.campo]) === filtroPadre)
-      .filter((r) => !q || String(r[config.nombreField] || "").toLowerCase().includes(q))
+      .filter((r) => !q || contiene(r[config.nombreField], q))
       .sort((a, b) => String(a[config.nombreField]).localeCompare(String(b[config.nombreField]), "es"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, busqueda, filtroPadre, tab]);
@@ -247,7 +248,6 @@ export default function Catalogos() {
     <>
       <div className="page-header">
         <div className="page-header-titulo">
-          <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
             <h1><IconoModulo ruta="/catalogos" /> Catálogos generales</h1>
             <div className="subtitle">

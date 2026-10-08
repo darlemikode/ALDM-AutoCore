@@ -1,3 +1,4 @@
+from ..busqueda import coincide
 """
 Súper administración de ALDM AutoCore (lo consume la app "ALDM Súper Admin").
 
@@ -522,12 +523,10 @@ def _rol_para(db: Session, id_taller: int, id_rol: int | None) -> int:
 @router.get("/usuarios", response_model=list[schemas.UsuarioGlobalOut])
 def listar_usuarios(q: str | None = None, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
     consulta = _consulta_usuarios(db)
+    lista = consulta.order_by(models.Usuario.username).all()
     if q:
-        like = f"%{q.strip()}%"
-        consulta = consulta.filter(
-            models.Usuario.username.ilike(like) | models.Usuario.nombre_completo.ilike(like) | models.Usuario.correo.ilike(like)
-        )
-    return consulta.order_by(models.Usuario.username).all()
+        lista = [u for u in lista if coincide(q, u.username, u.nombre_completo, u.correo)]
+    return lista
 
 
 @router.post("/usuarios", response_model=schemas.UsuarioGlobalOut, status_code=201)

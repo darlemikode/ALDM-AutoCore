@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
@@ -195,6 +196,11 @@ def me(db: Session = Depends(get_db), user=Depends(get_current_user_sin_taller))
     perfil.qr_taller = contenido_qr(perfil.codigo_taller)
     perfil.talleres = _talleres_de(db, user)
     perfil.estado_suscripcion = _estado_out(info)
+    # ¿Sigue con la contraseña de fábrica? (la web/app le avisa que la cambie)
+    pw_defecto = os.getenv("ADMIN_PASSWORD", "admin1234")
+    perfil.password_por_defecto = verify_password(pw_defecto, user.hashed_password)
+    # Solo se devuelve si la sesión ya la conoce (acaba de entrar con ella): sirve para precargarla.
+    perfil.password_actual_sugerida = pw_defecto if perfil.password_por_defecto else None
     return perfil
 
 

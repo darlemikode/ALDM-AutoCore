@@ -1,3 +1,4 @@
+import { contiene, norm } from "../lib/texto";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, getToken } from "../api";
@@ -121,8 +122,8 @@ export default function Facturacion() {
     const q = busqueda.trim().toLowerCase();
     return facturas.filter((f) =>
       (!filtroEstado || f.estado === filtroEstado) &&
-      (!q || f.receptor_nombre.toLowerCase().includes(q) || f.receptor_rfc.toLowerCase().includes(q) ||
-        (f.uuid || "").toLowerCase().includes(q) || `${f.serie}${f.folio}`.toLowerCase().includes(q))
+      (!q || contiene(f.receptor_nombre, q) || contiene(f.receptor_rfc, q) ||
+        contiene(f.uuid || "", q) || contiene(`${f.serie}${f.folio}`, q))
     );
   }, [facturas, filtroEstado, busqueda]);
 
@@ -528,7 +529,7 @@ function SelectorOrdenes({ notify, onElegir, onClose }) {
 
   const lista = (ordenes || []).filter((o) => {
     const t = q.trim().toLowerCase();
-    return !t || `${o.id_servicio} ${o.cliente} ${o.rfc} ${o.vehiculo} ${o.nombre_servicio}`.toLowerCase().includes(t);
+    return !t || contiene(`${o.id_servicio} ${o.cliente} ${o.rfc} ${o.vehiculo} ${o.nombre_servicio}`, t);
   });
 
   return (

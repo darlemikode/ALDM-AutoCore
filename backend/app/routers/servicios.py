@@ -112,19 +112,19 @@ def _get_servicio_o_404(db: Session, servicio_id: int) -> models.Servicio:
 
 
 def _exigir_orden_abierta(servicio: models.Servicio) -> None:
-    """Los conceptos y abonos solo se pueden modificar mientras la orden
+    """Las refacciones y abonos solo se pueden modificar mientras la orden
     sigue abierta. Si ya se cerró o canceló, hay que reabrirla primero
     (PUT /servicios/{id} con status='abierto') para volver a editarla."""
     if servicio.status != "abierto":
         raise HTTPException(
             status_code=400,
-            detail=f"La orden está '{servicio.status}'; reábrela antes de modificar conceptos o abonos.",
+            detail=f"La orden está '{servicio.status}'; reábrela antes de modificar refacciones o abonos.",
         )
 
 
 def _sincronizar_pagado(db: Session, servicio_id: int) -> None:
     """Recalcula el saldo pendiente y ajusta el flag `pagado` en consecuencia.
-    Se llama después de cualquier cambio a conceptos o abonos, para que el
+    Se llama después de cualquier cambio a refacciones o abonos, para que el
     estado de pago nunca quede desincronizado del total real."""
     servicio = _get_servicio_o_404(db, servicio_id)
     costos = _calcular_costos(servicio)
@@ -252,6 +252,10 @@ def actualizar(servicio_id: int, payload: schemas.ServicioUpdate, db: Session = 
         _exigir_cliente_y_vehiculo(servicio)
     if updates.get("status") == "cerrado" and not servicio.fecha_salida_servicio and "fecha_salida_servicio" not in updates:
         updates["fecha_salida_servicio"] = datetime.utcnow()
+    entrada = updates.get("fecha_entrada_servicio", servicio.fecha_entrada_servicio)
+    salida = updates.get("fecha_salida_servicio", servicio.fecha_salida_servicio)
+    if entrada and salida and ("fecha_entrada_servicio" in updates or "fecha_salida_servicio" in updates) and salida.date() < entrada.date():
+        raise HTTPException(status_code=400, detail="La fecha de salida no puede ser anterior a la de entrada.")
     for key, value in updates.items():
         setattr(servicio, key, value)
     if tipos_ids is not None:
@@ -384,7 +388,7 @@ def actualizar_detalle(servicio_id: int, detalle_id: int, payload: schemas.Servi
 
 @router.delete("/{servicio_id}/detalles", response_model=schemas.ServicioCompletoOut)
 def eliminar_todos_los_detalles(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.editar"))):
-    """Quita todas las refacciones/conceptos de la orden y regresa al inventario lo que se había descontado."""
+    """Quita todas las refacciones de la orden y regresa al inventario lo que se había descontado."""
     servicio = _get_servicio_o_404(db, servicio_id)
     _exigir_orden_abierta(servicio)
     detalles = db.query(models.ServicioDetalle).filter(models.ServicioDetalle.id_servicio == servicio_id).all()
@@ -531,6 +535,57 @@ def descargar_nota_remision(servicio_id: int, db: Session = Depends(get_db), use
     )
 
 
+# --- Enlace público del PDF (para mandarlo por WhatsApp) -----------------------
+# WhatsApp no deja adjuntar archivos desde un enlace wa.me, así que se manda un
+# enlace firmado que abre el PDF sin iniciar sesión. Caduca a los 30 días y solo
+# sirve para esa orden y ese tipo de documento.
+@router.post("/{servicio_id}/enlace-pdf")
+def crear_enlace_pdf(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
+    from datetime import timedelta
+    from ..security import create_access_token
+
+    servicio = _get_servicio_o_404(db, servicio_id)
+    _exigir_cliente_y_vehiculo(servicio)
+    tipo = "remision" if servicio.status == "cerrado" else "recibo"
+    token = create_access_token({"sub": f"nota:{servicio_id}", "nota": tipo, "sid": servicio_id, "tid": servicio.id_taller}, timedelta(days=30))
+    return {"ruta": f"/api/servicios/publico/{token}", "tipo": tipo}
+
+
+@router.get("/publico/{token}")
+def ver_pdf_publico(token: str):
+    from jose import JWTError, jwt
+    from ..database import SessionLocal
+    from ..sesion_taller import SECRET_KEY, ALGORITHM
+    from ..tenancy import MODO_TALLER, fijar_tenant
+
+    try:
+        datos = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        tipo, sid, tid = datos["nota"], int(datos["sid"]), datos.get("tid")
+    except (JWTError, KeyError, ValueError):
+        raise HTTPException(status_code=404, detail="Este enlace ya no es válido. Pide a tu taller que te lo reenvíe.")
+    if tipo not in ("recibo", "remision"):
+        raise HTTPException(status_code=404, detail="Enlace no válido.")
+    db = SessionLocal()
+    try:
+        fijar_tenant(db, MODO_TALLER, tid)
+        servicio = _get_servicio_o_404(db, sid)
+        costos = _calcular_costos(servicio)
+        taller = db.query(models.ConfiguracionTaller).first()
+        from ..inspeccion_pdf import inspeccion_de_servicio
+        inspeccion = inspeccion_de_servicio(db, models, sid)
+        if tipo == "remision":
+            from ..nota_remision_pdf import generar_nota_remision_pdf
+            pdf_bytes = generar_nota_remision_pdf(servicio, costos, taller, inspeccion)
+            nombre = _nombre_pdf(servicio, "Nota")
+        else:
+            from ..recibo_pdf import generar_recibo_pdf
+            pdf_bytes = generar_recibo_pdf(servicio, costos, taller, inspeccion)
+            nombre = _nombre_pdf(servicio, "Orden")
+    finally:
+        db.close()
+    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{nombre}"'})
+
+
 # --- Finalizar orden: cobro + cierre + nota de remisión + aviso al cliente -----
 @router.post("/{servicio_id}/finalizar", response_model=schemas.FinalizarServicioOut)
 async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn, db: Session = Depends(get_db), user=Depends(require_permission("servicios.editar"))):
@@ -546,7 +601,7 @@ async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn
     _exigir_orden_abierta(servicio)
     _exigir_cliente_y_vehiculo(servicio)
     if not servicio.detalles:
-        raise HTTPException(status_code=400, detail="La orden no tiene conceptos; agrégalos antes de finalizarla.")
+        raise HTTPException(status_code=400, detail="La orden no tiene refacciones. Agrega al menos una antes de finalizarla.")
 
     saldo = _calcular_costos(servicio).saldo_pendiente
     cambio = 0.0

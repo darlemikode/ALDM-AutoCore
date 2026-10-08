@@ -207,7 +207,7 @@ def generar_factura_pdf(factura, config, taller=None, xml_bytes: bytes | None = 
         ])
     story.append(tabla_conceptos(
         ["Clave SAT", "Cant.", "Unidad", "Descripción", "P. unitario", "IVA", "Importe"], filas,
-        [ANCHO * w for w in (0.11, 0.07, 0.085, 0.37, 0.13, 0.10, 0.135)], alinear_derecha=(1, 4, 5, 6),
+        [ANCHO * w for w in (0.11, 0.07, 0.085, 0.37, 0.13, 0.10, 0.135)], alinear_derecha=(1, 4, 5, 6), vacio="Sin conceptos registrados",
     ))
     story.append(Spacer(1, 5 * mm))
 

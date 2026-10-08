@@ -21,7 +21,7 @@ const ADMIN_PASSWORD_DEFECTO_LOCAL = "admin1234";
 // forma {clave, modulo, descripcion} que regresa la API real.
 const MODULOS_CRUD = [
   ["clientes", "clientes"], ["vehiculos", "vehículos"],
-  ["servicios", "órdenes de servicio (incluye agregar conceptos/abonos y cerrar)"],
+  ["servicios", "órdenes de servicio (incluye agregar refacciones/abonos y cerrar)"],
   ["refacciones", "refacciones (inventario)"], ["herramientas", "herramientas (inventario)"],
   ["proveedores", "proveedores y sus deudas"],
   ["catalogos", "catálogos generales (marcas, modelos, colores, tipos de servicio, países/estados/ciudades)"],
@@ -272,7 +272,7 @@ const ETAPAS_SERVICIO_LOCAL = [
       // _pendienteSubir aquí marca el detalle individual, no todo el
       // servicio — así, si la orden ya se había subido antes y le agregas
       // un concepto después, ese concepto sí se detecta como pendiente.
-      if (s.status !== "abierto") throw new Error("La orden no está abierta: ya no se le pueden agregar conceptos.");
+      if (s.status !== "abierto") throw new Error("La orden no está abierta: ya no se le pueden agregar refacciones.");
       const cantidad = Math.max(Number(body.cantidad) || 1, 1);
       // Mismo algoritmo que agregar_detalle() del backend: descuenta del
       // inventario compatible con marca+modelo del vehículo (nunca en negativo);
@@ -321,9 +321,9 @@ const ETAPAS_SERVICIO_LOCAL = [
       const idDetalle = Number(seg[3]);
       const s = await colGetOne("servicios", idServicio);
       if (!s) throw new Error("La orden no existe.");
-      if (s.status !== "abierto") throw new Error("La orden no está abierta: sus conceptos ya no se pueden editar.");
+      if (s.status !== "abierto") throw new Error("La orden no está abierta: sus refacciones ya no se pueden editar.");
       const detalle = (s.detalles || []).find((d) => Number(d.id_servicio_detalle) === idDetalle);
-      if (!detalle) throw new Error("Ese concepto ya no existe en la orden.");
+      if (!detalle) throw new Error("Esa refacción ya no existe en la orden.");
       let detalles;
       if (method === "PUT") {
         // Si solo cambia la cantidad (botones +/- de piezas) sin mandar

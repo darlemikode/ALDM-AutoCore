@@ -1,3 +1,4 @@
+import { contiene, norm } from "../lib/texto";
 import { useEffect, useState } from "react";
 import { marcarCampo, propsContacto, limpiarValorContacto } from "../validacion";
 import { createPortal } from "react-dom";
@@ -247,7 +248,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
                 {mostrarSugerencias && coloniasSugeridas.length > 0 && (
                   <div className="suggestions">
                     {coloniasSugeridas
-                      .filter((c) => !filtrarColonia || c.toLowerCase().includes((values.colonia_cliente || "").toLowerCase()))
+                      .filter((c) => !filtrarColonia || contiene(c, values.colonia_cliente || ""))
                       .map((c) => (
                         <div key={c} className="suggestion-item" onMouseDown={(e) => { e.preventDefault(); update("colonia_cliente", c); setMostrarSugerencias(false); }}>
                           {c}

@@ -15,6 +15,7 @@ const Empleados = lazy(() => import("./pages/Empleados"));
 const AsignacionRoles = lazy(() => import("./pages/AsignacionRoles"));
 const ConfiguracionTaller = lazy(() => import("./pages/ConfiguracionTaller"));
 const Comisiones = lazy(() => import("./pages/Comisiones"));
+const Suscripcion = lazy(() => import("./pages/Suscripcion"));
 const Inventario = lazy(() => import("./pages/Inventario"));
 const Errores = lazy(() => import("./pages/Errores"));
 const NuevaOrden = lazy(() => import("./pages/NuevaOrden"));
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="empleados" element={<RequirePermission clave="empleados.ver"><Empleados /></RequirePermission>} />
         <Route path="asignacion-roles" element={<RequirePermission clave="usuarios.ver"><AsignacionRoles /></RequirePermission>} />
         <Route path="configuracion-taller" element={<RequirePermission clave="configuracion.editar"><ConfiguracionTaller /></RequirePermission>} />
+        <Route path="suscripcion" element={<Suscripcion />} />
         <Route path="comisiones" element={<RequirePermission clave="configuracion.editar"><Comisiones /></RequirePermission>} />
         <Route path="errores" element={<RequirePermission clave="configuracion.editar"><Errores /></RequirePermission>} />
         <Route path="mi-dashboard" element={<MiDashboard />} />

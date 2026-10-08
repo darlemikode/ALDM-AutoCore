@@ -41,6 +41,7 @@ export default function ConfiguracionInicio() {
       grupo: "Taller y facturación",
       items: [
         puedeConfigurar && { to: "/configuracion-taller", icono: "🏢", label: "Datos del taller", descripcion: "Nombre, logo, dirección y datos fiscales de la empresa." },
+        puedeConfigurar && { to: "/suscripcion", icono: "⭐", label: "Suscripción", descripcion: "Tu paquete, vencimiento, pagos y módulos adicionales." },
         puedeConfigurar && { to: "/comisiones", icono: "💳", label: "Comisiones", descripcion: "Porcentajes que gana cada técnico o vendedor por servicio." },
       ].filter(Boolean),
     },
