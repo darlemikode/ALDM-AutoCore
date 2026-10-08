@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paleta tema oscuro</title>
+<style>
+:root{--bg:#0b1416;--card:#16242a;--line:#263840;--ink:#f0f5f6;--ink2:#a9bcc2;--ink3:#71858c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif;padding:20px 16px 40px}
+h1{font-size:24px;margin:0 0 4px} h2{font-size:15px;margin:28px 0 10px;color:var(--ink2);letter-spacing:.3px}
+p.sub{margin:0;color:var(--ink3)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sw{border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.sw i{display:block;height:54px}
+.sw b{display:block;padding:8px 10px 0;font-size:13px}
+.sw span{display:block;padding:0 10px 9px;font:12px ui-monospace,monospace;color:var(--ink2)}
+.recibo{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;max-width:420px}
+.top{display:flex;align-items:center;gap:12px}
+.av{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-weight:800;border:1px solid}
+.tot{font-size:26px;font-weight:700;margin-left:auto;text-align:right}
+.pill{display:inline-block;margin-top:4px;padding:3px 10px;border-radius:99px;border:1px solid;font-size:13px;font-weight:800}
+.btns{display:flex;gap:8px;margin-top:14px}
+.btns span{flex:1;text-align:center;padding:11px 4px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-weight:800;font-size:14px}
+.btns .p{background:#1fc4b8;border-color:#1fc4b8;color:#0b1416}
+.res{background:rgba(46,224,209,.13);border:1px solid rgba(46,224,209,.4);border-radius:16px;padding:16px;max-width:420px;margin-bottom:12px}
+.res small{color:#2ee0d1;font-weight:800;text-transform:uppercase;letter-spacing:.6px}
+.res .n{font-size:36px;font-weight:700}
+.bar{height:8px;border-radius:4px;background:rgba(46,224,209,.22);margin-top:10px;overflow:hidden}.bar u{display:block;height:100%;width:40%;background:#2ee0d1}
+</style></head><body>
+<h1>Paleta del tema oscuro</h1>
+<p class="sub">Los mismos valores en web (<code>styles.css</code>) y apps (<code>theme.js</code>)</p>
+
+<h2>FONDOS Y TEXTO</h2>
+<div class="grid">
+<div class="sw"><i style="background:#0b1416"></i><b>Fondo de pantalla</b><span>#0b1416</span></div>
+<div class="sw"><i style="background:#16242a"></i><b>Tarjetas</b><span>#16242a</span></div>
+<div class="sw"><i style="background:#263840"></i><b>Líneas / bordes</b><span>#263840</span></div>
+<div class="sw"><i style="background:#3d5560"></i><b>Contorno</b><span>#3d5560</span></div>
+<div class="sw"><i style="background:#f0f5f6"></i><b>Texto principal</b><span>#f0f5f6</span></div>
+<div class="sw"><i style="background:#a9bcc2"></i><b>Texto secundario</b><span>#a9bcc2</span></div>
+<div class="sw"><i style="background:#71858c"></i><b>Texto tenue</b><span>#71858c</span></div>
+<div class="sw"><i style="background:#0f1d22"></i><b>Menú lateral</b><span>#0f1d22</span></div>
+</div>
+
+<h2>COLORES DE ACENTO</h2>
+<div class="grid">
+<div class="sw"><i style="background:#2ee0d1"></i><b>Petróleo 500 (principal)</b><span>#2ee0d1</span></div>
+<div class="sw"><i style="background:#1fc4b8"></i><b>Petróleo 600 (botones)</b><span>#1fc4b8</span></div>
+<div class="sw"><i style="background:#0f3834"></i><b>Petróleo 100 (fondo suave)</b><span>#0f3834</span></div>
+<div class="sw"><i style="background:#3fd690"></i><b>Verde (pagado, ok)</b><span>#3fd690</span></div>
+<div class="sw"><i style="background:#f0a838"></i><b>Ámbar (pendiente)</b><span>#f0a838</span></div>
+<div class="sw"><i style="background:#ff6b60"></i><b>Rojo (error, quitar)</b><span>#ff6b60</span></div>
+<div class="sw"><i style="background:#a58aef"></i><b>Violeta</b><span>#a58aef</span></div>
+<div class="sw"><i style="background:#5ba3ec"></i><b>Azul</b><span>#5ba3ec</span></div>
+</div>
+
+<h2>COLOR DE CADA MÓDULO (ÍCONOS)</h2>
+<div class="grid">
+<div class="sw"><i style="background:#2de2d0"></i><b>Panel</b><span>#2de2d0</span></div>
+<div class="sw"><i style="background:#ffb454"></i><b>Órdenes</b><span>#ffb454</span></div>
+<div class="sw"><i style="background:#c39bff"></i><b>Cotizaciones</b><span>#c39bff</span></div>
+<div class="sw"><i style="background:#ff8fb1"></i><b>Citas</b><span>#ff8fb1</span></div>
+<div class="sw"><i style="background:#5ad1ff"></i><b>Clientes</b><span>#5ad1ff</span></div>
+<div class="sw"><i style="background:#ff7a6b"></i><b>Vehículos</b><span>#ff7a6b</span></div>
+<div class="sw"><i style="background:#6bdc8c"></i><b>Facturación</b><span>#6bdc8c</span></div>
+<div class="sw"><i style="background:#f2c94c"></i><b>Nómina</b><span>#f2c94c</span></div>
+<div class="sw"><i style="background:#ffa86b"></i><b>Empleados</b><span>#ffa86b</span></div>
+<div class="sw"><i style="background:#ffd166"></i><b>Usuarios / Taller</b><span>#ffd166</span></div>
+</div>
+
+<h2>ASÍ SE VE LA NÓMINA EN OSCURO</h2>
+<div class="res"><small>Neto a pagar</small><div class="n">$8,000.00</div><div style="color:var(--ink2)">2 recibos · Retenciones $0.00</div><div class="bar"><u></u></div><div style="color:var(--ink2);margin-top:6px">1 de 2 pagados · faltan $4,500.00</div></div>
+<div class="recibo">
+<div class="top"><div class="av" style="background:rgba(240,168,56,.15);border-color:rgba(240,168,56,.5);color:#f0a838">J</div>
+<div><b style="font-size:17px">Jose Estrada</b><div style="color:var(--ink2)">Sueldo base $4,500.00</div></div>
+<div class="tot">$4,500.00<br><span class="pill" style="color:#f0a838;background:rgba(240,168,56,.15);border-color:rgba(240,168,56,.5)">Pendiente</span></div></div>
+<div class="btns"><span>Recibo PDF</span><span>Ajustar</span><span class="p">Pagar</span></div>
+</div>
+</body></html>
