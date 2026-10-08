@@ -1,3 +1,4 @@
+import { contiene, norm } from "../lib/texto";
 import { IconoAuto } from "../components/Icono";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -63,7 +64,7 @@ export default function AsignacionRoles() {
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    return usuarios.filter((u) => !q || u.nombre_completo.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (u.rol?.nombre || "").toLowerCase().includes(q));
+    return usuarios.filter((u) => !q || contiene(u.nombre_completo, q) || contiene(u.username, q) || contiene(u.rol?.nombre || "", q));
   }, [usuarios, busqueda]);
 
   function seleccionar(u) {
@@ -98,7 +99,6 @@ export default function AsignacionRoles() {
     <>
       <div className="page-header">
         <div className="page-header-titulo">
-          <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
             <h1><IconoModulo ruta="/asignacion-roles" /> Asignación de roles</h1>
             <div className="subtitle">

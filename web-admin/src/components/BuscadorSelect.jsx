@@ -1,3 +1,4 @@
+import { contiene, norm } from "../lib/texto";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 /*
@@ -18,8 +19,8 @@ export default function BuscadorSelect({ label, opciones, value, onChange, place
   }, []);
 
   const filtradas = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    return opciones.filter((o) => !t || `${o.label} ${o.sub || ""}`.toLowerCase().includes(t)).slice(0, 60);
+    const t = q.trim();
+    return opciones.filter((o) => !t || contiene(`${o.label} ${o.sub || ""}`, t)).slice(0, 60);
   }, [opciones, q]);
 
   useEffect(() => { setSel(0); }, [q, abierto]);

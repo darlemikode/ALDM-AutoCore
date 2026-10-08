@@ -1,3 +1,4 @@
+import { contiene, norm } from "../lib/texto";
 import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { api } from "../api";
@@ -61,7 +62,7 @@ export default function Inventario() {
   }
 
   const filasFiltradas = filas.filter((r) => {
-    const coincideTexto = !q.trim() || `${r.refaccion?.nombre_refaccion || ""} ${r.marca_refaccion?.nombre_marca || ""}`.toLowerCase().includes(q.toLowerCase());
+    const coincideTexto = !q.trim() || contiene(`${r.refaccion?.nombre_refaccion || ""} ${r.marca_refaccion?.nombre_marca || ""}`, q);
     const coincideCategoria = !filtroCategoria || (r.refaccion?.categoria || "Sin categoría") === filtroCategoria;
     return coincideTexto && coincideCategoria;
   });

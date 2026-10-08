@@ -5,13 +5,14 @@ función) para que reportlab solo se cargue si de verdad se pide un recibo.
 El diseño (encabezado, tablas, totales) vive en pdf_diseno.py y es el mismo
 para recibo, nota de remisión, cotización y factura.
 """
+from datetime import datetime
 from io import BytesIO
 
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
 
 from .pdf_diseno import (
-    ACCENT, ACCENT_SOFT, E, OK, OK_SOFT, PlantillaDocumento, caja_texto, dos_columnas, esc, fmt,
+    notas_pie, fecha_mx, hoy_mx, ACCENT, ACCENT_SOFT, E, OK, OK_SOFT, PlantillaDocumento, caja_texto, dos_columnas, esc, fmt,
     pastilla, seccion, tabla_conceptos, tarjeta, totales,
 )
 from .schemas import ServicioCostos
@@ -83,14 +84,16 @@ def generar_recibo_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion
     plantilla = PlantillaDocumento(
         taller, "Orden de servicio · Recibo", f"#{servicio.id_servicio:05d}",
         lineas_derecha=[
-            f"Entrada: {servicio.fecha_entrada_servicio:%d/%m/%Y}",
+            f"Entrada: {fecha_mx(servicio.fecha_entrada_servicio):%d/%m/%Y}",
+            # Si aún no se captura la salida, se toma el día en que se genera la nota
+            f"Salida: {(fecha_mx(servicio.fecha_salida_servicio) or hoy_mx()):%d/%m/%Y}",
             f"Estado: {(servicio.status or '').capitalize()}",
         ],
     )
     doc = plantilla.documento(buffer)
     story = []
 
-    story += bloques_cliente_vehiculo(servicio, con_comentario=True)
+    story += bloques_cliente_vehiculo(servicio, con_comentario=False)
 
     story += seccion("Refacciones", ANCHO, derecha=f"{len(servicio.detalles)} refacción(es)")
     filas = []
@@ -133,7 +136,14 @@ def generar_recibo_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion
     bloque.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
     story.append(bloque)
 
-    story.append(Spacer(1, 8 * mm))
+    # Comentarios al final, debajo de abonos y totales
+    story += [
+        Spacer(1, 6 * mm), Paragraph("COMENTARIO", E["etiqueta"]), Spacer(1, 1.5 * mm),
+        caja_texto(servicio.comentarios_finales or "Sin comentarios.", ANCHO),
+    ]
+
+    story += [Spacer(1, 6 * mm), notas_pie(ANCHO)]
+    story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(
         "Este recibo ampara los pagos registrados para la orden indicada. No es un comprobante fiscal (CFDI); "
         "si requieres factura, solicítala con tus datos fiscales.",

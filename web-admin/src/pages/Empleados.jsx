@@ -103,7 +103,6 @@ export default function Empleados() {
     <>
       <div className="page-header">
         <div className="page-header-titulo">
-          <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
             <h1><IconoModulo ruta="/empleados" /> Empleados</h1>
             <div className="subtitle">Catálogo del personal del taller — solo el Administrador General lo administra</div>

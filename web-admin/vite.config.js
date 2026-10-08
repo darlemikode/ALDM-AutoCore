@@ -15,6 +15,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: true,
+    allowedHosts: true, // permite entrar por el túnel (probar-web-remoto.bat)
     proxy: {
       "/api": {
         target: BACKEND,

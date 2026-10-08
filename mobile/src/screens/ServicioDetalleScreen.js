@@ -312,7 +312,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   }
 
   function quitarDetalle(idDetalle) {
-    alerta("Quitar concepto", "¿Quitar este concepto de la orden? Si usaba una refacción, se regresa al inventario.", [
+    alerta("Quitar refacción", "¿Quitar esta refacción de la orden? Si estaba ligada al inventario, la pieza regresa al stock.", [
       { text: "Cancelar", style: "cancel" },
       { text: "Quitar", style: "destructive", onPress: async () => {
         try { await api.del(`/servicios/${id}/detalles/${idDetalle}`); load(); } catch (err) { alerta("Error", err.message); }

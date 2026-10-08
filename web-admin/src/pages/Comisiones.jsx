@@ -39,7 +39,6 @@ export default function Comisiones() {
     <>
       <div className="page-header">
         <div className="page-header-titulo">
-          <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
             <h1><IconoModulo ruta="/comisiones" /> Comisiones por tipo de pago</h1>
             <div className="subtitle">Se usa para mostrar la comisión estimada en cada nota/recibo finalizado</div>

@@ -1,5 +1,5 @@
 import { IconoAuto } from "../components/Icono";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "../api";
 import { Icono } from "../components/Icono";
 import FiltroChips, { colorGrupo as colorCategoria, contarPor } from "../components/FiltroChips";
@@ -58,7 +58,7 @@ export default function Refacciones() {
   const [editing, setEditing] = useState(null);
   const [compatNueva, setCompatNueva] = useState({ id_marca_vehiculo: "", id_modelo_vehiculo: "" });
   const [loading, setLoading] = useState(true);
-  const [catSel, setCatSel] = useState("");
+  const [catSel, setCatSel] = useState([]);
 
   async function load() {
     const params = new URLSearchParams();
@@ -92,9 +92,8 @@ export default function Refacciones() {
   function fields(values) {
     return [
       { name: "nombre_refaccion", label: "Nombre", required: true, full: true, grupo: "general" },
-      { name: "numero_refaccion", label: "Número de parte", grupo: "general" },
       {
-        name: "__id_categoria", label: "Categoría", type: "select", grupo: "general",
+        name: "__id_categoria", label: "Categoría", type: "select", grupo: "general", full: true, grande: true,
         options: categoriasRefaccion.map((c) => ({ value: c.id_categoria_refaccion, label: c.nombre_categoria })),
         creatable: hasPermission("catalogos.crear")
           ? {
@@ -103,43 +102,57 @@ export default function Refacciones() {
             }
           : null,
       },
-      {
-        name: "id_proveedor", label: "Proveedor principal", type: "select", grupo: "proveedor",
-        options: proveedores.map((p) => ({ value: p.id_proveedor, label: p.nombre_proveedor })),
-        creatable: hasPermission("proveedores.crear")
-          ? {
-              endpoint: "/proveedores/", createField: "nombre_proveedor", idField: "id_proveedor", label: "proveedor",
-              onCreated: (nuevo) => setProveedores((prev) => [...prev, nuevo]),
-            }
-          : null,
-      },
-      {
-        name: "proveedores_ids", label: "Otros proveedores (puedes elegir varios)", type: "multiselect", grupo: "proveedor",
-        options: proveedores.map((p) => ({ value: p.id_proveedor, label: p.nombre_proveedor })),
-      },
-      { name: "cantidad_refaccion", label: "Cantidad en stock", type: "number", grupo: "precios" },
-      { name: "preciopropio_refaccion", label: "Precio de costo", type: "number", grupo: "precios" },
-      { name: "preciocliente_refaccion", label: "Precio al cliente", type: "number", grupo: "precios" },
     ];
   }
 
   const gruposRefaccion = {
     general: { icono: "⚙️", titulo: "Datos generales" },
-    proveedor: { icono: "🚚", titulo: "Proveedor", acento: "acento-teal" },
-    precios: { icono: "💲", titulo: "Stock y precios", acento: "acento-ambar" },
   };
 
-  async function handleSave(values) {
-    const { __id_categoria, ...datos } = values;
+  // Al elegir una categoría se muestran las refacciones que ya existen en ella
+  function bloqueExistentes(values) {
+    const cat = categoriasRefaccion.find((c) => String(c.id_categoria_refaccion) === String(values.__id_categoria ?? ""));
+    const lista = cat ? refacciones.filter((r) => r.categoria === cat.nombre_categoria && r.id_refaccion !== editing?.id_refaccion) : [];
+    return {
+      icono: "📋", acento: "acento-teal",
+      titulo: cat ? `Ya existen en ${cat.nombre_categoria}` : "Refacciones existentes",
+      contenido: !cat ? (
+        <div className="existentes-vacio">Elige una categoría para ver las refacciones que ya tienes en ella.</div>
+      ) : lista.length === 0 ? (
+        <div className="existentes-vacio">Aún no hay refacciones en esta categoría.</div>
+      ) : (
+        <ul className="existentes-lista">
+          {lista.map((r) => <li key={r.id_refaccion}>{r.nombre_refaccion}</li>)}
+        </ul>
+      ),
+    };
+  }
+
+  const recienAgregadas = useRef(new Set());
+
+  async function handleSave(values, opciones = {}) {
+    const { __id_categoria, ...capturados } = values;
+    // No se permite repetir un nombre en la misma categoría (sin importar mayúsculas ni acentos)
+    const norm = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    const nombreCat = __id_categoria ? categoriasRefaccion.find((c) => c.id_categoria_refaccion === Number(__id_categoria))?.nombre_categoria || null : null;
+    const clave = `${norm(nombreCat)}|${norm(capturados.nombre_refaccion)}`;
+    const yaEsta = refacciones.some((r) => r.id_refaccion !== editing?.id_refaccion && `${norm(r.categoria)}|${norm(r.nombre_refaccion)}` === clave)
+      || (!editing?.id_refaccion && recienAgregadas.current.has(clave));
+    if (yaEsta) throw new Error(`"${capturados.nombre_refaccion}" ya existe${nombreCat ? ` en ${nombreCat}` : ""}.`);
+    // Los datos de stock, precios y proveedor viven en Inventario: al editar se conservan tal cual
+    const datos = editing?.id_refaccion ? { ...baseDe(editing), nombre_refaccion: capturados.nombre_refaccion } : { nombre_refaccion: capturados.nombre_refaccion };
     datos.categoria = __id_categoria ? categoriasRefaccion.find((c) => c.id_categoria_refaccion === Number(__id_categoria))?.nombre_categoria || null : null;
     if (editing?.id_refaccion) {
       await api.put(`/refacciones/${editing.id_refaccion}`, datos);
       notify("Refacción actualizada.", "success");
     } else {
       await api.post("/refacciones/", datos);
+      recienAgregadas.current.add(clave);
       notify("Refacción creada.", "success");
     }
-    setEditing(null);
+    // Se muestra la categoría donde quedó la refacción
+    setCatSel([datos.categoria || "Sin categoría"]);
+    if (!opciones.otra) setEditing(null);
     load();
   }
 
@@ -185,16 +198,7 @@ export default function Refacciones() {
 
   // Cambia un solo dato desde la lista (el API pide la refacción completa)
   async function actualizarCampo(r, cambios) {
-    const base = {
-      id_marca_refaccion: r.id_marca_refaccion, id_proveedor: r.id_proveedor, nombre_refaccion: r.nombre_refaccion,
-      numero_refaccion: r.numero_refaccion, categoria: r.categoria, subcategoria: r.subcategoria,
-      preciopropio_refaccion: r.preciopropio_refaccion, preciocliente_refaccion: r.preciocliente_refaccion,
-      cantidad_refaccion: r.cantidad_refaccion, umbral_naranja: r.umbral_naranja, umbral_rojo: r.umbral_rojo,
-      posicion: r.posicion, id_marca_vehiculo_compatible: r.id_marca_vehiculo_compatible,
-      id_modelo_vehiculo_compatible: r.id_modelo_vehiculo_compatible, sku_interno: r.sku_interno,
-      codigo_barras: r.codigo_barras, ubicacion_fisica: r.ubicacion_fisica, zona_abc: r.zona_abc,
-      proveedores_ids: (r.proveedores_ids || []).filter((x) => x !== r.id_proveedor),
-    };
+    const base = baseDe(r);
     try {
       const nueva = await api.put(`/refacciones/${r.id_refaccion}`, { ...base, ...cambios });
       setRefacciones((prev) => prev.map((x) => (x.id_refaccion === r.id_refaccion ? { ...x, ...nueva } : x)));
@@ -204,9 +208,22 @@ export default function Refacciones() {
     }
   }
 
+  function baseDe(r) {
+    return {
+      id_marca_refaccion: r.id_marca_refaccion, id_proveedor: r.id_proveedor, nombre_refaccion: r.nombre_refaccion,
+      numero_refaccion: r.numero_refaccion, categoria: r.categoria, subcategoria: r.subcategoria,
+      preciopropio_refaccion: r.preciopropio_refaccion, preciocliente_refaccion: r.preciocliente_refaccion,
+      cantidad_refaccion: r.cantidad_refaccion, umbral_naranja: r.umbral_naranja, umbral_rojo: r.umbral_rojo,
+      posicion: r.posicion, id_marca_vehiculo_compatible: r.id_marca_vehiculo_compatible,
+      id_modelo_vehiculo_compatible: r.id_modelo_vehiculo_compatible, sku_interno: r.sku_interno,
+      codigo_barras: r.codigo_barras, ubicacion_fisica: r.ubicacion_fisica, zona_abc: r.zona_abc,
+      proveedores_ids: (r.proveedores_ids || []).filter((x) => x !== r.id_proveedor),
+    };
+  }
+
   const puedeEditar = hasPermission("refacciones.editar");
   const conteoCat = contarPor(refacciones, (r) => r.categoria || "Sin categoría");
-  const visibles = catSel ? refacciones.filter((r) => (r.categoria || "Sin categoría") === catSel) : refacciones;
+  const visibles = catSel.length ? refacciones.filter((r) => catSel.includes(r.categoria || "Sin categoría")) : refacciones;
 
   function nombreMarca(id) { return marcas.find((m) => m.id_marca_refaccion === id)?.nombre_marca || "—"; }
   const fmt = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
@@ -229,7 +246,7 @@ export default function Refacciones() {
           </button>
         </div>
 
-        <FiltroChips items={conteoCat} valor={catSel} onChange={setCatSel} total={refacciones.length} />
+        <FiltroChips multiple items={conteoCat} valor={catSel} onChange={setCatSel} total={refacciones.length} />
 
         {loading ? (
           <div className="loading-text">Cargando…</div>
@@ -288,6 +305,8 @@ export default function Refacciones() {
           subtitulo="Datos de la refacción, proveedor y stock."
           fields={fields}
           grupos={gruposRefaccion}
+          bloqueExtra={bloqueExistentes}
+          permitirOtra={!editing.id_refaccion}
           initialValues={editing}
           onSubmit={handleSave}
           onClose={() => setEditing(null)}

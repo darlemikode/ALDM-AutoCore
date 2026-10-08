@@ -15,7 +15,7 @@ import { Icono } from "../components/Icono";
  */
 const SECCIONES = [
   { id: "identidad", icono: "🏢", titulo: "Identidad del taller", desc: "Nombre, logo y contacto — así aparece en tus documentos" },
-  { id: "ubicacion", icono: "📍", titulo: "Ubicación", desc: "Dirección del taller" },
+  { id: "ubicacion", icono: "📍", titulo: "Ubicación", desc: "Dónde está tu taller — así sale en notas y cotizaciones" },
   { id: "fiscal", icono: "🧾", titulo: "Datos fiscales de la empresa", desc: "Se usan al timbrar tus facturas (CFDI)" },
   { id: "seguridad", icono: "🔒", titulo: "Seguridad", desc: "" },
 ];
@@ -26,8 +26,7 @@ export default function ConfiguracionTaller() {
   const [data, setData] = useState(null);
   const [estados, setEstados] = useState([]);
   const [ciudades, setCiudades] = useState([]);
-  const [guardando, setGuardando] = useState(false);
-  const [buscandoCp, setBuscandoCp] = useState(false);
+    const [buscandoCp, setBuscandoCp] = useState(false);
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [verificacion2Pasos, setVerificacion2Pasos] = useState(() => localStorage.getItem("sm_verificacion_2_pasos") === "true");
   const inputRef = useRef(null);
@@ -35,7 +34,6 @@ export default function ConfiguracionTaller() {
   // Datos fiscales — vienen de configuración fiscal (facturación electrónica)
   const [fiscal, setFiscal] = useState(null);
   const [regimenes, setRegimenes] = useState([]);
-  const [guardandoFiscal, setGuardandoFiscal] = useState(false);
   const [sinAccesoFiscal, setSinAccesoFiscal] = useState(false);
 
   useEffect(() => {
@@ -50,45 +48,60 @@ export default function ConfiguracionTaller() {
     api.get(`/ciudades/?id_estado=${data.id_estado}`).then(setCiudades).catch(() => setCiudades([]));
   }, [data?.id_estado]);
 
-  async function guardar() {
-    setGuardando(true);
-    try {
-      const actualizado = await api.put("/configuracion-taller/", {
-        nombre_taller: data.nombre_taller,
-        direccion: data.direccion,
-        telefono: data.telefono,
-        correo: data.correo,
-        rfc: data.rfc,
-        cp: data.cp,
-        calle: data.calle,
-        numero_taller: data.numero_taller,
-        id_estado: data.id_estado || null,
-        id_ciudad: data.id_ciudad || null,
-      });
-      setData(actualizado);
-      notify("Datos del taller actualizados.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    } finally {
-      setGuardando(false);
-    }
+  // Guardado automático: se guarda solo, un momento después de dejar de escribir.
+  const [estadoGuardado, setEstadoGuardado] = useState("");
+  const ultimoTaller = useRef(null);
+  const ultimoFiscal = useRef(null);
+  const ultimoError = useRef("");
+
+  function cuerpoTaller(d) {
+    return {
+      nombre_taller: d.nombre_taller, direccion: d.direccion,
+      telefono: d.telefono, telefono2: d.telefono2, telefono3: d.telefono3,
+      correo: d.correo, correo2: d.correo2, rfc: d.rfc, cp: d.cp, calle: d.calle,
+      numero_taller: d.numero_taller, id_estado: d.id_estado || null, id_ciudad: d.id_ciudad || null,
+    };
   }
 
-  async function guardarFiscal() {
-    setGuardandoFiscal(true);
-    try {
-      const actualizado = await api.put("/facturacion/configuracion", {
-        ...fiscal,
-        rfc_emisor: (fiscal.rfc_emisor || "").toUpperCase(),
-      });
-      setFiscal(actualizado);
-      notify("Datos fiscales actualizados.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    } finally {
-      setGuardandoFiscal(false);
-    }
-  }
+  useEffect(() => {
+    if (!data) return;
+    const cuerpo = JSON.stringify(cuerpoTaller(data));
+    if (ultimoTaller.current === null) { ultimoTaller.current = cuerpo; return; }
+    if (cuerpo === ultimoTaller.current) return;
+    const t = setTimeout(async () => {
+      setEstadoGuardado("Guardando…");
+      try {
+        await api.put("/configuracion-taller/", JSON.parse(cuerpo));
+        ultimoTaller.current = cuerpo;
+        ultimoError.current = "";
+        setEstadoGuardado("Guardado ✓");
+      } catch (err) {
+        setEstadoGuardado("");
+        if (ultimoError.current !== err.message) { ultimoError.current = err.message; notify(err.message, "error"); }
+      }
+    }, 900);
+    return () => clearTimeout(t);
+  }, [data]);
+
+  useEffect(() => {
+    if (!fiscal) return;
+    const cuerpo = JSON.stringify({ ...fiscal, rfc_emisor: (fiscal.rfc_emisor || "").toUpperCase() });
+    if (ultimoFiscal.current === null) { ultimoFiscal.current = cuerpo; return; }
+    if (cuerpo === ultimoFiscal.current) return;
+    const t = setTimeout(async () => {
+      setEstadoGuardado("Guardando…");
+      try {
+        await api.put("/facturacion/configuracion", JSON.parse(cuerpo));
+        ultimoFiscal.current = cuerpo;
+        ultimoError.current = "";
+        setEstadoGuardado("Guardado ✓");
+      } catch (err) {
+        setEstadoGuardado("");
+        if (ultimoError.current !== err.message) { ultimoError.current = err.message; notify(err.message, "error"); }
+      }
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [fiscal]);
 
   // Igual que en Clientes: al escribir un CP conocido, se autocompletan
   // Estado y Municipio — así no hay que buscarlos a mano si ya se sabe el CP.
@@ -140,10 +153,9 @@ export default function ConfiguracionTaller() {
     <>
       <div className="page-header">
         <div className="page-header-titulo">
-          <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
             <h1><IconoModulo ruta="/configuracion-taller" /> Datos del taller</h1>
-            <div className="subtitle">Esto aparece en el encabezado del recibo, la nota de remisión y tus facturas</div>
+            <div className="subtitle">Esto aparece en el encabezado del recibo, la nota de remisión y tus facturas · Los cambios se guardan solos {estadoGuardado && <b className="cfg-guardado">{estadoGuardado}</b>}</div>
           </div>
         </div>
       </div>
@@ -179,12 +191,24 @@ export default function ConfiguracionTaller() {
               <input value={data.nombre_taller || ""} onChange={(e) => setData({ ...data, nombre_taller: e.target.value })} />
             </div>
             <div className="field">
-              <label>Teléfono</label>
+              <label>Teléfono 1</label>
               <input value={data.telefono || ""} onChange={(e) => setData({ ...data, telefono: e.target.value })} />
             </div>
-            <div className="field full">
-              <label>Correo</label>
+            <div className="field">
+              <label>Teléfono 2 (opcional)</label>
+              <input value={data.telefono2 || ""} onChange={(e) => setData({ ...data, telefono2: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Teléfono 3 (opcional)</label>
+              <input value={data.telefono3 || ""} onChange={(e) => setData({ ...data, telefono3: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Correo 1</label>
               <input value={data.correo || ""} onChange={(e) => setData({ ...data, correo: e.target.value })} />
+            </div>
+            <div className="field full">
+              <label>Correo 2 (opcional)</label>
+              <input value={data.correo2 || ""} onChange={(e) => setData({ ...data, correo2: e.target.value })} />
             </div>
           </div>
         </section>
@@ -199,22 +223,10 @@ export default function ConfiguracionTaller() {
           </div>
 
           <div className="form-grid">
-            <div className="field full">
-              <label>Dirección (referencia, como se ve en la nota)</label>
-              <input value={data.direccion || ""} onChange={(e) => setData({ ...data, direccion: e.target.value })} />
-            </div>
             <div className="field">
               <label>Código postal</label>
               <input value={data.cp || ""} onChange={(e) => alCambiarCp(e.target.value)} maxLength={5} />
               {buscandoCp && <div className="field-hint">Buscando…</div>}
-            </div>
-            <div className="field">
-              <label>Calle</label>
-              <input value={data.calle || ""} onChange={(e) => setData({ ...data, calle: e.target.value })} />
-            </div>
-            <div className="field">
-              <label>Número (exterior / de sucursal)</label>
-              <input value={data.numero_taller || ""} onChange={(e) => setData({ ...data, numero_taller: e.target.value })} />
             </div>
             <div className="field">
               <label>Estado</label>
@@ -223,18 +235,26 @@ export default function ConfiguracionTaller() {
                 {estados.map((e) => <option key={e.id_estado} value={e.id_estado}>{e.nombre_estado}</option>)}
               </select>
             </div>
-            <div className="field">
+            <div className="field full">
               <label>Municipio</label>
               <select value={data.id_ciudad || ""} onChange={(e) => setData({ ...data, id_ciudad: e.target.value ? Number(e.target.value) : null })} disabled={!data.id_estado}>
                 <option value="">{data.id_estado ? "-- Selecciona --" : "Elige un estado primero"}</option>
                 {ciudades.map((c) => <option key={c.id_ciudad} value={c.id_ciudad}>{c.nombre_ciudad}</option>)}
               </select>
             </div>
+            <div className="field full">
+              <label>Colonia</label>
+              <input value={data.direccion || ""} onChange={(e) => setData({ ...data, direccion: e.target.value })} placeholder="Ej. Portales de la Arboleda" />
+            </div>
+            <div className="field">
+              <label>Calle</label>
+              <input value={data.calle || ""} onChange={(e) => setData({ ...data, calle: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Número</label>
+              <input value={data.numero_taller || ""} onChange={(e) => setData({ ...data, numero_taller: e.target.value })} />
+            </div>
           </div>
-
-          <button className="btn btn-primary" onClick={guardar} disabled={guardando} style={{ marginTop: 16 }}>
-            {guardando ? "Guardando…" : <><span className="btn-ico"><Icono nombre="save" size={20} /></span>Guardar datos del taller</>}
-          </button>
         </section>
 
         {!sinAccesoFiscal && (
@@ -280,9 +300,6 @@ export default function ConfiguracionTaller() {
                 <div className="field-hint" style={{ marginTop: 4, marginBottom: 12 }}>
                   Serie, folio y demás ajustes de timbrado están en Facturación → <IconoAuto valor="⚙️" size={18} /> Configuración fiscal.
                 </div>
-                <button className="btn btn-primary" onClick={guardarFiscal} disabled={guardandoFiscal}>
-                  {guardandoFiscal ? "Guardando…" : <><span className="btn-ico"><Icono nombre="save" size={20} /></span>Guardar datos fiscales</>}
-                </button>
               </>
             )}
           </section>

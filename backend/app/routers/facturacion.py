@@ -1,3 +1,4 @@
+from ..busqueda import coincide
 """
 Facturación electrónica — CFDI 4.0 de ingreso.
 
@@ -445,10 +446,8 @@ def listar(estado: str = None, id_servicio: int = None, q: str = None, db: Sessi
     if id_servicio:
         query = query.filter(models.Factura.id_servicio == id_servicio)
     if q:
-        like = f"%{q.strip()}%"
-        query = query.filter(
-            models.Factura.receptor_rfc.ilike(like) | models.Factura.receptor_nombre.ilike(like) | models.Factura.uuid.ilike(like)
-        )
+        facturas = query.order_by(models.Factura.fecha_emision.desc()).all()
+        return [f for f in facturas if coincide(q, f.receptor_rfc, f.receptor_nombre, f.uuid)][:500]
     return query.order_by(models.Factura.fecha_emision.desc()).limit(500).all()
 
 

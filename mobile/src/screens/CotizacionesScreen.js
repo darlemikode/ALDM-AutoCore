@@ -24,7 +24,7 @@ export default function CotizacionesScreen({ navigation }) {
       campos={CAMPOS}
       permisos={{ crear: "cotizaciones.crear", editar: "cotizaciones.editar", eliminar: "cotizaciones.eliminar" }}
       titulo={(c) => `#${c.id_cotizacion} · ${c.titulo}`}
-      subtitulo={(c) => `${(c.detalles || []).length} concepto(s) · ${fmt(c.costos?.total)} · ${new Date(c.fecha_cotizacion).toLocaleDateString("es-MX")}`}
+      subtitulo={(c) => `${(c.detalles || []).length} refacción(es) · ${fmt(c.costos?.total)} · ${new Date(c.fecha_cotizacion).toLocaleDateString("es-MX")}`}
       badge={(c) => (vencida(c) ? { texto: "vencida", tono: "red" } : c.vigente_hasta ? { texto: `vigente al ${String(c.vigente_hasta).slice(0, 10)}`, tono: "teal" } : null)}
       buscarEn={(c) => `${c.id_cotizacion} ${c.titulo}`}
       valoresParaEditar={(c) => ({ ...c, iva_porcentaje: (c.iva_porcentaje ?? 16) > 0, vigente_hasta: c.vigente_hasta ? String(c.vigente_hasta).slice(0, 10) : "" })}

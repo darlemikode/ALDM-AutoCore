@@ -30,7 +30,7 @@ export function UIProvider({ children }) {
   const notify = useCallback((message, type = "info") => {
     const id = ++toastId.current;
     setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4500);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5200);
   }, []);
 
   return (
@@ -40,11 +40,15 @@ export function UIProvider({ children }) {
       {confirmState && (
         <ModalPortal>
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && resolveConfirm(false)}>
-          <div className="modal" style={{ maxWidth: 420 }}>
-            <h2 style={{ fontSize: 19 }}>{confirmState.title}</h2>
-            <p style={{ color: "var(--ink-500)", fontSize: 14, lineHeight: 1.5, margin: "10px 0 0" }}>
-              {confirmState.message}
-            </p>
+          <div className={`modal dialogo-confirmar ${confirmState.danger ? "peligro" : ""}`} role="alertdialog" aria-modal="true">
+            <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={() => resolveConfirm(false)}>✕</button>
+            <div className="dialogo-cuerpo">
+              <span className="dialogo-icono" aria-hidden="true">{confirmState.danger ? "!" : "?"}</span>
+              <div>
+                <h2 className="dialogo-titulo">{confirmState.title}</h2>
+                <p className="dialogo-mensaje">{confirmState.message}</p>
+              </div>
+            </div>
             {confirmState.recordar && (
               <label className="no-preguntar">
                 <input type="checkbox" checked={noPreguntar} onChange={(e) => setNoPreguntar(e.target.checked)} />
@@ -56,8 +60,9 @@ export function UIProvider({ children }) {
               <button
                 className={confirmState.danger ? "btn btn-danger" : "btn btn-primary"}
                 onClick={() => resolveConfirm(true)}
+                autoFocus
               >
-                Confirmar
+                {confirmState.danger ? "Sí, continuar" : "Confirmar"}
               </button>
             </div>
           </div>
@@ -68,7 +73,7 @@ export function UIProvider({ children }) {
       <ModalPortal>
       <div className="toast-stack">
         {toasts.map((t) => (
-          <div key={t.id} className={`toast toast-${t.type}`}>{t.message}</div>
+          <div key={t.id} className={`toast toast-${t.type}`} role="status"><span className="toast-ico" aria-hidden="true">{t.type === "success" ? "✓" : t.type === "error" ? "!" : "i"}</span><span className="toast-texto">{t.message}</span></div>
         ))}
       </div>
       </ModalPortal>

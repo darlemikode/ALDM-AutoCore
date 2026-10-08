@@ -1,5 +1,6 @@
 import { IconoAuto } from "./Icono";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ChangePasswordModal from "./ChangePasswordModal";
@@ -48,6 +49,8 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [changingPassword, setChangingPassword] = useState(false);
+  const [avisoPassword, setAvisoPassword] = useState(false);
+  const [passwordYaCambiada, setPasswordYaCambiada] = useState(false);
   const [pagando, setPagando] = useState(false);
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
   const [temaOscuro, setTemaOscuroLocal] = useState(temaOscuroActivo);
@@ -57,6 +60,12 @@ export default function Layout() {
   // En pantallas angostas la barra lateral no cabe fija: se abre como
   // panel encima del contenido y se cierra sola al navegar.
   useEffect(() => { setMenuMovilAbierto(false); }, [location.pathname]);
+
+  // Mientras la contraseña siga siendo la de fábrica, cada vez que se
+  // entra a una pantalla sale un aviso con las opciones.
+  useEffect(() => {
+    if (user?.password_por_defecto && !passwordYaCambiada) setAvisoPassword(true);
+  }, [location.pathname, user?.password_por_defecto, passwordYaCambiada]);
 
   // El tema y el modo compacto se pueden cambiar desde aquí o desde
   // Configuración — cualquiera de los dos escucha al otro.
@@ -80,7 +89,7 @@ export default function Layout() {
   // Los sub-apartados de Configuración ya no se listan en la barra lateral
   // (viven como tarjetas grandes en /configuracion) — solo se usan aquí
   // para saber si el enlace debe verse "activo".
-  const rutasConfiguracion = ["/configuracion", "/catalogos", "/configuracion-taller", "/comisiones", "/empleados", "/usuarios", "/asignacion-roles", "/roles"];
+  const rutasConfiguracion = ["/configuracion", "/catalogos", "/configuracion-taller", "/comisiones", "/suscripcion", "/empleados", "/usuarios", "/asignacion-roles", "/roles"];
   const enConfiguracion = rutasConfiguracion.some((r) => location.pathname === r || location.pathname.startsWith(r + "/"));
 
   const navBase = NAV.map((s) =>
@@ -192,7 +201,17 @@ export default function Layout() {
             {talleres.length > 1 && <button className="btn btn-primary" onClick={() => setEligiendo(true)}>Entrar a otro taller</button>}
           </div>
         ) : (
-          <Outlet />
+          <>
+            {location.pathname !== "/" && (
+              <div className="barra-regresar">
+                <button type="button" className="btn-regresar" onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"))}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
+                  Regresar
+                </button>
+              </div>
+            )}
+            <Outlet />
+          </>
         )}
       </main>
 
@@ -221,7 +240,20 @@ export default function Layout() {
         </div>
       )}
 
-      {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
+      {avisoPassword && !changingPassword && createPortal(
+        <div className="modal-backdrop">
+          <div className="modal" style={{ maxWidth: 440 }}>
+            <h2>Cambia tu contraseña</h2>
+            <p>Sigues usando la contraseña inicial del sistema. Por seguridad, cámbiala ahora.</p>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setAvisoPassword(false)}>Más tarde</button>
+              <button type="button" className="btn btn-primary" onClick={() => { setAvisoPassword(false); setChangingPassword(true); }}>Cambiar ahora</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {changingPassword && <ChangePasswordModal precargada={user?.password_actual_sugerida || ""} onClose={() => setChangingPassword(false)} onChanged={() => setPasswordYaCambiada(true)} />}
       {pagando && <PagarSuscripcion onClose={() => setPagando(false)} />}
     </div>
   );

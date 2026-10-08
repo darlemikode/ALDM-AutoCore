@@ -1,3 +1,5 @@
+import { contiene, norm } from "../lib/texto";
+import SelectorFecha from "./SelectorFecha";
 import Combo from "./Combo";
 import { propsContacto, limpiarValorContacto } from "../validacion";
 import { useEffect, useState } from "react";
@@ -35,7 +37,7 @@ import { IconoAuto, Icono } from "./Icono";
  * mostrarlo dentro del input — si no lo trae, FormModal intenta inferirlo
  * del nombre del campo (correo, teléfono, precio, fecha, código postal…).
  */
-export default function FormModal({ title, fields, initialValues, onSubmit, onClose, footerExtra, icono, colorAcento = "petrol", subtitulo, grupos }) {
+export default function FormModal({ title, fields, initialValues, onSubmit, onClose, footerExtra, icono, colorAcento = "petrol", subtitulo, grupos, bloqueExtra, permitirOtra }) {
   const [values, setValues] = useState(initialValues || {});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -89,8 +91,17 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
     return valor === undefined || valor === null || valor === "";
   }
 
-  async function handleSubmit(e) {
+  const [agregados, setAgregados] = useState(0);
+
+  // modo: "enter" (Enter en el formulario), "agregar" (botón Agregar) o "guardar" (botón Guardar)
+  async function handleSubmit(e, modo = "enter") {
     e.preventDefault();
+    let otra = false;
+    // Modo "agregar varias": Enter / Agregar suman otra y dejan abierto; Enter con el nombre vacío (o Guardar) termina.
+    if (permitirOtra) {
+      if (estaVacio(values.nombre_refaccion) && agregados > 0 && modo !== "agregar") { onClose(); return; }
+      otra = modo !== "guardar";
+    }
     const faltantes = camposConOpcionesOrdenadas
       .filter((f) => f.required && !f.disabled && estaVacio(values[f.name]))
       .map((f) => f.name);
@@ -103,7 +114,13 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
     setSaving(true);
     setError("");
     try {
-      await onSubmit(values);
+      await onSubmit(values, { otra });
+      if (otra) {
+        setAgregados((n) => n + 1);
+        // Se queda abierta para capturar otra: se limpia el nombre y se conserva lo demás (ej. la categoría)
+        setValues((v) => ({ ...v, nombre_refaccion: "" }));
+        setSaving(false);
+      }
     } catch (err) {
       setError(err.message);
       setSaving(false);
@@ -159,9 +176,14 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
     return null;
   }
 
+  useEffect(() => {
+    const t = setTimeout(() => { const el = document.querySelector(".modal [data-autofoco] input, .modal [data-autofoco] textarea"); if (el) { el.focus(); el.select?.(); } }, 60);
+    return () => clearTimeout(t);
+  }, []);
+
   function renderCampo(f) {
     return (
-      <div className={`field ${f.full ? "full" : ""} ${camposFaltantes.includes(f.name) ? "campo-con-error" : ""}`} key={f.name}>
+      <div className={`field ${f.full ? "full" : ""} ${f.grande ? "campo-grande" : ""} ${camposFaltantes.includes(f.name) ? "campo-con-error" : ""}`} key={f.name} data-autofoco={f.autofoco ? "1" : undefined}>
         <label>{f.label}{f.required && <span className="req" aria-hidden="true"> *</span>}</label>
         {f.type === "buscable" ? (
           <ComboBuscable
@@ -216,6 +238,8 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
               </div>
             )}
           </div>
+        ) : f.type === "date" ? (
+          <SelectorFecha value={values[f.name] ?? ""} required={f.required} disabled={f.disabled} onChange={(v) => update(f.name, v)} />
         ) : f.type === "multiselect" ? (
           <div className="chips-select">
             {f.options.map((opt) => {
@@ -286,6 +310,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
   return createPortal(
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${bloques ? "modal-ancho" : ""}`}>
+        <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={onClose}><Icono nombre="close" size={20} /></button>
         <div className="modal-header-icono">
           <div className="modal-avatar-icono" style={{ "--acc": `var(--${colorAcento}-600)`, "--acc-soft": `var(--${colorAcento}-100)` }}>
             <IconoAuto valor={icono || "📝"} size={24} />
@@ -295,7 +320,8 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
             {subtitulo && <div className="modal-subtitulo">{subtitulo}</div>}
           </div>
         </div>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => handleSubmit(e, "enter")}>
+          {permitirOtra && <button type="submit" tabIndex={-1} aria-hidden="true" style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", pointerEvents: "none" }} />}
           {bloques ? (
             <div className="bloques-grid">
             {bloques.map((b) => (
@@ -306,9 +332,28 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
                 </div>
                 <div className="nota-bloque-body form-grid" style={b.columnas ? { gridTemplateColumns: `repeat(${b.columnas}, 1fr)` } : undefined}>
                   {b.campos.map((f) => renderCampo(f))}
+                  {permitirOtra && b === bloques[0] && (
+                    <div className="field full">
+                      <button type="button" className="btn btn-primary btn-agregar-otra" disabled={saving} onClick={(e) => handleSubmit(e, "agregar")}>
+                        {saving ? "Agregando…" : <><Icono nombre="add" size={18} /> Agregar{agregados > 0 ? ` (${agregados} listas)` : ""}</>}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
+            {bloqueExtra && (() => {
+              const x = bloqueExtra(values);
+              return x ? (
+                <div className={`nota-bloque ${x.acento || ""}`} key="__extra">
+                  <div className="nota-bloque-header">
+                    <span className="icono"><IconoAuto valor={x.icono} size={18} /></span>
+                    <h2>{x.titulo}</h2>
+                  </div>
+                  <div className="nota-bloque-body">{x.contenido}</div>
+                </div>
+              ) : null;
+            })()}
             </div>
           ) : (
             <div className="form-grid">
@@ -319,9 +364,9 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
           {footerExtra}
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>
-              <span className="btn-ico"><Icono nombre="close" size={20} /></span>Cancelar
+              <span className="btn-ico"><Icono nombre={permitirOtra && agregados > 0 ? "check" : "close"} size={20} /></span>{permitirOtra && agregados > 0 ? "Terminar" : "Cancelar"}
             </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
+            <button type={permitirOtra ? "button" : "submit"} className="btn btn-primary" disabled={saving} onClick={permitirOtra ? (e) => handleSubmit(e, "guardar") : undefined}>
               {saving ? "Guardando…" : <><span className="btn-ico"><Icono nombre="save" size={20} /></span>Guardar</>}
             </button>
           </div>
@@ -370,7 +415,7 @@ function ComboBuscable({ options, value, onChange, disabled, placeholder }) {
   const opcionElegida = options.find((o) => String(o.value) === String(value));
 
   const filtradas = texto.trim()
-    ? options.filter((o) => o.label.toLowerCase().includes(texto.trim().toLowerCase()))
+    ? options.filter((o) => contiene(o.label, texto))
     : options;
 
   return (

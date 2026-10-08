@@ -16,17 +16,25 @@ export function contarPor(lista, fn) {
 /**
  * items: { nombre: cantidad }  ·  valor: grupo elegido ("" = todos)  ·  onChange(valor)
  */
-export default function FiltroChips({ items, valor, onChange, total, etiquetaTodas = "Todas" }) {
+export default function FiltroChips({ items, valor, onChange, total, etiquetaTodas = "Todas", multiple = false }) {
   const nombres = Object.keys(items).sort((a, b) => a.localeCompare(b, "es"));
   if (nombres.length < 2) return null;
   const suma = total ?? Object.values(items).reduce((a, b) => a + b, 0);
+  // multiple: valor es una lista de grupos elegidos ([] = todos); si no, un solo texto ("" = todos)
+  const elegidos = multiple ? (valor || []) : null;
+  const todasOn = multiple ? elegidos.length === 0 : valor === "";
+  const activo = (n) => (multiple ? elegidos.includes(n) : valor === n);
+  const alternar = (n) => {
+    if (multiple) onChange(elegidos.includes(n) ? elegidos.filter((x) => x !== n) : [...elegidos, n]);
+    else onChange(valor === n ? "" : n);
+  };
   return (
     <div className="cat-chips">
-      <button type="button" className={`cat-chip ${valor === "" ? "cat-chip-on" : ""}`} style={{ "--c": "var(--petrol-500)" }} onClick={() => onChange("")}>
+      <button type="button" className={`cat-chip ${todasOn ? "cat-chip-on" : ""}`} style={{ "--c": "var(--petrol-500)" }} onClick={() => onChange(multiple ? [] : "")}>
         {etiquetaTodas} <b>{suma}</b>
       </button>
       {nombres.map((n) => (
-        <button type="button" key={n} className={`cat-chip ${valor === n ? "cat-chip-on" : ""}`} style={{ "--c": colorGrupo(n) }} onClick={() => onChange(valor === n ? "" : n)}>
+        <button type="button" key={n} className={`cat-chip ${activo(n) ? "cat-chip-on" : ""}`} style={{ "--c": colorGrupo(n) }} onClick={() => alternar(n)}>
           <span className="cat-punto" />{n} <b>{items[n]}</b>
         </button>
       ))}

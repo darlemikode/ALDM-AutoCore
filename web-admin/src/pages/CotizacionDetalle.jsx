@@ -249,7 +249,7 @@ export default function CotizacionDetalle() {
 
       <BloqueNota
         icono="🔧"
-        titulo="Conceptos"
+        titulo="Refacciones"
         accion={
           puedeEditar && (
             <button className="btn btn-agregar" onClick={() => setAddingDetalle(true)}><Icono nombre="add" size={18} /> Agregar refacciones</button>
@@ -257,7 +257,7 @@ export default function CotizacionDetalle() {
         }
       >
         {cotizacion.detalles.length === 0 ? (
-          <div className="empty-state">Aún no se han agregado conceptos a esta cotización.</div>
+          <div className="empty-state">Esta cotización todavía no tiene refacciones. Usa «Agregar refacción» para empezar.</div>
         ) : (
           <table>
             <thead>

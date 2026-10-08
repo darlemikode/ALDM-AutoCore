@@ -41,7 +41,7 @@ export default function CotizacionDetalleScreen({ route }) {
 
   const accion = async (fn) => { try { setC(await fn()); } catch (e) { alerta("Error", e.message); load(); } };
   const actualizarDetalle = (idD, cambios) => accion(() => api.put(`/cotizaciones/${id}/detalles/${idD}`, cambios));
-  const quitar = (idD) => alerta("Quitar concepto", "¿Quitarlo de la cotización?", [
+  const quitar = (idD) => alerta("Quitar refacción", "¿Quitar esta refacción de la cotización?", [
     { text: "Cancelar", style: "cancel" },
     { text: "Quitar", style: "destructive", onPress: () => accion(() => api.del(`/cotizaciones/${id}/detalles/${idD}`)) },
   ]);

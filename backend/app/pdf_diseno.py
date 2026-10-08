@@ -47,7 +47,7 @@ WARN_SOFT = colors.HexColor("#fdf3e1")
 
 CARPETA_UPLOADS = os.path.join(os.path.dirname(__file__), "uploads")
 MARGEN_X = 16 * mm
-ALTO_ENCABEZADO = 33 * mm
+ALTO_ENCABEZADO = 44 * mm
 
 # --- Estilos de texto --------------------------------------------------------
 _base = ParagraphStyle("base", fontName="Helvetica", fontSize=9.5, leading=13, textColor=INK)
@@ -79,25 +79,53 @@ def _espaciado(texto: str) -> str:
     return texto.upper()
 
 
+# --- Fechas en hora de México (la base guarda UTC) ----------------------------
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+_MX = _tz(_td(hours=-6))
+
+
+def hoy_mx() -> _dt:
+    return _dt.now(_MX).replace(tzinfo=None)
+
+
+def fecha_mx(dt):
+    """Fecha guardada (UTC, sin zona) llevada a la hora de México; None si no hay."""
+    if not dt:
+        return None
+    return (dt.replace(tzinfo=_tz.utc) + _td(hours=-6)).replace(tzinfo=None)
+
+
 # --- Datos del taller ----------------------------------------------------------
 def datos_taller(taller) -> dict:
     if not taller:
-        return {"nombre": "Mi Taller", "linea1": "", "linea2": "", "logo": None}
+        return {"nombre": "Mi Taller", "linea1": "", "linea2": "", "lineas": [], "logo": None}
     ciudad = getattr(getattr(taller, "ciudad", None), "nombre_ciudad", None)
     estado = getattr(getattr(taller, "estado", None), "nombre_estado", None)
     calle = " ".join(filter(None, [taller.calle, taller.numero_taller]))
-    domicilio = ", ".join(filter(None, [calle or None, f"CP {taller.cp}" if taller.cp else None, ciudad, estado])) or (taller.direccion or "")
-    contacto = " · ".join(filter(None, [
-        f"Tel. {taller.telefono}" if taller.telefono else None,
-        taller.correo,
-        f"RFC {taller.rfc}" if taller.rfc else None,
-    ]))
+    colonia = (taller.direccion or "").strip()
+    if colonia and not colonia.lower().startswith(("col.", "col ", "colonia")):
+        colonia = f"Col. {colonia}"
+    telefonos = [t for t in (taller.telefono, getattr(taller, "telefono2", None), getattr(taller, "telefono3", None)) if t]
+    correos = [c for c in (taller.correo, getattr(taller, "correo2", None)) if c]
+    lugar = " - ".join(filter(None, [ciudad, estado]))
+    # Formato del encabezado: calle y número / colonia / CP + ciudad / teléfonos / correos / RFC
+    lineas = [
+        {"izq": calle.upper()} if calle else None,
+        {"izq": colonia.upper()} if colonia else None,
+        {"izq": f"CP. {taller.cp}" if taller.cp else "", "der": lugar} if (taller.cp or lugar) else None,
+        {"izq": "TEL. " + " o ".join(telefonos)} if telefonos else None,
+        {"izq": " o ".join(correos).upper()} if correos else None,
+        {"izq": f"RFC: {taller.rfc}".upper()} if taller.rfc else None,
+    ]
+    lineas = [l for l in lineas if l]
+    domicilio = ", ".join(filter(None, [calle or None, colonia or None, f"CP {taller.cp}" if taller.cp else None, lugar or None]))
+    contacto = " · ".join(filter(None, [("Tel. " + " o ".join(telefonos)) if telefonos else None, " o ".join(correos) or None, f"RFC {taller.rfc}" if taller.rfc else None]))
     logo = None
     if taller.ruta_logo:
         datos = almacenamiento.leer(taller.ruta_logo)
         if datos:
             logo = ImageReader(io.BytesIO(datos))
-    return {"nombre": taller.nombre_taller or "Mi Taller", "linea1": domicilio, "linea2": contacto, "logo": logo}
+    return {"nombre": taller.nombre_taller or "Mi Taller", "linea1": domicilio, "linea2": contacto, "lineas": lineas, "logo": logo}
 
 
 # --- Plantilla de página ---------------------------------------------------------
@@ -152,32 +180,43 @@ class PlantillaDocumento:
 
         top = alto - 3.5 * mm - 8 * mm  # línea base superior del contenido del encabezado
         # Recuadro de los datos del taller (con énfasis)
-        caja_x, caja_w, caja_h = MARGEN_X, 118 * mm, 24 * mm
-        caja_y = top - 20 * mm
-        c.setFillColor(ACCENT_SOFT)
-        c.roundRect(caja_x, caja_y, caja_w, caja_h, 3 * mm, stroke=0, fill=1)
+        caja_x, caja_w, caja_h = MARGEN_X, 118 * mm, 33 * mm
+        caja_y = top - 29 * mm
+        c.setFillColor(colors.HexColor("#e4f2f5"))
+        c.setStrokeColor(ACCENT)
+        c.setLineWidth(1.2)
+        c.roundRect(caja_x, caja_y, caja_w, caja_h, 3 * mm, stroke=1, fill=1)
         x = caja_x + 4 * mm
         if self.t["logo"]:
             try:
-                c.drawImage(self.t["logo"], x, caja_y + 2 * mm, width=22 * mm, height=20 * mm,
-                            preserveAspectRatio=True, anchor="w", mask="auto")
-                x += 26 * mm
+                lado = 26 * mm
+                ly = caja_y + (caja_h - lado) / 2  # centrado verticalmente en el recuadro
+                c.saveState()
+                ruta = c.beginPath()
+                ruta.roundRect(x, ly, lado, lado, 4 * mm)  # esquinas redondeadas
+                c.clipPath(ruta, stroke=0, fill=0)
+                c.drawImage(self.t["logo"], x, ly, width=lado, height=lado,
+                            preserveAspectRatio=True, anchor="c", mask="auto")
+                c.restoreState()
+                x += lado + 5 * mm
             except Exception:  # noqa: BLE001 — un logo dañado no debe impedir generar el documento
-                pass
+                c.restoreState()
 
-        c.setFillColor(INK)
+        c.setFillColor(colors.HexColor("#05090d"))
         c.setFont("Helvetica-Bold", 16)
         c.drawString(x, caja_y + caja_h - 8 * mm, self.t["nombre"][:36])
-        c.setFillColor(INK_2)
+        c.setFillColor(colors.HexColor("#0b1218"))
         disponible = caja_x + caja_w - 4 * mm - x
-        for linea, dy in ((self.t["linea1"], 13), (self.t["linea2"], 17.5)):
-            if not linea:
-                continue
+        for i, ln in enumerate(self.t["lineas"][:6]):
+            y = caja_y + caja_h - (13 + i * 3.6) * mm
+            izq, der = ln.get("izq", ""), ln.get("der", "")
             tam = 8
-            while tam > 6 and c.stringWidth(linea, "Helvetica", tam) > disponible:
-                tam -= 0.25  # reduce la letra para que quepa dentro de la caja
-            c.setFont("Helvetica", tam)
-            c.drawString(x, caja_y + caja_h - dy * mm, linea)
+            while tam > 6 and c.stringWidth(izq, "Helvetica-Bold", tam) + (c.stringWidth(der, "Helvetica-Bold", tam) + 6 if der else 0) > disponible:
+                tam -= 0.25
+            c.setFont("Helvetica-Bold", tam)
+            c.drawString(x, y, izq)
+            if der:
+                c.drawRightString(caja_x + caja_w - 4 * mm, y, der)
 
         # Bloque derecho: tipo de documento + folio
         derecha = ancho - MARGEN_X
@@ -187,10 +226,10 @@ class PlantillaDocumento:
         c.setFillColor(INK)
         c.setFont("Helvetica-Bold", 19)
         c.drawRightString(derecha, top - 10.5 * mm, self.numero)
-        c.setFont("Helvetica", 8)
-        c.setFillColor(MUTED)
+        c.setFont("Helvetica-Bold", 9.5)
+        c.setFillColor(INK)
         for i, linea in enumerate(self.lineas[:3]):
-            c.drawRightString(derecha, top - (15 + i * 3.5) * mm, linea)
+            c.drawRightString(derecha, top - (16 + i * 4.6) * mm, linea)
 
         # Línea divisoria bajo el encabezado
         y_linea = alto - ALTO_ENCABEZADO - 2 * mm
@@ -299,7 +338,7 @@ def dos_columnas(izq, der, ancho: float, separacion: float = 5 * mm):
     return t
 
 
-def tabla_conceptos(encabezados, filas, anchos, alinear_derecha=(), vacio="Sin conceptos registrados", alinear_centro=()):
+def tabla_conceptos(encabezados, filas, anchos, alinear_derecha=(), vacio="Sin refacciones registradas", alinear_centro=()):
     """Tabla con encabezado oscuro, filas alternadas y solo líneas horizontales."""
     cab = [Paragraph(f"<font color='white'><b>{_espaciado(h)}</b></font>",
                      ParagraphStyle("h", parent=E["etiqueta"], alignment=TA_RIGHT if i in alinear_derecha else (1 if i in alinear_centro else 0)))
@@ -339,7 +378,7 @@ def totales(filas, ancho_total: float, destacar_ultima: bool = True, color_final
     for i, (e, v) in enumerate(filas):
         monto = f"<font color='{_hex(colores[i])}'><b>{esc(v)}</b></font>" if i in colores else esc(v)
         datos.append([Paragraph(esc(e), E["valor_n"]), Paragraph(monto, E["celda_der"])])
-    ancho = 78 * mm
+    ancho = 82 * mm  # mismo ancho que la celda donde se coloca, así queda al ras del margen derecho
     estilo = [
         ("TOPPADDING", (0, 0), (-1, -1), 3.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
         ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
@@ -379,6 +418,26 @@ def caja_texto(texto: str, ancho: float):
         ("TOPPADDING", (0, 0), (-1, 0), 7), ("BOTTOMPADDING", (0, -1), (-1, -1), 7),
     ]))
     return Sombra(t)
+
+
+def notas_pie(ancho: float):
+    """Notas fijas al pie de la nota y el recibo: garantía y recomendación de mantenimiento."""
+    est = ParagraphStyle("notas_pie", parent=E["parrafo"], fontSize=9.5, leading=13, textColor=INK)
+    filas = [
+        [Paragraph("<font color='#0f5c6e'><b>NOTA IMPORTANTE:</b></font> <b>Para hacer válida cualquier garantía es indispensable presentar esta nota de servicio.</b>", est)],
+        [Paragraph("Le recomendamos revisar su vehículo al menos una vez por semana (niveles de aceite, líquidos y llantas) "
+                   "para prevenir fallas y accidentes. <font color='#0f5c6e'><b>Gracias por su confianza.</b></font>", est)],
+    ]
+    t = Table(filas, colWidths=[ancho])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#e4f2f5")),
+        ("BOX", (0, 0), (-1, -1), 0.8, ACCENT), ("ROUNDEDCORNERS", [5, 5, 5, 5]),
+        ("LINEBEFORE", (0, 0), (0, -1), 3.5, ACCENT),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, 0), 8), ("BOTTOMPADDING", (0, -1), (-1, -1), 8),
+    ]))
+    return t
 
 
 def firmas(etiquetas, ancho: float):

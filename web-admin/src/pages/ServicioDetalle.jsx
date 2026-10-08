@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { contiene, norm } from "../lib/texto";
+import SelectorFecha from "../components/SelectorFecha";
+import { useEffect, useRef, useState } from "react";
 import { marcarCampo } from "../validacion";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, getToken } from "../api";
 import FormModal from "../components/FormModal";
+import FiltroChips from "../components/FiltroChips";
 import ModalPortal from "../components/ModalPortal";
 import FotoGaleria from "../components/FotoGaleria";
 import EstatusLateral from "../components/EstatusLateral";
@@ -48,11 +51,46 @@ export default function ServicioDetalle() {
   const [reclamaciones, setReclamaciones] = useState([]);
   const [inspeccionActual, setInspeccionActual] = useState(null);
   const [mostrandoInspeccion, setMostrandoInspeccion] = useState(false);
+  const focoPendiente = useRef(null); // { id, campo } del campo de la tabla de refacciones que debe quedar enfocado tras recargar
+
+  // Enter en la tabla de refacciones: guarda (el blur ya lo hace) y salta al siguiente campo.
+  // Cantidad → su precio si está vacío o en 0; si ya tiene precio → cantidad de la siguiente fila.
+  function irSiguienteRefaccion(e, campo) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const todos = [...document.querySelectorAll(".tabla-refacciones input[data-campo]")];
+    const i = todos.indexOf(e.currentTarget);
+    if (i < 0) return;
+    let destino;
+    if (campo === "c") {
+      const precio = todos[i + 1];
+      destino = precio && !(Number(precio.value) > 0) ? precio : todos[i + 2];
+    } else {
+      destino = todos[i + 1];
+    }
+    if (destino) {
+      focoPendiente.current = { id: destino.dataset.det, campo: destino.dataset.campo };
+      destino.focus();
+      destino.select?.();
+    } else {
+      e.currentTarget.blur();
+    }
+  }
+
+  // Tras guardar, la tabla se vuelve a dibujar: se devuelve el cursor al campo al que se saltó
+  useEffect(() => {
+    const f = focoPendiente.current;
+    if (!f) return;
+    const el = document.querySelector(`.tabla-refacciones input[data-det="${f.id}"][data-campo="${f.campo}"]`);
+    if (el && document.activeElement !== el) { el.focus(); el.select?.(); }
+    focoPendiente.current = null;
+  }, [servicio]);
+
   const [addingDetalle, setAddingDetalle] = useState(false);
   const [modoMultiple, setModoMultiple] = useState(false);
   const [seleccionMultiple, setSeleccionMultiple] = useState({});
-  const [filtroCategoriaMulti, setFiltroCategoriaMulti] = useState("");
-  const [filtroSubcategoriaMulti, setFiltroSubcategoriaMulti] = useState("");
+  const [filtroCategoriaMulti, setFiltroCategoriaMulti] = useState([]);
+  const [busquedaMulti, setBusquedaMulti] = useState("");
   const [guardandoMultiple, setGuardandoMultiple] = useState(false);
   const [addingAbono, setAddingAbono] = useState(false);
   const [descargando, setDescargando] = useState(false);
@@ -96,6 +134,41 @@ export default function ServicioDetalle() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicio?.id_servicio]);
+
+  // Catálogos para capturar los datos del vehículo directo en la orden
+  const [catVeh, setCatVeh] = useState(null);
+  const puedeEditarVeh = !!servicio?.vehiculo && !!servicio && servicio.status === "abierto" && hasPermission("servicios.editar");
+  useEffect(() => {
+    if (!puedeEditarVeh || catVeh) return;
+    Promise.all([api.get("/vehiculos-marcas/"), api.get("/vehiculos-modelos/"), api.get("/colores-vehiculos/")])
+      .then(([marcas, modelos, colores]) => setCatVeh({ marcas, modelos, colores }))
+      .catch(() => {});
+  }, [puedeEditarVeh]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Guarda un dato del vehículo (o del km de la orden) en cuanto se captura
+  async function guardarCampoVehiculo(cambios) {
+    const veh = servicio.vehiculo;
+    const clavesVeh = ["id_marca_vehiculo", "id_modelo_vehiculo", "id_color", "placas_vehiculo", "numserie_vehiculo"];
+    const clavesOrden = ["km_llegada", "km_proximo_servicio"];
+    try {
+      if (clavesVeh.some((k) => k in cambios)) {
+        await api.put(`/vehiculos/${veh.id_vehiculo}`, {
+          id_cliente: veh.id_cliente, id_marca_vehiculo: veh.id_marca_vehiculo ?? null, id_modelo_vehiculo: veh.id_modelo_vehiculo ?? null,
+          id_color: veh.id_color ?? null, placas_vehiculo: veh.placas_vehiculo || null, numserie_vehiculo: veh.numserie_vehiculo || null,
+          cilindraje_vehiculo: veh.cilindraje_vehiculo ?? null, id_year_vehiculo: veh.id_year_vehiculo ?? null, km_vehiculo: veh.km_vehiculo ?? null,
+          comentarios: veh.comentarios ?? null, estado_vehiculo: veh.estado_vehiculo || "activo",
+          ...Object.fromEntries(clavesVeh.filter((k) => k in cambios).map((k) => [k, cambios[k] === "" ? null : cambios[k]])),
+        });
+      }
+      if (clavesOrden.some((k) => k in cambios)) {
+        await api.put(`/servicios/${servicio.id_servicio}`, Object.fromEntries(clavesOrden.filter((k) => k in cambios).map((k) => [k, cambios[k] || null])));
+      }
+      notify("Cambios guardados.", "success");
+      load();
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
 
   async function load() {
     const s = await api.get(`/servicios/${id}`);
@@ -175,7 +248,7 @@ export default function ServicioDetalle() {
   async function handleAddDetalle(values) {
     try {
       // Si se eligió una refacción del catálogo y no se escribió a mano la
-      // descripción o el costo, se toman directo de ahí — así el concepto
+      // descripción o el costo, se toman directo de ahí — así la refacción
       // queda editable pero ya viene precargado con lo que se capturó en
       // el catálogo de refacciones, sin tener que volver a escribirlo.
       const refaccionElegida = values.id_refaccion ? refacciones.find((r) => r.id_refaccion === Number(values.id_refaccion)) : null;
@@ -220,7 +293,7 @@ export default function ServicioDetalle() {
   async function guardarSeleccionMultiple() {
     const idsSeleccionados = Object.keys(seleccionMultiple);
     if (idsSeleccionados.length === 0) {
-      notify("Marca al menos una refacción.", "error");
+      notify("Elige al menos una refacción para agregar.", "error");
       return;
     }
     // El descuento de inventario SOLO aplica cuando hay una fila de
@@ -290,19 +363,31 @@ export default function ServicioDetalle() {
 
   async function borrarTodasRefacciones() {
     const n = servicio.detalles.length;
-    const ok = await confirmDialog(`¿Borrar las ${n} refacción(es) y concepto(s) de esta orden? Lo que se descontó del inventario se regresa. Esta acción no se puede deshacer.`, { danger: true });
+    const ok = await confirmDialog(`¿Borrar ${n === 1 ? "la refacción" : `las ${n} refacciones`} de esta orden? Las piezas que se descontaron regresan al inventario. Esta acción no se puede deshacer.`, { danger: true });
     if (!ok) return;
     try {
       await api.del(`/servicios/${id}/detalles`);
-      notify("Se quitaron todas las refacciones de la orden.", "success");
+      notify("Listo: se quitaron todas las refacciones de la orden.", "success");
       load();
     } catch (err) {
       notify(err.message, "error");
     }
   }
 
+  async function handleDeleteAbono(abonoId) {
+    const ok = await confirmDialog("¿Borrar este abono? El saldo pendiente de la orden se volverá a calcular.", { danger: true });
+    if (!ok) return;
+    try {
+      const actualizado = await api.del(`/servicios/${id}/abonos/${abonoId}`);
+      if (actualizado?.id_servicio) setServicio(actualizado); else load();
+      notify("El abono se borró y el saldo se actualizó.", "success");
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
+
   async function handleDeleteDetalle(detalleId) {
-    const ok = await confirmDialog("¿Quitar este concepto de la orden? Si usaba una refacción, se regresa al inventario.", { danger: true });
+    const ok = await confirmDialog("¿Quitar esta refacción de la orden? Si estaba ligada al inventario, la pieza regresa al stock.", { danger: true });
     if (!ok) return;
     try {
       await api.del(`/servicios/${id}/detalles/${detalleId}`);
@@ -335,13 +420,13 @@ export default function ServicioDetalle() {
 
   async function cambiarStatus(nuevo) {
     if (nuevo === "cancelado") {
-      const ok = await confirmDialog("¿Cancelar esta orden de servicio? Podrás reabrirla después si te equivocas.", { danger: true });
+      const ok = await confirmDialog("¿Cancelar esta orden de servicio? Si fue un error, podrás reabrirla más adelante.", { danger: true });
       if (!ok) return;
     }
     try {
       const actualizado = await api.put(`/servicios/${id}`, { status: nuevo });
       load();
-      if (nuevo !== "abierto") notify("Estado de la orden actualizado.", "success");
+      if (nuevo !== "abierto") notify("Se actualizó el estado de la orden.", "success");
       if (actualizado.alertas_stock?.length > 0) {
         actualizado.alertas_stock.forEach((a) => {
           const proveedorTexto = a.proveedor ? ` · Proveedor: ${a.proveedor.nombre}${a.proveedor.telefono ? " (" + a.proveedor.telefono + ")" : ""}` : "";
@@ -360,7 +445,24 @@ export default function ServicioDetalle() {
     try {
       const actualizado = await api.put(`/servicios/${id}`, { id_empleado_responsable: idEmpleado ? Number(idEmpleado) : null });
       setServicio(actualizado);
-      notify("Responsable actualizado.", "success");
+      notify("Se cambió el responsable de la orden.", "success");
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
+
+  // La base guarda UTC: se muestra la fecha en hora de México (UTC-6) para que coincida con el PDF
+  const fechaLocal = (iso) => {
+    if (!iso) return "";
+    const d = new Date(new Date(/Z|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`).getTime() - 6 * 3600 * 1000);
+    return d.toISOString().slice(0, 10);
+  };
+
+  async function cambiarFecha(campo, valor) {
+    try {
+      const actualizado = await api.put(`/servicios/${id}`, { [campo]: valor ? `${valor}T12:00:00` : null });
+      setServicio(actualizado);
+      notify("Se actualizó la fecha.", "success");
     } catch (err) {
       notify(err.message, "error");
     }
@@ -392,24 +494,57 @@ export default function ServicioDetalle() {
     }
   }
 
-  // WhatsApp al cliente con el resumen de la orden y el número del taller
-  function enviarWhatsApp() {
+  // WhatsApp al cliente: se genera el PDF de la nota y se manda como archivo con un texto corto.
+  // En celular se abre el menú de compartir con el PDF ya adjunto; en computadora el PDF se descarga
+  // y se abre WhatsApp Web con el chat del cliente y el texto listo para adjuntarlo.
+  async function enviarWhatsApp() {
     const digitos = String(servicio.cliente?.telefono1 || "").replace(/\D/g, "").slice(-10);
     if (digitos.length !== 10) {
-      notify("El cliente no tiene un teléfono válido de 10 dígitos. Corrígelo en su ficha.", "error");
+      notify("El cliente no tiene un teléfono de 10 dígitos registrado. Corrígelo en su ficha para poder enviar el mensaje.", "error");
       return;
     }
-    const dinero = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
-    const veh = [servicio.vehiculo?.marca?.nombre_marca, servicio.vehiculo?.modelo?.nombre_modelo, servicio.vehiculo?.placas_vehiculo].filter(Boolean).join(" ");
-    const taller = [datosTaller?.nombre_taller, datosTaller?.telefono && `Tel. ${datosTaller.telefono}`].filter(Boolean).join(" · ");
-    const estado = servicio.status === "cerrado" ? "Tu vehículo está listo." : "Tu orden está en proceso.";
-    const texto = [
-      `Hola ${servicio.cliente?.nombre_cliente || ""}, te escribimos de ${taller || "tu taller"}.`,
-      `Orden #${servicio.id_servicio}${veh ? ` · ${veh}` : ""}. ${estado}`,
-      `Total: ${dinero(servicio.costos.total)} · Saldo: ${dinero(servicio.costos.saldo_pendiente)}`,
-      "Gracias por tu confianza.",
-    ].join("\n");
-    window.open(`https://wa.me/52${digitos}?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
+    const tipo = servicio.status === "cerrado" ? "remision" : "recibo";
+    const taller = datosTaller?.nombre_taller;
+    const nombre = servicio.cliente?.nombre_cliente || "";
+    const texto = (servicio.status === "cerrado"
+      ? `Hola ${nombre}, te comparto tu nota. Ya puedes pasar por tu vehículo. ¡Gracias por tu confianza!`
+      : `Hola ${nombre}, te comparto la nota de tu orden. Seguimos trabajando en tu vehículo y te avisamos cuando esté listo. ¡Gracias por tu confianza!`)
+      + (taller ? `\n— ${taller}` : "");
+    setDescargando(true);
+    try {
+      const ruta = tipo === "remision" ? `/api/servicios/${id}/nota-remision` : `/api/servicios/${id}/recibo`;
+      const res = await fetch(ruta, { headers: { Authorization: `Bearer ${getToken()}` } });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.detail || "No se pudo generar la nota.");
+      }
+      const blob = await res.blob();
+      const archivo = new File([blob], nombrePdf(tipo), { type: "application/pdf" });
+      const esMovil = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (esMovil && navigator.canShare?.({ files: [archivo] })) {
+        try {
+          await navigator.share({ files: [archivo], text: texto });
+          return;
+        } catch (err) {
+          if (err?.name === "AbortError") return; // la persona cerró el menú de compartir
+        }
+      }
+      // Sin soporte para compartir archivos: se descarga el PDF y se abre el chat con el texto
+      const url = URL.createObjectURL(blob);
+      const enlace = document.createElement("a");
+      enlace.href = url;
+      enlace.download = archivo.name;
+      enlace.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      // En computadora se abre WhatsApp Web con el chat del cliente y el texto listo
+      const destino = esMovil ? "https://wa.me/52" + digitos : `https://web.whatsapp.com/send?phone=52${digitos}`;
+      window.open(`${destino}${esMovil ? "?" : "&"}text=${encodeURIComponent(texto)}`, "_blank", "noopener");
+      notify(esMovil ? `La nota se descargó como «${archivo.name}». En WhatsApp toca el clip y adjúntala.` : `Nota descargada. En WhatsApp Web arrastra «${archivo.name}» al chat (se abre la vista previa para agregar comentarios) o usa el clip (+).`, "success");
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setDescargando(false);
+    }
   }
 
   async function confirmarCierre() {
@@ -422,7 +557,7 @@ export default function ServicioDetalle() {
       await cambiarStatus("cerrado");
       setModalCierre(false);
       setTextoConfirmar("");
-      notify("Orden finalizada — imprimiendo la nota. Usa «Enviar por WhatsApp» para avisar al cliente.", "success");
+      notify("Orden finalizada. Se está preparando la nota; puedes mandársela al cliente con «Enviar por WhatsApp».", "success");
       await imprimirNota("remision");
     } finally {
       setCerrando(false);
@@ -475,7 +610,7 @@ export default function ServicioDetalle() {
       a.download = nombrePdf(tipo);
       a.click();
       URL.revokeObjectURL(url);
-      if (modo === "preview") notify("Se descargó la nota — tu celular la abre con su propio visor de PDF.", "success");
+      if (modo === "preview") notify("La nota se descargó. Ábrela con el visor de PDF de tu equipo.", "success");
     } catch (err) {
       notify(err.message, "error");
     } finally {
@@ -489,7 +624,6 @@ export default function ServicioDetalle() {
       <div className="orden-main">
       <div className="orden-hero">
         <div className="orden-hero-top">
-          <Link className="icon-btn" to="/servicios" title="Volver a las órdenes de servicio">←</Link>
           <h1 className="orden-hero-titulo">
             <IconoModulo ruta="/servicios" /> Orden #{servicio.id_servicio}
             <span className={`badge badge-${servicio.status === "abierto" ? "petrol" : servicio.status === "cerrado" ? "teal" : "red"}`}>
@@ -498,7 +632,7 @@ export default function ServicioDetalle() {
             {servicio.pagado && <span className="badge badge-teal">pagada</span>}
           </h1>
           <div className="orden-hero-herramientas">
-            <span className="tip-envoltura" title={servicio.detalles.length > 0 ? "Vista previa de la nota (incluye la inspección, si ya se hizo)" : "La vista previa se activa cuando ya se capturaron refacciones o conceptos"}>
+            <span className="tip-envoltura" title={servicio.detalles.length > 0 ? "Vista previa de la nota (incluye la inspección, si ya se hizo)" : "La vista previa se activa cuando ya se agregó al menos una refacción"}>
               <button className="icon-btn" onClick={() => descargarPdf("recibo", "preview")} disabled={descargando || servicio.detalles.length === 0}><IconoAuto valor="🔍" size={18} /></button>
             </span>
             {servicio.status === "cerrado" && (
@@ -550,6 +684,20 @@ export default function ServicioDetalle() {
           </div>
         </div>
 
+        <div className="orden-hero-fechas">
+          <label className="orden-fecha">
+            <span>Fecha de entrada</span>
+            <SelectorFecha value={fechaLocal(servicio.fecha_entrada_servicio)} max={fechaLocal(servicio.fecha_salida_servicio) || undefined} disabled={!hasPermission("servicios.editar")} required
+              onChange={(v) => v && cambiarFecha("fecha_entrada_servicio", v)} />
+          </label>
+          <label className="orden-fecha">
+            <span>Fecha de salida</span>
+            <SelectorFecha value={fechaLocal(servicio.fecha_salida_servicio)} min={fechaLocal(servicio.fecha_entrada_servicio)} disabled={!hasPermission("servicios.editar")}
+              onChange={(v) => cambiarFecha("fecha_salida_servicio", v)} />
+            {!servicio.fecha_salida_servicio && <small>Sin capturar: la nota usa la fecha en que se genera.</small>}
+          </label>
+        </div>
+
       </div>
 
       <div className="datos-3-bloques">
@@ -557,25 +705,54 @@ export default function ServicioDetalle() {
           <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🧑" size={18} /></span><h2>Datos del cliente</h2></div>
           <div className="nota-bloque-body">
             <dl className="datos-lista">
-              <dt>ID / Cuenta</dt><dd>{servicio.cliente?.numero_cuenta || "—"}</dd>
-              <dt>Nombre</dt><dd>{servicio.cliente?.nombre_cliente} {servicio.cliente?.paterno_cliente || ""}</dd>
-              <dt>Teléfono</dt><dd>{servicio.cliente?.telefono1 || "—"}</dd>
+              <div className="dato"><dt>ID / Cuenta</dt><dd>{servicio.cliente?.numero_cuenta || "—"}</dd></div>
+              <div className="dato ancho"><dt>Nombre</dt><dd>{servicio.cliente?.nombre_cliente} {servicio.cliente?.paterno_cliente || ""}</dd></div>
+              <div className="dato"><dt>Teléfono</dt><dd>{servicio.cliente?.telefono1 || "—"}</dd></div>
             </dl>
           </div>
         </div>
 
         <div className="nota-bloque">
-          <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🚗" size={18} /></span><h2>Datos del vehículo</h2></div>
+          <div className="nota-bloque-header"><span className="icono"><IconoAuto valor="🚗" size={18} /></span><h2>Datos del vehículo</h2>
+          </div>
           <div className="nota-bloque-body datos-vehiculo-body">
-            <dl className="datos-lista">
-              <dt>Marca</dt><dd>{servicio.vehiculo?.marca?.nombre_marca || "—"}</dd>
-              <dt>Modelo</dt><dd>{servicio.vehiculo?.modelo?.nombre_modelo || "—"}</dd>
-              <dt>Km</dt><dd>{servicio.km_llegada || "—"}</dd>
-              <dt>Próximo servicio (km)</dt><dd>{servicio.km_proximo_servicio || "—"}</dd>
-              <dt>Color</dt><dd>{servicio.vehiculo?.color?.nombre_color || "—"}</dd>
-              <dt>Placa</dt><dd>{servicio.vehiculo?.placas_vehiculo || "—"}</dd>
-              <dt>VIN</dt><dd>{servicio.vehiculo?.numserie_vehiculo || "—"}</dd>
-            </dl>
+            {(() => {
+              const veh = servicio.vehiculo;
+              const ed = puedeEditarVeh && catVeh;
+              const texto = (etq, valor, campo) => (
+                <div className="dato">
+                  <dt>{etq}</dt>
+                  <dd>{ed ? (
+                    <input className="veh-input" key={`${campo}-${valor ?? ""}`} defaultValue={valor ?? ""} placeholder="Capturar"
+                      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== String(valor ?? "")) guardarCampoVehiculo({ [campo]: v }); }} />
+                  ) : (valor || "—")}</dd>
+                </div>
+              );
+              const lista = (etq, valor, campo, opciones, mostrar, deshabilitado) => (
+                <div className="dato">
+                  <dt>{etq}</dt>
+                  <dd>{ed ? (
+                    <select className="veh-input" value={valor ?? ""} disabled={deshabilitado}
+                      onChange={(e) => guardarCampoVehiculo(campo === "id_marca_vehiculo" ? { id_marca_vehiculo: e.target.value ? Number(e.target.value) : null, id_modelo_vehiculo: null } : { [campo]: e.target.value ? Number(e.target.value) : null })}>
+                      <option value="">Elegir…</option>
+                      {opciones.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  ) : (mostrar || "—")}</dd>
+                </div>
+              );
+              return (
+                <dl className="datos-lista">
+                  {lista("Marca", veh?.id_marca_vehiculo, "id_marca_vehiculo", (catVeh?.marcas || []).map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca })), veh?.marca?.nombre_marca)}
+                  {lista("Modelo", veh?.id_modelo_vehiculo, "id_modelo_vehiculo", (catVeh?.modelos || []).filter((m) => m.id_marca_vehiculo === Number(veh?.id_marca_vehiculo)).map((m) => ({ value: m.id_modelo_vehiculo, label: m.nombre_modelo })), veh?.modelo?.nombre_modelo, !veh?.id_marca_vehiculo)}
+                  {texto("Km", servicio.km_llegada, "km_llegada")}
+                  {texto("Próximo servicio (km)", servicio.km_proximo_servicio, "km_proximo_servicio")}
+                  {lista("Color", veh?.id_color, "id_color", (catVeh?.colores || []).map((c) => ({ value: c.id_color, label: c.nombre_color })), veh?.color?.nombre_color)}
+                  {texto("Placa", veh?.placas_vehiculo, "placas_vehiculo")}
+                  {texto("VIN", veh?.numserie_vehiculo, "numserie_vehiculo")}
+                </dl>
+              );
+            })()}
             {fotoVehiculo && (
               <img
                 src={`/uploads/${fotoVehiculo.ruta_archivo}`}
@@ -591,20 +768,17 @@ export default function ServicioDetalle() {
           <div className="nota-bloque-body datos-vehiculo-body">
             {datosTaller ? (
               <dl className="datos-lista">
-                <dt>Nombre</dt><dd>{datosTaller.nombre_taller || "—"}</dd>
-                <dt>Dirección</dt><dd>{datosTaller.direccion || "—"}</dd>
-                <dt>RFC</dt><dd>{datosTaller.rfc || "—"}</dd>
-                <dt>Código postal</dt><dd>{datosTaller.cp || "—"}</dd>
-                <dt>Calle</dt><dd>{datosTaller.calle || "—"}</dd>
-                <dt>Estado</dt><dd>{datosTaller.estado?.nombre_estado || "—"}</dd>
-                <dt>Municipio</dt><dd>{datosTaller.ciudad?.nombre_ciudad || "—"}</dd>
-                <dt>Número</dt><dd>{datosTaller.numero_taller || "—"}</dd>
+                <div className="dato ancho"><dt>Nombre</dt><dd>{datosTaller.nombre_taller || "—"}</dd></div>
+                <div className="dato ancho"><dt>Dirección</dt><dd>{datosTaller.direccion || "—"}</dd></div>
+                <div className="dato"><dt>RFC</dt><dd>{datosTaller.rfc || "—"}</dd></div>
+                <div className="dato"><dt>Código postal</dt><dd>{datosTaller.cp || "—"}</dd></div>
+                <div className="dato ancho"><dt>Calle</dt><dd>{datosTaller.calle || "—"}</dd></div>
+                <div className="dato"><dt>Estado</dt><dd>{datosTaller.estado?.nombre_estado || "—"}</dd></div>
+                <div className="dato"><dt>Municipio</dt><dd>{datosTaller.ciudad?.nombre_ciudad || "—"}</dd></div>
+                <div className="dato"><dt>Número</dt><dd>{datosTaller.numero_taller || "—"}</dd></div>
               </dl>
             ) : (
               <div className="empty-state">Cargando…</div>
-            )}
-            {datosTaller?.ruta_logo && (
-              <img src={`/uploads/${datosTaller.ruta_logo}`} alt="Logo del taller" className="orden-foto-vehiculo" />
             )}
           </div>
           <div className="nota-bloque-body" style={{ paddingTop: 0 }}>
@@ -615,7 +789,7 @@ export default function ServicioDetalle() {
 
       {!abierta && (
         <div className="panel" style={{ borderLeft: "4px solid var(--red-600)", padding: "12px 16px" }}>
-          Esta orden está <b>{servicio.status}</b>: los conceptos y abonos ya no se pueden editar. Reábrela con el botón de arriba si necesitas hacer cambios.
+          Esta orden está <b>{servicio.status}</b>: las refacciones y abonos ya no se pueden editar. Reábrela con el botón de arriba si necesitas hacer cambios.
         </div>
       )}
 
@@ -704,19 +878,17 @@ export default function ServicioDetalle() {
         }
       >
         {servicio.detalles.length === 0 ? (
-          <div className="empty-state">Aún no se han agregado refacciones ni conceptos a esta orden.</div>
+          <div className="empty-state">Esta orden todavía no tiene refacciones. Usa «Agregar refacción» para empezar.</div>
         ) : (
-          <table>
+          <table className="tabla-refacciones">
             <thead>
               <tr>
                 <th>Descripción</th>
-                <th>Tipo</th>
-                <th>Refacción</th>
+                <th>Categoría</th>
                 <th>Cantidad</th>
-                <th>Precio original</th>
                 <th>Precio unitario</th>
                 <th>Precio final</th>
-                <th></th>
+                <th aria-label="Acciones"></th>
               </tr>
             </thead>
             <tbody>
@@ -734,31 +906,20 @@ export default function ServicioDetalle() {
                 const clavesOrdenadas = Object.keys(grupos).sort((a, b) => (a === "Sin categoría" ? 1 : b === "Sin categoría" ? -1 : a.localeCompare(b)));
                 return clavesOrdenadas.map((clave) => (
                   <>
-                    {clavesOrdenadas.length > 1 && (
-                      <tr key={`grupo-${clave}`}>
-                        <td colSpan={8} style={{ background: "var(--paper-0)", fontWeight: 700, fontSize: 12.5, color: "var(--petrol-600)" }}>{clave}</td>
-                      </tr>
-                    )}
                     {grupos[clave].map(({ d, ref }) => (
                       <tr key={d.id_servicio_detalle}>
                         <td>{d.descripcion || "—"}</td>
-                        <td>{tipos.find((t) => t.id_tipo_servicio === d.id_tipo_servicio)?.nombre_tipo || "—"}</td>
-                        <td>{ref?.nombre_refaccion || "—"}</td>
-                        <td style={{ width: 70 }}>
+                        <td className="celda-categoria"><span className="chip-cat-ref">{clave}</span></td>
+                        <td>
                           <input
-                            key={`c-${d.id_servicio_detalle}-${d.cantidad}`} type="number" defaultValue={d.cantidad || 1} disabled={!abierta}
-                            style={{ width: "100%", padding: "4px 6px" }}
+                            key={`c-${d.id_servicio_detalle}-${d.cantidad}`} data-det={d.id_servicio_detalle} data-campo="c" onKeyDown={(e) => irSiguienteRefaccion(e, "c")} type="number" defaultValue={d.cantidad || 1} disabled={!abierta}
                             onBlur={(e) => { const v = Number(e.target.value) || 1; if (v !== d.cantidad) handleUpdateDetalle(d.id_servicio_detalle, { cantidad: v }); }}
                           />
                         </td>
-                        <td style={{ width: 100, color: "var(--ink-500)" }}>
-                          {ref ? fmt(ref.preciopropio_refaccion || 0) : "—"}
-                        </td>
-                        <td style={{ width: 110 }}>
+                        <td>
                           <input
-                            key={`u-${d.id_servicio_detalle}-${d.costo_refaccion}-${d.cantidad}`} type="number" step="0.01"
+                            key={`u-${d.id_servicio_detalle}-${d.costo_refaccion}-${d.cantidad}`} data-det={d.id_servicio_detalle} data-campo="u" onKeyDown={(e) => irSiguienteRefaccion(e, "u")} type="number" step="0.01"
                             defaultValue={Math.round(((d.costo_refaccion || 0) / (d.cantidad || 1)) * 100) / 100} disabled={!abierta}
-                            style={{ width: "100%", padding: "4px 6px" }}
                             onBlur={(e) => {
                               const v = Number(e.target.value) || 0;
                               const cant = d.cantidad || 1;
@@ -768,9 +929,9 @@ export default function ServicioDetalle() {
                             }}
                           />
                         </td>
-                        <td style={{ width: 100, fontWeight: 700 }}>{fmt(d.costo_refaccion || 0)}</td>
+                        <td className="celda-total">{fmt(d.costo_refaccion || 0)}</td>
                         <td>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDeleteDetalle(d.id_servicio_detalle)} disabled={!abierta}>Quitar</button>
+                          <button className="btn btn-danger btn-sm" title="Quitar" aria-label="Quitar" onClick={() => handleDeleteDetalle(d.id_servicio_detalle)} disabled={!abierta}><Icono nombre="trash" size={18} /></button>
                         </td>
                       </tr>
                     ))}
@@ -783,12 +944,10 @@ export default function ServicioDetalle() {
 
         {servicio.abonos.length > 0 && (
           <>
-            <h3 style={{ fontSize: 13, textTransform: "uppercase", color: "var(--ink-700)", marginTop: 20, marginBottom: 10, paddingTop: 16, borderTop: "1px solid var(--ink-300)" }}>
-              Abonos registrados
-            </h3>
-            <table>
+            <h3 className="titulo-abonos">Abonos registrados</h3>
+            <table className="tabla-abonos">
               <thead>
-                <tr><th>#</th><th>Fecha</th><th>Tipo de pago</th><th>Monto</th><th>Cambio</th><th>Comentario</th></tr>
+                <tr><th>#</th><th>Fecha</th><th>Tipo de pago</th><th>Monto</th><th>Cambio</th><th>Comentario</th><th aria-label="Acciones"></th></tr>
               </thead>
               <tbody>
                 {servicio.abonos.map((a) => {
@@ -807,6 +966,11 @@ export default function ServicioDetalle() {
                       <td className="mono">{fmt(a.monto_abono)}</td>
                       <td className="mono">{a.cambio > 0 ? fmt(a.cambio) : "—"}</td>
                       <td>{a.comentario || "—"}</td>
+                      <td>
+                        {hasPermission("servicios.editar") && (
+                          <button className="btn btn-danger btn-sm" title="Borrar abono" aria-label="Borrar abono" onClick={() => handleDeleteAbono(a.id_abono)} disabled={!abierta || servicio.pagado}><Icono nombre="trash" size={18} /></button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -951,18 +1115,18 @@ export default function ServicioDetalle() {
       )}
 
       {addingDetalle && (() => {
+        const q = busquedaMulti.trim().toLowerCase();
         const refaccionesFiltradas = refacciones.filter((r) =>
-          (!filtroCategoriaMulti || r.categoria === filtroCategoriaMulti) &&
-          (!filtroSubcategoriaMulti || (r.categoria || "Sin categoría") === filtroSubcategoriaMulti)
+          (filtroCategoriaMulti.length === 0 || filtroCategoriaMulti.includes(r.categoria || "Sin categoría")) &&
+          (!q || contiene(r.nombre_refaccion || "", q))
         );
-        // Se muestran TODAS las refacciones del catálogo (como en
-        // Cotización) — si el vehículo de esta orden tiene inventario
-        // específico registrado para alguna, se usa ese stock/precio real;
-        // si no, se muestra en 0 pero se puede agregar igual (el backend
-        // decide de dónde descontar, o si no descuenta nada).
+        // Se muestran TODAS las refacciones del catálogo — si el vehículo de esta
+        // orden tiene inventario específico, se usa ese stock/precio real.
         function inventarioDe(idRefaccion) {
           return inventarioVehiculo.find((inv) => inv.id_refaccion === idRefaccion);
         }
+        const conteoCat = {};
+        refacciones.forEach((r) => { const k = r.categoria || "Sin categoría"; conteoCat[k] = (conteoCat[k] || 0) + 1; });
         const grupos = {};
         refaccionesFiltradas.forEach((r) => {
           const clave = r.categoria || "Sin categoría";
@@ -970,86 +1134,62 @@ export default function ServicioDetalle() {
           grupos[clave].push(r);
         });
         const clavesOrdenadas = Object.keys(grupos).sort((a, b) => (a === "Sin categoría" ? 1 : b === "Sin categoría" ? -1 : a.localeCompare(b)));
-        const categoriasDisponibles = [...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort();
+        const totalMarcadas = Object.keys(seleccionMultiple).length;
+        const cerrar = () => { setAddingDetalle(false); setSeleccionMultiple({}); setBusquedaMulti(""); setFiltroCategoriaMulti([]); };
         return (
           <ModalPortal>
           <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setAddingDetalle(false)}>
-            <div className="modal modal-grande">
-              <h2 style={{ fontSize: 20 }}>Agregar refacciones a la orden</h2>
-              <div style={{ display: "flex", gap: 12, alignItems: "flex-end", marginBottom: 18 }}>
-                <div className="field" style={{ maxWidth: 480, flex: 1, marginBottom: 0 }}>
-                  <label>Categoría</label>
-                  <select value={filtroCategoriaMulti} onChange={(e) => { setFiltroCategoriaMulti(e.target.value); setFiltroSubcategoriaMulti(""); }}>
-                    <option value="">Todas</option>
-                    {categoriasDisponibles.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                {filtroSubcategoriaMulti && (
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFiltroSubcategoriaMulti("")}>
-                    <IconoAuto valor="✕" size={18} /> Quitar filtro "{filtroSubcategoriaMulti}"
-                  </button>
-                )}
+            <div className="modal modal-grande add-ref">
+              <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={cerrar}><Icono nombre="close" size={20} /></button>
+              <div className="add-ref-cab">
+                <h2>Agregar refacciones</h2>
+                <input className="add-ref-buscar" placeholder="Buscar refacción…" value={busquedaMulti} onChange={(e) => setBusquedaMulti(e.target.value)} />
               </div>
+              <FiltroChips multiple items={conteoCat} valor={filtroCategoriaMulti} onChange={setFiltroCategoriaMulti} total={refacciones.length} />
 
-              <div className="tarjetas-refaccion-grid">
+              <div className="tarjetas-refaccion-grid add-ref-grid">
                 {refaccionesFiltradas.length === 0 ? (
-                  <div className="empty-state">No hay refacciones que coincidan con ese filtro.</div>
+                  <div className="empty-state">No hay refacciones que coincidan.</div>
                 ) : (
                   clavesOrdenadas.map((clave) => (
-                    <>
-                      <div
-                        key={`grupo-${clave}`}
-                        className="tarjetas-refaccion-grupo tarjetas-refaccion-grupo-clicable"
-                        onClick={() => setFiltroSubcategoriaMulti(clave)}
-                        title="Filtrar solo por esta categoría"
-                      >
-                        {clave}
-                      </div>
-                      {grupos[clave].map((r) => {
-                        const inv = inventarioDe(r.id_refaccion);
-                        const marcada = !!seleccionMultiple[r.id_refaccion];
-                        return (
-                          <div
-                            key={r.id_refaccion}
-                            className={`tarjeta-refaccion ${marcada ? "seleccionada" : ""}`}
-                            onClick={() => alternarSeleccionMultiple(r.id_refaccion, !marcada)}
-                          >
-                            <div className="tarjeta-refaccion-nombre">{r.nombre_refaccion}</div>
-                            <div className="tarjeta-refaccion-info">
-                              {r.categoria ? `${r.categoria} · ` : ""}Stock: {inv ? inv.cantidad : (r.cantidad_refaccion ?? 0)}
-                              {((inv ? inv.preciocliente : r.preciocliente_refaccion) || (inv ? inv.preciopropio : r.preciopropio_refaccion)) ? ` · $${(inv ? inv.preciocliente : r.preciocliente_refaccion) || (inv ? inv.preciopropio : r.preciopropio_refaccion)}` : ""}
+                    <div key={`grupo-${clave}`} className="add-ref-grupo">
+                      <div className="add-ref-grupo-titulo">{clave} <span>{grupos[clave].length}</span></div>
+                      <div className="add-ref-tarjetas">
+                        {grupos[clave].map((r) => {
+                          const inv = inventarioDe(r.id_refaccion);
+                          const marcada = !!seleccionMultiple[r.id_refaccion];
+                          const stock = inv ? inv.cantidad : (r.cantidad_refaccion ?? 0);
+                          const precio = (inv ? inv.preciocliente : r.preciocliente_refaccion) || (inv ? inv.preciopropio : r.preciopropio_refaccion) || 0;
+                          const cant = seleccionMultiple[r.id_refaccion]?.cantidad || 1;
+                          return (
+                            <div key={r.id_refaccion} className={`add-ref-tarjeta ${marcada ? "on" : ""}`} onClick={() => alternarSeleccionMultiple(r.id_refaccion, !marcada)}>
+                              <span className="add-ref-check">{marcada ? "✓" : "+"}</span>
+                              <div className="add-ref-nombre">{r.nombre_refaccion}</div>
+                              <div className="add-ref-meta">
+                                <span className={`add-ref-stock ${stock <= 0 ? "cero" : ""}`}>Stock {stock}</span>
+                                {precio > 0 && <span className="add-ref-precio">${precio}</span>}
+                                {<span className={"add-ref-aviso add-ref-cantidad" + (marcada ? " on" : "")} title={!inv ? "Sin inventario para este vehículo — no se descontará stock" : undefined}>Cantidad {cant}</span>}
+                              </div>
+                              {marcada && (
+                                <div className="add-ref-cant" onClick={(e) => e.stopPropagation()}>
+                                  <button type="button" onClick={() => cambiarCantidadMultiple(r.id_refaccion, cant - 1)} aria-label="Menos">−</button>
+                                  <input type="number" min={1} value={cant} onChange={(e) => cambiarCantidadMultiple(r.id_refaccion, e.target.value)} />
+                                  <button type="button" onClick={() => cambiarCantidadMultiple(r.id_refaccion, cant + 1)} aria-label="Más">+</button>
+                                </div>
+                              )}
                             </div>
-                            {!inv && (
-                              <div style={{ fontSize: 11, color: "var(--warn-600)", marginTop: 3 }}>
-                                Sin inventario para este vehículo — no se descontará stock
-                              </div>
-                            )}
-                            {marcada && (
-                              <div className="tarjeta-refaccion-cantidad" onClick={(e) => e.stopPropagation()}>
-                                <label>Cantidad</label>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  value={seleccionMultiple[r.id_refaccion]?.cantidad || 1}
-                                  onChange={(e) => cambiarCantidadMultiple(r.id_refaccion, e.target.value)}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ))
                 )}
               </div>
 
-              <div className="field-hint" style={{ fontSize: 12, color: "var(--ink-500)", marginTop: 14 }}>
-                Se descuenta el inventario de cada una al guardar (se valida que alcance el stock antes de aplicar ninguna).
-              </div>
               <div className="modal-actions">
-                <button className="btn btn-secondary" onClick={() => { setAddingDetalle(false); setSeleccionMultiple({}); }}>Cancelar</button>
-                <button className="btn btn-primary" onClick={guardarSeleccionMultiple} disabled={guardandoMultiple}>
-                  {guardandoMultiple ? "Agregando…" : "Agregar a la orden"}
+                <button className="btn btn-secondary" onClick={cerrar}>Cancelar</button>
+                <button className="btn btn-primary" onClick={guardarSeleccionMultiple} disabled={guardandoMultiple || totalMarcadas === 0}>
+                  {guardandoMultiple ? "Agregando…" : totalMarcadas ? `Agregar ${totalMarcadas} a la orden` : "Elige refacciones"}
                 </button>
               </div>
             </div>
@@ -1065,17 +1205,15 @@ export default function ServicioDetalle() {
           colorAcento="teal"
           subtitulo={`Pago a cuenta de la orden #${servicio.id_servicio}.`}
           fields={(values) => {
-            const campos = [
-              {
-                name: "tipo_pago", label: "Tipo de pago", type: "select",
-                options: [{ value: "efectivo", label: "Efectivo" }, { value: "tarjeta", label: "Pago con tarjeta" }, { value: "mixto", label: "Mixto" }],
-              },
-            ];
+            const campos = [];
+            if (values.tipo_pago !== "mixto") campos.push({ name: "monto_abono", label: "Monto", type: "number", required: true, full: true, autofoco: true, grande: true });
+            campos.push({
+              name: "tipo_pago", label: "Tipo de pago", type: "select", full: values.tipo_pago === "mixto",
+              options: [{ value: "efectivo", label: "Efectivo" }, { value: "tarjeta", label: "Pago con tarjeta" }, { value: "mixto", label: "Mixto" }],
+            });
             if (values.tipo_pago === "mixto") {
-              campos.push({ name: "desglose_mixto_efectivo", label: "Efectivo", type: "number" });
-              campos.push({ name: "desglose_mixto_tarjeta", label: "Tarjeta", type: "number" });
-            } else {
-              campos.push({ name: "monto_abono", label: "Monto", type: "number", required: true });
+              campos.push({ name: "desglose_mixto_efectivo", label: "Efectivo", type: "number", autofoco: true, grande: true });
+              campos.push({ name: "desglose_mixto_tarjeta", label: "Tarjeta", type: "number", grande: true });
             }
             campos.push({ name: "comentario", label: "Comentario", type: "textarea", full: true });
             return campos;

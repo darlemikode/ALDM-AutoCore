@@ -5,13 +5,14 @@ es dejar constancia de qué se le hizo al vehículo, en qué kilometraje entró,
 el diagnóstico y la conformidad del cliente al recibirlo. También incluye el
 total, para no obligar a manejar dos papeles.
 """
+from datetime import datetime
 from io import BytesIO
 
 from reportlab.lib.units import mm
 from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
 
 from .pdf_diseno import (
-    ACCENT, E, OK, OK_SOFT, PlantillaDocumento, aviso, caja_texto, dos_columnas, esc, firmas, fmt, seccion,
+    notas_pie, fecha_mx, hoy_mx, ACCENT, E, OK, OK_SOFT, PlantillaDocumento, aviso, caja_texto, dos_columnas, esc, firmas, fmt, seccion,
     tabla_conceptos, totales,
 )
 from .recibo_pdf import ANCHO, bloques_cliente_vehiculo, categoria_refaccion, nombre_refaccion
@@ -20,11 +21,11 @@ from .schemas import ServicioCostos
 
 def generar_nota_remision_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion=None) -> bytes:
     buffer = BytesIO()
-    entrega = f"{servicio.fecha_salida_servicio:%d/%m/%Y}" if servicio.fecha_salida_servicio else "—"
+    entrega = f"{(fecha_mx(servicio.fecha_salida_servicio) or hoy_mx()):%d/%m/%Y}"
     liquidado = costos.saldo_pendiente <= 0
     plantilla = PlantillaDocumento(
         taller, "Nota de remisión", f"#{servicio.id_servicio:05d}",
-        lineas_derecha=[f"Entrada: {servicio.fecha_entrada_servicio:%d/%m/%Y}", f"Entrega: {entrega}"],
+        lineas_derecha=[f"Entrada: {fecha_mx(servicio.fecha_entrada_servicio):%d/%m/%Y}", f"Salida: {entrega}"],
     )
     doc = plantilla.documento(buffer)
     story = []
@@ -84,6 +85,7 @@ def generar_nota_remision_pdf(servicio, costos: ServicioCostos, taller=None, ins
         Spacer(1, 1 * mm),
         firmas(["Nombre y firma del cliente", "Firma / sello del taller"], ANCHO),
     ]))
+    story += [Spacer(1, 5 * mm), KeepTogether([notas_pie(ANCHO)])]
     from .inspeccion_pdf import hoja_inspeccion
     story += hoja_inspeccion(inspeccion, ANCHO)
 

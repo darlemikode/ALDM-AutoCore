@@ -123,7 +123,6 @@ export default function NuevaOrden() {
     <div className="orden-main">
       <div className="orden-hero">
         <div className="orden-hero-top">
-          <Link className="icon-btn" to="/servicios" title="Volver a las órdenes de servicio">←</Link>
           <h1 className="orden-hero-titulo"><IconoModulo ruta="/servicios" /> Orden nueva <span className="badge badge-petrol">sin abrir</span></h1>
         </div>
 

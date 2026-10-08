@@ -193,7 +193,6 @@ export default function Usuarios() {
     <>
       <div className="page-header">
         <div className="page-header-titulo">
-          <Link className="icon-btn" to="/configuracion" title="Volver a Configuración">←</Link>
           <div>
             <h1><IconoModulo ruta="/usuarios" /> Usuarios</h1>
             <div className="subtitle">

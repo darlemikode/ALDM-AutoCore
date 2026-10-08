@@ -3,6 +3,7 @@
 // renueva la suscripción solo (ver backend/app/routers/pagos_en_linea.py).
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { Icono } from "./Icono";
 import ModalPortal from "./ModalPortal";
 
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
@@ -35,6 +36,7 @@ export default function PagarSuscripcion({ onClose }) {
     <ModalPortal>
       <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
         <div className="modal" style={{ maxWidth: 460 }}>
+          <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={onClose}><Icono nombre="close" size={20} /></button>
           <h2>Pagar suscripción</h2>
           {!datos && !error && <div className="loading-text">Cargando…</div>}
           {datos && !datos.disponible && <p className="subtitle">El pago en línea aún no está disponible. Contacta a ALDM para pagar por transferencia.</p>}
