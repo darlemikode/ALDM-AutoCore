@@ -8,7 +8,8 @@ import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import HojaFormulario from "../ui/HojaFormulario";
-import { alerta } from "../ui/Dialogo";
+import { alerta, mostrarDialogo } from "../ui/Dialogo";
+import { norm } from "../lib/texto";
 
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -42,16 +43,31 @@ export default function RefaccionesScreen({ navigation }) {
   const campos = [
     { name: "nombre_refaccion", label: "Nombre", required: true, grupo: "general", placeholder: "Ej. Balatas delanteras" },
     { name: "numero_refaccion", label: "Número de parte", grupo: "general", placeholder: "Ej. BD-4471", autoCapitalize: "characters" },
-    { name: "__id_categoria", label: "Categoría", type: "select", grupo: "general", options: categorias.map((c) => ({ value: c.id_categoria_refaccion, label: c.nombre_categoria })) },
+    { name: "__id_categoria", label: "Categoría", type: "select", required: true, grupo: "general", options: categorias.map((c) => ({ value: c.id_categoria_refaccion, label: c.nombre_categoria })) },
     { name: "id_proveedor", label: "Proveedor", type: "select", grupo: "proveedor", placeholder: "Sin proveedor", options: proveedores.map((p) => ({ value: p.id_proveedor, label: p.nombre_proveedor })) },
     { name: "cantidad_refaccion", label: "Cantidad en stock", type: "number", grupo: "precios", mitad: true },
     { name: "preciopropio_refaccion", label: "Precio de costo", type: "number", grupo: "precios", mitad: true },
     { name: "preciocliente_refaccion", label: "Precio al cliente", type: "number", grupo: "precios", hint: "Es el que se precarga al agregarla a una orden." },
   ];
 
+  // Pregunta antes de guardar; resuelve true/false
+  const confirmar = (titulo, mensaje, textoSi) => new Promise((resolver) => mostrarDialogo({
+    tono: "alerta", icono: "copy-outline", titulo, mensaje,
+    acciones: [{ texto: textoSi, tipo: "primario", onPress: () => resolver(true) }, { texto: "Cancelar", tipo: "secundario", onPress: () => resolver(false) }],
+  }));
+
   async function guardar(valores) {
     const { __id_categoria, ...datos } = valores;
     datos.categoria = __id_categoria ? categorias.find((c) => String(c.id_categoria_refaccion) === String(__id_categoria))?.nombre_categoria || null : null;
+    if (!(datos.nombre_refaccion || "").trim() || !datos.categoria) throw new Error("Captura el nombre y elige la categoría.");
+    // Evitar duplicados: mismo nombre (sin importar acentos/mayúsculas)
+    const mismos = refacciones.filter((r) => r.id_refaccion !== editando?.id_refaccion && norm(r.nombre_refaccion) === norm(datos.nombre_refaccion));
+    if (mismos.some((r) => norm(r.categoria) === norm(datos.categoria))) throw new Error(`"${datos.nombre_refaccion}" ya existe en ${datos.categoria}.`);
+    if (mismos.length) {
+      const otras = [...new Set(mismos.map((r) => r.categoria || "Sin categoría"))].join(", ");
+      const seguir = await confirmar("Ya existe en otra categoría", `"${datos.nombre_refaccion}" ya está registrada en ${otras}. ¿La agregas también en ${datos.categoria}?`, "Sí, agregar");
+      if (!seguir) throw new Error(`No se guardó: ya existe en ${otras}.`);
+    }
     datos.id_proveedor = datos.id_proveedor ? Number(datos.id_proveedor) : null;
     if (editando?.id_refaccion) await api.put(`/refacciones/${editando.id_refaccion}`, datos);
     else await api.post("/refacciones/", datos);
@@ -59,7 +75,24 @@ export default function RefaccionesScreen({ navigation }) {
     load();
   }
 
-  function eliminar(r) {
+  // Antes de eliminar se revisa el inventario: si tiene piezas, no se borra y se ofrece editar o ver el inventario
+  async function eliminar(r) {
+    let inventario = [];
+    try { inventario = await api.get(`/inventario-refacciones/?id_refaccion=${r.id_refaccion}`); } catch { inventario = []; }
+    const piezas = (inventario || []).length ? inventario.reduce((t, i) => t + (Number(i.cantidad) || 0), 0) : (Number(r.cantidad_refaccion) || 0);
+    if ((inventario || []).length > 0 || piezas > 0) {
+      const acciones = [];
+      if (hasPermission("refacciones.editar")) acciones.push({ texto: "Editar refacción", tipo: "primario", icono: "create-outline", onPress: () => setEditando(r) });
+      // "Ver inventario" solo si el paquete contratado incluye Inventario
+      if (hasPermission("inventario.ver")) acciones.push({ texto: "Ver inventario", tipo: acciones.length ? "secundario" : "primario", icono: "cube-outline", onPress: () => navigation.navigate("InventarioDetalle", { id: r.id_refaccion }) });
+      acciones.push({ texto: "Cancelar", tipo: "secundario" });
+      mostrarDialogo({
+        tono: "alerta", icono: "cube", titulo: "No se puede eliminar",
+        mensaje: `"${r.nombre_refaccion}" tiene ${piezas} pieza(s) en inventario${inventario.length ? ` (${inventario.length} registro(s))` : ""}. Ajusta el inventario o edita la refacción.`,
+        acciones,
+      });
+      return;
+    }
     alerta("Eliminar refacción", `¿Eliminar "${r.nombre_refaccion}"? No se puede deshacer.`, [
       { text: "Cancelar", style: "cancel" },
       { text: "Eliminar", style: "destructive", onPress: async () => {
@@ -117,10 +150,14 @@ export default function RefaccionesScreen({ navigation }) {
               </View>
               <View style={styles.tarjetaAcciones}>
                 {hasPermission("refacciones.editar") && (
-                  <TouchableOpacity onPress={() => setEditando(item)} hitSlop={8}><Ionicons name="create-outline" size={19} color={colors.ink700} /></TouchableOpacity>
+                  <TouchableOpacity style={styles.accionBtn} onPress={() => setEditando(item)} hitSlop={6} accessibilityLabel="Editar">
+                    <Ionicons name="create-outline" size={20} color={colors.ink700} /><Text style={styles.accionTexto}>Editar</Text>
+                  </TouchableOpacity>
                 )}
                 {hasPermission("refacciones.eliminar") && (
-                  <TouchableOpacity onPress={() => eliminar(item)} hitSlop={8}><Ionicons name="trash-outline" size={19} color={colors.red600} /></TouchableOpacity>
+                  <TouchableOpacity style={[styles.accionBtn, styles.accionBorrar]} onPress={() => eliminar(item)} hitSlop={6} accessibilityLabel="Eliminar">
+                    <Ionicons name="trash-outline" size={20} color={colors.red600} /><Text style={[styles.accionTexto, { color: colors.red600 }]}>Borrar</Text>
+                  </TouchableOpacity>
                 )}
               </View>
             </TouchableOpacity>
@@ -171,7 +208,10 @@ const styles = crearEstilos({
   precio: { fontFamily: "BarlowCondensed_700Bold", fontSize: 18, color: colors.ink900 },
   costo: { fontSize: 11.5, color: colors.ink500 },
   sinPrecio: { fontSize: 11.5, color: colors.warn600, fontWeight: "600" },
-  tarjetaAcciones: { flexDirection: "row", gap: 14, marginTop: 10, borderTopWidth: 1, borderTopColor: colors.ink300, paddingTop: 8 },
+  tarjetaAcciones: { flexDirection: "row", gap: 8, marginTop: 10, borderTopWidth: 1, borderTopColor: colors.ink300, paddingTop: 10 },
+  accionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 40, borderRadius: 10, borderWidth: 1, borderColor: colors.ink300 },
+  accionBorrar: { borderColor: colors.red600, backgroundColor: colors.red100 },
+  accionTexto: { fontSize: 13, fontWeight: "700", color: colors.ink700 },
   stock: { borderRadius: 100, paddingVertical: 3, paddingHorizontal: 8, backgroundColor: colors.teal100 },
   stockTexto: { fontSize: 12, fontWeight: "700", color: colors.teal600 },
   stockNaranja: { backgroundColor: colors.warn100 }, stockNaranjaTexto: { color: colors.warn600 },

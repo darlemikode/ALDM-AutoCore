@@ -1,3 +1,4 @@
+import { contiene } from "../lib/texto";
 import { useMemo, useRef, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Switch, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -77,7 +78,7 @@ function Selector({ campo, valor, onCambiar, multiple, conError }) {
   const etiqueta = multiple
     ? `${elegidos.length} seleccionado(s)`
     : opciones.find((o) => String(o.value) === String(valor))?.label;
-  const filtradas = opciones.filter((o) => !buscando || String(o.label).toLowerCase().includes(buscando.toLowerCase()));
+  const filtradas = opciones.filter((o) => !buscando || contiene(o.label, buscando));
   return (
     <>
       <TouchableOpacity style={[styles.selectorBoton, conError && styles.inputError, campo.disabled && { opacity: 0.5 }]} onPress={() => !campo.disabled && setAbierto(true)}>

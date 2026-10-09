@@ -1,3 +1,4 @@
+import { contiene } from "../lib/texto";
 import ScrollCampos from "../ui/ScrollCampos";
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from "react-native";
@@ -30,7 +31,7 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
 
   const precio = (r) => (precioDe ? precioDe(r) : (r.preciocliente_refaccion || r.preciopropio_refaccion)) || 0;
   const categorias = [...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort();
-  const filtradas = refacciones.filter((r) => (!categoria || r.categoria === categoria) && (!busqueda || (r.nombre_refaccion || "").toLowerCase().includes(busqueda.toLowerCase())));
+  const filtradas = refacciones.filter((r) => (!categoria || r.categoria === categoria) && (!busqueda || contiene(r.nombre_refaccion || "", busqueda)));
   const n = Object.keys(seleccion).length;
   const set = (k) => (v) => setLibre((p) => ({ ...p, [k]: v }));
   const importeLibre = (Number(libre.costo_mano_obra) || 0) + (Number(libre.costo_refaccion) || 0) + (Number(libre.costo_extra) || 0);

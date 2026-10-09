@@ -1,7 +1,8 @@
 const { test, expect } = require("@playwright/test");
 const { apiComo, crearTallerConAdmin, entrarAlPanel, enlaceMenu, paquete } = require("./helpers");
 
-const dias = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+// Fecha local (no UTC): de 18:00 a 24:00 en México la fecha UTC ya es "mañana" y la prueba fallaba
+const dias = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
 test.describe("Suscripción del taller", () => {
   test("por vencer muestra aviso; en gracia solo consulta; vencida bloquea; al renovar vuelve", async ({ page }) => {

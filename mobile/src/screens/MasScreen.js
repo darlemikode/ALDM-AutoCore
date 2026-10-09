@@ -60,6 +60,9 @@ function Grupo({ titulo, children }) {
   );
 }
 
+// Posición del scroll de Ajustes: al cambiar el tema la pantalla se vuelve a montar y se queda donde estabas
+let scrollGuardado = 0;
+
 export default function MasScreen({ navigation }) {
   const { user, logout, hasPermission } = useAuth();
   const { preferencia, cambiarPreferencia } = useTema();
@@ -227,7 +230,9 @@ export default function MasScreen({ navigation }) {
   ];
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}>
+    <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}
+      contentOffset={{ x: 0, y: scrollGuardado }} scrollEventThrottle={64}
+      onScroll={(e) => { scrollGuardado = e.nativeEvent.contentOffset.y; }}>
       <View style={styles.perfil}>
         <View style={styles.avatar}>
           <Text style={styles.avatarTexto}>
@@ -271,10 +276,14 @@ export default function MasScreen({ navigation }) {
       {otros.length > 0 && (
         <Grupo titulo="Otros">
           {otros.map((c, i) => (
-            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
+            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => (c.accion ? c.accion() : navigation.navigate(c.ir))} />
           ))}
         </Grupo>
       )}
+
+      <Grupo titulo="Ayuda">
+        <Fila primera icono="help-circle-outline" titulo="Ayuda por módulo" desc="Recorridos paso a paso de cada módulo" onPress={() => navigation.navigate("Ayuda")} />
+      </Grupo>
 
       <Grupo titulo="Módulos">
         {ITEMS.filter((item) => !item.permiso || hasPermission(item.permiso)).map((item, i) => (

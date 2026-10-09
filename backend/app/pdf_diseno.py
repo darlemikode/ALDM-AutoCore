@@ -21,7 +21,7 @@ from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 # --- Paleta -----------------------------------------------------------------
 INK = colors.HexColor("#1f2833")
@@ -421,23 +421,14 @@ def caja_texto(texto: str, ancho: float):
 
 
 def notas_pie(ancho: float):
-    """Notas fijas al pie de la nota y el recibo: garantía y recomendación de mantenimiento."""
-    est = ParagraphStyle("notas_pie", parent=E["parrafo"], fontSize=9.5, leading=13, textColor=INK)
-    filas = [
-        [Paragraph("<font color='#0f5c6e'><b>NOTA IMPORTANTE:</b></font> <b>Para hacer válida cualquier garantía es indispensable presentar esta nota de servicio.</b>", est)],
-        [Paragraph("Le recomendamos revisar su vehículo al menos una vez por semana (niveles de aceite, líquidos y llantas) "
-                   "para prevenir fallas y accidentes. <font color='#0f5c6e'><b>Gracias por su confianza.</b></font>", est)],
-    ]
-    t = Table(filas, colWidths=[ancho])
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#e4f2f5")),
-        ("BOX", (0, 0), (-1, -1), 0.8, ACCENT), ("ROUNDEDCORNERS", [5, 5, 5, 5]),
-        ("LINEBEFORE", (0, 0), (0, -1), 3.5, ACCENT),
-        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, 0), 8), ("BOTTOMPADDING", (0, -1), (-1, -1), 8),
-    ]))
-    return t
+    """Notas fijas al pie de la nota y el recibo (garantía y mantenimiento), en letra
+    pequeña como el aviso final, sin recuadro y sin partirse entre páginas."""
+    return KeepTogether([
+        Paragraph("<b>NOTA IMPORTANTE:</b> Para hacer válida cualquier garantía es indispensable presentar esta nota de servicio.", E["nota"]),
+        Spacer(1, 1.2 * mm),
+        Paragraph("Le recomendamos revisar su vehículo al menos una vez por semana (niveles de aceite, líquidos y llantas) "
+                  "para prevenir fallas y accidentes. Gracias por su confianza.", E["nota"]),
+    ])
 
 
 def firmas(etiquetas, ancho: float):

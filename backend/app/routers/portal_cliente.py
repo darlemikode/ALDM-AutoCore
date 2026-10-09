@@ -12,12 +12,13 @@ import html
 import io
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas
+from ..rate_limit import limiter
 from ..database import get_db, get_db_global
 from ..tenancy import MODO_TALLER, fijar_tenant, taller_actual
 from ..security import (
@@ -95,10 +96,14 @@ def taller_por_codigo(db: Session = Depends(get_db)):
 
 
 @router.post("/activar", response_model=schemas.ClienteTokenOut)
-def activar_cuenta(payload: schemas.ActivarCuentaIn, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def activar_cuenta(request: Request, payload: schemas.ActivarCuentaIn, db: Session = Depends(get_db)):
     cliente = _buscar_por_identificador(db, payload.identificador)
     if not cliente or not cliente.codigo_invitacion:
         raise HTTPException(status_code=400, detail="No encontramos una invitación pendiente con esos datos. Pide al taller que te genere una nueva.")
+    # El código de invitación caduca a las 72 horas (antes no caducaba nunca)
+    if cliente.fecha_invitacion and (datetime.utcnow() - cliente.fecha_invitacion).total_seconds() > 72 * 3600:
+        raise HTTPException(status_code=400, detail="El código ya caducó. Pide al taller que te genere uno nuevo.")
     if cliente.codigo_invitacion != payload.codigo_invitacion.strip():
         raise HTTPException(status_code=400, detail="El código no coincide.")
     if len(payload.password_nueva) < 6:
@@ -114,7 +119,8 @@ def activar_cuenta(payload: schemas.ActivarCuentaIn, db: Session = Depends(get_d
 
 
 @router.post("/login", response_model=schemas.ClienteTokenOut)
-def login(payload: schemas.ClienteLoginIn, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, payload: schemas.ClienteLoginIn, db: Session = Depends(get_db)):
     cliente = _buscar_por_identificador(db, payload.identificador)
     if cliente and not cliente.cuenta_activada and cliente.codigo_invitacion:
         # Tiene una invitación con código pendiente (la generó el taller con

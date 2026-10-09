@@ -101,6 +101,8 @@ export default function Atajos() {
       if (e.key === "Enter" && e.defaultPrevented) return;
       // si el foco está dentro de un selector con la lista abierta, ese selector maneja su propia tecla
       if (document.querySelector(".combo-lista, .buscador-lista") && e.target?.closest?.(".combo, .buscador-select")) return;
+      // el calendario abierto maneja su propio Esc (solo se cierra, no regresa de pantalla)
+      if (document.querySelector(".selfecha-panel")) return;
       const modales = document.querySelectorAll(".modal-backdrop");
       const modal = modales[modales.length - 1];
       const el = e.target;

@@ -201,7 +201,25 @@ def me(db: Session = Depends(get_db), user=Depends(get_current_user_sin_taller))
     perfil.password_por_defecto = verify_password(pw_defecto, user.hashed_password)
     # Solo se devuelve si la sesión ya la conoce (acaba de entrar con ella): sirve para precargarla.
     perfil.password_actual_sugerida = pw_defecto if perfil.password_por_defecto else None
+    perfil.tutoriales_vistos = [t for t in (user.tutoriales_vistos or "").split(",") if t]
     return perfil
+
+
+@router.put("/tutoriales")
+def marcar_tutorial(payload: schemas.TutorialVistoIn, db: Session = Depends(get_db), user=Depends(get_current_user_sin_taller)):
+    """Marca (o desmarca, para repetirlo) un tutorial de globos como visto por este usuario."""
+    import re
+    clave = re.sub(r"[^a-z0-9_-]", "", (payload.clave or "").lower())[:40]
+    if not clave:
+        raise HTTPException(status_code=400, detail="Tutorial no válido.")
+    vistos = [t for t in (user.tutoriales_vistos or "").split(",") if t]
+    if payload.visto and clave not in vistos:
+        vistos.append(clave)
+    if not payload.visto:
+        vistos = [t for t in vistos if t != clave]
+    user.tutoriales_vistos = ",".join(vistos)[:500]
+    db.commit()
+    return {"tutoriales_vistos": vistos}
 
 
 @router.get("/estado-suscripcion", response_model=schemas.EstadoSuscripcionOut)

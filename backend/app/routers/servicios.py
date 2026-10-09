@@ -535,57 +535,6 @@ def descargar_nota_remision(servicio_id: int, db: Session = Depends(get_db), use
     )
 
 
-# --- Enlace público del PDF (para mandarlo por WhatsApp) -----------------------
-# WhatsApp no deja adjuntar archivos desde un enlace wa.me, así que se manda un
-# enlace firmado que abre el PDF sin iniciar sesión. Caduca a los 30 días y solo
-# sirve para esa orden y ese tipo de documento.
-@router.post("/{servicio_id}/enlace-pdf")
-def crear_enlace_pdf(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
-    from datetime import timedelta
-    from ..security import create_access_token
-
-    servicio = _get_servicio_o_404(db, servicio_id)
-    _exigir_cliente_y_vehiculo(servicio)
-    tipo = "remision" if servicio.status == "cerrado" else "recibo"
-    token = create_access_token({"sub": f"nota:{servicio_id}", "nota": tipo, "sid": servicio_id, "tid": servicio.id_taller}, timedelta(days=30))
-    return {"ruta": f"/api/servicios/publico/{token}", "tipo": tipo}
-
-
-@router.get("/publico/{token}")
-def ver_pdf_publico(token: str):
-    from jose import JWTError, jwt
-    from ..database import SessionLocal
-    from ..sesion_taller import SECRET_KEY, ALGORITHM
-    from ..tenancy import MODO_TALLER, fijar_tenant
-
-    try:
-        datos = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        tipo, sid, tid = datos["nota"], int(datos["sid"]), datos.get("tid")
-    except (JWTError, KeyError, ValueError):
-        raise HTTPException(status_code=404, detail="Este enlace ya no es válido. Pide a tu taller que te lo reenvíe.")
-    if tipo not in ("recibo", "remision"):
-        raise HTTPException(status_code=404, detail="Enlace no válido.")
-    db = SessionLocal()
-    try:
-        fijar_tenant(db, MODO_TALLER, tid)
-        servicio = _get_servicio_o_404(db, sid)
-        costos = _calcular_costos(servicio)
-        taller = db.query(models.ConfiguracionTaller).first()
-        from ..inspeccion_pdf import inspeccion_de_servicio
-        inspeccion = inspeccion_de_servicio(db, models, sid)
-        if tipo == "remision":
-            from ..nota_remision_pdf import generar_nota_remision_pdf
-            pdf_bytes = generar_nota_remision_pdf(servicio, costos, taller, inspeccion)
-            nombre = _nombre_pdf(servicio, "Nota")
-        else:
-            from ..recibo_pdf import generar_recibo_pdf
-            pdf_bytes = generar_recibo_pdf(servicio, costos, taller, inspeccion)
-            nombre = _nombre_pdf(servicio, "Orden")
-    finally:
-        db.close()
-    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{nombre}"'})
-
-
 # --- Finalizar orden: cobro + cierre + nota de remisión + aviso al cliente -----
 @router.post("/{servicio_id}/finalizar", response_model=schemas.FinalizarServicioOut)
 async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn, db: Session = Depends(get_db), user=Depends(require_permission("servicios.editar"))):

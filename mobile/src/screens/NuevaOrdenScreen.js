@@ -1,3 +1,4 @@
+import { contiene } from "../lib/texto";
 import { useCallback, useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Image } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -128,6 +129,18 @@ export default function NuevaOrdenScreen({ navigation, route }) {
       const lista = await api.get(`/vehiculos/?id_cliente=${c.id_cliente}`);
       setVehiculos(lista);
       if (lista.length === 1 && !conservarVehiculo) elegirVehiculo(lista[0]); // si solo tiene uno, ya queda elegido
+      // Cliente sin vehículos: se sugiere registrar uno de una vez
+      if (lista.length === 0) {
+        mostrarDialogo({
+          tono: "info", icono: "car-sport", etiqueta: c.numero_cuenta || "Cliente",
+          titulo: "Este cliente no tiene vehículos",
+          mensaje: `Para abrir la orden, registra el vehículo que dejó ${c.nombre_cliente || "el cliente"}.`,
+          acciones: [
+            { texto: "Registrar vehículo", tipo: "primario", icono: "car-sport", onPress: () => navigation.navigate("Clientes", { screen: "VehiculoForm", params: { clienteFijo: c }, initial: false }) },
+            { texto: "Ahora no", tipo: "secundario" },
+          ],
+        });
+      }
     } catch {
       setVehiculos([]);
     } finally {
@@ -300,8 +313,8 @@ export default function NuevaOrdenScreen({ navigation, route }) {
 
   const clientesFiltrados = clientes.filter((c) => {
     if (!busqueda.trim()) return true;
-    const q = busqueda.toLowerCase();
-    return [c.nombre_cliente, c.paterno_cliente, c.materno_cliente, c.telefono1, c.numero_cuenta].some((x) => String(x || "").toLowerCase().includes(q));
+    const q = busqueda;
+    return [c.nombre_cliente, c.paterno_cliente, c.materno_cliente, c.telefono1, c.numero_cuenta].some((x) => contiene(x, q));
   });
   const responsable = empleados.find((e) => String(e.id_empleado) === String(empleadoId));
 

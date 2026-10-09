@@ -2110,6 +2110,27 @@ tbody td:last-child {
   .cfg-inicio-grid { grid-template-columns: 1fr; }
 }
 
+/* Ayuda (Configuración): recorridos por módulo */
+.ayuda-seccion { scroll-margin-top: 80px; }
+.ayuda-intro { margin: 0 0 4px; font-size: 15px; color: var(--ink-700); }
+.ayuda-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+.ayuda-modulo { border: 1.5px solid var(--contorno); border-radius: 16px; background: var(--paper-100); box-shadow: var(--shadow-card); overflow: hidden; }
+.ayuda-modulo-cabeza { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--contorno); }
+.ayuda-modulo-icono { width: 36px; height: 36px; flex: none; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--petrol-100, var(--paper-0)); color: var(--petrol-600); }
+.ayuda-modulo-nombre { flex: 1; font-weight: 800; font-size: 17px; color: var(--ink-900); }
+.ayuda-modulo-cuenta { font-size: 13px; color: var(--ink-500); white-space: nowrap; }
+.ayuda-lista { list-style: none; margin: 0; padding: 0; }
+.ayuda-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.ayuda-item + .ayuda-item { border-top: 1px solid var(--contorno); }
+.ayuda-item-info { flex: 1; min-width: 0; }
+.ayuda-item-titulo { display: block; font-weight: 700; font-size: 15.5px; color: var(--ink-900); }
+.ayuda-item-desc { display: block; font-size: 13.5px; color: var(--ink-500); margin-top: 2px; line-height: 1.4; }
+.ayuda-item-pronto .ayuda-item-titulo { color: var(--ink-700); }
+.ayuda-visto { font-weight: 600; font-size: 13px; color: var(--petrol-600); }
+.ayuda-ver { flex: none; min-width: 72px; min-height: 40px; font-size: 15px; }
+.ayuda-pronto { flex: none; font-size: 12.5px; font-weight: 700; color: var(--ink-500); background: var(--paper-0); border: 1px solid var(--contorno); border-radius: 100px; padding: 4px 10px; }
+@media (max-width: 640px) { .ayuda-grid { grid-template-columns: 1fr; } .ayuda-seccion { scroll-margin-top: 136px; } }
+
 /* Campanita de notificaciones (ver components/CampanaNotificaciones.jsx) */
 .campana-wrap { position: relative; display: inline-flex; }
 .campana-boton {
@@ -3303,3 +3324,46 @@ select option:disabled { color: #7f9396; }
 .dialogo-confirmar .btn-danger { background: rgba(255,107,96,.18) !important; border: 1.5px solid #ff6b60 !important; color: #ff9d95 !important; }
 .dialogo-confirmar .btn-danger:hover { background: rgba(255,107,96,.3) !important; }
 :root:not([data-theme="dark"]) .dialogo-confirmar .btn-danger { color: var(--red-600) !important; }
+
+/* Integraciones (llaves de API para n8n) */
+.integ-card { max-width: 1200px; margin-bottom: 20px; }
+.integ-nueva { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 18px; }
+.integ-nueva .field { flex: 1; min-width: 240px; margin: 0; }
+.integ-nueva .btn { min-height: 50px; }
+.integ-tabla { width: 100%; }
+.integ-tabla td, .integ-tabla th { text-align: left; vertical-align: middle; font-size: 15px; }
+.integ-tabla tr.revocada td { opacity: .55; }
+.integ-sub { font-size: 12.5px; color: var(--ink-500); }
+.integ-lista { margin: 0; padding-left: 20px; display: grid; gap: 10px; font-size: 16px; line-height: 1.5; color: var(--ink-700); }
+.integ-llave { margin-top: 14px; padding: 14px 16px; border-radius: 10px; font-size: 15px; word-break: break-all; user-select: all; cursor: text;
+  background: color-mix(in srgb, #000 30%, transparent); border: 1.5px dashed color-mix(in srgb, var(--petrol-500) 60%, transparent); color: var(--petrol-300); }
+:root:not([data-theme="dark"]) .integ-llave { color: var(--petrol-600); background: color-mix(in srgb, var(--petrol-500) 8%, #fff); }
+:root:not([data-theme="dark"]) .cfg-card-icono, :root:not([data-theme="dark"]) .cfg-card-icono-fiscal { color: var(--petrol-600); }
+
+/* Tutoriales: recorrido con globos de texto (components/Tour.jsx) */
+.tour-capa { position: fixed; inset: 0; z-index: 9000; }
+.tour-velo { position: fixed; inset: 0; background: rgba(5, 12, 14, .72); }
+.tour-foco { position: fixed; border-radius: 14px; border: 3px solid var(--petrol-500); pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(5, 12, 14, .72); transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; }
+.tour-globo { position: fixed; width: min(400px, calc(100vw - 24px)); padding: 20px 20px 16px; border-radius: 14px; z-index: 9001;
+  background: #102024; color: #eef6f7; border: 1.5px solid color-mix(in srgb, var(--petrol-500) 70%, transparent); border-left: 6px solid var(--petrol-500);
+  box-shadow: 0 16px 40px rgba(0,0,0,.55); transition: left .2s ease, top .2s ease; }
+.tour-globo-centro { width: min(460px, calc(100vw - 24px)); }
+:root:not([data-theme="dark"]) .tour-globo { background: #fff; color: #17282b; }
+.tour-cuenta { font-size: 12.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--petrol-300); }
+:root:not([data-theme="dark"]) .tour-cuenta { color: var(--petrol-600); }
+.tour-titulo { margin: 6px 0 8px; font-size: 22px; font-weight: 800; line-height: 1.2; }
+.tour-texto { margin: 0; font-size: 17px; line-height: 1.5; }
+.tour-puntos { display: flex; gap: 6px; margin: 14px 0 12px; }
+.tour-puntos span { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--ink-500) 45%, transparent); }
+.tour-puntos span.on { width: 22px; border-radius: 99px; background: var(--petrol-500); }
+.tour-acciones { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.tour-nav { display: flex; gap: 8px; margin-left: auto; }
+.tour-nav .btn { min-height: 44px; padding: 0 18px; font-size: 16px; font-weight: 800; }
+.tour-saltar { background: none; border: none; cursor: pointer; font-size: 15px; font-weight: 700; color: var(--ink-500); padding: 8px 4px; text-decoration: underline; }
+.ayuda-flotante { position: fixed; top: 18px; right: 86px; z-index: 140; width: 52px; height: 52px; border-radius: 50%; cursor: pointer;
+  font-size: 24px; font-weight: 900; color: var(--petrol-300); background: var(--paper-100); border: 1.5px solid color-mix(in srgb, var(--petrol-500) 60%, transparent);
+  box-shadow: 0 4px 14px rgba(0,0,0,.28); }
+.ayuda-flotante:hover { background: color-mix(in srgb, var(--petrol-500) 16%, var(--paper-100)); }
+:root:not([data-theme="dark"]) .ayuda-flotante { color: var(--petrol-600); }
+@media (max-width: 900px) { .ayuda-flotante { top: 70px; right: 66px; width: 44px; height: 44px; font-size: 20px; } }

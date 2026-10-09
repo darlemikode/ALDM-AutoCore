@@ -94,6 +94,8 @@ class Usuario(Base):
 
     es_superadmin = Column(Boolean, default=False)  # acceso a la app de súper administración
     id_ultimo_taller = Column(Integer, nullable=True)  # para abrir directo en el último taller usado
+    # Tutoriales (recorridos con globos) que ya vio, separados por coma — así no se repiten en web ni en la app
+    tutoriales_vistos = Column(String(500), nullable=True)
 
     membresias = relationship("UsuarioTaller", back_populates="usuario", cascade="all, delete-orphan")
     solicitudes_recuperacion = relationship("SolicitudRecuperacion", back_populates="usuario")
@@ -1028,6 +1030,22 @@ class ConfiguracionTaller(TenantMixin, Base):
 
     estado = relationship("Estado", foreign_keys=[id_estado])
     ciudad = relationship("Ciudad", foreign_keys=[id_ciudad])
+
+
+class LlaveIntegracion(TenantMixin, Base):
+    """Llave de API para conectar herramientas externas (n8n, agentes de
+    WhatsApp) a UN taller. Solo se guarda el hash; la llave completa se
+    muestra una sola vez al crearla."""
+    __tablename__ = "llaves_integracion"
+
+    id_llave = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(80), nullable=False)
+    prefijo = Column(String(16), nullable=False)  # lo que se muestra para reconocerla
+    hash_llave = Column(String(64), nullable=False, unique=True, index=True)
+    activa = Column(Boolean, default=True)
+    creada_por = Column(String(50), nullable=True)
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    ultimo_uso = Column(DateTime, nullable=True)
 
 
 # ---------------------------------------------------------------------------

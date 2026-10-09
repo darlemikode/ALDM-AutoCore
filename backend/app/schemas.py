@@ -151,6 +151,22 @@ class PerfilOut(UsuarioOut):
     estado_suscripcion: Optional[EstadoSuscripcionOut] = None
     password_por_defecto: bool = False
     password_actual_sugerida: Optional[str] = None
+    tutoriales_vistos: List[str] = []
+
+    @field_validator("tutoriales_vistos", mode="before")
+    @classmethod
+    def _separar_tutoriales(cls, v):
+        # En la base se guardan separados por coma ("bienvenida,ordenes")
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [t for t in v.split(",") if t]
+        return v
+
+
+class TutorialVistoIn(BaseModel):
+    clave: str
+    visto: bool = True
 
 
 class UsuarioCreate(BaseModel):

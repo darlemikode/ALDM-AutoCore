@@ -1,3 +1,4 @@
+import { contiene } from "../lib/texto";
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -65,9 +66,9 @@ export default function VehiculosScreen({ navigation }) {
     }
   }
 
-  const t = q.trim().toLowerCase();
+  const t = q.trim();
   const filtrados = vehiculos.filter((v) => !t || [v.placas_vehiculo, v.numero_cuenta, v.numserie_vehiculo, v.marca?.nombre_marca, v.modelo?.nombre_modelo, v.cliente?.nombre_cliente]
-    .some((x) => String(x || "").toLowerCase().includes(t)));
+    .some((x) => contiene(x, t)));
 
   return (
     <View style={styles.screen}>

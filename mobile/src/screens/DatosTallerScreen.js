@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Image, ActivityIndicator } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
@@ -15,11 +15,16 @@ import { soloDigitos, telefonoValido, MENSAJE_TELEFONO_INVALIDO } from "../valid
 export default function DatosTallerScreen() {
   const { user } = useAuth();
   const [cargando, setCargando] = useState(true);
-  const [guardando, setGuardando] = useState(false);
+  const [estadoGuardado, setEstadoGuardado] = useState(""); // "Guardando…" | "Guardado ✓" | aviso
+  const ultimoGuardado = useRef(null); // lo último que está en el servidor (para no guardar de más)
+  const ultimoError = useRef("");
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [nombreTaller, setNombreTaller] = useState("");
   const [direccion, setDireccion] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [telefono2, setTelefono2] = useState("");
+  const [telefono3, setTelefono3] = useState("");
+  const [correo2, setCorreo2] = useState("");
   const [correo, setCorreo] = useState("");
   const [rfc, setRfc] = useState("");
   const [rutaLogo, setRutaLogo] = useState(null);
@@ -36,12 +41,14 @@ export default function DatosTallerScreen() {
   useFocusEffect(
     useCallback(() => {
       setCargando(true);
+      ultimoGuardado.current = null;
+      setEstadoGuardado("");
       api.get("/estados/").then(setEstados).catch(() => setEstados([]));
       api.get("/configuracion-taller/")
         .then((c) => {
           setNombreTaller(c.nombre_taller || "");
           setDireccion(c.direccion || "");
-          setTelefono(c.telefono || "");
+          setTelefono(c.telefono || ""); setTelefono2(c.telefono2 || ""); setTelefono3(c.telefono3 || ""); setCorreo2(c.correo2 || "");
           setCorreo(c.correo || "");
           setRfc(c.rfc || "");
           setRutaLogo(c.ruta_logo || null);
@@ -54,36 +61,48 @@ export default function DatosTallerScreen() {
     }, [])
   );
 
-  async function guardar() {
-    if (!nombreTaller.trim()) {
-      alerta("Falta información", "Escribe el nombre del taller.");
-      return;
+  // Los cambios se guardan solos (igual que Configuración del taller en la web)
+  const cuerpo = {
+    nombre_taller: nombreTaller.trim(),
+    direccion: direccion.trim() || null,
+    telefono: telefono.trim() || null,
+    telefono2: telefono2.trim() || null,
+    telefono3: telefono3.trim() || null,
+    correo: correo.trim() || null,
+    correo2: correo2.trim() || null,
+    rfc: rfc.trim() || null,
+    cp: cp || null,
+    calle: calle.trim() || null,
+    numero_taller: numeroTaller.trim() || null,
+    id_estado: idEstado ? Number(idEstado) : null,
+    id_ciudad: idCiudad ? Number(idCiudad) : null,
+  };
+  const textoCuerpo = JSON.stringify(cuerpo);
+
+  useEffect(() => {
+    if (cargando) return undefined;
+    if (ultimoGuardado.current === null) { ultimoGuardado.current = textoCuerpo; return undefined; }
+    if (textoCuerpo === ultimoGuardado.current) return undefined;
+    if (!cuerpo.nombre_taller) { setEstadoGuardado("Falta el nombre del taller"); return undefined; }
+    if (![telefono, telefono2, telefono3].every((t) => telefonoValido(t, { opcional: true }))) {
+      setEstadoGuardado("Revisa los teléfonos (10 dígitos)");
+      return undefined;
     }
-    if (!telefonoValido(telefono, { opcional: true })) {
-      alerta("Teléfono inválido", MENSAJE_TELEFONO_INVALIDO);
-      return;
-    }
-    setGuardando(true);
-    try {
-      await api.put("/configuracion-taller/", {
-        nombre_taller: nombreTaller.trim(),
-        direccion: direccion.trim() || null,
-        telefono: telefono.trim() || null,
-        correo: correo.trim() || null,
-        rfc: rfc.trim() || null,
-        cp: cp || null,
-        calle: calle.trim() || null,
-        numero_taller: numeroTaller.trim() || null,
-        id_estado: idEstado ? Number(idEstado) : null,
-        id_ciudad: idCiudad ? Number(idCiudad) : null,
-      });
-      alerta("Listo", "Los datos del taller se guardaron — ya aparecerán en el membrete de las notas.");
-    } catch (err) {
-      alerta("Error", err.message);
-    } finally {
-      setGuardando(false);
-    }
-  }
+    if (cp && cp.length !== 5) return undefined; // se espera a que termine de escribir el CP
+    const t = setTimeout(async () => {
+      setEstadoGuardado("Guardando…");
+      try {
+        await api.put("/configuracion-taller/", JSON.parse(textoCuerpo));
+        ultimoGuardado.current = textoCuerpo;
+        ultimoError.current = "";
+        setEstadoGuardado("Guardado ✓");
+      } catch (err) {
+        setEstadoGuardado("No se guardó");
+        if (ultimoError.current !== err.message) { ultimoError.current = err.message; alerta("Error", err.message); }
+      }
+    }, 900);
+    return () => clearTimeout(t);
+  }, [textoCuerpo, cargando]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function elegirEstado(id) {
     setIdEstado(id); setIdCiudad("");
@@ -151,9 +170,17 @@ export default function DatosTallerScreen() {
   // modo local (ver apiLocal.js) — <Image> acepta ambos igual.
   const uriLogo = urlArchivo(rutaLogo);
 
+  const okGuardado = estadoGuardado === "Guardado ✓";
+  const enProceso = estadoGuardado === "Guardando…";
   return (
+    <View style={styles.screen}>
+    {estadoGuardado ? (
+      <View style={[styles.estado, okGuardado ? styles.estadoOk : enProceso ? null : styles.estadoAviso]} accessibilityLiveRegion="polite">
+        <Text style={[styles.estadoTexto, okGuardado && { color: colors.petrol600 }, !okGuardado && !enProceso && { color: colors.red600 }]}>{estadoGuardado}</Text>
+      </View>
+    ) : null}
     <FormScroll style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
-      <Text style={styles.subtitulo}>Aparecen en el membrete de las notas y recibos que se le entregan al cliente.</Text>
+      <Text style={styles.subtitulo}>Aparecen en el membrete de las notas y recibos que se le entregan al cliente. Los cambios se guardan solos.</Text>
 
       <View style={styles.logoBox}>
         {uriLogo ? (
@@ -168,9 +195,6 @@ export default function DatosTallerScreen() {
 
       <Campo label="Nombre del taller">
         <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={nombreTaller} onChangeText={setNombreTaller} placeholder="Ej. Taller Mecánico García" />
-      </Campo>
-      <Campo label="Dirección">
-        <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={direccion} onChangeText={setDireccion} placeholder="Calle, número, colonia, ciudad" />
       </Campo>
       <Campo label="Código postal">
         <TextInput style={styles.input} value={cp} onChangeText={alCambiarCp} keyboardType="number-pad" maxLength={5} placeholder="37000" placeholderTextColor={colors.ink500} />
@@ -192,6 +216,9 @@ export default function DatosTallerScreen() {
           </Picker>
         </View>
       </Campo>
+      <Campo label="Colonia">
+        <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={direccion} onChangeText={setDireccion} placeholder="Ej. Portales de la Arboleda" />
+      </Campo>
       <View style={{ flexDirection: "row", gap: 10 }}>
         <View style={{ flex: 2 }}>
           <Campo label="Calle">
@@ -204,19 +231,25 @@ export default function DatosTallerScreen() {
           </Campo>
         </View>
       </View>
-      <Campo label="Teléfono">
+      <Campo label="Teléfono 1">
         <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={telefono} onChangeText={(v) => setTelefono(soloDigitos(v))} placeholder="33 1234 5678" keyboardType="phone-pad" maxLength={10} />
       </Campo>
-      <Campo label="Correo">
+      <Campo label="Teléfono 2 (opcional)">
+        <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={telefono2} onChangeText={(v) => setTelefono2(soloDigitos(v))} placeholder="33 1234 5678" keyboardType="phone-pad" maxLength={10} />
+      </Campo>
+      <Campo label="Teléfono 3 (opcional)">
+        <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={telefono3} onChangeText={(v) => setTelefono3(soloDigitos(v))} placeholder="33 1234 5678" keyboardType="phone-pad" maxLength={10} />
+      </Campo>
+      <Campo label="Correo 1">
         <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={correo} onChangeText={setCorreo} placeholder="contacto@mitaller.com" keyboardType="email-address" autoCapitalize="none" />
+      </Campo>
+      <Campo label="Correo 2 (opcional)">
+        <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={correo2} onChangeText={setCorreo2} placeholder="ventas@mitaller.com" keyboardType="email-address" autoCapitalize="none" />
       </Campo>
       <Campo label="RFC">
         <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={rfc} onChangeText={setRfc} placeholder="XAXX010101000" autoCapitalize="characters" />
       </Campo>
 
-      <TouchableOpacity style={styles.boton} onPress={guardar} disabled={guardando}>
-        <Text style={styles.botonTexto}>{guardando ? "Guardando…" : "Guardar cambios"}</Text>
-      </TouchableOpacity>
 
       {user?.qr_taller ? (
         <View style={styles.qrBox}>
@@ -227,6 +260,7 @@ export default function DatosTallerScreen() {
         </View>
       ) : null}
     </FormScroll>
+    </View>
   );
 }
 
@@ -256,6 +290,8 @@ const styles = crearEstilos({
   label: { fontSize: 11, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 },
   pickerWrap: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, overflow: "hidden" },
   input: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, padding: 10, fontSize: 14, color: colors.ink900 },
-  boton: { backgroundColor: colors.petrol500, borderRadius: 8, padding: 14, alignItems: "center", marginTop: spacing.md },
-  botonTexto: { color: "#fff", fontWeight: "800", fontSize: 14, textTransform: "uppercase" },
+  estado: { paddingVertical: 8, paddingHorizontal: spacing.lg, backgroundColor: colors.paper100, borderBottomWidth: 1, borderBottomColor: colors.ink300 },
+  estadoOk: { backgroundColor: colors.paper100 },
+  estadoAviso: { backgroundColor: colors.paper100 },
+  estadoTexto: { fontSize: 15, fontWeight: "700", color: colors.ink700, textAlign: "right" },
 });

@@ -1,5 +1,6 @@
 import { api } from "../api";
-import { mostrarDialogo } from "../ui/Dialogo";
+import { mostrarDialogo, alerta } from "../ui/Dialogo";
+import { isVerificacion2PasosActiva } from "../configuracionApp";
 
 // Rutas absolutas desde el menú raíz: funcionan desde cualquier pila
 // (Clientes, Vehículos del menú lateral, Citas…), a diferencia de
@@ -33,6 +34,24 @@ export async function abrirOrdenDeVehiculo(navigation, cliente, vehiculo) {
       ],
     });
     return;
+  }
+  // Sin verificación en 2 pasos: la orden se crea al instante y se abre directo
+  // (sin pasar por la pantalla de "Nueva orden" con fotos).
+  if (!(await isVerificacion2PasosActiva().catch(() => false))) {
+    try {
+      const nueva = await api.post("/servicios/", {
+        id_cliente: Number(cliente?.id_cliente ?? vehiculo?.id_cliente),
+        id_vehiculo: Number(vehiculo.id_vehiculo),
+        nombre_servicio: "Servicio general",
+        iva_porcentaje: 0,
+        km_llegada: vehiculo?.km_vehiculo ? String(vehiculo.km_vehiculo) : null,
+      });
+      irAServicio(navigation, "ServicioDetalle", { id: nueva.id_servicio });
+      return;
+    } catch (err) {
+      alerta("No se pudo crear la orden", err.message);
+      return;
+    }
   }
   irAServicio(navigation, "NuevaOrden", { clientePrefijado: cliente, vehiculoPrefijado: vehiculo, recargar: Date.now() });
 }

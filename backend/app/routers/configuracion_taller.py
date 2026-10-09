@@ -40,7 +40,8 @@ def obtener(db: Session = Depends(get_db), user=Depends(get_current_user)):
 @router.put("/", response_model=schemas.ConfiguracionTallerOut)
 def actualizar(payload: schemas.ConfiguracionTallerIn, db: Session = Depends(get_db), user=Depends(require_permission("configuracion.editar"))):
     config = _obtener_o_crear(db)
-    for key, value in payload.model_dump().items():
+    # Solo los campos que llegaron: una app vieja que no manda teléfono 2/3 o correo 2 no los borra
+    for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(config, key, value)
     db.commit()
     db.refresh(config)

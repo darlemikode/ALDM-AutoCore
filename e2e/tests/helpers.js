@@ -47,7 +47,9 @@ async function crearTallerConAdmin(sa, { nombre, usuario, password = "secreto1",
 // Campo de un formulario del panel (etiqueta visible + su input)
 const campo = (page, etiqueta) => page.locator(".field", { has: page.locator(`label:text-is("${etiqueta}")`) }).locator("input, select, textarea").first();
 
-async function entrar(page, usuario, password) {
+async function entrar(page, usuario, password, { conTutoriales = false } = {}) {
+  // Las pruebas no quieren el recorrido de bienvenida encima (salvo la que lo prueba)
+  if (!conTutoriales) await page.addInitScript(() => { try { localStorage.setItem("sm_sin_tutoriales", "1"); } catch (e) { /* nada */ } });
   await page.goto("/login");
   await campo(page, "Usuario").fill(usuario);
   await campo(page, "Contraseña").fill(password);
