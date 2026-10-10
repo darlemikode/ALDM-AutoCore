@@ -52,6 +52,7 @@ export default function PagarSuscripcion({ onClose }) {
                   </button>
                 ))}
               </div>
+              {datos.iva_porcentaje > 0 && <p className="subtitle" style={{ marginTop: 8 }}>Los montos ya incluyen IVA ({datos.iva_porcentaje}%).</p>}
             </>
           )}
           {error && <div className="error-text" style={{ color: "var(--red-600)", marginTop: 10 }}>{error}</div>}

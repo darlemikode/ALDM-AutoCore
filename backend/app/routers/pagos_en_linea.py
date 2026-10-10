@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..database import get_db, sesion_global
 from ..security import get_current_user_sin_taller
-from ..suscripciones import precio_periodo, registrar_renovacion
+from ..suscripciones import con_iva, iva_suscripcion, precio_periodo, registrar_renovacion
 from ..tenancy import tenant_de
 
 router = APIRouter(prefix="/api/pagos-en-linea", tags=["pagos en línea"])
@@ -56,8 +56,11 @@ def opciones(db: Session = Depends(get_db), user=Depends(get_current_user_sin_ta
             "disponible": bool(_token()),
             "paquete": susc.paquete.nombre if susc.paquete else None,
             "id_tipo_cobro_actual": susc.id_tipo_cobro,
+            "iva_porcentaje": iva_suscripcion(),
+            # monto = lo que se cobra (ya con IVA); subtotal = precio del plan
             "opciones": [{"id_tipo_cobro": t.id_tipo_cobro, "nombre": t.nombre, "meses": t.meses,
-                          "monto": round(precio_periodo(susc.paquete, t, susc.precio_pactado), 2)} for t in tipos],
+                          "subtotal": precio_periodo(susc.paquete, t, susc.precio_pactado),
+                          "monto": con_iva(precio_periodo(susc.paquete, t, susc.precio_pactado))} for t in tipos],
         }
     finally:
         g.close()
@@ -97,7 +100,8 @@ def mi_suscripcion(db: Session = Depends(get_db), user=Depends(get_current_user_
                 "limite_usuarios": paquete.limite_usuarios if paquete else None,
             },
             "tipo_cobro": susc.tipo_cobro.nombre if susc.tipo_cobro else None,
-            "monto_periodo": round(precio_periodo(paquete, susc.tipo_cobro, susc.precio_pactado), 2),
+            "monto_periodo": con_iva(precio_periodo(paquete, susc.tipo_cobro, susc.precio_pactado)),
+            "iva_porcentaje": iva_suscripcion(),
             "pago_en_linea": bool(_token()),
             "modulos_incluidos": [mod(m) for m in catalogo if m.id_modulo in incluidos_ids],
             "modulos_disponibles": [mod(m) for m in catalogo if m.id_modulo not in incluidos_ids],
@@ -156,7 +160,7 @@ def checkout(payload: dict, request: Request, db: Session = Depends(get_db), use
         tipo = g.get(models.TipoCobro, int(payload.get("id_tipo_cobro") or 0))
         if not susc or not tipo or not tipo.activo:
             raise HTTPException(status_code=400, detail="Elige un tipo de cobro válido.")
-        monto = round(precio_periodo(susc.paquete, tipo, susc.precio_pactado), 2)
+        monto = con_iva(precio_periodo(susc.paquete, tipo, susc.precio_pactado))
         if monto <= 0:
             raise HTTPException(status_code=400, detail="Este plan no tiene precio; contacta a ALDM.")
         base = _url_publica(request)
@@ -194,7 +198,8 @@ async def webhook(request: Request):
     id_pago = (cuerpo.get("data") or {}).get("id") or q.get("data.id") or q.get("id")
     if not token or tipo_aviso != "payment" or not id_pago:
         return {"ok": True}
-    r = httpx.get(f"{MP_API}/v1/payments/{id_pago}", headers={"Authorization": f"Bearer {token}"}, timeout=20)
+    async with httpx.AsyncClient(timeout=20) as cliente:  # sin bloquear el servidor mientras responde Mercado Pago
+        r = await cliente.get(f"{MP_API}/v1/payments/{id_pago}", headers={"Authorization": f"Bearer {token}"})
     if r.status_code != 200:
         return {"ok": True}
     pago = r.json()
@@ -211,8 +216,13 @@ async def webhook(request: Request):
             return {"ok": True}  # ya registrado (Mercado Pago avisa más de una vez)
         taller = g.get(models.Taller, tid)
         tipo = g.get(models.TipoCobro, id_tipo)
+        pagado = float(pago.get("transaction_amount") or 0)
         if taller and taller.suscripcion and tipo:
-            registrar_renovacion(g, taller, tipo, float(pago.get("transaction_amount") or 0), "mercadopago", referencia,
+            esperado = con_iva(precio_periodo(taller.suscripcion.paquete, tipo, taller.suscripcion.precio_pactado))
+            if pagado + 1 < esperado:
+                # Pagó menos de lo que cuesta el periodo: no se renueva solo, lo revisa ALDM
+                return {"ok": True}
+            registrar_renovacion(g, taller, tipo, pagado, "mercadopago", referencia,
                                  f"Pago en línea ({pago.get('payment_method_id') or 'Mercado Pago'})", "mercadopago")
     finally:
         g.close()

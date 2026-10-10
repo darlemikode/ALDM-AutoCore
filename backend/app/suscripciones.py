@@ -144,6 +144,21 @@ def precio_periodo(paquete: models.Paquete | None, tipo: models.TipoCobro | None
     return round((paquete.precio_mensual or 0) * meses * (1 - descuento / 100), 2)
 
 
+def iva_suscripcion() -> float:
+    """Porcentaje de IVA que se suma al cobrar la suscripción (los precios
+    de los paquetes son «+ IVA»). IVA_SUSCRIPCION=0 si se cobra incluido."""
+    import os
+
+    try:
+        return float(os.getenv("IVA_SUSCRIPCION", "16"))
+    except ValueError:
+        return 16.0
+
+
+def con_iva(monto: float) -> float:
+    return round((monto or 0) * (1 + iva_suscripcion() / 100), 2)
+
+
 def sumar_meses(fecha: date, meses: int) -> date:
     mes = fecha.month - 1 + meses
     anio = fecha.year + mes // 12
@@ -173,7 +188,7 @@ def registrar_renovacion(db: Session, taller: "models.Taller", tipo: "models.Tip
     desde = susc.fecha_vencimiento + timedelta(days=1) if susc.fecha_vencimiento and susc.fecha_vencimiento >= hoy and susc.estado == "activa" else hoy
     hasta = sumar_meses(desde, tipo.meses) - timedelta(days=1)
     if monto is None:
-        monto = precio_periodo(susc.paquete, tipo, susc.precio_pactado)
+        monto = con_iva(precio_periodo(susc.paquete, tipo, susc.precio_pactado))
     pago = models.PagoSuscripcion(
         id_suscripcion=susc.id_suscripcion, id_taller=taller.id_taller, id_paquete=susc.id_paquete, id_tipo_cobro=tipo.id_tipo_cobro,
         monto=monto, metodo_pago=metodo_pago, referencia=referencia, notas=notas,

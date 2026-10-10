@@ -63,7 +63,7 @@ r = cli.post("/superadmin/tipos-cobro", headers=h(TA), json={"nombre": f"QA-MT B
 check(r.status_code == 201, "tipo de cobro capturable", r.text)
 TIPO_BIM = r.json().get("id_tipo_cobro")
 paquetes = cli.get("/superadmin/paquetes", headers=h(TA)).json()
-basico = next(p for p in paquetes if p["nombre"] == "Básico")
+basico = next(p for p in paquetes if p["nombre"] == "Arranque")
 premium = max(paquetes, key=lambda p: p["precio_mensual"])
 
 print("2. Alta de un taller nuevo (en prueba)")
@@ -82,7 +82,7 @@ r = login(f"qamtb{S}", "secretoB1")
 check(r.status_code == 200 and r.json()["id_taller"] == ID_B, "admin B entra directo a su taller", r.text)
 TB = r.json()["access_token"]
 check(r.json()["estado_suscripcion"]["estado"] == "prueba", "B ve su estado de prueba", r.json().get("estado_suscripcion"))
-check("proveedores.ver" in r.json()["permisos"], "B tiene todos los permisos del paquete Premium")
+check("proveedores.ver" in r.json()["permisos"], "B tiene todos los permisos del paquete Full Garage")
 r = cli.get("/superadmin/talleres", headers=h(TB))
 check(r.status_code == 403, "un taller NO puede entrar a súper administración", r.status_code)
 
@@ -163,7 +163,7 @@ check(upd.status_code == 403, "B no puede cambiar datos personales de un usuario
 
 print("6. Módulos por paquete")
 r = cli.put(f"/superadmin/talleres/{ID_B}/suscripcion", headers=h(TA), json={"id_paquete": basico["id_paquete"]})
-check(r.status_code == 200, "cambiar B a paquete Básico", r.text)
+check(r.status_code == 200, "cambiar B a paquete Arranque", r.text)
 import time; time.sleep(0.1)
 r = cli.get("/proveedores/", headers=h(TB))
 check(r.status_code == 403, "B ya no entra a Proveedores (no está en su paquete)", r.status_code)
