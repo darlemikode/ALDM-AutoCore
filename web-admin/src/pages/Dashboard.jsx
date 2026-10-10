@@ -228,7 +228,7 @@ export default function Dashboard() {
             <BarChart data={mensual} margin={{ top: 24, right: 8, left: 8, bottom: 0 }}>
               <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "currentColor", fontWeight: 600 }} axisLine={false} tickLine={false} />
               <YAxis hide />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(23,182,174,0.08)" }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(225,6,0,0.08)" }} />
               <Bar dataKey="cantidad" name="Órdenes" animationDuration={1100} animationEasing="ease-out" fill={COLORS.petrol} radius={[8, 8, 0, 0]}>
                 <LabelList dataKey="cantidad" position="top" style={{ fontSize: 16, fontWeight: 700, fill: "currentColor" }} />
               </Bar>

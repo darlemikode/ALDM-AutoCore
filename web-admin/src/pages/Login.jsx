@@ -1,4 +1,5 @@
 import { useState } from "react";
+import logoAldm from "../assets/logo-aldm.png";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
@@ -80,9 +81,10 @@ export default function Login() {
 
   return (
     <div className="login-screen">
+      <img src={logoAldm} alt="ALDM AutoCore · Administración de talleres mecánicos" className="login-logo" />
       <div className="login-card">
         <div className="brand">
-          ALDM <span>AutoCore</span>
+          Bienvenido
         </div>
         <div className="tagline">Panel de administración del taller</div>
 

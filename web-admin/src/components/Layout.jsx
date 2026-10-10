@@ -12,6 +12,7 @@ import { escucharSidebar, escucharTema, setSidebarCompacta, sidebarCompactaActiv
 import CampanaNotificaciones from "./CampanaNotificaciones";
 import Atajos from "./Atajos";
 import Tour from "./Tour";
+import logoAldm from "../assets/logo-aldm.png";
 import { tutorialPorClave, vistosSesion } from "../tutoriales/catalogo";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 
@@ -157,7 +158,7 @@ export default function Layout() {
         <button type="button" className="topbar-movil-hamburguesa" title="Abrir menú" onClick={() => setMenuMovilAbierto(true)}>
           <IconoAuto valor="☰" size={18} />
         </button>
-        <span className="topbar-movil-marca">ALDM AutoCore</span>
+        <span className="topbar-movil-marca"><img src={logoAldm} alt="" className="topbar-movil-logo" />ALDM AutoCore</span>
       </div>
 
       {/* Grande y siempre a la vista, fuera del panel lateral — no hay que
@@ -170,7 +171,7 @@ export default function Layout() {
       {menuMovilAbierto && <div className="sidebar-backdrop" onClick={() => setMenuMovilAbierto(false)} />}
       <aside className={"sidebar" + (sidebarCompacta ? " sidebar-compacta" : "") + (menuMovilAbierto ? " sidebar-abierta" : "")}>
         <div className="brand">
-          <span className="brand-texto">ALDM <span>AutoCore</span></span>
+          <span className="brand-texto"><img src={logoAldm} alt="ALDM AutoCore" className="brand-logo" /></span>
           <button
             type="button"
             className="sidebar-colapsar"
