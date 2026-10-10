@@ -21,6 +21,7 @@ test.describe("Clientes y aislamiento entre talleres", () => {
     await expect(page.locator(".main")).toContainText(nombre);
 
     await page.getByRole("button", { name: "Cerrar sesión" }).click();
+    await page.getByRole("button", { name: "Sí, salir" }).click();
     await entrarAlPanel(page, B.usuario, B.password);
     await page.goto("/clientes");
     await expect(page.getByRole("heading", { name: /Clientes/ })).toBeVisible();

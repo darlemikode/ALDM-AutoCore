@@ -11,8 +11,19 @@ export default function Usuarios() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [nuevo, setNuevo] = useState(false);
+  const [taller, setTaller] = useState(""); // "" = todos · "sin" = sin taller · id del taller
   const { datos, error } = useCargar(() => api.get("/superadmin/usuarios"));
-  const lista = useMemo(() => (datos || []).filter((u) => !q || contiene(`${u.username} ${u.nombre_completo} ${u.correo || ""}`, q)), [datos, q]);
+  const talleres = useMemo(() => {
+    const m = new Map();
+    (datos || []).forEach((u) => u.membresias.forEach((x) => m.set(String(x.id_taller), x.taller?.nombre_comercial || `Taller ${x.id_taller}`)));
+    return [...m].sort((a, b) => a[1].localeCompare(b[1], "es"));
+  }, [datos]);
+  const lista = useMemo(() => (datos || []).filter((u) => {
+    if (taller === "sin" && u.membresias.length > 0) return false;
+    if (taller && taller !== "sin" && !u.membresias.some((m) => String(m.id_taller) === taller)) return false;
+    const nombresTaller = u.membresias.map((m) => m.taller?.nombre_comercial || "").join(" ");
+    return !q || contiene(`${u.username} ${u.nombre_completo} ${u.correo || ""} ${nombresTaller}`, q);
+  }), [datos, q, taller]);
 
   async function crear(v) {
     const u = await api.post("/superadmin/usuarios", {
@@ -25,10 +36,17 @@ export default function Usuarios() {
   return (
     <>
       <div className="toolbar">
-        <input className="search-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Usuario, nombre o correo" />
+        <input className="search-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Usuario, nombre, correo o taller" />
+        <select className="sa-filtro-taller" value={taller} onChange={(e) => setTaller(e.target.value)} aria-label="Filtrar por taller">
+          <option value="">Todos los talleres</option>
+          {talleres.map(([id, nombre]) => <option key={id} value={id}>{nombre}</option>)}
+          <option value="sin">Sin taller</option>
+        </select>
         <button className="btn btn-primary" onClick={() => setNuevo(true)}>+ Nuevo usuario</button>
       </div>
       {!datos ? <Cargando error={error} /> : (
+        <>
+        <div className="sa-conteo">{lista.length} de {datos.length} usuario(s)</div>
         <div className="sa-tabla">
           <table>
             <thead><tr><th>Usuario</th><th>Talleres</th><th></th></tr></thead>
@@ -45,7 +63,9 @@ export default function Usuarios() {
               ))}
             </tbody>
           </table>
+          {lista.length === 0 && <div className="empty-state">Ningún usuario coincide con el filtro.</div>}
         </div>
+        </>
       )}
       {nuevo && (
         <FormModal

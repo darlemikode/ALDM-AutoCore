@@ -13,11 +13,11 @@ export function UIProvider({ children }) {
 
   // `recordar: "clave"` agrega la casilla "No volver a preguntar"; si el
   // usuario ya la marcó antes, se confirma solo sin mostrar el diálogo.
-  const confirmDialog = useCallback((message, { title = "Confirmar", danger = false, recordar = null } = {}) => {
+  const confirmDialog = useCallback((message, { title = "Confirmar", danger = false, recordar = null, confirmar = null } = {}) => {
     if (recordar && avisoOmitido(recordar)) return Promise.resolve(true);
     return new Promise((resolve) => {
       setNoPreguntar(false);
-      setConfirmState({ message, title, danger, recordar, resolve });
+      setConfirmState({ message, title, danger, recordar, confirmar, resolve });
     });
   }, []);
 
@@ -62,7 +62,7 @@ export function UIProvider({ children }) {
                 onClick={() => resolveConfirm(true)}
                 autoFocus
               >
-                {confirmState.danger ? "Sí, continuar" : "Confirmar"}
+                {confirmState.confirmar || (confirmState.danger ? "Sí, continuar" : "Confirmar")}
               </button>
             </div>
           </div>

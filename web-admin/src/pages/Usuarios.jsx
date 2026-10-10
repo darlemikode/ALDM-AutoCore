@@ -157,6 +157,16 @@ export default function Usuarios() {
     }
   }
 
+  async function handleActivar(u) {
+    try {
+      await api.put(`/usuarios/${u.id_usuario}`, { activo: true });
+      load();
+      notify(`${u.nombre_completo} puede volver a iniciar sesión.`, "success");
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
+
   async function resolverSolicitud(s) {
     const ok = await confirmDialog(
       `Se generará una contraseña temporal para "${s.usuario?.nombre_completo}". Tendrás que comunicársela tú (llamada, WhatsApp, en persona) — el sistema no envía correos/SMS automáticos.`,
@@ -256,7 +266,22 @@ export default function Usuarios() {
                     },
                   },
                   { key: "rol", label: "Rol", render: (u) => <span className="role-badge">{u.rol?.nombre}</span> },
-                  { key: "activo", label: "Estado", render: (u) => (u.activo ? "Activo" : "Inactivo") },
+                  {
+                    key: "activo", label: "Estado",
+                    render: (u) => {
+                      const propio = u.id_usuario === usuarioActual?.id_usuario;
+                      const puede = !propio && hasPermission(u.activo ? "usuarios.eliminar" : "usuarios.editar");
+                      return (
+                        <button type="button" role="switch" aria-checked={!!u.activo} disabled={!puede}
+                          className={`estado-switch ${u.activo ? "on" : ""}`}
+                          title={propio ? "No puedes desactivar tu propia cuenta" : puede ? (u.activo ? "Desactivar" : "Activar") : undefined}
+                          onClick={(e) => { e.stopPropagation(); u.activo ? handleDesactivar(u) : handleActivar(u); }}>
+                          <span className="pista" aria-hidden="true" />
+                          {u.activo ? "Activo" : "Inactivo"}
+                        </button>
+                      );
+                    },
+                  },
                 ]}
                 rows={usuarios}
                 onEdit={hasPermission("usuarios.editar") ? (u) => setEditing({ ...u, id_rol: u.rol?.id_rol, id_empleado: empleados.find((e) => e.id_usuario === u.id_usuario)?.id_empleado || "" }) : undefined}
