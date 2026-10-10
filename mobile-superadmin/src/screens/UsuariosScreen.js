@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl } from "react-native";
+import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
@@ -10,8 +10,20 @@ import { Badge, Fab, Vacio, useCargar } from "../ui/comunes";
 export default function UsuariosScreen({ navigation }) {
   const [q, setQ] = useState("");
   const [nuevo, setNuevo] = useState(false);
+  const [taller, setTaller] = useState(""); // "" = todos · "sin" = sin taller · id del taller
   const { datos, recargar, refrescando } = useCargar(() => api.get("/superadmin/usuarios"));
-  const lista = useMemo(() => (datos || []).filter((u) => !q || `${u.username} ${u.nombre_completo} ${u.correo || ""}`.toLowerCase().includes(q.toLowerCase())), [datos, q]);
+  const talleres = useMemo(() => {
+    const m = new Map();
+    (datos || []).forEach((u) => u.membresias.forEach((x) => m.set(String(x.id_taller), x.taller?.nombre_comercial || `Taller ${x.id_taller}`)));
+    return [...m].sort((a, b) => a[1].localeCompare(b[1], "es"));
+  }, [datos]);
+  const lista = useMemo(() => (datos || []).filter((u) => {
+    if (taller === "sin" && u.membresias.length > 0) return false;
+    if (taller && taller !== "sin" && !u.membresias.some((m) => String(m.id_taller) === taller)) return false;
+    const texto = `${u.username} ${u.nombre_completo} ${u.correo || ""} ${u.membresias.map((m) => m.taller?.nombre_comercial || "").join(" ")}`.toLowerCase();
+    return !q || texto.includes(q.toLowerCase());
+  }), [datos, q, taller]);
+  const opciones = [["", "Todos"], ...talleres, ["sin", "Sin taller"]];
 
   async function crear(v) {
     const u = await api.post("/superadmin/usuarios", {
@@ -26,7 +38,16 @@ export default function UsuariosScreen({ navigation }) {
     <View style={styles.screen}>
       <View style={styles.buscador}>
         <Ionicons name="search" size={18} color={colors.ink500} />
-        <TextInput style={styles.buscadorInput} value={q} onChangeText={setQ} placeholder="Usuario, nombre o correo" placeholderTextColor={colors.ink500} autoCapitalize="none" />
+        <TextInput style={styles.buscadorInput} value={q} onChangeText={setQ} placeholder="Usuario, nombre, correo o taller" placeholderTextColor={colors.ink500} autoCapitalize="none" />
+      </View>
+      <View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          {opciones.map(([id, nombre]) => (
+            <TouchableOpacity key={id || "todos"} style={[styles.chip, taller === id && styles.chipOn]} onPress={() => setTaller(id)}>
+              <Text style={[styles.chipTexto, taller === id && styles.chipTextoOn]} numberOfLines={1}>{nombre}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
       <FlatList
         data={lista}
@@ -76,4 +97,9 @@ const styles = crearEstilos({
   item: { flexDirection: "row", gap: 10, backgroundColor: colors.paper100, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.ink300 },
   nombre: { fontSize: 15, fontWeight: "700", color: colors.ink900 },
   sub: { fontSize: 12.5, color: colors.ink700, marginTop: 2 },
+  chips: { gap: 8, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  chip: { borderRadius: 100, borderWidth: 1, borderColor: colors.ink300, backgroundColor: colors.paper100, paddingHorizontal: 14, paddingVertical: 8, maxWidth: 220 },
+  chipOn: { backgroundColor: colors.petrol600, borderColor: colors.petrol600 },
+  chipTexto: { fontSize: 14, fontWeight: "600", color: colors.ink700 },
+  chipTextoOn: { color: "#fff" },
 });

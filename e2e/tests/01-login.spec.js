@@ -15,6 +15,7 @@ test.describe("Inicio de sesión", () => {
     await expect(page.getByRole("heading", { name: /Panel general/ })).toBeVisible();
     await expect(tallerActual(page)).toHaveText(taller.nombre_comercial);
     await page.getByRole("button", { name: "Cerrar sesión" }).click();
+    await page.getByRole("button", { name: "Sí, salir" }).click();
     await expect(page).toHaveURL(/\/login/);
     await sa.cerrar();
   });

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useUI } from "../context/UIContext";
 import ChangePasswordModal from "./ChangePasswordModal";
 import PagarSuscripcion from "./PagarSuscripcion";
 import { api } from "../api";
@@ -48,6 +49,11 @@ const NAV = [
 
 export default function Layout() {
   const { user, logout, hasPermission, talleres, estadoSuscripcion, seleccionarTaller, eligiendoTaller, continuarEnTallerActual } = useAuth();
+  const { confirmDialog } = useUI();
+  async function cerrarSesion() {
+    const ok = await confirmDialog("¿Seguro que quieres salir de tu cuenta?", { title: "Cerrar sesión", confirmar: "Sí, salir" });
+    if (ok) logout();
+  }
   const [eligiendo, setEligiendo] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -230,7 +236,7 @@ export default function Layout() {
           <button className="logout-btn" onClick={() => setChangingPassword(true)} title="Cambiar contraseña">
             <Icono nombre="key" size={16} /> <span className="nav-link-texto">Cambiar contraseña</span>
           </button>
-          <button className="logout-btn" onClick={logout} title="Cerrar sesión">
+          <button className="logout-btn" onClick={cerrarSesion} title="Cerrar sesión">
             <Icono nombre="log-out" size={16} /> <span className="nav-link-texto">Cerrar sesión</span>
           </button>
         </div>

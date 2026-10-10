@@ -9,6 +9,7 @@ test.describe("Primera vez: el dueño activa su taller", () => {
     const taller = await sa.post("/superadmin/talleres", { nombre_comercial: `E2E Activar ${s}`, id_paquete: p.id_paquete, en_prueba: true });
     expect(taller.pendiente_activacion).toBeTruthy();
 
+    await page.addInitScript(() => { try { localStorage.setItem("sm_sin_tutoriales", "1"); } catch (e) { /* nada */ } });
     await page.goto("/login");
     await page.getByRole("button", { name: "¿Primera vez? Activa tu taller" }).click();
     await campo(page, "Código del taller").fill(taller.codigo);
@@ -37,6 +38,7 @@ test.describe("Primera vez: el dueño activa su taller", () => {
     expect(actualizado.pendiente_activacion).toBeFalsy();
 
     await page.getByRole("button", { name: "Cerrar sesión" }).click();
+    await page.getByRole("button", { name: "Sí, salir" }).click();
     await page.getByRole("button", { name: "¿Primera vez? Activa tu taller" }).click();
     await campo(page, "Código del taller").fill(taller.codigo);
     await campo(page, "Código de activación").fill(taller.codigo_activacion);

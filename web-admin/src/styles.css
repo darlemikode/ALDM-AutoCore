@@ -3389,3 +3389,8 @@ select option:disabled { color: #8d8d8f; }
 .estado-switch:disabled { cursor: default; opacity: .7; }
 .estado-switch:not(:disabled):hover .pista { filter: brightness(1.08); }
 .estado-switch:focus-visible { outline: 2px solid var(--petrol-500); outline-offset: 3px; border-radius: 6px; }
+
+/* Súper admin · Usuarios: filtro por taller */
+.sa-filtro-taller { min-width: 220px; max-width: 100%; font-size: 15px; }
+.sa-conteo { margin: -6px 0 10px; font-size: 13.5px; color: var(--ink-500); }
+@media (max-width: 700px) { .sa-filtro-taller { flex: 1 1 100%; } }
