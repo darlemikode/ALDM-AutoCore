@@ -1,9 +1,10 @@
 import { IconoAuto } from "../components/Icono";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
 import { ListaAtajos } from "../components/Atajos";
+import { AYUDA, abrirTutorial, vistosSesion } from "../tutoriales/catalogo";
 import {
   AVISOS, avisoOmitido, escucharAvisos, escucharSidebar, escucharTema, omitirAviso,
   setSidebarCompacta, setTemaOscuro, sidebarCompactaActiva, temaOscuroActivo,
@@ -19,7 +20,22 @@ function acentoDe(indice) {
 
 export default function ConfiguracionInicio() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const location = useLocation();
+  const { user, hasPermission } = useAuth();
+  const refAyuda = useRef(null);
+
+  // «?» lleva aquí: se baja directo a la Ayuda
+  useEffect(() => {
+    if (location.hash !== "#ayuda") return undefined;
+    const t = setTimeout(() => refAyuda.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+    return () => clearTimeout(t);
+  }, [location.hash, location.key]);
+
+  const vistos = new Set([...(user?.tutoriales_vistos || []), ...vistosSesion]);
+  const ayuda = AYUDA
+    .filter((m) => !m.permiso || hasPermission(m.permiso))
+    .map((m) => ({ ...m, tutoriales: m.tutoriales.filter((t) => !t.permiso || hasPermission(t.permiso)) }))
+    .filter((m) => m.tutoriales.length > 0);
 
   const [temaOscuro, setTemaOscuroLocal] = useState(temaOscuroActivo);
   const [sidebarCompacta, setSidebarCompactaLocal] = useState(sidebarCompactaActiva);
@@ -42,6 +58,7 @@ export default function ConfiguracionInicio() {
       items: [
         puedeConfigurar && { to: "/configuracion-taller", icono: "🏢", label: "Datos del taller", descripcion: "Nombre, logo, dirección y datos fiscales de la empresa." },
         puedeConfigurar && { to: "/suscripcion", icono: "⭐", label: "Suscripción", descripcion: "Tu paquete, vencimiento, pagos y módulos adicionales." },
+        puedeConfigurar && { to: "/integraciones", icono: "🔌", label: "Integraciones", descripcion: "Llaves para el agente de WhatsApp (n8n)." },
         puedeConfigurar && { to: "/comisiones", icono: "💳", label: "Comisiones", descripcion: "Porcentajes que gana cada técnico o vendedor por servicio." },
       ].filter(Boolean),
     },
@@ -141,6 +158,38 @@ export default function ConfiguracionInicio() {
             </div>
           </div>
         ))}
+
+        <section className="cat-grupo ayuda-seccion" id="ayuda" ref={refAyuda} aria-labelledby="ayuda-titulo">
+          <div className="cat-grupo-titulo" id="ayuda-titulo">Ayuda</div>
+          <p className="ayuda-intro">Recorridos con globos de texto que te muestran, paso a paso, cómo se usa cada módulo.</p>
+          <div className="ayuda-grid">
+            {ayuda.map((m) => {
+              const listos = m.tutoriales.filter((t) => t.pasos).length;
+              return (
+                <div key={m.modulo} className="ayuda-modulo">
+                  <div className="ayuda-modulo-cabeza">
+                    <span className="ayuda-modulo-icono"><IconoAuto valor={m.icono} size={18} /></span>
+                    <span className="ayuda-modulo-nombre">{m.modulo}</span>
+                    <span className="ayuda-modulo-cuenta">{listos} de {m.tutoriales.length} listos</span>
+                  </div>
+                  <ul className="ayuda-lista">
+                    {m.tutoriales.map((t) => (
+                      <li key={t.clave} className={"ayuda-item" + (t.pasos ? "" : " ayuda-item-pronto")}>
+                        <div className="ayuda-item-info">
+                          <span className="ayuda-item-titulo">{t.titulo}{vistos.has(t.clave) && t.pasos ? <span className="ayuda-visto"> · Visto ✓</span> : null}</span>
+                          <span className="ayuda-item-desc">{t.desc}</span>
+                        </div>
+                        {t.pasos
+                          ? <button type="button" className="btn btn-primary ayuda-ver" onClick={() => abrirTutorial(t.clave)}>Ver</button>
+                          : <span className="ayuda-pronto">Próximamente</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         <div className="cat-grupo">
           <div className="cat-grupo-titulo">Apariencia</div>

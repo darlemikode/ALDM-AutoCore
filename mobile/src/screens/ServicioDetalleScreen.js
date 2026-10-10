@@ -16,6 +16,8 @@ import InspeccionForm from "../components/InspeccionForm";
 import { useAuth } from "../context/AuthContext";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
+import Calendario from "../ui/Calendario";
+import { contiene } from "../lib/texto";
 
 /*
  * Detalle de la orden — misma organización que web-admin/src/pages/ServicioDetalle.jsx:
@@ -49,6 +51,21 @@ function Bloque({ icono, titulo, accion, acento, children }) {
         {accion}
       </View>
       {children}
+    </View>
+  );
+}
+
+// Dato que se puede corregir ahí mismo: se guarda al terminar de escribir
+function DatoEditable({ etiqueta, valor, onGuardar, editable, teclado, mayusculas }) {
+  const [texto, setTexto] = useState(valor ?? "");
+  useEffect(() => { setTexto(valor ?? ""); }, [valor]);
+  if (!editable) return <Dato etiqueta={etiqueta} valor={valor} />;
+  const guardar = () => { const v = String(texto).trim(); if (v !== String(valor ?? "")) onGuardar(v); };
+  return (
+    <View style={styles.datoFila}>
+      <Text style={styles.datoEtiqueta}>{etiqueta}</Text>
+      <TextInput style={styles.datoInput} value={String(texto)} onChangeText={setTexto} onEndEditing={guardar} onSubmitEditing={guardar}
+        placeholder="Capturar" placeholderTextColor={colors.ink500} keyboardType={teclado || "default"} autoCapitalize={mayusculas ? "characters" : "sentences"} returnKeyType="done" />
     </View>
   );
 }
@@ -150,6 +167,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
   // Modal: registrar abono
   const [modalAbono, setModalAbono] = useState(false);
+  const [calendarioFecha, setCalendarioFecha] = useState(null); // "fecha_entrada_servicio" | "fecha_salida_servicio"
   const [tipoPago, setTipoPago] = useState("efectivo");
   const [monto, setMonto] = useState("");
   const [montoEfectivo, setMontoEfectivo] = useState("");
@@ -235,7 +253,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   function cambiarStatus(nuevo) {
     const hacer = async () => { const r = await actualizar({ status: nuevo }); if (r) load(); };
     if (nuevo === "cancelado") {
-      alerta("Cancelar orden", "¿Cancelar esta orden de servicio? Podrás reabrirla después si te equivocas.", [
+      alerta("Cancelar orden", "¿Cancelar esta orden de servicio? Si fue un error, podrás reabrirla más adelante.", [
         { text: "No", style: "cancel" },
         { text: "Sí, cancelar", style: "destructive", onPress: hacer },
       ]);
@@ -309,6 +327,75 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       }
     });
     return colaDetalles.current;
+  }
+
+  // La base guarda UTC: se muestra la fecha en hora de México (UTC-6), igual que la web y el PDF
+  function fechaLocal(iso) {
+    if (!iso) return "";
+    const d = new Date(new Date(/Z|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`).getTime() - 6 * 3600 * 1000);
+    return d.toISOString().slice(0, 10);
+  }
+  const fechaTexto = (f) => (f ? `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}` : "");
+
+  async function cambiarFecha(campo, valor) {
+    setCalendarioFecha(null);
+    const entrada = campo === "fecha_entrada_servicio" ? valor : fechaLocal(servicio.fecha_entrada_servicio);
+    const salida = campo === "fecha_salida_servicio" ? valor : fechaLocal(servicio.fecha_salida_servicio);
+    if (entrada && salida && salida < entrada) {
+      alerta("Fecha no válida", "La fecha de salida no puede ser anterior a la de entrada.");
+      return;
+    }
+    await actualizar({ [campo]: valor ? `${valor}T12:00:00` : null }, "Se actualizó la fecha.");
+  }
+
+  async function guardarCampoVehiculo(cambios) {
+    const veh = servicio.vehiculo || {};
+    const clavesVeh = ["placas_vehiculo", "numserie_vehiculo"];
+    const clavesOrden = ["km_llegada", "km_proximo_servicio"];
+    try {
+      if (clavesVeh.some((k) => k in cambios)) {
+        await api.put(`/vehiculos/${veh.id_vehiculo}`, {
+          id_cliente: veh.id_cliente, id_marca_vehiculo: veh.id_marca_vehiculo ?? null, id_modelo_vehiculo: veh.id_modelo_vehiculo ?? null,
+          id_color: veh.id_color ?? null, placas_vehiculo: veh.placas_vehiculo || null, numserie_vehiculo: veh.numserie_vehiculo || null,
+          cilindraje_vehiculo: veh.cilindraje_vehiculo ?? null, id_year_vehiculo: veh.id_year_vehiculo ?? null, km_vehiculo: veh.km_vehiculo ?? null,
+          comentarios: veh.comentarios ?? null, estado_vehiculo: veh.estado_vehiculo || "activo",
+          ...Object.fromEntries(clavesVeh.filter((k) => k in cambios).map((k) => [k, cambios[k] === "" ? null : cambios[k]])),
+        });
+      }
+      if (clavesOrden.some((k) => k in cambios)) {
+        await api.put(`/servicios/${id}`, Object.fromEntries(clavesOrden.filter((k) => k in cambios).map((k) => [k, cambios[k] || null])));
+      }
+      load();
+    } catch (err) {
+      alerta("No se pudo guardar", err.message);
+    }
+  }
+
+  function borrarAbono(idAbono) {
+    alerta("Borrar abono", "¿Borrar este abono? El saldo pendiente de la orden se volverá a calcular.", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Borrar", style: "destructive", onPress: async () => {
+        try { const r = await api.del(`/servicios/${id}/abonos/${idAbono}`); if (r?.id_servicio) setServicio(r); else load(); }
+        catch (err) { alerta("Error", err.message); }
+      } },
+    ]);
+  }
+
+  // Manda la nota en PDF por WhatsApp: se genera el PDF y se abre el menú de compartir;
+  // al elegir WhatsApp aparece la vista previa del documento para agregar un comentario.
+  async function enviarNotaWhatsApp() {
+    const tipo = servicio.status === "cerrado" ? "remision" : "recibo";
+    setDescargando("whatsapp");
+    try {
+      if (MODO_LOCAL) { alerta("Disponible con servidor", "La nota en PDF se genera en el servidor. Podrás enviarla cuando subas los cambios."); return; }
+      const ruta = tipo === "remision" ? `${API_URL}/servicios/${id}/nota-remision` : `${API_URL}/servicios/${id}/recibo`;
+      const token = await getToken();
+      const nombre = `${tipo === "remision" ? "Nota" : "Orden"}-${id}.pdf`;
+      const resultado = await FileSystem.downloadAsync(ruta, `${FileSystem.cacheDirectory}${nombre}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (resultado.status !== 200) throw new Error("No se pudo generar la nota.");
+      if (!(await Sharing.isAvailableAsync())) throw new Error("Este equipo no permite compartir archivos.");
+      await Sharing.shareAsync(resultado.uri, { mimeType: "application/pdf", dialogTitle: "Enviar nota por WhatsApp", UTI: "com.adobe.pdf" });
+    } catch (err) { alerta("Error", err.message); } finally { setDescargando(null); }
   }
 
   function quitarDetalle(idDetalle) {
@@ -446,7 +533,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     if (!pagoFinalListo) { alerta("Falta cobrar", `Todavía falta ${fmt(faltaFinal)} para cubrir el saldo.`); return; }
     setCerrando(true);
     try {
-      const payload = { comentarios_finales: comentariosFinales, notificar_cliente: notificarFinal };
+      const payload = { comentarios_finales: comentariosFinales, notificar_cliente: notificarFinal && !!servicio.cliente?.cuenta_activada };
       if (conSaldoFinal) {
         payload.tipo_pago = formaPagoFinal;
         if (formaPagoFinal === "mixto") {
@@ -528,7 +615,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   const categoriasDisponibles = [...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort();
   const refFiltradas = refacciones.filter((r) =>
     (!filtroCategoria || r.categoria === filtroCategoria) &&
-    (!busquedaRef || (r.nombre_refaccion || "").toLowerCase().includes(busquedaRef.toLowerCase()))
+    (!busquedaRef || contiene(r.nombre_refaccion || "", busquedaRef))
   );
   const seleccionadas = Object.keys(seleccion).length;
 
@@ -563,6 +650,20 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               {servicio.costos.saldo_pendiente > 0.005 ? `Debe ${fmt(servicio.costos.saldo_pendiente)}` : "Sin saldo"}
             </Text>
           </View>
+        </View>
+        <View style={styles.cabeceraFechas}>
+          <TouchableOpacity style={styles.fechaChip} disabled={!puedeEditar} onPress={() => setCalendarioFecha("fecha_entrada_servicio")}>
+            <Ionicons name="log-in-outline" size={15} color={colors.petrol600} />
+            <Text style={styles.fechaChipTexto}>Entrada {fechaTexto(fechaLocal(servicio.fecha_entrada_servicio)) || "—"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.fechaChip} disabled={!puedeEditar} onPress={() => setCalendarioFecha("fecha_salida_servicio")}>
+            <Ionicons name="log-out-outline" size={15} color={colors.petrol600} />
+            <Text style={styles.fechaChipTexto}>Salida {fechaTexto(fechaLocal(servicio.fecha_salida_servicio)) || "por definir"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.fechaChip, styles.previaChip]} disabled={detalles.length === 0 || !!descargando} onPress={() => descargarPdf(servicio.status === "cerrado" ? "remision" : "recibo")} accessibilityLabel="Vista previa de la nota">
+            {descargando === "recibo" || descargando === "remision" ? <ActivityIndicator size="small" color={colors.petrol600} /> : <Ionicons name="eye-outline" size={16} color={colors.petrol600} />}
+            <Text style={[styles.fechaChipTexto, { color: colors.petrol600 }]}>Vista previa</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.pestanas}>
@@ -731,6 +832,11 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                       {a.comentario ? <Text style={styles.filaSub}>{a.comentario}</Text> : null}
                     </View>
                     <Text style={styles.importe}>{fmt(a.monto_abono)}</Text>
+                    {puedeEditar && abierta && !servicio.pagado && a.id_abono ? (
+                      <TouchableOpacity onPress={() => borrarAbono(a.id_abono)} style={{ marginLeft: 10, padding: 6 }} accessibilityLabel="Borrar abono">
+                        <Ionicons name="trash-outline" size={20} color={colors.red600} />
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
                 </View>
               );
@@ -776,6 +882,21 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               ) : <Text style={styles.filaTitulo}>{responsable ? `${responsable.nombre} ${responsable.paterno || ""}` : "Sin asignar"}</Text>}
             </Bloque>
 
+            <Bloque icono="calendar-outline" titulo="Fechas">
+              {[["fecha_entrada_servicio", "Fecha de entrada"], ["fecha_salida_servicio", "Fecha de salida"]].map(([campo, etq]) => {
+                const valor = fechaLocal(servicio[campo]);
+                return (
+                  <TouchableOpacity key={campo} style={styles.filaLista} disabled={!puedeEditar} onPress={() => setCalendarioFecha(campo)}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.filaSub}>{etq}</Text>
+                      <Text style={styles.filaTitulo}>{valor ? fechaTexto(valor) : "Sin capturar (la nota usa el día en que se genera)"}</Text>
+                    </View>
+                    {puedeEditar && <Ionicons name="calendar-outline" size={20} color={colors.petrol500} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </Bloque>
+
             <Bloque icono="person-outline" titulo="Cliente">
               <Dato etiqueta="Cuenta" valor={cliente.numero_cuenta} />
               <Dato etiqueta="Nombre" valor={`${cliente.nombre_cliente || ""} ${cliente.paterno_cliente || ""}`.trim()} />
@@ -784,11 +905,11 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
             <Bloque icono="car-outline" titulo="Vehículo">
               <Dato etiqueta="Marca / modelo" valor={[vehiculo.marca?.nombre_marca, vehiculo.modelo?.nombre_modelo].filter(Boolean).join(" ")} />
-              <Dato etiqueta="Placas" valor={vehiculo.placas_vehiculo} />
+              <DatoEditable etiqueta="Placas" valor={vehiculo.placas_vehiculo} editable={puedeEditar && !!vehiculo.id_vehiculo} mayusculas onGuardar={(v) => guardarCampoVehiculo({ placas_vehiculo: v.toUpperCase() })} />
               <Dato etiqueta="Color" valor={vehiculo.color?.nombre_color} />
-              <Dato etiqueta="Km de llegada" valor={servicio.km_llegada} />
-              <Dato etiqueta="Próximo servicio (km)" valor={servicio.km_proximo_servicio} />
-              <Dato etiqueta="VIN" valor={vehiculo.numserie_vehiculo} />
+              <DatoEditable etiqueta="Km de llegada" valor={servicio.km_llegada} editable={puedeEditar && abierta} teclado="number-pad" onGuardar={(v) => guardarCampoVehiculo({ km_llegada: v })} />
+              <DatoEditable etiqueta="Próximo servicio (km)" valor={servicio.km_proximo_servicio} editable={puedeEditar && abierta} teclado="number-pad" onGuardar={(v) => guardarCampoVehiculo({ km_proximo_servicio: v })} />
+              <DatoEditable etiqueta="VIN" valor={vehiculo.numserie_vehiculo} editable={puedeEditar && !!vehiculo.id_vehiculo} mayusculas onGuardar={(v) => guardarCampoVehiculo({ numserie_vehiculo: v.toUpperCase() })} />
               {fotoVehiculo && <Image source={{ uri: urlArchivo(fotoVehiculo.ruta_archivo) }} style={styles.fotoVehiculo} />}
               {servicio.diagnostico ? <Dato etiqueta="Diagnóstico" valor={servicio.diagnostico} /> : null}
               {servicio.operaciones ? <Dato etiqueta="Operaciones" valor={servicio.operaciones} /> : null}
@@ -829,6 +950,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               <View style={{ gap: 10 }}>
                 <Boton icono="eye-outline" texto="Vista previa del recibo" onPress={() => descargarPdf("recibo")} deshabilitado={detalles.length === 0} cargando={descargando === "recibo"} />
                 {servicio.status === "cerrado" && <Boton icono="document-text-outline" texto="Nota de remisión" onPress={() => descargarPdf("remision")} cargando={descargando === "remision"} />}
+                <Boton icono="logo-whatsapp" texto="Enviar nota por WhatsApp" onPress={enviarNotaWhatsApp} deshabilitado={detalles.length === 0} cargando={descargando === "whatsapp"} />
                 {factura ? (
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <Boton chico icono="download-outline" texto={`Factura ${factura.serie}-${factura.folio} PDF`} onPress={() => descargarFactura("pdf")} cargando={descargandoFactura === "pdf"} estilo={{ flex: 1 }} />
@@ -868,11 +990,19 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       {/* ===== Barra de acciones fija ===== */}
       {abierta && puedeEditar && (
         <View style={styles.barra}>
-          <Boton icono="add" texto="Agregar" onPress={() => abrirAgregar(refacciones.length ? "catalogo" : "libre")} estilo={{ flex: 1 }} />
+          <Boton icono="construct-outline" texto="Agregar refacción" onPress={() => abrirAgregar(refacciones.length ? "catalogo" : "libre")} estilo={{ flex: 1.2 }} />
           <Boton tipo="primario" icono="checkmark-done" texto={conSaldoFinal ? `Cobrar ${fmt(saldoFinal)}` : "Finalizar"} onPress={abrirModalCierre}
             deshabilitado={detalles.length === 0} estilo={{ flex: 1.5 }} />
         </View>
       )}
+
+      <Calendario
+        visible={!!calendarioFecha}
+        valor={calendarioFecha ? fechaLocal(servicio[calendarioFecha]) : ""}
+        titulo={calendarioFecha === "fecha_salida_servicio" ? "Fecha de salida" : "Fecha de entrada"}
+        onElegir={(v) => cambiarFecha(calendarioFecha, v)}
+        onCerrar={() => setCalendarioFecha(null)}
+      />
 
       <InspeccionForm
         visible={mostrandoInspeccion}
@@ -1085,10 +1215,12 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               </>
             )}
 
-            <View style={styles.ivaFila}>
-              <Text style={[styles.ivaTexto, { flex: 1 }]}>Avisar al cliente que su vehículo está listo</Text>
-              <Switch value={notificarFinal} onValueChange={setNotificarFinal} trackColor={{ true: colors.petrol500 }} />
-            </View>
+            {cliente.cuenta_activada ? (
+              <View style={styles.ivaFila}>
+                <Text style={[styles.ivaTexto, { flex: 1 }]}>Avisar al cliente en su app que su vehículo está listo</Text>
+                <Switch value={notificarFinal} onValueChange={setNotificarFinal} trackColor={{ true: colors.petrol500 }} />
+              </View>
+            ) : null}
 
             <Text style={[styles.label, { marginTop: spacing.md }]}>Escribe CONFIRMAR para cerrar la orden</Text>
             <TextInput style={styles.input} value={textoConfirmar} onChangeText={setTextoConfirmar} placeholder="CONFIRMAR" placeholderTextColor={colors.ink500} autoCapitalize="characters" />
@@ -1215,6 +1347,11 @@ const styles = crearEstilos({
   cabeceraFila: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   cabeceraServicio: { fontSize: 14, fontWeight: "600", color: colors.ink900, marginTop: 2 },
   cabeceraMeta: { fontSize: 12.5, color: colors.ink500, marginTop: 1 },
+  cabeceraFechas: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  fechaChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 11, borderRadius: 100, borderWidth: 1, borderColor: colors.ink300, backgroundColor: colors.paper0 },
+  previaChip: { borderColor: colors.petrol500 },
+  fechaChipTexto: { fontSize: 13, fontWeight: "700", color: colors.ink700 },
+  datoInput: { flex: 1, textAlign: "right", fontSize: 15, fontWeight: "600", color: colors.ink900, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", borderColor: colors.ink300, marginLeft: 12 },
   cabeceraTotales: { alignItems: "flex-end" },
   totalEtiqueta: { fontSize: 10.5, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.5 },
   totalValor: { fontFamily: "BarlowCondensed_700Bold", fontSize: 26, color: colors.ink900 },

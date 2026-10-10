@@ -44,7 +44,7 @@ async def leer_y_validar_imagen(archivo: UploadFile) -> tuple[bytes, str]:
 
 
 def nombre_unico(prefijo: str, extension: str) -> str:
-    return f"{prefijo}_{uuid.uuid4().hex[:12]}{extension}"
+    return f"{prefijo}_{uuid.uuid4().hex}{extension}"  # 128 bits: el enlace no se puede adivinar
 
 
 def guardar(carpeta, nombre_archivo: str, contenido: bytes) -> None:

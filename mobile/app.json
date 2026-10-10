@@ -34,8 +34,8 @@
       "orientation": "portrait"
     },
     "extra": {
-      "apiUrl": "https://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net/api",
-      "wsUrl": "wss://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net",
+      "apiUrl": "https://app.aldmautocore.com/api",
+      "wsUrl": "wss://app.aldmautocore.com",
       "eas": {
         "projectId": "cde216c9-9704-48ca-8b6d-5edac3a28dd6"
       }

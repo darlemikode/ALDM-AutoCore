@@ -143,7 +143,7 @@ def generar_recibo_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion
     ]
 
     story += [Spacer(1, 6 * mm), notas_pie(ANCHO)]
-    story.append(Spacer(1, 4 * mm))
+    story.append(Spacer(1, 2 * mm))
     story.append(Paragraph(
         "Este recibo ampara los pagos registrados para la orden indicada. No es un comprobante fiscal (CFDI); "
         "si requieres factura, solicítala con tus datos fiscales.",

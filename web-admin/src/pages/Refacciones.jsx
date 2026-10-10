@@ -93,7 +93,7 @@ export default function Refacciones() {
     return [
       { name: "nombre_refaccion", label: "Nombre", required: true, full: true, grupo: "general" },
       {
-        name: "__id_categoria", label: "Categoría", type: "select", grupo: "general", full: true, grande: true,
+        name: "__id_categoria", label: "Categoría", type: "select", required: true, grupo: "general", full: true, grande: true,
         options: categoriasRefaccion.map((c) => ({ value: c.id_categoria_refaccion, label: c.nombre_categoria })),
         creatable: hasPermission("catalogos.crear")
           ? {
@@ -139,6 +139,14 @@ export default function Refacciones() {
     const yaEsta = refacciones.some((r) => r.id_refaccion !== editing?.id_refaccion && `${norm(r.categoria)}|${norm(r.nombre_refaccion)}` === clave)
       || (!editing?.id_refaccion && recienAgregadas.current.has(clave));
     if (yaEsta) throw new Error(`"${capturados.nombre_refaccion}" ya existe${nombreCat ? ` en ${nombreCat}` : ""}.`);
+    // Mismo nombre en OTRA categoría: se avisa para evitar duplicados
+    const enOtras = [...new Set(refacciones
+      .filter((r) => r.id_refaccion !== editing?.id_refaccion && norm(r.nombre_refaccion) === norm(capturados.nombre_refaccion) && norm(r.categoria) !== norm(nombreCat))
+      .map((r) => r.categoria || "Sin categoría"))];
+    if (enOtras.length) {
+      const ok = await confirmDialog(`"${capturados.nombre_refaccion}" ya está registrada en ${enOtras.join(", ")}. ¿La agregas también en ${nombreCat || "esta categoría"}?`, { title: "Ya existe en otra categoría" });
+      if (!ok) throw new Error(`No se guardó: "${capturados.nombre_refaccion}" ya existe en ${enOtras.join(", ")}.`);
+    }
     // Los datos de stock, precios y proveedor viven en Inventario: al editar se conservan tal cual
     const datos = editing?.id_refaccion ? { ...baseDe(editing), nombre_refaccion: capturados.nombre_refaccion } : { nombre_refaccion: capturados.nombre_refaccion };
     datos.categoria = __id_categoria ? categoriasRefaccion.find((c) => c.id_categoria_refaccion === Number(__id_categoria))?.nombre_categoria || null : null;

@@ -1,3 +1,4 @@
+import { contiene } from "../lib/texto";
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -32,12 +33,12 @@ export default function ServiciosScreen({ navigation }) {
   useActualizacionGlobal("servicios", load);
 
   const conteo = (clave) => servicios.filter((s) => !clave || s.status === clave).length;
-  const q = busqueda.trim().toLowerCase();
+  const q = busqueda.trim();
   const filtrados = servicios.filter((s) => {
     if (pestana && s.status !== pestana) return false;
     if (!q) return true;
     const v = s.vehiculo || {};
-    return `${s.id_servicio} ${s.nombre_servicio} ${s.cliente?.nombre_cliente || ""} ${s.cliente?.paterno_cliente || ""} ${v.placas_vehiculo || ""} ${v.marca?.nombre_marca || ""} ${v.modelo?.nombre_modelo || ""}`.toLowerCase().includes(q);
+    return `${s.id_servicio} ${s.nombre_servicio} ${s.cliente?.nombre_cliente || ""} ${s.cliente?.paterno_cliente || ""} ${v.placas_vehiculo || ""} ${v.marca?.nombre_marca || ""} ${v.modelo?.nombre_modelo || ""}`.includes(q) || contiene(`${s.id_servicio} ${s.nombre_servicio} ${s.cliente?.nombre_cliente || ""} ${s.cliente?.paterno_cliente || ""} ${v.placas_vehiculo || ""} ${v.marca?.nombre_marca || ""} ${v.modelo?.nombre_modelo || ""}`, q);
   });
 
   return (

@@ -15,7 +15,7 @@ import { suscribirAutoSync } from "../autoSync";
 import { isVerificacion2PasosActiva, setVerificacion2PasosActiva } from "../configuracionApp";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
-import { api } from "../api";
+import { api, setToken } from "../api";
 
 const ITEMS = [
   { to: "Cotizaciones", label: "Cotizaciones", desc: "Presupuestos para el cliente, con PDF", icono: "document-text-outline", permiso: "cotizaciones.ver" },
@@ -59,6 +59,9 @@ function Grupo({ titulo, children }) {
     </View>
   );
 }
+
+// Posición del scroll de Ajustes: al cambiar el tema la pantalla se vuelve a montar y se queda donde estabas
+let scrollGuardado = 0;
 
 export default function MasScreen({ navigation }) {
   const { user, logout, hasPermission } = useAuth();
@@ -199,7 +202,8 @@ export default function MasScreen({ navigation }) {
     }
     setCambiandoPassword(true);
     try {
-      await api.put("/auth/password", { password_actual: passwordActual, password_nueva: passwordNueva });
+      const r = await api.put("/auth/password", { password_actual: passwordActual, password_nueva: passwordNueva });
+      if (r?.access_token) await setToken(r.access_token); // las demás sesiones se cierran; esta sigue
       setPasswordActual(""); setPasswordNueva(""); setPasswordNuevaConfirmar("");
       setMostrarCambioPassword(false);
       alerta("Listo", "Tu contraseña se actualizó.");
@@ -227,7 +231,9 @@ export default function MasScreen({ navigation }) {
   ];
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}>
+    <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}
+      contentOffset={{ x: 0, y: scrollGuardado }} scrollEventThrottle={64}
+      onScroll={(e) => { scrollGuardado = e.nativeEvent.contentOffset.y; }}>
       <View style={styles.perfil}>
         <View style={styles.avatar}>
           <Text style={styles.avatarTexto}>
@@ -271,10 +277,14 @@ export default function MasScreen({ navigation }) {
       {otros.length > 0 && (
         <Grupo titulo="Otros">
           {otros.map((c, i) => (
-            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
+            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => (c.accion ? c.accion() : navigation.navigate(c.ir))} />
           ))}
         </Grupo>
       )}
+
+      <Grupo titulo="Ayuda">
+        <Fila primera icono="help-circle-outline" titulo="Ayuda por módulo" desc="Recorridos paso a paso de cada módulo" onPress={() => navigation.navigate("Ayuda")} />
+      </Grupo>
 
       <Grupo titulo="Módulos">
         {ITEMS.filter((item) => !item.permiso || hasPermission(item.permiso)).map((item, i) => (

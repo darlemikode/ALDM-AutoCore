@@ -85,7 +85,7 @@ def generar_nota_remision_pdf(servicio, costos: ServicioCostos, taller=None, ins
         Spacer(1, 1 * mm),
         firmas(["Nombre y firma del cliente", "Firma / sello del taller"], ANCHO),
     ]))
-    story += [Spacer(1, 5 * mm), KeepTogether([notas_pie(ANCHO)])]
+    story += [Spacer(1, 5 * mm), notas_pie(ANCHO)]
     from .inspeccion_pdf import hoja_inspeccion
     story += hoja_inspeccion(inspeccion, ANCHO)
 

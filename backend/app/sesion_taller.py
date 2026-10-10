@@ -21,13 +21,21 @@ from . import models
 from .tenancy import MODO_NINGUNO, MODO_SUPERADMIN, MODO_TALLER, fijar_tenant
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
+# Con la clave por defecto cualquiera puede firmar tokens (incluso de súper
+# administrador). En Azure no se permite arrancar así; en local solo se avisa.
+_CLAVES_INSEGURAS = {"", "dev-secret-change-me", "e2e-solo-pruebas", "changeme", "secret"}
+if SECRET_KEY in _CLAVES_INSEGURAS or len(SECRET_KEY) < 32:
+    if os.getenv("WEBSITE_SITE_NAME") and SECRET_KEY in _CLAVES_INSEGURAS:
+        raise RuntimeError("SECRET_KEY no está configurada en el servidor: define una clave larga y aleatoria.")
+    import logging
+    logging.getLogger("uvicorn.error").warning("SECRET_KEY es la de desarrollo o muy corta: usa una clave larga y aleatoria en producción.")
 ALGORITHM = "HS256"
 
 # Rutas que deben funcionar aunque la suscripción esté vencida o en gracia
 # (entrar, ver el aviso, cambiar de taller o de contraseña).
 RUTAS_SIEMPRE_PERMITIDAS = (
     "/api/auth/login", "/api/auth/me", "/api/auth/talleres", "/api/auth/seleccionar-taller",
-    "/api/auth/password", "/api/auth/push-token", "/api/auth/recuperar-password",
+    "/api/auth/password", "/api/auth/push-token", "/api/auth/recuperar-password", "/api/auth/tutoriales",
     "/api/auth/estado-suscripcion", "/api/portal-cliente/taller",
 )
 METODOS_LECTURA = {"GET", "HEAD", "OPTIONS"}

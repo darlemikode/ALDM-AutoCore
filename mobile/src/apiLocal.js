@@ -1,3 +1,4 @@
+import { contiene } from "./lib/texto";
 import * as FileSystem from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -121,7 +122,7 @@ function partes(ruta) {
 }
 
 function coincideTexto(texto, busqueda) {
-  return (texto || "").toString().toLowerCase().includes(busqueda.toLowerCase());
+  return contiene(texto || "", busqueda);
 }
 
 export async function solicitudLocal(path, method, body) {
@@ -312,6 +313,21 @@ const ETAPAS_SERVICIO_LOCAL = [
         fecha_pago: new Date().toISOString(), _pendienteSubir: true,
       };
       const abonos = [...(s.abonos || []), nuevoAbono];
+      const actualizado = await colActualizar("servicios", idServicio, { abonos });
+      return servicioCompleto(actualizado, await contextoRelaciones());
+    }
+    // Borrar un abono (igual que la web). En modo local solo se pueden borrar los que
+    // todavía no se suben al servidor; los ya sincronizados se borran con conexión.
+    if (seg.length === 4 && seg[2] === "abonos" && method === "DELETE") {
+      const idServicio = parseInt(seg[1], 10);
+      const idAbono = Number(seg[3]);
+      const s = await colGetOne("servicios", idServicio);
+      if (!s) throw new Error("La orden no existe.");
+      if (s.status !== "abierto") throw new Error("La orden no está abierta: sus abonos ya no se pueden borrar.");
+      const abono = (s.abonos || []).find((x) => Number(x.id_abono) === idAbono);
+      if (!abono) throw new Error("Ese abono ya no existe en la orden.");
+      if (!abono._pendienteSubir) throw new Error("Este abono ya está en el servidor: bórralo cuando tengas conexión.");
+      const abonos = (s.abonos || []).filter((x) => Number(x.id_abono) !== idAbono).map((x, i) => ({ ...x, numero_abono: i + 1 }));
       const actualizado = await colActualizar("servicios", idServicio, { abonos });
       return servicioCompleto(actualizado, await contextoRelaciones());
     }

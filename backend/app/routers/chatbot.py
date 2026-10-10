@@ -17,11 +17,12 @@ límite todavía.
 """
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..rate_limit import limiter
 from ..database import get_db
 from ..tenancy import MODO_TALLER, fijar_tenant, taller_actual
 from ..security import (
@@ -58,7 +59,8 @@ def _cliente_de_sesion(token: str, db: Session) -> models.Cliente:
 
 
 @router.post("/verificar", response_model=schemas.ChatbotSesionOut)
-def verificar_identidad(payload: schemas.ChatbotVerificarIn, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def verificar_identidad(request: Request, payload: schemas.ChatbotVerificarIn, db: Session = Depends(get_db)):
     numero_cuenta = payload.numero_cuenta.strip().upper()
     vin = payload.vin.strip().upper()
 
@@ -73,12 +75,12 @@ def verificar_identidad(payload: schemas.ChatbotVerificarIn, db: Session = Depen
         if cliente:
             fijar_tenant(db, MODO_TALLER, cliente.id_taller)
     if not cliente:
-        raise HTTPException(status_code=404, detail="No encontramos esa cuenta. Revisa el número (ej. CTE-000001) e intenta de nuevo.")
+        raise HTTPException(status_code=404, detail="No encontramos una cuenta con ese número y VIN. Revisa los datos e intenta de nuevo.")
 
     vehiculos = db.query(models.Vehiculo).filter(models.Vehiculo.id_cliente == cliente.id_cliente).all()
     coincide = any((v.numserie_vehiculo or "").strip().upper() == vin for v in vehiculos)
     if not coincide:
-        raise HTTPException(status_code=404, detail="El VIN no coincide con ningún vehículo de esa cuenta. Revísalo e intenta de nuevo.")
+        raise HTTPException(status_code=404, detail="No encontramos una cuenta con ese número y VIN. Revisa los datos e intenta de nuevo.")
 
     token = create_chatbot_session_token(cliente.id_cliente, cliente.id_taller)
     return schemas.ChatbotSesionOut(token=token, nombre_cliente=cliente.nombre_cliente, cuenta_activada=cliente.cuenta_activada)

@@ -1,3 +1,4 @@
+import { contiene } from "../lib/texto";
 import BadgeIcono from "./BadgeIcono";
 import { colorPorIcono } from "../iconosModulo";
 import { useCallback, useState } from "react";
@@ -81,8 +82,7 @@ export default function ListaCrud(props) {
 
   let visibles = filtrarLista ? filtrarLista(lista) : lista;
   if (q.trim()) {
-    const t = q.toLowerCase();
-    visibles = visibles.filter((it) => (buscarEn ? buscarEn(it) : JSON.stringify(it)).toLowerCase().includes(t));
+    visibles = visibles.filter((it) => contiene(buscarEn ? buscarEn(it) : JSON.stringify(it), q));
   }
   const tonos = {
     petrol: [colors.petrol100, colors.petrol600], teal: [colors.teal100, colors.teal600],

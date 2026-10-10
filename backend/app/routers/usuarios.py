@@ -60,6 +60,11 @@ def listar(db: Session = Depends(get_db), user=Depends(require_permission("usuar
 @router.post("/", response_model=schemas.UsuarioOut, status_code=201)
 def crear(payload: schemas.UsuarioCreate, db: Session = Depends(get_db), user=Depends(require_permission("usuarios.crear"))):
     tid = taller_actual(db)
+    import re
+    if not re.fullmatch(r"[A-Za-z0-9._-]{3,50}", payload.username or ""):
+        raise HTTPException(status_code=400, detail="El usuario solo puede tener letras, números, punto, guion y guion bajo (3 a 50 caracteres).")
+    if len(payload.password or "") < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres.")
     if db.query(models.Usuario).filter(models.Usuario.username.ilike(payload.username)).first():
         raise HTTPException(status_code=400, detail="Ya existe un usuario con ese nombre de usuario.")
     _rol_del_taller(db, payload.id_rol)

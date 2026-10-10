@@ -62,6 +62,20 @@ def _con_costos(servicio: models.Servicio) -> schemas.ServicioCompletoOut:
     return out
 
 
+def _para(user, out: schemas.ServicioCompletoOut) -> schemas.ServicioCompletoOut:
+    """Sin el permiso «Ver precios» (p. ej. el Técnico) la API no entrega
+    montos: no basta con esconderlos en la pantalla."""
+    if user.tiene_permiso("servicios.ver_precios"):
+        return out
+    out.costos = schemas.ServicioCostos(subtotal=0, iva=0, total=0, total_abonado=0, saldo_pendiente=0)
+    for d in out.detalles:
+        d.costo_mano_obra = 0
+        d.costo_refaccion = 0
+        d.costo_extra = 0
+    out.abonos = []
+    return out
+
+
 def _calcular_alertas_stock(servicio: models.Servicio, db: Session) -> list[dict]:
     """Refacciones usadas en este servicio que quedaron en nivel bajo o
     crítico de stock — se calcula al cerrar la orden, para avisarle al
@@ -153,13 +167,13 @@ def listar(
     if solo_sin_pagar:
         query = query.filter(models.Servicio.pagado == False)
     servicios = query.order_by(models.Servicio.fecha_entrada_servicio.desc()).all()
-    return [_con_costos(s) for s in servicios]
+    return [_para(user, _con_costos(s)) for s in servicios]
 
 
 @router.get("/{servicio_id}", response_model=schemas.ServicioCompletoOut)
 def obtener(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
     servicio = _get_servicio_o_404(db, servicio_id)
-    return _con_costos(servicio)
+    return _para(user, _con_costos(servicio))
 
 
 def _validar_cliente_vehiculo(db: Session, id_cliente, id_vehiculo, exigir_ambos=False):
@@ -224,7 +238,7 @@ def listar_reclamaciones(servicio_id: int, db: Session = Depends(get_db), user=D
         .order_by(models.Servicio.fecha_entrada_servicio.desc())
         .all()
     )
-    return [_con_costos(s) for s in filas]
+    return [_para(user, _con_costos(s)) for s in filas]
 
 
 @router.put("/{servicio_id}", response_model=schemas.ServicioCompletoOut)
@@ -498,7 +512,7 @@ def _nombre_pdf(servicio, prefijo: str) -> str:
 
 # --- Recibo en PDF ------------------------------------------------------------
 @router.get("/{servicio_id}/recibo")
-def descargar_recibo(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
+def descargar_recibo(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver_precios"))):
     from ..recibo_pdf import generar_recibo_pdf  # import diferido: evita cargar reportlab si no se usa
 
     servicio = _get_servicio_o_404(db, servicio_id)
@@ -515,7 +529,7 @@ def descargar_recibo(servicio_id: int, db: Session = Depends(get_db), user=Depen
 
 
 @router.get("/{servicio_id}/nota-remision")
-def descargar_nota_remision(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
+def descargar_nota_remision(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver_precios"))):
     """El documento que se le entrega al cliente al recoger su vehículo —
     diagnóstico, trabajos realizados, kilometraje, y espacio de firma de
     conformidad. Distinto del recibo de pago (ver /recibo arriba)."""
@@ -533,57 +547,6 @@ def descargar_nota_remision(servicio_id: int, db: Session = Depends(get_db), use
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{_nombre_pdf(servicio, "Nota")}"'},
     )
-
-
-# --- Enlace público del PDF (para mandarlo por WhatsApp) -----------------------
-# WhatsApp no deja adjuntar archivos desde un enlace wa.me, así que se manda un
-# enlace firmado que abre el PDF sin iniciar sesión. Caduca a los 30 días y solo
-# sirve para esa orden y ese tipo de documento.
-@router.post("/{servicio_id}/enlace-pdf")
-def crear_enlace_pdf(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
-    from datetime import timedelta
-    from ..security import create_access_token
-
-    servicio = _get_servicio_o_404(db, servicio_id)
-    _exigir_cliente_y_vehiculo(servicio)
-    tipo = "remision" if servicio.status == "cerrado" else "recibo"
-    token = create_access_token({"sub": f"nota:{servicio_id}", "nota": tipo, "sid": servicio_id, "tid": servicio.id_taller}, timedelta(days=30))
-    return {"ruta": f"/api/servicios/publico/{token}", "tipo": tipo}
-
-
-@router.get("/publico/{token}")
-def ver_pdf_publico(token: str):
-    from jose import JWTError, jwt
-    from ..database import SessionLocal
-    from ..sesion_taller import SECRET_KEY, ALGORITHM
-    from ..tenancy import MODO_TALLER, fijar_tenant
-
-    try:
-        datos = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        tipo, sid, tid = datos["nota"], int(datos["sid"]), datos.get("tid")
-    except (JWTError, KeyError, ValueError):
-        raise HTTPException(status_code=404, detail="Este enlace ya no es válido. Pide a tu taller que te lo reenvíe.")
-    if tipo not in ("recibo", "remision"):
-        raise HTTPException(status_code=404, detail="Enlace no válido.")
-    db = SessionLocal()
-    try:
-        fijar_tenant(db, MODO_TALLER, tid)
-        servicio = _get_servicio_o_404(db, sid)
-        costos = _calcular_costos(servicio)
-        taller = db.query(models.ConfiguracionTaller).first()
-        from ..inspeccion_pdf import inspeccion_de_servicio
-        inspeccion = inspeccion_de_servicio(db, models, sid)
-        if tipo == "remision":
-            from ..nota_remision_pdf import generar_nota_remision_pdf
-            pdf_bytes = generar_nota_remision_pdf(servicio, costos, taller, inspeccion)
-            nombre = _nombre_pdf(servicio, "Nota")
-        else:
-            from ..recibo_pdf import generar_recibo_pdf
-            pdf_bytes = generar_recibo_pdf(servicio, costos, taller, inspeccion)
-            nombre = _nombre_pdf(servicio, "Orden")
-    finally:
-        db.close()
-    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{nombre}"'})
 
 
 # --- Finalizar orden: cobro + cierre + nota de remisión + aviso al cliente -----

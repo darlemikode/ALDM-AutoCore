@@ -21,22 +21,22 @@ from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 # --- Paleta -----------------------------------------------------------------
-INK = colors.HexColor("#1f2833")
-INK_2 = colors.HexColor("#3a4452")
-MUTED = colors.HexColor("#6b7480")
-LINE = colors.HexColor("#d9dee4")
-SOFT = colors.HexColor("#eef2f4")
-PANEL = colors.HexColor("#e3e9ee")
-SOMBRA = colors.HexColor("#b4bfca")
-FONDO_PAGINA = colors.HexColor("#cfd7df")
-PAPEL = colors.HexColor("#f1f4f6")
-BORDE_TARJETA = colors.HexColor("#6f7f90")
+INK = colors.HexColor("#1c1c1e")
+INK_2 = colors.HexColor("#3a3a3d")
+MUTED = colors.HexColor("#6d6d72")
+LINE = colors.HexColor("#dcdcde")
+SOFT = colors.HexColor("#f2f2f3")
+PANEL = colors.HexColor("#e8e8ea")
+SOMBRA = colors.HexColor("#bdbdc1")
+FONDO_PAGINA = colors.HexColor("#d9d9dc")
+PAPEL = colors.HexColor("#f5f5f6")
+BORDE_TARJETA = colors.HexColor("#7a7a80")
 # Azul petróleo: color de marca de los documentos
-ACCENT = colors.HexColor("#0f5c6e")
-ACCENT_SOFT = colors.HexColor("#cfe5ea")
+ACCENT = colors.HexColor("#d40000")  # rojo Ferrari (Rosso Corsa) — marca ALDM AutoCore
+ACCENT_SOFT = colors.HexColor("#fbe0e0")
 # Rojo: solo para estados (Mal, cancelada, sin validez fiscal)
 ROJO = colors.HexColor("#c8372d")
 ROJO_SOFT = colors.HexColor("#fdecea")
@@ -175,14 +175,14 @@ class PlantillaDocumento:
         # Franja superior
         c.setFillColor(ACCENT)
         c.rect(0, alto - 3.5 * mm, ancho, 3.5 * mm, stroke=0, fill=1)
-        c.setFillColor(colors.HexColor("#14a8a0"))
+        c.setFillColor(colors.HexColor("#1c1c1e"))
         c.rect(0, alto - 3.5 * mm, 60 * mm, 3.5 * mm, stroke=0, fill=1)
 
         top = alto - 3.5 * mm - 8 * mm  # línea base superior del contenido del encabezado
         # Recuadro de los datos del taller (con énfasis)
         caja_x, caja_w, caja_h = MARGEN_X, 118 * mm, 33 * mm
         caja_y = top - 29 * mm
-        c.setFillColor(colors.HexColor("#e4f2f5"))
+        c.setFillColor(colors.HexColor("#fdf1f1"))
         c.setStrokeColor(ACCENT)
         c.setLineWidth(1.2)
         c.roundRect(caja_x, caja_y, caja_w, caja_h, 3 * mm, stroke=1, fill=1)
@@ -421,23 +421,14 @@ def caja_texto(texto: str, ancho: float):
 
 
 def notas_pie(ancho: float):
-    """Notas fijas al pie de la nota y el recibo: garantía y recomendación de mantenimiento."""
-    est = ParagraphStyle("notas_pie", parent=E["parrafo"], fontSize=9.5, leading=13, textColor=INK)
-    filas = [
-        [Paragraph("<font color='#0f5c6e'><b>NOTA IMPORTANTE:</b></font> <b>Para hacer válida cualquier garantía es indispensable presentar esta nota de servicio.</b>", est)],
-        [Paragraph("Le recomendamos revisar su vehículo al menos una vez por semana (niveles de aceite, líquidos y llantas) "
-                   "para prevenir fallas y accidentes. <font color='#0f5c6e'><b>Gracias por su confianza.</b></font>", est)],
-    ]
-    t = Table(filas, colWidths=[ancho])
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#e4f2f5")),
-        ("BOX", (0, 0), (-1, -1), 0.8, ACCENT), ("ROUNDEDCORNERS", [5, 5, 5, 5]),
-        ("LINEBEFORE", (0, 0), (0, -1), 3.5, ACCENT),
-        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, 0), 8), ("BOTTOMPADDING", (0, -1), (-1, -1), 8),
-    ]))
-    return t
+    """Notas fijas al pie de la nota y el recibo (garantía y mantenimiento), en letra
+    pequeña como el aviso final, sin recuadro y sin partirse entre páginas."""
+    return KeepTogether([
+        Paragraph("<b>NOTA IMPORTANTE:</b> Para hacer válida cualquier garantía es indispensable presentar esta nota de servicio.", E["nota"]),
+        Spacer(1, 1.2 * mm),
+        Paragraph("Le recomendamos revisar su vehículo al menos una vez por semana (niveles de aceite, líquidos y llantas) "
+                  "para prevenir fallas y accidentes. Gracias por su confianza.", E["nota"]),
+    ])
 
 
 def firmas(etiquetas, ancho: float):

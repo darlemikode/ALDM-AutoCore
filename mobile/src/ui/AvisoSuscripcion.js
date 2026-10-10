@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, Modal, Linking, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { initialWindowMetrics } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import { colors } from "../theme";
@@ -11,15 +12,26 @@ import { crearEstilos } from "./estilos";
 export function AvisoSuscripcion() {
   const { estadoSuscripcion, hasPermission } = useAuth();
   const [pagando, setPagando] = useState(false);
+  const [oculto, setOculto] = useState(false);
+  // Fuera del NavigationContainer no hay proveedor de márgenes: se usan los del arranque
+  const insets = initialWindowMetrics?.insets || { bottom: 0 };
   if (!estadoSuscripcion?.mensaje || estadoSuscripcion.bloqueado) return null;
   const grave = estadoSuscripcion.solo_lectura;
+  if (oculto && !grave) return null;
+  // Flotante, abajo y encima de la barra de pestañas: ya no se encima con la barra de estado
+  // ni empuja el encabezado (evita el espacio en blanco arriba).
   return (
-    <View style={[styles.barra, { backgroundColor: grave ? colors.red100 : colors.warn100 }]}>
+    <View style={[styles.barra, styles.flotante, { bottom: insets.bottom + 74, backgroundColor: grave ? colors.red100 : colors.warn100, borderColor: grave ? colors.red600 : colors.warn600 }]}>
       <Ionicons name={grave ? "lock-closed-outline" : "time-outline"} size={14} color={grave ? colors.red600 : colors.warn600} />
       <Text style={[styles.texto, { color: grave ? colors.red600 : colors.warn600 }]}>{estadoSuscripcion.mensaje}</Text>
       {hasPermission?.("configuracion.editar") ? (
         <TouchableOpacity style={styles.pagarChico} onPress={() => setPagando(true)}>
           <Text style={styles.pagarChicoTexto}>Pagar</Text>
+        </TouchableOpacity>
+      ) : null}
+      {!grave ? (
+        <TouchableOpacity onPress={() => setOculto(true)} hitSlop={10} accessibilityLabel="Ocultar aviso">
+          <Ionicons name="close" size={18} color={colors.warn600} />
         </TouchableOpacity>
       ) : null}
       <PagarSuscripcion visible={pagando} onCerrar={() => setPagando(false)} />
@@ -123,8 +135,9 @@ export function PagarSuscripcion({ visible, onCerrar }) {
 export const SelectorEstado = { abrirSelector: null };
 
 const styles = crearEstilos({
-  barra: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 12 },
-  texto: { flex: 1, fontSize: 12, fontWeight: "600" },
+  barra: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 14 },
+  flotante: { position: "absolute", left: 12, right: 12, zIndex: 50, elevation: 6, borderRadius: 14, borderWidth: 1, shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
+  texto: { flex: 1, fontSize: 13.5, fontWeight: "700" },
   bloqueo: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28, backgroundColor: colors.paper0, gap: 10 },
   bloqueoTitulo: { fontFamily: "BarlowCondensed_700Bold", fontSize: 28, color: colors.red600 },
   bloqueoTexto: { fontSize: 14, color: colors.ink700, textAlign: "center", marginBottom: 10 },

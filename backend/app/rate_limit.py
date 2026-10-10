@@ -24,7 +24,9 @@ def ip_del_cliente(request) -> str:
 
 
 # Con REDIS_URL los contadores se comparten entre instancias; sin ella, en memoria.
+# RATE_LIMIT_DESACTIVADO=1 solo para las pruebas automáticas (e2e), nunca en producción.
 limiter = Limiter(
+    enabled=os.getenv("RATE_LIMIT_DESACTIVADO") != "1",
     key_func=ip_del_cliente,
     default_limits=["200/minute"],
     storage_uri=os.getenv("REDIS_URL") or "memory://",

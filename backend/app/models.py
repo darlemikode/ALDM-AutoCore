@@ -94,6 +94,10 @@ class Usuario(Base):
 
     es_superadmin = Column(Boolean, default=False)  # acceso a la app de súper administración
     id_ultimo_taller = Column(Integer, nullable=True)  # para abrir directo en el último taller usado
+    # Tutoriales (recorridos con globos) que ya vio, separados por coma — así no se repiten en web ni en la app
+    tutoriales_vistos = Column(String(500), nullable=True)
+    # Sube cada vez que cambia la contraseña: los tokens con otra versión dejan de servir
+    version_token = Column(Integer, nullable=True, default=0)
 
     membresias = relationship("UsuarioTaller", back_populates="usuario", cascade="all, delete-orphan")
     solicitudes_recuperacion = relationship("SolicitudRecuperacion", back_populates="usuario")
@@ -1030,6 +1034,22 @@ class ConfiguracionTaller(TenantMixin, Base):
     ciudad = relationship("Ciudad", foreign_keys=[id_ciudad])
 
 
+class LlaveIntegracion(TenantMixin, Base):
+    """Llave de API para conectar herramientas externas (n8n, agentes de
+    WhatsApp) a UN taller. Solo se guarda el hash; la llave completa se
+    muestra una sola vez al crearla."""
+    __tablename__ = "llaves_integracion"
+
+    id_llave = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(80), nullable=False)
+    prefijo = Column(String(16), nullable=False)  # lo que se muestra para reconocerla
+    hash_llave = Column(String(64), nullable=False, unique=True, index=True)
+    activa = Column(Boolean, default=True)
+    creada_por = Column(String(50), nullable=True)
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    ultimo_uso = Column(DateTime, nullable=True)
+
+
 # ---------------------------------------------------------------------------
 # Super administración — catálogo de talleres/refaccionarias clientes de
 # ALDM AutoCore, paquetes de suscripción y qué módulos incluye cada uno.
@@ -1147,6 +1167,8 @@ class ConfiguracionSaaS(Base):
     dias_aviso_vencimiento = Column(Integer, default=7)
     id_paquete_prueba = Column(Integer, ForeignKey("paquetes.id_paquete"), nullable=True)
     id_taller_principal = Column(Integer, ForeignKey("talleres.id_taller"), nullable=True)
+    # Versión de los paquetes base ya aplicada (ver seed.VERSION_PAQUETES)
+    version_paquetes = Column(Integer, nullable=True, default=0)
 
     paquete_prueba = relationship("Paquete", foreign_keys=[id_paquete_prueba])
 

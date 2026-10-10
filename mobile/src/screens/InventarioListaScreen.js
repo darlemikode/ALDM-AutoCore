@@ -1,3 +1,4 @@
+import { contiene } from "../lib/texto";
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, Modal, ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -106,7 +107,7 @@ export default function InventarioListaScreen() {
 
   const nombreMarca = (id) => marcasVeh.find((m) => m.id_marca_vehiculo === id)?.nombre_marca || "Marca";
   const nombreModelo = (id) => modelosVeh.find((m) => m.id_modelo_vehiculo === id)?.nombre_modelo;
-  const visibles = filas.filter((f) => !q || `${f.refaccion?.nombre_refaccion || ""} ${f.numero_parte || ""} ${f.ubicacion_fisica || ""}`.toLowerCase().includes(q.toLowerCase()));
+  const visibles = filas.filter((f) => !q || contiene(`${f.refaccion?.nombre_refaccion || ""} ${f.numero_parte || ""} ${f.ubicacion_fisica || ""}`, q));
 
   return (
     <View style={styles.screen}>
@@ -220,7 +221,7 @@ export default function InventarioListaScreen() {
             )}
           </View>
           <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 6 }} keyboardShouldPersistTaps="handled">
-            {!compatMarca ? marcasVeh.filter((m) => !buscarMarca || m.nombre_marca.toLowerCase().includes(buscarMarca.toLowerCase())).map((m) => (
+            {!compatMarca ? marcasVeh.filter((m) => !buscarMarca || contiene(m.nombre_marca, buscarMarca)).map((m) => (
               <TouchableOpacity key={m.id_marca_vehiculo} style={styles.opcion} onPress={() => setCompatMarca(String(m.id_marca_vehiculo))}>
                 <Text style={styles.opcionTexto}>{m.nombre_marca}</Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.ink500} />

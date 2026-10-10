@@ -13,6 +13,7 @@ import { colors } from "./src/theme";
 import { DialogoHost } from "./src/ui/Dialogo";
 import { AvisoSuscripcion, PantallaBloqueo } from "./src/ui/AvisoSuscripcion";
 import SelectorTaller from "./src/ui/SelectorTaller";
+import { TourHost } from "./src/ui/Tour";
 import { iniciarActualizacionesGlobales } from "./src/actualizacionesGlobales";
 import { iniciarMonitoreoNotificaciones } from "./src/notificaciones";
 
@@ -55,9 +56,10 @@ function Root() {
     <View key={tema} style={{ flex: 1, backgroundColor: colors.paper0 }}>
       {/* El login usa fondo --ink-900 (oscuro en tema claro, claro en tema oscuro), igual que la web */}
       <StatusBar style={(tema === "oscuro") !== !user ? "light" : "dark"} />
-      {user ? <AvisoSuscripcion /> : null}
       {contenido}
+      {user ? <AvisoSuscripcion /> : null}
       {user ? <SelectorTaller /> : null}
+      {user ? <TourHost /> : null}
       <DialogoHost />
     </View>
   );

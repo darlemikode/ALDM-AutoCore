@@ -5,7 +5,7 @@ import Constants from "expo-constants";
 
 // Dirección del servidor: la de app.json (expo.extra.apiUrl) o la que se
 // capture en la pantalla de inicio de sesión ("Servidor").
-const API_URL_DEFECTO = Constants.expoConfig?.extra?.apiUrl || "https://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net/api";
+const API_URL_DEFECTO = Constants.expoConfig?.extra?.apiUrl || "https://app.aldmautocore.com/api";
 const TOKEN_KEY = "sa_token";
 const SERVIDOR_KEY = "sa_servidor";
 let apiUrl = API_URL_DEFECTO;

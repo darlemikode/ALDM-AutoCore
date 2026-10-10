@@ -12,13 +12,14 @@ import os
 import re
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from .. import almacenamiento, models
 from ..database import get_db
-from ..security import get_current_user
+from ..rate_limit import limiter
+from ..security import require_permission
 from ..subida_archivos import leer_y_validar_imagen, nombre_unico
 
 router = APIRouter(prefix="/api/asistente", tags=["asistente"])
@@ -142,7 +143,7 @@ def _con_claude(mensaje: str, codigo: str, vehiculo: str) -> str | None:
 
 
 @router.post("/diagnostico")
-def diagnostico(payload: DiagIn, user=Depends(get_current_user)):
+def diagnostico(payload: DiagIn, user=Depends(require_permission("servicios.ver"))):
     m = payload.mensaje.strip()[:500]
     cod = RE_CODIGO.search(m)
     codigo = cod.group(1).upper() if cod else ""
@@ -171,12 +172,12 @@ def _manuales(db: Session):
 
 
 @router.get("/manuales")
-def listar_manuales(db: Session = Depends(get_db), user=Depends(get_current_user)):
+def listar_manuales(db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
     return [{"id": m.id_foto, "titulo": m.descripcion or m.ruta_archivo, "fecha": m.fecha} for m in _manuales(db)]
 
 
 @router.post("/manuales", status_code=201)
-async def subir_manual(titulo: str = Form(...), archivo: UploadFile = File(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
+async def subir_manual(titulo: str = Form(...), archivo: UploadFile = File(...), db: Session = Depends(get_db), user=Depends(require_permission("configuracion.editar"))):
     if not user.tiene_permiso("servicios.editar"):
         raise HTTPException(status_code=403, detail="Tu rol no puede subir manuales.")
     if not (archivo.filename or "").lower().endswith(".pdf"):
@@ -196,7 +197,7 @@ async def subir_manual(titulo: str = Form(...), archivo: UploadFile = File(...),
 
 
 @router.delete("/manuales/{id_manual}", status_code=204)
-def borrar_manual(id_manual: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def borrar_manual(id_manual: int, db: Session = Depends(get_db), user=Depends(require_permission("configuracion.editar"))):
     if not user.tiene_permiso("servicios.editar"):
         raise HTTPException(status_code=403, detail="Tu rol no puede borrar manuales.")
     m = db.query(models.Foto).filter(models.Foto.id_foto == id_manual, models.Foto.entidad_tipo == "manual").first()
@@ -208,12 +209,14 @@ def borrar_manual(id_manual: int, db: Session = Depends(get_db), user=Depends(ge
 
 
 @router.post("/consulta")
+@limiter.limit("20/minute")  # cada consulta gasta la llave de Anthropic
 async def consulta(
+    request: Request,
     mensaje: str = Form(""),
     id_manual: int | None = Form(None),
     imagenes: list[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
-    user=Depends(get_current_user),
+    user=Depends(require_permission("servicios.ver")),
 ):
     mensaje = mensaje.strip()[:1500]
     bloques = []

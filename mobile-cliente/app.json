@@ -25,8 +25,8 @@
       "bundler": "metro"
     },
     "extra": {
-      "apiUrl": "https://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net/api",
-      "wsUrl": "wss://aldm-autocore-app-abcxcugnfbgaaah0.centralus-01.azurewebsites.net",
+      "apiUrl": "https://app.aldmautocore.com/api",
+      "wsUrl": "wss://app.aldmautocore.com",
       "eas": {
         "projectId": "e84e647f-f306-41fe-9bfc-9f60145ca98d"
       }

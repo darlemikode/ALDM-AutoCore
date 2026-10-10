@@ -48,9 +48,21 @@ def obtener(refaccion_id: int, db: Session = Depends(get_db), user=Depends(requi
     return refaccion
 
 
+def _exigir_nombre_unico(db: Session, nombre, categoria, excluir_id=None):
+    """No se repite una refacción con el mismo nombre en la misma categoría
+    (sin importar mayúsculas ni acentos: "rotula" = "Rótula")."""
+    from ..busqueda import sin_acentos
+    clave = (sin_acentos(categoria), sin_acentos(nombre))
+    for r in db.query(models.Refaccion.id_refaccion, models.Refaccion.nombre_refaccion, models.Refaccion.categoria).all():
+        if r.id_refaccion != excluir_id and (sin_acentos(r.categoria), sin_acentos(r.nombre_refaccion)) == clave:
+            donde = f" en {categoria}" if categoria else ""
+            raise HTTPException(status_code=400, detail=f'"{nombre}" ya existe{donde}.')
+
+
 @router.post("/", response_model=schemas.RefaccionOut, status_code=201)
 def crear(payload: schemas.RefaccionIn, db: Session = Depends(get_db), user=Depends(require_permission("refacciones.crear"))):
     data = payload.model_dump()
+    _exigir_nombre_unico(db, data.get("nombre_refaccion"), data.get("categoria"))
     ids_prov = data.pop("proveedores_ids", []) or []
     data["fecha_refaccion"] = data.get("fecha_refaccion") or date.today()
     refaccion = models.Refaccion(**data)
@@ -68,6 +80,7 @@ def actualizar(refaccion_id: int, payload: schemas.RefaccionIn, db: Session = De
     if not refaccion:
         raise HTTPException(status_code=404, detail="Refacción no encontrada")
     data = payload.model_dump()
+    _exigir_nombre_unico(db, data.get("nombre_refaccion"), data.get("categoria"), excluir_id=refaccion_id)
     ids_prov = data.pop("proveedores_ids", []) or []
     # No dejar que un "fecha" vacío borre la fecha de alta original
     if not data.get("fecha_refaccion"):
@@ -85,6 +98,11 @@ def eliminar(refaccion_id: int, db: Session = Depends(get_db), user=Depends(requ
     refaccion = db.query(models.Refaccion).filter(models.Refaccion.id_refaccion == refaccion_id).first()
     if not refaccion:
         raise HTTPException(status_code=404, detail="Refacción no encontrada")
+    # Con inventario registrado no se borra (se perdería el stock y su historial)
+    inventario = db.query(models.InventarioRefaccion).filter(models.InventarioRefaccion.id_refaccion == refaccion_id).all()
+    if inventario:
+        piezas = sum(i.cantidad or 0 for i in inventario)
+        raise HTTPException(status_code=400, detail=f'"{refaccion.nombre_refaccion}" tiene {piezas} pieza(s) en inventario: ajusta el inventario antes de eliminarla.')
     db.delete(refaccion)
     db.commit()
     return None

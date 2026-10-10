@@ -1,5 +1,5 @@
 import { Children, isValidElement, useMemo, useState, Fragment } from "react";
-import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, Pressable } from "react-native";
+import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, Pressable, KeyboardAvoidingView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, temaActivo } from "../theme";
 import { crearEstilos } from "./estilos";
@@ -44,7 +44,12 @@ export function Picker({ selectedValue, onValueChange, enabled = true, children,
   }, [children, ordenar]); // eslint-disable-line react-hooks/exhaustive-deps
   const elegida = todas.find((o) => !vacio(o.value) && String(o.value) === String(selectedValue));
   const largo = opciones.length > 8;
-  const filtradas = q.trim() ? opciones.filter((o) => quitarAcentos(o.label).includes(quitarAcentos(q.trim()))) : opciones;
+  // Al buscar: primero las que EMPIEZAN con lo escrito ("Ni" → Nissan antes que Infiniti)
+  const buscado = quitarAcentos(q.trim());
+  const filtradas = buscado
+    ? opciones.filter((o) => quitarAcentos(o.label).includes(buscado))
+      .sort((a, b) => (quitarAcentos(a.label).startsWith(buscado) ? 0 : 1) - (quitarAcentos(b.label).startsWith(buscado) ? 0 : 1))
+    : opciones;
   const conLetras = ordenar && largo && !q.trim();
   const filas = [];
   let letra = null;
@@ -72,8 +77,10 @@ export function Picker({ selectedValue, onValueChange, enabled = true, children,
       </TouchableOpacity>
 
       <Modal visible={abierto} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setAbierto(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={[styles.velo, { backgroundColor: oscuro ? "rgba(0,0,0,0.55)" : "rgba(10,30,36,0.35)" }]} onPress={() => setAbierto(false)}>
-          <Pressable style={[styles.hoja, { backgroundColor: alfa(colors.paper100, oscuro ? 0.93 : 0.95), borderColor: alfa(colors.petrol500, 0.25) }]} onPress={() => {}}>
+          {/* Con buscador la hoja tiene alto fijo: al filtrar no se encoge ni se esconde tras el teclado */}
+          <Pressable style={[styles.hoja, largo && styles.hojaAlta, { backgroundColor: alfa(colors.paper100, oscuro ? 0.93 : 0.95), borderColor: alfa(colors.petrol500, 0.25) }]} onPress={() => {}}>
             <View style={styles.agarradera} />
             <View style={styles.cabecera}>
               <View style={{ flex: 1 }}>
@@ -123,6 +130,7 @@ export function Picker({ selectedValue, onValueChange, enabled = true, children,
             />
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -135,6 +143,7 @@ const styles = crearEstilos({
   disparadorTexto: { flex: 1, fontSize: 15.5, fontWeight: "500", color: colors.ink900 },
   disparadorVacio: { color: colors.ink500, fontWeight: "400" },
   velo: { flex: 1, justifyContent: "flex-end" },
+  hojaAlta: { height: "88%", maxHeight: "88%" },
   hoja: { maxHeight: "78%", borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderBottomWidth: 0, paddingHorizontal: 16, paddingBottom: 16 },
   agarradera: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: colors.ink300, marginTop: 10, marginBottom: 6 },
   cabecera: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },

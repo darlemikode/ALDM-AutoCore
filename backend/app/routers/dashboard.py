@@ -54,8 +54,9 @@ def resumen(db: Session = Depends(get_db), user=Depends(get_current_user)):
         "servicios_este_mes": servicios_mes or 0,
         "solicitudes_recuperacion_pendientes": solicitudes_recuperacion_pendientes or 0,
         "refacciones_bajo_stock": refacciones_bajo_stock or 0,
-        "saldo_pendiente_clientes": round(saldo_pendiente_total, 2),
-        "deuda_con_proveedores": round(float(deuda_proveedores or 0), 2),
+        # Montos solo para quien tiene permiso (no basta con esconderlos en pantalla)
+        "saldo_pendiente_clientes": round(saldo_pendiente_total, 2) if user.tiene_permiso("dashboard.ver_por_cobrar") else 0,
+        "deuda_con_proveedores": round(float(deuda_proveedores or 0), 2) if user.tiene_permiso("proveedores.ver") else 0,
     }
 
 
@@ -95,6 +96,7 @@ def servicios_mensuales(meses: int = 6, db: Session = Depends(get_db), user=Depe
         .all()
     )
 
+    ver_montos = user.tiene_permiso("dashboard.ver_por_cobrar")
     resumen = {p: {"cantidad": 0, "ingresos": 0.0} for p in periodos}
     for s in servicios:
         clave = (s.fecha_entrada_servicio.year, s.fecha_entrada_servicio.month)
@@ -109,7 +111,7 @@ def servicios_mensuales(meses: int = 6, db: Session = Depends(get_db), user=Depe
         {
             "mes": f"{month_abbr[mes].capitalize()} {anio}",
             "cantidad": resumen[(anio, mes)]["cantidad"],
-            "ingresos": round(resumen[(anio, mes)]["ingresos"], 2),
+            "ingresos": round(resumen[(anio, mes)]["ingresos"], 2) if ver_montos else 0,
         }
         for (anio, mes) in periodos
     ]

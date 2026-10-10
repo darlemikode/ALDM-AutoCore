@@ -10,7 +10,7 @@ import os
 
 from .rate_limit import limiter
 
-from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, notificaciones, nomina, pagos_en_linea, contacto, diagnostico
+from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, notificaciones, nomina, pagos_en_linea, contacto, diagnostico, integracion
 from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
@@ -21,6 +21,10 @@ from .errores import MENSAJE_SOPORTE, registrar_error
 from .ws_manager import REDIS_URL, escuchar_bus, manager_global
 
 app = FastAPI(
+    # /docs y /redoc solo en desarrollo: en Azure no se publica el mapa de la API
+    docs_url=None if os.getenv("WEBSITE_SITE_NAME") else "/docs",
+    redoc_url=None if os.getenv("WEBSITE_SITE_NAME") else "/redoc",
+    openapi_url=None if os.getenv("WEBSITE_SITE_NAME") else "/openapi.json",
     title="ALDM AutoCore - API",
     description="API de administración para taller mecánico (clientes, vehículos, servicios, refacciones, proveedores, herramientas).",
     version="1.0.0",
@@ -32,6 +36,11 @@ app = FastAPI(
 _origenes_permitidos = [
     o.strip() for o in (os.getenv("ALLOWED_ORIGINS") or "http://localhost:5173,http://localhost:5174").split(",") if o.strip()
 ]
+# La página informativa (aldmautocore.com, en Cloudflare Pages) manda el
+# formulario de contacto a esta API (app.aldmautocore.com).
+for _o in ("https://aldmautocore.com", "https://www.aldmautocore.com"):
+    if _o not in _origenes_permitidos:
+        _origenes_permitidos.append(_o)
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,6 +66,33 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)  # respuestas JSON ~5x má
 # para que web/mobile/mobile-cliente se refresquen solas, sin tener que
 # instrumentar cada endpoint uno por uno.
 _METODOS_QUE_CAMBIAN = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+LIMITE_CUERPO = int(os.getenv("LIMITE_SUBIDA_MB", "25")) * 1024 * 1024
+
+
+@app.middleware("http")
+async def limitar_tamano(request: Request, call_next):
+    """Rechaza peticiones más grandes que LIMITE_SUBIDA_MB (25 MB) antes de leerlas."""
+    largo = request.headers.get("content-length")
+    if largo and largo.isdigit() and int(largo) > LIMITE_CUERPO:
+        return JSONResponse(status_code=413, content={"detail": "El archivo es demasiado grande (máximo 25 MB)."})
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def cabeceras_seguridad(request: Request, call_next):
+    """Cabeceras básicas de seguridad en todas las respuestas: no se puede
+    meter el sistema dentro de otra página (clickjacking), el navegador no
+    "adivina" tipos de archivo y en producción solo se usa HTTPS."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=()")
+    if os.getenv("WEBSITE_SITE_NAME"):  # Azure (siempre con HTTPS)
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    return response
 
 
 @app.middleware("http")
@@ -104,7 +140,9 @@ def integrity_error_handler(request: Request, exc: IntegrityError):
 @app.exception_handler(RequestValidationError)
 async def validacion_handler(request: Request, exc: RequestValidationError):
     """Datos que la app mandó mal: se guarda el detalle y el usuario ve el código."""
-    codigo = registrar_error(request, None, 422, mensaje="Validación: " + str(exc.errors())[:400], detalle=str(exc.errors())[:4000])
+    # Solo ubicación y tipo de cada error: el valor enviado ("input") puede traer contraseñas
+    errores = [{"loc": e.get("loc"), "msg": e.get("msg"), "type": e.get("type")} for e in exc.errors()]
+    codigo = registrar_error(request, None, 422, mensaje="Validación: " + str(errores)[:400], detalle=str(errores)[:4000])
     return JSONResponse(status_code=422, content={"detail": MENSAJE_SOPORTE.format(codigo=codigo), "codigo": codigo})
 
 
@@ -183,6 +221,7 @@ app.include_router(notificaciones.router)
 app.include_router(nomina.router)
 app.include_router(pagos_en_linea.router)
 app.include_router(contacto.router)
+app.include_router(integracion.router)
 app.include_router(diagnostico.router)
 app.include_router(ws_router.router)
 
@@ -200,6 +239,8 @@ class UploadsSinSniffing(StaticFiles):
     ejecutarlo como HTML/script, use el Content-Type que use."""
 
     async def get_response(self, path, scope):
+        if path.replace("\\", "/").lstrip("/").startswith("facturas/"):
+            raise HTTPException(status_code=404)
         respuesta = await super().get_response(path, scope)
         respuesta.headers["X-Content-Type-Options"] = "nosniff"
         return respuesta
@@ -212,6 +253,8 @@ if almacenamiento.USA_BLOB:
 
     @app.get("/uploads/{ruta:path}", include_in_schema=False)
     def servir_upload(ruta: str):
+        if ruta.lstrip("/").startswith("facturas/"):
+            raise HTTPException(status_code=404, detail="Archivo no encontrado")
         datos = almacenamiento.leer(ruta)
         if datos is None:
             raise HTTPException(status_code=404, detail="Archivo no encontrado")

@@ -1,9 +1,9 @@
 import BadgeIcono from "../ui/BadgeIcono";
 import { moduloPorTitulo } from "../iconosModulo";
-import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from "@react-navigation/native";
 import { estadoGuardado, guardarEstado } from "./estadoNavegacion";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createBottomTabNavigator, BottomTabBar } from "@react-navigation/bottom-tabs";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { Text, View, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,6 +39,7 @@ import InventarioDetalleScreen from "../screens/InventarioDetalleScreen";
 import MiDashboardScreen from "../screens/MiDashboardScreen";
 import CotizacionesScreen from "../screens/CotizacionesScreen";
 import CotizacionDetalleScreen from "../screens/CotizacionDetalleScreen";
+import AyudaScreen from "../screens/AyudaScreen";
 import { colors, temaActivo } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { useAuth } from "../context/AuthContext";
@@ -46,6 +47,8 @@ import { useTema } from "../context/TemaContext";
 import { alerta } from "../ui/Dialogo";
 import { SelectorEstado } from "../ui/AvisoSuscripcion";
 import CampanaNotificaciones from "../ui/CampanaNotificaciones";
+import { useObjetivoTour } from "../ui/Tour";
+import { fijarPestanas } from "../tutoriales/bienvenida";
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
@@ -168,6 +171,7 @@ function MasStackScreen() {
       <MasStack.Screen name="MiDashboard" component={MiDashboardScreen} options={{ title: "Mi dashboard" }} />
       <MasStack.Screen name="Cotizaciones" component={CotizacionesScreen} options={{ title: "Cotizaciones" }} />
       <MasStack.Screen name="CotizacionDetalle" component={CotizacionDetalleScreen} options={{ title: "Cotización" }} />
+      <MasStack.Screen name="Ayuda" component={AyudaScreen} options={{ title: "Ayuda" }} />
     </MasStack.Navigator>
   );
 }
@@ -184,9 +188,10 @@ const ICONOS_TAB = {
 // Botón central elevado: crea una nueva orden de servicio (acción del día a día).
 function BotonServicioGrande({ onPress, accessibilityState }) {
   const enfocado = accessibilityState?.selected;
+  const refTour = useObjetivoTour("nueva-orden");
   return (
     <TouchableOpacity style={styles.tabItemBig} onPress={onPress} activeOpacity={0.85}>
-      <View style={[styles.iconWrapBig, { borderColor: colors.paper100 }, enfocado && styles.iconWrapBigActivo]}>
+      <View ref={refTour} collapsable={false} style={[styles.iconWrapBig, { borderColor: colors.paper100 }, enfocado && styles.iconWrapBigActivo]}>
         <Ionicons name="add" size={32} color={temaActivo() === "oscuro" ? colors.paper100 : "#fff"} />
       </View>
       <Text style={[styles.tabLabelBig, enfocado && { color: colors.petrol600 }]}>Nueva orden</Text>
@@ -194,11 +199,19 @@ function BotonServicioGrande({ onPress, accessibilityState }) {
   );
 }
 
+// Barra de abajo registrada para el recorrido de bienvenida (se ilumina completa o una pestaña)
+function BarraTabs(props) {
+  const refTour = useObjetivoTour("barra");
+  return <View ref={refTour} collapsable={false}><BottomTabBar {...props} /></View>;
+}
+
 function TallerTabs() {
   const { hasPermission } = useAuth();
+  fijarPestanas(2 + ["clientes.ver", "servicios.crear", "servicios.ver"].filter((p) => hasPermission(p)).length);
   return (
     <Tab.Navigator
       id="TallerTabs"
+      tabBar={(props) => <BarraTabs {...props} />}
       screenListeners={({ navigation, route }) => ({
         tabPress: (e) => {
           // Tocar un módulo siempre abre su pantalla principal (lista), no donde te quedaste.
@@ -246,12 +259,9 @@ function TallerTabs() {
           options={{ tabBarLabel: "Servicios" }}
           listeners={({ navigation }) => ({
             tabPress: (e) => {
-              // Si ya estás en Servicio, tocar el tab regresa al historial.
-              // Si vienes de otro módulo, se conserva donde te quedaste.
-              if (navigation.isFocused()) {
-                e.preventDefault();
-                navigation.navigate("Servicio", { screen: "HistorialServicios", params: { resetear: Date.now() } });
-              }
+              // Tocar Servicios siempre abre el historial (aunque antes hayas dejado una orden abierta)
+              e.preventDefault();
+              navigation.navigate("Servicio", { screen: "HistorialServicios", params: { resetear: Date.now() }, pop: true });
             },
           })}
         />
@@ -425,6 +435,10 @@ function ContenidoDrawer({ navigation, state }) {
   );
 }
 
+// Al cambiar el tema la interfaz se vuelve a montar: se regresa exactamente a
+// la pantalla donde estabas (p. ej. Ajustes), no a la principal.
+const refNavegacion = createNavigationContainerRef();
+
 export default function AppNavigator() {
   const oscuro = temaActivo() === "oscuro";
   const base = oscuro ? DarkTheme : DefaultTheme;
@@ -442,7 +456,13 @@ export default function AppNavigator() {
   };
 
   return (
-    <NavigationContainer initialState={estadoGuardado()} onStateChange={guardarEstado} theme={temaNavegacion}>
+    <NavigationContainer
+      ref={refNavegacion}
+      initialState={estadoGuardado()}
+      onStateChange={guardarEstado}
+      onReady={() => { const previo = estadoGuardado(); if (previo && refNavegacion.isReady()) refNavegacion.resetRoot(previo); }}
+      theme={temaNavegacion}
+    >
       <Drawer.Navigator
         id="RootDrawer"
         screenOptions={{ headerShown: false, drawerType: "front", drawerStyle: { width: 290, backgroundColor: colors.sidebarBg }, overlayColor: colors.velo }}

@@ -1,3 +1,4 @@
+import { contiene } from "../lib/texto";
 import { useCallback, useEffect, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -120,7 +121,7 @@ export default function CatalogosScreen({ navigation }) {
   const opcionesPadre = padreCfg ? datos[cfg.padre.clave] : [];
   let lista = datos[clave] || [];
   if (cfg.padre && filtroPadre) lista = lista.filter((x) => String(x[cfg.padre.campo]) === String(filtroPadre));
-  if (q.trim()) lista = lista.filter((x) => String(x[cfg.nombre] || "").toLowerCase().includes(q.toLowerCase()));
+  if (q.trim()) lista = lista.filter((x) => contiene(x[cfg.nombre], q));
   lista = [...lista].sort((a, b) => String(a[cfg.nombre]).localeCompare(String(b[cfg.nombre])));
   const nombrePadre = (x) => padreCfg && opcionesPadre.find((p) => String(p[padreCfg.id]) === String(x[cfg.padre.campo]))?.[padreCfg.nombre];
   const puedeCrear = hasPermission("catalogos.crear");

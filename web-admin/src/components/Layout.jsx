@@ -1,5 +1,5 @@
 import { IconoAuto } from "./Icono";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -11,6 +11,8 @@ import { Icono } from "./Icono";
 import { escucharSidebar, escucharTema, setSidebarCompacta, sidebarCompactaActiva, temaOscuroActivo } from "../preferencias";
 import CampanaNotificaciones from "./CampanaNotificaciones";
 import Atajos from "./Atajos";
+import Tour from "./Tour";
+import { tutorialPorClave, vistosSesion } from "../tutoriales/catalogo";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 
 // permisoRequerido: si se define, el enlace solo se muestra a quien tenga
@@ -56,6 +58,11 @@ export default function Layout() {
   const [temaOscuro, setTemaOscuroLocal] = useState(temaOscuroActivo);
   const [sidebarCompacta, setSidebarCompactaLocal] = useState(sidebarCompactaActiva);
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
+  // Recorridos con globos (Ayuda). El de bienvenida sale solo la primera vez;
+  // todos se abren desde Configuración → Ayuda (el botón «?» lleva ahí).
+  const [tourClave, setTourClave] = useState(null);
+  const tourAbierto = !!tourClave;
+  const [tourVisto, setTourVisto] = useState(false);
 
   // En pantallas angostas la barra lateral no cabe fija: se abre como
   // panel encima del contenido y se cierra sola al navegar.
@@ -89,7 +96,7 @@ export default function Layout() {
   // Los sub-apartados de Configuración ya no se listan en la barra lateral
   // (viven como tarjetas grandes en /configuracion) — solo se usan aquí
   // para saber si el enlace debe verse "activo".
-  const rutasConfiguracion = ["/configuracion", "/catalogos", "/configuracion-taller", "/comisiones", "/suscripcion", "/empleados", "/usuarios", "/asignacion-roles", "/roles"];
+  const rutasConfiguracion = ["/configuracion", "/catalogos", "/configuracion-taller", "/comisiones", "/suscripcion", "/integraciones", "/empleados", "/usuarios", "/asignacion-roles", "/roles"];
   const enConfiguracion = rutasConfiguracion.some((r) => location.pathname === r || location.pathname.startsWith(r + "/"));
 
   const navBase = NAV.map((s) =>
@@ -103,6 +110,45 @@ export default function Layout() {
   if (user?.es_superadmin) nav.push({ group: "ALDM", items: [{ to: "/superadmin", label: "Súper admin" }] });
   const mostrarSelector = eligiendoTaller || eligiendo;
   const bloqueado = !!estadoSuscripcion?.bloqueado;
+
+  useEffect(() => {
+    if (!user || tourVisto || tourAbierto || bloqueado || mostrarSelector || avisoPassword || changingPassword) return undefined;
+    if ((user.tutoriales_vistos || []).includes("bienvenida") || location.pathname !== "/") return undefined;
+    try { if (localStorage.getItem("sm_sin_tutoriales") === "1") return undefined; } catch { /* sin almacenamiento */ } // pruebas automáticas
+    const t = setTimeout(() => setTourClave("bienvenida"), 900); // deja que cargue el panel
+    return () => clearTimeout(t);
+  }, [user, tourVisto, tourAbierto, bloqueado, mostrarSelector, avisoPassword, changingPassword, location.pathname]);
+
+  const terminarTour = useCallback(() => {
+    const clave = tourClave;
+    setTourClave(null);
+    if (!clave) return;
+    if (clave === "bienvenida") setTourVisto(true);
+    vistosSesion.add(clave);
+    api.put("/auth/tutoriales", { clave }).catch(() => {});
+  }, [tourClave]);
+
+  // Abrir un recorrido desde Ayuda: se va a su pantalla y ahí se muestra
+  useEffect(() => {
+    const abrir = (e) => {
+      const t = tutorialPorClave(e.detail?.clave);
+      if (!t?.pasos) return;
+      setMenuMovilAbierto(false);
+      const ruta = t.ruta || "/";
+      if (window.location.pathname !== ruta) {
+        navigate(ruta);
+        setTimeout(() => setTourClave(t.clave), 800);
+      } else setTourClave(t.clave);
+    };
+    window.addEventListener("sm:tutorial", abrir);
+    return () => window.removeEventListener("sm:tutorial", abrir);
+  }, [navigate]);
+
+  function irAAyuda() {
+    setMenuMovilAbierto(false);
+    navigate("/configuracion#ayuda");
+  }
+  const tutorialActivo = tourClave ? tutorialPorClave(tourClave) : null;
 
   return (
     <div className={"app-shell" + (sidebarCompacta ? " sidebar-compacta-shell" : "")}>
@@ -119,6 +165,8 @@ export default function Layout() {
       <div className="campana-flotante">
         <CampanaNotificaciones grande />
       </div>
+      <button type="button" className="ayuda-flotante" onClick={irAAyuda} title="Ayuda: recorridos por módulo" aria-label="Ayuda">?</button>
+      <Tour pasos={tutorialActivo?.pasos ? tutorialActivo.pasos((user?.nombre_completo || "").split(" ")[0]) : []} abierto={tourAbierto} onTerminar={terminarTour} />
       {menuMovilAbierto && <div className="sidebar-backdrop" onClick={() => setMenuMovilAbierto(false)} />}
       <aside className={"sidebar" + (sidebarCompacta ? " sidebar-compacta" : "") + (menuMovilAbierto ? " sidebar-abierta" : "")}>
         <div className="brand">

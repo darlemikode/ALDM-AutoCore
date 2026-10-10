@@ -15,7 +15,7 @@ from reportlab.platypus import Image, KeepInFrame, PageBreak, Paragraph, Spacer,
 
 from . import almacenamiento
 from .pdf_diseno import (
-    ACCENT, ALTO_ENCABEZADO, CARPETA_UPLOADS, E, LINE, OK, OK_SOFT, ROJO, ROJO_SOFT, WARN, WARN_SOFT,
+    ACCENT, ACCENT_SOFT, ALTO_ENCABEZADO, CARPETA_UPLOADS, E, LINE, OK, OK_SOFT, ROJO, ROJO_SOFT, WARN, WARN_SOFT,
     Sombra, caja_texto, esc, seccion,
 )
 
@@ -77,7 +77,7 @@ def _tarjeta_categoria(categoria: str, resultados, ancho: float):
         Paragraph(f"<font color='{_hex(color_resumen)}'><b>{resumen}</b></font>", ParagraphStyle("cr", parent=E["nota"], alignment=2)),
     ]]
     estilos = [
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e1eff2")),
+        ("BACKGROUND", (0, 0), (-1, 0), ACCENT_SOFT),
         ("LINEBELOW", (0, 0), (-1, 0), 0.8, ACCENT),
         ("TOPPADDING", (0, 0), (-1, 0), 4), ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
     ]
@@ -112,7 +112,7 @@ def _tarjeta_categoria(categoria: str, resultados, ancho: float):
 def _resumen(conteo: dict, total: int, ancho: float):
     celdas, estilos = [], []
     datos = [
-        ("inspeccion", "Puntos revisados", total, ACCENT, colors.HexColor("#e1eff2")),
+        ("inspeccion", "Puntos revisados", total, ACCENT, ACCENT_SOFT),
         ("bien", "Bien", conteo["bien"], OK, OK_SOFT),
         ("regular", "Regular", conteo["regular"], WARN, WARN_SOFT),
         ("mal", "Mal", conteo["mal"], ROJO, ROJO_SOFT),

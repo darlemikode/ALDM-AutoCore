@@ -1,6 +1,6 @@
 import BadgeIcono from "../ui/BadgeIcono";
 import { colorPorIcono } from "../iconosModulo";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
@@ -10,6 +10,9 @@ import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { mostrarDialogo } from "../ui/Dialogo";
+import CampanaNotificaciones from "../ui/CampanaNotificaciones";
+import { useObjetivoTour } from "../ui/Tour";
+import { bienvenidaSiFalta } from "../tutoriales/bienvenida";
 
 const ETAPAS = [
   ["recibido", "Recibido", "ink500"],
@@ -72,8 +75,17 @@ function Accion({ icono, texto, onPress, principal }) {
 }
 
 export default function DashboardScreen({ navigation }) {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, hasPermission, eligiendoTaller } = useAuth();
   const [data, setData] = useState(null);
+  const refMenu = useObjetivoTour("menu");
+  const refCampana = useObjetivoTour("campana");
+
+  // Recorrido de bienvenida: la primera vez, ya con el panel cargado
+  useEffect(() => {
+    if (!data || eligiendoTaller) return undefined;
+    const t = setTimeout(() => bienvenidaSiFalta(user), 700);
+    return () => clearTimeout(t);
+  }, [!!data, eligiendoTaller]); // eslint-disable-line react-hooks/exhaustive-deps
   const [proximos, setProximos] = useState([]);
   const [mensuales, setMensuales] = useState([]);
   const [servicios, setServicios] = useState([]);
@@ -148,12 +160,17 @@ export default function DashboardScreen({ navigation }) {
     >
       {/* Encabezado */}
       <View style={styles.topbar}>
-        <TouchableOpacity onPress={() => navigation.getParent("RootDrawer")?.openDrawer()} hitSlop={10} accessibilityLabel="Abrir menú" style={styles.menuBoton}>
-          <Ionicons name="menu" size={24} color={colors.ink900} />
-        </TouchableOpacity>
+        <View ref={refMenu} collapsable={false}>
+          <TouchableOpacity onPress={() => navigation.getParent("RootDrawer")?.openDrawer()} hitSlop={10} accessibilityLabel="Abrir menú" style={styles.menuBoton}>
+            <Ionicons name="menu" size={24} color={colors.ink900} />
+          </TouchableOpacity>
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.saludo}>{saludo()}{nombre ? `, ${nombre}` : ""}</Text>
           <Text style={styles.fecha}>{fecha.charAt(0).toUpperCase() + fecha.slice(1)}</Text>
+        </View>
+        <View ref={refCampana} collapsable={false} style={styles.menuBoton}>
+          <CampanaNotificaciones navigation={navigation} />
         </View>
         <TouchableOpacity onPress={confirmarSalida} style={styles.avatar} hitSlop={8} accessibilityLabel="Cerrar sesión">
           <Text style={styles.avatarTexto}>{iniciales}</Text>

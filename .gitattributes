@@ -1,0 +1,16 @@
+# Saltos de línea: el repositorio guarda LF; cada equipo los convierte al hacer checkout.
+# Evita que los cambios de rama en Windows muestren todos los archivos como modificados.
+* text=auto
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.db binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.apk binary
