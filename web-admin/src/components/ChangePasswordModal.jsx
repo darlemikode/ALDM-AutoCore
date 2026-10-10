@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { marcarCampo } from "../validacion";
 import { createPortal } from "react-dom";
-import { api } from "../api";
+import { api, setToken } from "../api";
 import { Icono } from "./Icono";
 import { useUI } from "../context/UIContext";
 
@@ -24,7 +24,9 @@ export default function ChangePasswordModal({ onClose, onChanged, precargada = "
     }
     setSaving(true);
     try {
-      await api.put("/auth/password", { password_actual: passwordActual, password_nueva: passwordNueva });
+      const r = await api.put("/auth/password", { password_actual: passwordActual, password_nueva: passwordNueva });
+      // Las demás sesiones se cierran; esta sigue con el token nuevo
+      if (r?.access_token) setToken(r.access_token);
       notify("Contraseña actualizada.", "success");
       onChanged?.();
       onClose();

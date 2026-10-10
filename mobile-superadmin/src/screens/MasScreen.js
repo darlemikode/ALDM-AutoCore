@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import { useTema } from "../context/TemaContext";
-import { api, servidorActual } from "../api";
+import { api, servidorActual, setToken } from "../api";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { confirmar } from "../ui/comunes";
@@ -28,8 +28,10 @@ export default function MasScreen({ navigation }) {
 
   async function guardarPassword(v) {
     if (v.password_nueva !== v.confirmar) throw new Error("La contraseña nueva y su confirmación no coinciden.");
-    if ((v.password_nueva || "").length < 6) throw new Error("La contraseña nueva debe tener al menos 6 caracteres.");
-    await api.put("/auth/password", { password_actual: v.password_actual, password_nueva: v.password_nueva });
+    const n = v.password_nueva || "";
+    if (n.length < 12 || !/[A-Za-z]/.test(n) || !/[0-9]/.test(n)) throw new Error("Usa al menos 12 caracteres, con letras y números.");
+    const r = await api.put("/auth/password", { password_actual: v.password_actual, password_nueva: v.password_nueva });
+    if (r?.access_token) await setToken(r.access_token); // las demás sesiones se cierran; esta sigue
     setCambiandoPassword(false);
     alerta("Listo", "Tu contraseña se cambió. Úsala la próxima vez que inicies sesión.");
   }

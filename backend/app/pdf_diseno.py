@@ -24,19 +24,19 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 # --- Paleta -----------------------------------------------------------------
-INK = colors.HexColor("#1f2833")
-INK_2 = colors.HexColor("#3a4452")
-MUTED = colors.HexColor("#6b7480")
-LINE = colors.HexColor("#d9dee4")
-SOFT = colors.HexColor("#eef2f4")
-PANEL = colors.HexColor("#e3e9ee")
-SOMBRA = colors.HexColor("#b4bfca")
-FONDO_PAGINA = colors.HexColor("#cfd7df")
-PAPEL = colors.HexColor("#f1f4f6")
-BORDE_TARJETA = colors.HexColor("#6f7f90")
+INK = colors.HexColor("#1c1c1e")
+INK_2 = colors.HexColor("#3a3a3d")
+MUTED = colors.HexColor("#6d6d72")
+LINE = colors.HexColor("#dcdcde")
+SOFT = colors.HexColor("#f2f2f3")
+PANEL = colors.HexColor("#e8e8ea")
+SOMBRA = colors.HexColor("#bdbdc1")
+FONDO_PAGINA = colors.HexColor("#d9d9dc")
+PAPEL = colors.HexColor("#f5f5f6")
+BORDE_TARJETA = colors.HexColor("#7a7a80")
 # Azul petróleo: color de marca de los documentos
-ACCENT = colors.HexColor("#0f5c6e")
-ACCENT_SOFT = colors.HexColor("#cfe5ea")
+ACCENT = colors.HexColor("#d40000")  # rojo Ferrari (Rosso Corsa) — marca ALDM AutoCore
+ACCENT_SOFT = colors.HexColor("#fbe0e0")
 # Rojo: solo para estados (Mal, cancelada, sin validez fiscal)
 ROJO = colors.HexColor("#c8372d")
 ROJO_SOFT = colors.HexColor("#fdecea")
@@ -175,14 +175,14 @@ class PlantillaDocumento:
         # Franja superior
         c.setFillColor(ACCENT)
         c.rect(0, alto - 3.5 * mm, ancho, 3.5 * mm, stroke=0, fill=1)
-        c.setFillColor(colors.HexColor("#14a8a0"))
+        c.setFillColor(colors.HexColor("#1c1c1e"))
         c.rect(0, alto - 3.5 * mm, 60 * mm, 3.5 * mm, stroke=0, fill=1)
 
         top = alto - 3.5 * mm - 8 * mm  # línea base superior del contenido del encabezado
         # Recuadro de los datos del taller (con énfasis)
         caja_x, caja_w, caja_h = MARGEN_X, 118 * mm, 33 * mm
         caja_y = top - 29 * mm
-        c.setFillColor(colors.HexColor("#e4f2f5"))
+        c.setFillColor(colors.HexColor("#fdf1f1"))
         c.setStrokeColor(ACCENT)
         c.setLineWidth(1.2)
         c.roundRect(caja_x, caja_y, caja_w, caja_h, 3 * mm, stroke=1, fill=1)

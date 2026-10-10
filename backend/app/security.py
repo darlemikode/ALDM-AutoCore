@@ -52,6 +52,7 @@ def _decodificar_usuario(token: str, db: Session) -> models.Usuario:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
+        version = int(payload.get("ver", 0) or 0)
         if username is None or username.startswith("cliente:") or username.startswith("chatbot:"):
             # Es un token de la app de clientes o del chatbot, no de un
             # usuario del taller
@@ -61,6 +62,9 @@ def _decodificar_usuario(token: str, db: Session) -> models.Usuario:
 
     user = db.query(models.Usuario).filter(models.Usuario.username == username).first()
     if user is None or not user.activo:
+        raise credentials_exception
+    if version != (user.version_token or 0):
+        # Token emitido antes de un cambio de contraseña: ya no vale
         raise credentials_exception
     return user
 
@@ -96,8 +100,14 @@ def get_current_superadmin(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 
+def invalidar_tokens(user: models.Usuario) -> None:
+    """Cierra todas las sesiones abiertas del usuario (web y apps): los
+    tokens que ya tenía dejan de servir en su siguiente petición."""
+    user.version_token = (user.version_token or 0) + 1
+
+
 def token_usuario(user: models.Usuario, id_taller: int | None) -> str:
-    datos = {"sub": user.username}
+    datos = {"sub": user.username, "ver": user.version_token or 0}
     if id_taller is not None:
         datos["tid"] = id_taller
     return create_access_token(datos)

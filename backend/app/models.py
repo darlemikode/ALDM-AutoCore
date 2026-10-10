@@ -96,6 +96,8 @@ class Usuario(Base):
     id_ultimo_taller = Column(Integer, nullable=True)  # para abrir directo en el último taller usado
     # Tutoriales (recorridos con globos) que ya vio, separados por coma — así no se repiten en web ni en la app
     tutoriales_vistos = Column(String(500), nullable=True)
+    # Sube cada vez que cambia la contraseña: los tokens con otra versión dejan de servir
+    version_token = Column(Integer, nullable=True, default=0)
 
     membresias = relationship("UsuarioTaller", back_populates="usuario", cascade="all, delete-orphan")
     solicitudes_recuperacion = relationship("SolicitudRecuperacion", back_populates="usuario")
@@ -1165,6 +1167,8 @@ class ConfiguracionSaaS(Base):
     dias_aviso_vencimiento = Column(Integer, default=7)
     id_paquete_prueba = Column(Integer, ForeignKey("paquetes.id_paquete"), nullable=True)
     id_taller_principal = Column(Integer, ForeignKey("talleres.id_taller"), nullable=True)
+    # Versión de los paquetes base ya aplicada (ver seed.VERSION_PAQUETES)
+    version_paquetes = Column(Integer, nullable=True, default=0)
 
     paquete_prueba = relationship("Paquete", foreign_keys=[id_paquete_prueba])
 

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, joinedload, object_session
 
 from .. import models, schemas
 from ..database import get_db_global
-from ..security import hash_password, require_superadmin
+from ..security import hash_password, invalidar_tokens, require_superadmin
 from ..seed import _generar_codigo, rol_admin_de, sembrar_taller
 from ..suscripciones import (
     registrar_renovacion,
@@ -559,6 +559,7 @@ def actualizar_usuario(usuario_id: int, payload: schemas.UsuarioGlobalUpdate, db
         if len(password) < 6:
             raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres.")
         u.hashed_password = hash_password(password)
+        invalidar_tokens(u)
     if u.id_usuario == user.id_usuario and (datos.get("es_superadmin") is False or datos.get("activo") is False):
         raise HTTPException(status_code=400, detail="No puedes quitarte tu propio acceso de súper administrador.")
     for k, v in datos.items():

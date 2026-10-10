@@ -128,16 +128,20 @@ MODULOS_HEREDADOS = {
     "empleados": None,
 }
 
-# Paquetes de ejemplo — el super administrador puede editar/crear los que
-# necesite desde el panel; estos solo evitan arrancar con la pantalla vacía.
+# Paquetes base (precios oct-2026: $499 / $799 / $999 al mes). El súper
+# administrador puede editarlos o crear otros desde su app.
 PAQUETES_BASE = [
-    ("Básico", "Para un taller chico que va empezando.", 799.0,
-     ["ordenes_servicio", "clientes_vehiculos", "refacciones", "inventario"]),
-    ("Profesional", "El más contratado — cubre la operación diaria completa.", 1499.0,
-     ["ordenes_servicio", "clientes_vehiculos", "refacciones", "inventario", "proveedores", "roles_permisos", "reportes"]),
-    ("Premium", "Todo el sistema, incluida la app para los clientes del taller.", 2499.0,
+    ("Básico", "Para el taller que va empezando: órdenes, cotizaciones, clientes y refacciones.", 499.0,
+     ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones"]),
+    ("Profesional", "El más contratado: suma inventario y punto de venta, proveedores, herramientas, empleados y reportes.", 799.0,
+     ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones", "inventario", "herramientas",
+      "proveedores", "catalogos", "empleados", "reportes"]),
+    ("Premium", "Todo el sistema: nómina, roles y permisos, facturación electrónica y la app para tus clientes.", 999.0,
      [c for c, *_ in MODULOS_SISTEMA]),
 ]
+# Al subir este número, al arrancar se vuelven a aplicar PAQUETES_BASE a los
+# paquetes existentes (precio, descripción y módulos). Una sola vez por versión.
+VERSION_PAQUETES = 2
 
 ROLES_BASE = [
     ("Administrador General", "Acceso total al sistema.", PERMISOS_ADMIN_GENERAL),
@@ -489,6 +493,30 @@ def _generar_codigo(db, nombre: str) -> str:
     return codigo
 
 
+def _actualizar_paquetes(db, config, mapa_modulos):
+    """Aplica PAQUETES_BASE (precio, descripción y módulos) a los paquetes
+    que ya existen, una sola vez por VERSION_PAQUETES. Los talleres con
+    precio pactado lo conservan; se quitan los precios fijos por tipo de
+    cobro de esos paquetes para que se recalculen con el nuevo mensual."""
+    if (config.version_paquetes or 0) >= VERSION_PAQUETES:
+        return
+    for nombre, descripcion, precio, claves in PAQUETES_BASE:
+        paquete = db.query(models.Paquete).filter(models.Paquete.nombre == nombre).first()
+        if not paquete:
+            paquete = models.Paquete(nombre=nombre)
+            db.add(paquete)
+        paquete.descripcion = descripcion
+        paquete.precio_mensual = precio
+        paquete.activo = True
+        paquete.modulos = [mapa_modulos[c] for c in claves if c in mapa_modulos]
+        for fijo in list(paquete.precios):
+            db.delete(fijo)
+    config.version_paquetes = VERSION_PAQUETES
+    db.commit()
+    print(f"[migración automática] paquetes actualizados a la versión {VERSION_PAQUETES}: "
+          + ", ".join(f"{n} ${p:,.0f}" for n, _, p, _ in PAQUETES_BASE))
+
+
 def sembrar_globales(db):
     """Catálogos que comparten todos los talleres (sin id_taller)."""
     existentes = {p.clave for p in db.query(models.Permiso).all()}
@@ -543,8 +571,10 @@ def sembrar_globales(db):
     config = db.query(models.ConfiguracionSaaS).first()
     if not config:
         premium = db.query(models.Paquete).order_by(models.Paquete.precio_mensual.desc()).first()
-        db.add(models.ConfiguracionSaaS(id_paquete_prueba=premium.id_paquete if premium else None))
+        db.add(models.ConfiguracionSaaS(id_paquete_prueba=premium.id_paquete if premium else None, version_paquetes=VERSION_PAQUETES))
         db.commit()
+    else:
+        _actualizar_paquetes(db, config, mapa_modulos)
 
     # Catálogo geográfico: México y sus 32 estados
     if not db.query(models.Pais).first():
@@ -723,6 +753,9 @@ def _asegurar_admin(db, id_taller_principal: int):
     admin_correo = os.getenv("ADMIN_CORREO")
     rol_admin = rol_admin_de(db, id_taller_principal)
     admin = db.query(models.Usuario).filter(models.Usuario.username == admin_username).first()
+    if os.getenv("WEBSITE_SITE_NAME") and admin_password == "admin1234" and (not admin or os.getenv("RESET_ADMIN_PASSWORD") == "1"):
+        # En Azure nunca se crea (ni se restablece) el súper admin con la contraseña de fábrica
+        raise RuntimeError("Define ADMIN_PASSWORD (una contraseña fuerte) en la configuración de Azure.")
     if not admin:
         admin = models.Usuario(
             username=admin_username, hashed_password=hash_password(admin_password),

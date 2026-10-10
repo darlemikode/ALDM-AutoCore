@@ -8,7 +8,7 @@ from ..database import get_db, get_db_global
 from ..notifications import notificar_admin_recuperacion
 from ..security import (
     authenticate_user, get_current_user, get_current_user_sin_taller, require_permission, token_usuario,
-    hash_password, verify_password, generar_password_temporal,
+    hash_password, verify_password, generar_password_temporal, invalidar_tokens,
 )
 from ..suscripciones import contenido_qr, estado_taller, permiso_en_modulos
 from ..tenancy import MODO_SUPERADMIN, MODO_TALLER, fijar_tenant, taller_actual
@@ -243,9 +243,13 @@ def cambiar_password(payload: schemas.PasswordChange, db: Session = Depends(get_
         raise HTTPException(status_code=400, detail="La contraseña actual no es correcta")
     if len(payload.password_nueva) < 6:
         raise HTTPException(status_code=400, detail="La nueva contraseña debe tener al menos 6 caracteres")
+    if user.es_superadmin and (len(payload.password_nueva) < 12 or payload.password_nueva.isalpha() or payload.password_nueva.isdigit()):
+        raise HTTPException(status_code=400, detail="La contraseña del súper administrador debe tener al menos 12 caracteres, con letras y números.")
     user.hashed_password = hash_password(payload.password_nueva)
+    invalidar_tokens(user)  # se cierran las demás sesiones (otros celulares, otra PC)
     db.commit()
-    return {"status": "ok"}
+    # Esta sesión sigue: se le entrega un token nuevo
+    return {"status": "ok", "access_token": token_usuario(user, taller_actual(db)), "token_type": "bearer"}
 
 
 # --- Administración de usuarios ---------------------------------------------
@@ -417,6 +421,7 @@ def resolver_solicitud_recuperacion(solicitud_id: int, db: Session = Depends(get
 
     password_temporal = generar_password_temporal()
     objetivo.hashed_password = hash_password(password_temporal)
+    invalidar_tokens(objetivo)
 
     solicitud.atendida = True
     solicitud.fecha_atencion = dt.utcnow()

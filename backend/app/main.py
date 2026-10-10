@@ -36,6 +36,11 @@ app = FastAPI(
 _origenes_permitidos = [
     o.strip() for o in (os.getenv("ALLOWED_ORIGINS") or "http://localhost:5173,http://localhost:5174").split(",") if o.strip()
 ]
+# La página informativa (aldmautocore.com, en Cloudflare Pages) manda el
+# formulario de contacto a esta API (app.aldmautocore.com).
+for _o in ("https://aldmautocore.com", "https://www.aldmautocore.com"):
+    if _o not in _origenes_permitidos:
+        _origenes_permitidos.append(_o)
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +78,21 @@ async def limitar_tamano(request: Request, call_next):
     if largo and largo.isdigit() and int(largo) > LIMITE_CUERPO:
         return JSONResponse(status_code=413, content={"detail": "El archivo es demasiado grande (máximo 25 MB)."})
     return await call_next(request)
+
+
+@app.middleware("http")
+async def cabeceras_seguridad(request: Request, call_next):
+    """Cabeceras básicas de seguridad en todas las respuestas: no se puede
+    meter el sistema dentro de otra página (clickjacking), el navegador no
+    "adivina" tipos de archivo y en producción solo se usa HTTPS."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=()")
+    if os.getenv("WEBSITE_SITE_NAME"):  # Azure (siempre con HTTPS)
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    return response
 
 
 @app.middleware("http")
