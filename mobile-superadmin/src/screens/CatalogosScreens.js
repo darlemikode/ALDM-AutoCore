@@ -43,11 +43,11 @@ export function PaquetesScreen() {
       })}
       grupos={{ plan: "Paquete", precios: "Precios por tipo de cobro", modulos: "Qué incluye" }}
       campos={(v, extra) => [
-        { name: "nombre", label: "Nombre del paquete", required: true, grupo: "plan", placeholder: "Ej. Básico, Taller + Refaccionaria" },
+        { name: "nombre", label: "Nombre del paquete", required: true, grupo: "plan", placeholder: "Ej. Arranque, Taller Pro" },
         { name: "descripcion", label: "Descripción", type: "textarea", grupo: "plan" },
         { name: "limite_usuarios", label: "Límite de usuarios", type: "number", hint: "Vacío = sin límite", grupo: "plan" },
         { name: "activo", label: "Se ofrece a talleres nuevos", type: "checkbox", grupo: "plan" },
-        { name: "precio_mensual", label: "Precio mensual (base)", type: "number", required: true, grupo: "precios" },
+        { name: "precio_mensual", label: "Precio mensual (sin IVA)", type: "number", required: true, grupo: "precios" },
         ...(extra?.tipos || []).filter((t) => t.activo || v[`precio_${t.id_tipo_cobro}`] != null).map((t) => ({
           name: `precio_${t.id_tipo_cobro}`,
           label: `Precio ${t.nombre.toLowerCase()} (${t.meses} mes${t.meses > 1 ? "es" : ""})`,

@@ -128,20 +128,26 @@ MODULOS_HEREDADOS = {
     "empleados": None,
 }
 
-# Paquetes base (precios oct-2026: $499 / $799 / $999 al mes). El súper
-# administrador puede editarlos o crear otros desde su app.
+# Paquetes base (precios oct-2026: $599 / $899 / $1,199 al mes + IVA). El
+# súper administrador puede editarlos o crear otros desde su app.
 PAQUETES_BASE = [
-    ("Básico", "Para el taller que va empezando: órdenes, cotizaciones, clientes y refacciones.", 499.0,
+    ("Arranque", "Para el taller que va empezando: órdenes, cotizaciones, clientes y refacciones.", 599.0,
      ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones"]),
-    ("Profesional", "El más contratado: suma inventario y punto de venta, proveedores, herramientas, empleados y reportes.", 799.0,
+    ("Taller Pro", "El más contratado: suma inventario y punto de venta, proveedores, herramientas, empleados y reportes.", 899.0,
      ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones", "inventario", "herramientas",
       "proveedores", "catalogos", "empleados", "reportes"]),
-    ("Premium", "Todo el sistema: nómina, roles y permisos, facturación electrónica y la app para tus clientes.", 999.0,
+    ("Full Garage", "Todo el sistema: nómina, roles y permisos, facturación electrónica y la app para tus clientes.", 1199.0,
      [c for c, *_ in MODULOS_SISTEMA]),
 ]
+# Nombres anteriores de cada paquete (para actualizar sin duplicar)
+NOMBRES_ANTERIORES = {
+    "Arranque": ["Básico"],
+    "Taller Pro": ["Profesional"],
+    "Full Garage": ["Premium"],
+}
 # Al subir este número, al arrancar se vuelven a aplicar PAQUETES_BASE a los
-# paquetes existentes (precio, descripción y módulos). Una sola vez por versión.
-VERSION_PAQUETES = 2
+# paquetes existentes (nombre, precio, descripción y módulos). Una sola vez por versión.
+VERSION_PAQUETES = 3
 
 ROLES_BASE = [
     ("Administrador General", "Acceso total al sistema.", PERMISOS_ADMIN_GENERAL),
@@ -494,27 +500,45 @@ def _generar_codigo(db, nombre: str) -> str:
 
 
 def _actualizar_paquetes(db, config, mapa_modulos):
-    """Aplica PAQUETES_BASE (precio, descripción y módulos) a los paquetes
-    que ya existen, una sola vez por VERSION_PAQUETES. Los talleres con
-    precio pactado lo conservan; se quitan los precios fijos por tipo de
-    cobro de esos paquetes para que se recalculen con el nuevo mensual."""
+    """Aplica PAQUETES_BASE (nombre, precio, descripción y módulos) a los
+    paquetes que ya existen, una sola vez por VERSION_PAQUETES. Busca cada
+    paquete por su nombre actual o uno anterior (nunca duplica). Los paquetes
+    que no son de la lista quedan inactivos (no se borran: los talleres que
+    los tengan los conservan). Los talleres con precio pactado lo conservan;
+    se quitan los precios fijos por tipo de cobro para que se recalculen."""
     if (config.version_paquetes or 0) >= VERSION_PAQUETES:
         return
+    usados = set()
     for nombre, descripcion, precio, claves in PAQUETES_BASE:
-        paquete = db.query(models.Paquete).filter(models.Paquete.nombre == nombre).first()
+        candidatos = [nombre] + NOMBRES_ANTERIORES.get(nombre, [])
+        encontrados = [
+            p for n in candidatos
+            for p in db.query(models.Paquete).filter(models.Paquete.nombre == n).all()
+        ]
+        paquete = encontrados[0] if encontrados else None
+        for sobrante in encontrados[1:]:
+            sobrante.activo = False  # duplicado de otra versión
+            usados.add(sobrante.id_paquete)
         if not paquete:
             paquete = models.Paquete(nombre=nombre)
             db.add(paquete)
+            db.flush()
+        paquete.nombre = nombre
         paquete.descripcion = descripcion
         paquete.precio_mensual = precio
         paquete.activo = True
         paquete.modulos = [mapa_modulos[c] for c in claves if c in mapa_modulos]
         for fijo in list(paquete.precios):
             db.delete(fijo)
+        usados.add(paquete.id_paquete)
+    for otro in db.query(models.Paquete).all():
+        if otro.id_paquete not in usados and otro.activo:
+            otro.activo = False
+            print(f"[migración automática] paquete «{otro.nombre}» desactivado (ya no está en la lista de paquetes)")
     config.version_paquetes = VERSION_PAQUETES
     db.commit()
     print(f"[migración automática] paquetes actualizados a la versión {VERSION_PAQUETES}: "
-          + ", ".join(f"{n} ${p:,.0f}" for n, _, p, _ in PAQUETES_BASE))
+          + ", ".join(f"{n} ${p:,.0f} + IVA" for n, _, p, _ in PAQUETES_BASE))
 
 
 def sembrar_globales(db):

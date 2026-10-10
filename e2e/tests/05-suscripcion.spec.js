@@ -33,9 +33,9 @@ test.describe("Suscripción del taller", () => {
   test("el menú solo muestra los módulos del paquete contratado", async ({ page }) => {
     test.setTimeout(90_000);
     const sa = await apiComo();
-    const basico = await paquete(sa, "Básico");
-    test.skip(!basico || basico.modulos.some((m) => m.clave === "proveedores"), "El paquete Básico ya incluye Proveedores en esta base");
-    const { taller, usuario, password } = await crearTallerConAdmin(sa, { paqueteNombre: "Básico" });
+    const basico = await paquete(sa, "Arranque");
+    test.skip(!basico || basico.modulos.some((m) => m.clave === "proveedores"), "El paquete Arranque ya incluye Proveedores en esta base");
+    const { taller, usuario, password } = await crearTallerConAdmin(sa, { paqueteNombre: "Arranque" });
 
     await entrarAlPanel(page, usuario, password);
     await expect(enlaceMenu(page, "Clientes")).toBeVisible();

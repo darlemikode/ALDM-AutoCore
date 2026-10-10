@@ -71,7 +71,7 @@ export default function Suscripcion() {
                 {s.paquete.descripcion && <div className="susc-desc">{s.paquete.descripcion}</div>}
                 <div className="susc-datos">
                   <div><span>Vence</span><b>{fecha(s.fecha_vencimiento)}</b></div>
-                  <div><span>Cobro</span><b>{s.tipo_cobro || "—"} · {fmt(s.monto_periodo)}</b></div>
+                  <div><span>Cobro</span><b>{s.tipo_cobro || "—"} · {fmt(s.monto_periodo)}{s.iva_porcentaje > 0 ? " (IVA incluido)" : ""}</b></div>
                   <div><span>Usuarios</span><b>{s.paquete.limite_usuarios ?? "Sin límite"}</b></div>
                   <div><span>Desde</span><b>{fecha(s.fecha_inicio)}</b></div>
                 </div>
@@ -128,7 +128,7 @@ export default function Suscripcion() {
                   {s.otros_paquetes.map((p) => (
                     <div key={p.nombre} className={`susc-paq ${p.actual ? "actual" : ""}`}>
                       <div className="susc-paq-nombre">{p.nombre}{p.actual && <span className="susc-pill verde">Tu paquete</span>}</div>
-                      <div className="susc-paq-precio">{fmt(p.precio_mensual)}<small> / mes</small></div>
+                      <div className="susc-paq-precio">{fmt(p.precio_mensual)}<small> / mes{s.iva_porcentaje > 0 ? " + IVA" : ""}</small></div>
                       {p.descripcion && <div className="susc-desc">{p.descripcion}</div>}
                       <div className="susc-paq-mods">{p.modulos.length} módulos</div>
                       {!p.actual && (

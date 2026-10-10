@@ -104,7 +104,7 @@ export default function Catalogos() {
             { name: "limite_usuarios", label: "Límite de usuarios", type: "number", hint: "Vacío = sin límite", grupo: "plan" },
             { name: "descripcion", label: "Descripción", type: "textarea", full: true, grupo: "plan" },
             { name: "activo", label: "Se ofrece a talleres nuevos", type: "checkbox", grupo: "plan" },
-            { name: "precio_mensual", label: "Precio mensual (base)", type: "number", required: true, grupo: "precios" },
+            { name: "precio_mensual", label: "Precio mensual (sin IVA)", type: "number", required: true, grupo: "precios" },
             ...tipos.filter((t) => t.activo || v[`precio_${t.id_tipo_cobro}`] != null).map((t) => ({
               name: `precio_${t.id_tipo_cobro}`, label: `Precio ${t.nombre.toLowerCase()} (${t.meses} mes${t.meses > 1 ? "es" : ""})`, type: "number", grupo: "precios",
               hint: `Vacío = ${fmt(calculado(v.precio_mensual, t))}${t.descuento_porcentaje ? ` (−${t.descuento_porcentaje}%)` : ""}`,
