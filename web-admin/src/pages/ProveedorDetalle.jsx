@@ -75,7 +75,7 @@ export default function ProveedorDetalle() {
       <div className="panel">
         <div className="toolbar" style={{ justifyContent: "space-between" }}>
           <h2 style={{ fontSize: 18 }}>Productos que ofrece</h2>
-          <button className="btn btn-agregar" onClick={() => setAddingProducto(true)}><Icono nombre="add" size={18} /> Agregar producto</button>
+          {hasPermission("proveedores.editar") && <button className="btn btn-agregar" onClick={() => setAddingProducto(true)}><Icono nombre="add" size={18} /> Agregar producto</button>}
         </div>
         {productos.length === 0 ? (
           <div className="empty-state">Sin productos registrados.</div>

@@ -76,7 +76,7 @@ export default function Clientes() {
     // ofrece registrar de una vez su vehículo — rara vez se da de alta un
     // cliente sin un auto que traer al taller.
     if (esNuevo && creado) {
-      setOfrecerVehiculo(creado);
+      if (hasPermission("vehiculos.crear")) setOfrecerVehiculo(creado);
     }
   }
 
@@ -120,8 +120,10 @@ export default function Clientes() {
           <h1><IconoModulo ruta="/clientes" /> Clientes</h1>
           <div className="subtitle">{clientes.length} cliente(s) activos</div>
         </div>
+        {hasPermission("clientes.crear") && (
         <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}>
           <span className="btn-nuevo-icono"><Icono nombre="people" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo cliente</button>
+        )}
       </div>
 
       <div className="kpi-grid">
@@ -175,7 +177,9 @@ export default function Clientes() {
                 {hasPermission("clientes.editar") && (!c.cuenta_activada ? (
                   <button type="button" className="btn-icono" title="Invitar a la app" aria-label="Invitar a la app" onClick={() => invitar(c)}><Icono nombre="link" size={18} /></button>
                 ) : <span className="btn-icono-hueco" />)}
-                <button type="button" className="btn-icono" title="Editar" aria-label="Editar" onClick={() => setEditing(c)}><Icono nombre="pencil" size={18} /></button>
+                {hasPermission("clientes.editar") && (
+                  <button type="button" className="btn-icono" title="Editar" aria-label="Editar" onClick={() => setEditing(c)}><Icono nombre="pencil" size={18} /></button>
+                )}
                 {hasPermission("clientes.eliminar") && (
                   <button type="button" className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => handleDelete(c)}><Icono nombre="trash" size={18} /></button>
                 )}

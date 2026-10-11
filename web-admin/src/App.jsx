@@ -81,12 +81,12 @@ export default function App() {
         <Route path="cotizaciones/:id" element={<RequirePermission clave="cotizaciones.ver"><CotizacionDetalle /></RequirePermission>} />
         <Route path="citas" element={<Citas />} />
         <Route path="promociones" element={<RequirePermission clave="promociones.ver"><Promociones /></RequirePermission>} />
-        <Route path="asistente" element={<Asistente />} />
+        <Route path="asistente" element={<RequirePermission clave="servicios.ver"><Asistente /></RequirePermission>} />
         <Route path="empleados" element={<RequirePermission clave="empleados.ver"><Empleados /></RequirePermission>} />
         <Route path="asignacion-roles" element={<RequirePermission clave="usuarios.ver"><AsignacionRoles /></RequirePermission>} />
         <Route path="configuracion-taller" element={<RequirePermission clave="configuracion.editar"><ConfiguracionTaller /></RequirePermission>} />
         <Route path="suscripcion" element={<Suscripcion />} />
-        <Route path="integraciones" element={<Integraciones />} />
+        <Route path="integraciones" element={<RequirePermission clave="configuracion.editar"><Integraciones /></RequirePermission>} />
         <Route path="comisiones" element={<RequirePermission clave="configuracion.editar"><Comisiones /></RequirePermission>} />
         <Route path="errores" element={<RequirePermission clave="configuracion.editar"><Errores /></RequirePermission>} />
         <Route path="mi-dashboard" element={<MiDashboard />} />

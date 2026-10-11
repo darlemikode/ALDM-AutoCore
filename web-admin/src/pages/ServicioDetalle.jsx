@@ -110,7 +110,7 @@ export default function ServicioDetalle() {
 
   // Orden recién abierta (sin cliente o sin vehículo): se pide de inmediato
   useEffect(() => {
-    if (servicio && servicio.status === "abierto" && (!servicio.id_cliente || !servicio.id_vehiculo)) setEligiendoCV(true);
+    if (servicio && servicio.status === "abierto" && (!servicio.id_cliente || !servicio.id_vehiculo) && hasPermission("servicios.editar")) setEligiendoCV(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicio?.id_servicio]);
 
@@ -123,7 +123,7 @@ export default function ServicioDetalle() {
         const igual = (abiertas || []).find((o) => o.id_servicio !== servicio.id_servicio
           && Number(o.id_cliente) === Number(datos.id_cliente) && Number(o.id_vehiculo) === Number(datos.id_vehiculo));
         if (igual) {
-          if (!(servicio.detalles || []).length && !(servicio.abonos || []).length) {
+          if (!(servicio.detalles || []).length && !(servicio.abonos || []).length && hasPermission("servicios.eliminar")) {
             await api.del(`/servicios/${servicio.id_servicio}`).catch(() => {});
           }
           setEligiendoCV(false);
@@ -144,7 +144,7 @@ export default function ServicioDetalle() {
 
   // Viniendo de "Nueva orden": abre directo el alta de refacciones
   useEffect(() => {
-    if (servicio && searchParams.get("agregar") === "1" && servicio.status === "abierto") {
+    if (servicio && searchParams.get("agregar") === "1" && servicio.status === "abierto" && hasPermission("servicios.editar")) {
       setAddingDetalle(true);
       const p = new URLSearchParams(searchParams);
       p.delete("agregar");
@@ -262,6 +262,7 @@ export default function ServicioDetalle() {
 
   const fmt = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
   const abierta = servicio.status === "abierto";
+  const puedeEditarOrden = hasPermission("servicios.editar");
 
   async function handleAddDetalle(values) {
     try {
@@ -737,10 +738,12 @@ export default function ServicioDetalle() {
             {(() => {
               const veh = servicio.vehiculo;
               const ed = puedeEditarVeh && catVeh;
-              const texto = (etq, valor, campo) => (
+              // Km se guarda en la orden; marca, modelo, color, placa y VIN, en el vehículo
+              const edVeh = ed && hasPermission("vehiculos.editar");
+              const texto = (etq, valor, campo, permitido = edVeh) => (
                 <div className="dato">
                   <dt>{etq}</dt>
-                  <dd>{ed ? (
+                  <dd>{permitido ? (
                     <input className="veh-input" key={`${campo}-${valor ?? ""}`} defaultValue={valor ?? ""} placeholder="Capturar"
                       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                       onBlur={(e) => { const v = e.target.value.trim(); if (v !== String(valor ?? "")) guardarCampoVehiculo({ [campo]: v }); }} />
@@ -750,7 +753,7 @@ export default function ServicioDetalle() {
               const lista = (etq, valor, campo, opciones, mostrar, deshabilitado) => (
                 <div className="dato">
                   <dt>{etq}</dt>
-                  <dd>{ed ? (
+                  <dd>{edVeh ? (
                     <select className="veh-input" value={valor ?? ""} disabled={deshabilitado}
                       onChange={(e) => guardarCampoVehiculo(campo === "id_marca_vehiculo" ? { id_marca_vehiculo: e.target.value ? Number(e.target.value) : null, id_modelo_vehiculo: null } : { [campo]: e.target.value ? Number(e.target.value) : null })}>
                       <option value="">Elegir…</option>
@@ -763,8 +766,8 @@ export default function ServicioDetalle() {
                 <dl className="datos-lista">
                   {lista("Marca", veh?.id_marca_vehiculo, "id_marca_vehiculo", (catVeh?.marcas || []).map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca })), veh?.marca?.nombre_marca)}
                   {lista("Modelo", veh?.id_modelo_vehiculo, "id_modelo_vehiculo", (catVeh?.modelos || []).filter((m) => m.id_marca_vehiculo === Number(veh?.id_marca_vehiculo)).map((m) => ({ value: m.id_modelo_vehiculo, label: m.nombre_modelo })), veh?.modelo?.nombre_modelo, !veh?.id_marca_vehiculo)}
-                  {texto("Km", servicio.km_llegada, "km_llegada")}
-                  {texto("Próximo servicio (km)", servicio.km_proximo_servicio, "km_proximo_servicio")}
+                  {texto("Km", servicio.km_llegada, "km_llegada", ed)}
+                  {texto("Próximo servicio (km)", servicio.km_proximo_servicio, "km_proximo_servicio", ed)}
                   {lista("Color", veh?.id_color, "id_color", (catVeh?.colores || []).map((c) => ({ value: c.id_color, label: c.nombre_color })), veh?.color?.nombre_color)}
                   {texto("Placa", veh?.placas_vehiculo, "placas_vehiculo")}
                   {texto("VIN", veh?.numserie_vehiculo, "numserie_vehiculo")}
@@ -800,7 +803,7 @@ export default function ServicioDetalle() {
             )}
           </div>
           <div className="nota-bloque-body" style={{ paddingTop: 0 }}>
-            <Link to="/configuracion-taller" className="datos-taller-editar">Editar datos del taller →</Link>
+            {hasPermission("configuracion.editar") && <Link to="/configuracion-taller" className="datos-taller-editar">Editar datos del taller →</Link>}
           </div>
         </div>
       </div>
@@ -889,9 +892,11 @@ export default function ServicioDetalle() {
                 <Icono nombre="trash" size={18} /> Borrar todas
               </button>
             )}
+            {puedeEditarOrden && (
             <button className="btn btn-agregar" onClick={() => setAddingDetalle(true)} disabled={!abierta}>
               <Icono nombre="add" size={18} /> Agregar refacción
             </button>
+            )}
           </div>
         }
       >
@@ -930,14 +935,14 @@ export default function ServicioDetalle() {
                         <td className="celda-categoria"><span className="chip-cat-ref">{clave}</span></td>
                         <td>
                           <input
-                            key={`c-${d.id_servicio_detalle}-${d.cantidad}`} data-det={d.id_servicio_detalle} data-campo="c" onKeyDown={(e) => irSiguienteRefaccion(e, "c")} type="number" defaultValue={d.cantidad || 1} disabled={!abierta}
+                            key={`c-${d.id_servicio_detalle}-${d.cantidad}`} data-det={d.id_servicio_detalle} data-campo="c" onKeyDown={(e) => irSiguienteRefaccion(e, "c")} type="number" defaultValue={d.cantidad || 1} disabled={!abierta || !puedeEditarOrden}
                             onBlur={(e) => { const v = Number(e.target.value) || 1; if (v !== d.cantidad) handleUpdateDetalle(d.id_servicio_detalle, { cantidad: v }); }}
                           />
                         </td>
                         <td>
                           <input
                             key={`u-${d.id_servicio_detalle}-${d.costo_refaccion}-${d.cantidad}`} data-det={d.id_servicio_detalle} data-campo="u" onKeyDown={(e) => irSiguienteRefaccion(e, "u")} type="number" step="0.01"
-                            defaultValue={Math.round(((d.costo_refaccion || 0) / (d.cantidad || 1)) * 100) / 100} disabled={!abierta}
+                            defaultValue={Math.round(((d.costo_refaccion || 0) / (d.cantidad || 1)) * 100) / 100} disabled={!abierta || !puedeEditarOrden}
                             onBlur={(e) => {
                               const v = Number(e.target.value) || 0;
                               const cant = d.cantidad || 1;
@@ -949,7 +954,7 @@ export default function ServicioDetalle() {
                         </td>
                         <td className="celda-total">{fmt(d.costo_refaccion || 0)}</td>
                         <td>
-                          <button className="btn btn-danger btn-sm" title="Quitar" aria-label="Quitar" onClick={() => handleDeleteDetalle(d.id_servicio_detalle)} disabled={!abierta}><Icono nombre="trash" size={18} /></button>
+                          {puedeEditarOrden && <button className="btn btn-danger btn-sm" title="Quitar" aria-label="Quitar" onClick={() => handleDeleteDetalle(d.id_servicio_detalle)} disabled={!abierta}><Icono nombre="trash" size={18} /></button>}
                         </td>
                       </tr>
                     ))}
@@ -1003,7 +1008,8 @@ export default function ServicioDetalle() {
           <label>Aparecen en el recibo y la nota de remisión</label>
           <textarea
             value={comentariosFinales}
-            onChange={(e) => setComentariosFinales(e.target.value)}
+            readOnly={!puedeEditarOrden}
+            onChange={(e) => puedeEditarOrden && setComentariosFinales(e.target.value)}
             placeholder="Ej. Se recomienda revisar las balatas traseras en el próximo servicio."
           />
         </div>
@@ -1026,12 +1032,12 @@ export default function ServicioDetalle() {
           </div>
           <div className="nota-bloque-body">
             <div className="lateral-acciones">
-              {abierta && (
+              {abierta && puedeEditarOrden && (
                 <button className="btn btn-primary" onClick={() => setModalCierre(true)} title="Cobrar, cerrar la orden, generar la nota y avisar al cliente">
                   <IconoAuto valor="🧾" size={18} /> Finalizar y generar nota
                 </button>
               )}
-              {servicio.detalles.length > 0 && (
+              {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
                 <button className="btn btn-primary" onClick={() => imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo")} disabled={descargando} title="Imprimir la nota ahora">
                   <IconoAuto valor="🖨️" size={18} /> Imprimir nota
                 </button>
@@ -1039,7 +1045,7 @@ export default function ServicioDetalle() {
               <button className="btn btn-secondary" onClick={enviarWhatsApp} title="Abrir WhatsApp con el resumen de la orden para el cliente">
                 <IconoAuto valor="💬" size={18} /> Enviar por WhatsApp
               </button>
-              {servicio.status === "cerrado" && (
+              {servicio.status === "cerrado" && hasPermission("servicios.ver_precios") && (
                 <button className="btn btn-secondary" onClick={() => descargarPdf("remision")} disabled={descargando} title="Descargar la nota de remisión en PDF">
                   <IconoAuto valor="📋" size={18} /> Nota de remisión
                 </button>
@@ -1058,10 +1064,10 @@ export default function ServicioDetalle() {
                   <IconoAuto valor="🛡️" size={18} /> Reclamar garantía
                 </button>
               )}
-              {!abierta && (
+              {!abierta && puedeEditarOrden && (
                 <button className="btn btn-secondary" onClick={() => cambiarStatus("abierto")} title="Volver a abrir la orden para editarla">↺ Reabrir orden</button>
               )}
-              {servicio.status !== "cancelado" && servicio.status !== "cerrado" && !(servicio.costos.total_abonado > 0 && servicio.costos.saldo_pendiente <= 0) && (
+              {puedeEditarOrden && servicio.status !== "cancelado" && servicio.status !== "cerrado" && !(servicio.costos.total_abonado > 0 && servicio.costos.saldo_pendiente <= 0) && (
                 <button className="btn btn-danger" onClick={() => cambiarStatus("cancelado")} title="Cancelar la orden (solo si no está pagada)"><IconoAuto valor="✕" size={18} /> Cancelar orden</button>
               )}
             </div>
@@ -1098,7 +1104,7 @@ export default function ServicioDetalle() {
       )}
 
       {/* Botón flotante de chat — el chat solo se despliega si lo pides */}
-      {abierta && (
+      {abierta && (puedeEditarOrden || inspeccionActual) && (
         <button
           className="chat-fab chat-fab-estatus"
           onClick={() => setMostrandoInspeccion(true)}
@@ -1249,6 +1255,7 @@ export default function ServicioDetalle() {
           inspeccionExistente={inspeccionActual}
           refacciones={refacciones}
           onGuardado={setInspeccionActual}
+          puedeEditar={puedeEditarOrden && (!!inspeccionActual || hasPermission("servicios.crear"))}
           onClose={() => setMostrandoInspeccion(false)}
         />
       )}

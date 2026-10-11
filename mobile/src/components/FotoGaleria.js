@@ -13,14 +13,20 @@ import { alerta } from "../ui/Dialogo";
  * Galería de fotos reutilizable (vehículo o servicio). Permite tomar foto
  * con la cámara o elegir de la galería del teléfono.
  */
-export default function FotoGaleria({ entidadTipo, entidadId }) {
+// Mismo mapa que el servidor (routers/fotos.py): qué permiso pide subir o borrar fotos de cada cosa
+const PERMISO_POR_ENTIDAD = {
+  vehiculo: "vehiculos.editar", servicio: "servicios.editar", inspeccion: "servicios.editar",
+  herramienta: "herramientas.editar", proveedor: "proveedores.editar", cliente: "clientes.editar",
+};
+
+export default function FotoGaleria({ entidadTipo, entidadId, soloLectura = false }) {
   const { hasPermission } = useAuth();
   const [fotos, setFotos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [subiendo, setSubiendo] = useState(false);
 
-  const permisoModulo = entidadTipo === "vehiculo" ? "vehiculos.editar" : "servicios.editar";
-  const puedeEditar = hasPermission(permisoModulo);
+  const permisoModulo = PERMISO_POR_ENTIDAD[entidadTipo] || "servicios.editar";
+  const puedeEditar = !soloLectura && hasPermission(permisoModulo);
 
   async function cargar() {
     setCargando(true);

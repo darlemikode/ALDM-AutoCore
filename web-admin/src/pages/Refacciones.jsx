@@ -243,7 +243,7 @@ export default function Refacciones() {
           <h1><IconoModulo ruta="/refacciones" /> Refacciones</h1>
           <div className="subtitle">Inventario de partes del taller</div>
         </div>
-        <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="cube" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva refacción</button>
+        {hasPermission("refacciones.crear") && <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="cube" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva refacción</button>}
       </div>
 
       <div className="panel">

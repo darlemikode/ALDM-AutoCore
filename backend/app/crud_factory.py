@@ -24,6 +24,7 @@ def make_crud_router(
     prefix: str,
     tags: list,
     id_field: str,
+    permiso: str = "catalogos",  # prefijo del permiso para crear/editar/eliminar (p. ej. "inventario")
     filtro_campo: str = None,  # ej. "id_marca" — si se pasa, admite ?<filtro_campo>=X para acotar el listado (catálogos hijos de otro, como modelos de una marca o subcategorías de una categoría)
 ) -> APIRouter:
     router = APIRouter(prefix=prefix, tags=tags)
@@ -45,7 +46,7 @@ def make_crud_router(
         return item
 
     @router.post("/", response_model=schema_out, status_code=201)
-    def crear(payload: schema_in, db: Session = Depends(get_db), user=Depends(require_permission("catalogos.crear"))):
+    def crear(payload: schema_in, db: Session = Depends(get_db), user=Depends(require_permission(f"{permiso}.crear"))):
         item = model(**payload.model_dump())
         db.add(item)
         db.commit()
@@ -53,7 +54,7 @@ def make_crud_router(
         return item
 
     @router.put("/{item_id}", response_model=schema_out)
-    def actualizar(item_id: int, payload: schema_in, db: Session = Depends(get_db), user=Depends(require_permission("catalogos.editar"))):
+    def actualizar(item_id: int, payload: schema_in, db: Session = Depends(get_db), user=Depends(require_permission(f"{permiso}.editar"))):
         item = db.query(model).filter(getattr(model, id_field) == item_id).first()
         if not item:
             raise HTTPException(status_code=404, detail="No encontrado")
@@ -64,7 +65,7 @@ def make_crud_router(
         return item
 
     @router.delete("/{item_id}", status_code=204)
-    def eliminar(item_id: int, db: Session = Depends(get_db), user=Depends(require_permission("catalogos.eliminar"))):
+    def eliminar(item_id: int, db: Session = Depends(get_db), user=Depends(require_permission(f"{permiso}.eliminar"))):
         item = db.query(model).filter(getattr(model, id_field) == item_id).first()
         if not item:
             raise HTTPException(status_code=404, detail="No encontrado")

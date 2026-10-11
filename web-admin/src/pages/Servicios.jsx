@@ -81,7 +81,7 @@ export default function Servicios() {
   // Si llegamos aquí desde "Vehículo registrado — ¿crear una orden?", abre
   // la captura ya lista con ese cliente y vehículo.
   useEffect(() => {
-    if (searchParams.get("abrir_nuevo") === "1" && searchParams.get("id_vehiculo") && !yaCreoDirecta.current) {
+    if (searchParams.get("abrir_nuevo") === "1" && searchParams.get("id_vehiculo") && !yaCreoDirecta.current && hasPermission("servicios.crear")) {
       yaCreoDirecta.current = true;
       crearDirectaConVehiculo({
         id_cliente: Number(searchParams.get("id_cliente")),
@@ -128,6 +128,7 @@ export default function Servicios() {
   }
 
   async function nuevaOrdenDirecta() {
+    if (!hasPermission("servicios.crear")) return;
     if (verificacion2Pasos) { openCreate(); return; } // con verificación en 2 pasos se conserva el formulario con código
     try {
       // Si quedó una orden en blanco (sin cliente y sin nada capturado) se reutiliza
@@ -302,6 +303,8 @@ export default function Servicios() {
     });
 
     campos.push({ name: "nombre_servicio", label: "Descripción de la orden", required: true, full: true, grupo: "trabajo" });
+    // Fotos y anticipo se guardan aparte y piden poder editar la orden
+    if (!hasPermission("servicios.editar")) return campos;
     campos.push({ name: "fotos_temp", label: "Fotos de la orden (opcional)", type: "file-multiple", full: true, grupo: "trabajo" });
 
     // Anticipo (opcional) — el monto cambia de forma según el tipo de pago,
@@ -334,8 +337,10 @@ export default function Servicios() {
           <h1><IconoModulo ruta="/servicios" /> Órdenes de servicio</h1>
           <div className="subtitle">{servicios.length} orden(es)</div>
         </div>
+        {hasPermission("servicios.crear") && (
         <button className="btn btn-primary btn-nuevo" onClick={nuevaOrdenDirecta}>
           <span className="btn-nuevo-icono"><Icono nombre="doc-add" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva orden</button>
+        )}
       </div>
 
       <div className="panel">

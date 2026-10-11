@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import { useUI } from "../context/UIContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 import IconoModulo from "../components/IconoModulo";
+import SelectorFecha from "../components/SelectorFecha";
 import { Icono } from "../components/Icono";
 
 const COLORS = {
@@ -84,9 +85,32 @@ export default function Dashboard() {
     api.get("/dashboard/proximos-servicios?dias_umbral=150").then(setProximos);
   }
 
+  // Rango de fechas del bloque «Estado de las órdenes» (por fecha de entrada)
+  const [rango, setRango] = useState({ desde: "", hasta: "" });
+  const rangoRef = useRef(rango);
+  function cargarPorEstado(r = rangoRef.current) {
+    const p = new URLSearchParams();
+    if (r.desde) p.set("desde", r.desde);
+    if (r.hasta) p.set("hasta", r.hasta);
+    api.get(`/dashboard/servicios-por-estado${p.toString() ? `?${p}` : ""}`).then(setPorEstado);
+  }
+  function cambiarRango(nuevo) {
+    rangoRef.current = nuevo;
+    setRango(nuevo);
+    cargarPorEstado(nuevo);
+  }
+  const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  function atajoRango(tipo) {
+    const d = new Date();
+    const iso = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+    if (tipo === "todo") return cambiarRango({ desde: "", hasta: "" });
+    if (tipo === "mes") return cambiarRango({ desde: iso(new Date(d.getFullYear(), d.getMonth(), 1)), hasta: hoyISO() });
+    if (tipo === "30") return cambiarRango({ desde: iso(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 29)), hasta: hoyISO() });
+  }
+
   function cargarResumen() {
     api.get("/dashboard/resumen").then(setData);
-    api.get("/dashboard/servicios-por-estado").then(setPorEstado);
+    cargarPorEstado();
     api.get("/dashboard/servicios-mensuales?meses=6").then(setMensual);
     api.get("/dashboard/refacciones-bajo-stock-top?limite=6").then(setBajoStock);
   }
@@ -253,8 +277,25 @@ export default function Dashboard() {
       </div>
 
       <div className="panel">
-        <h2 className="graf-titulo">Estado de las órdenes</h2>
-        <div className="graf-sub">Cuántas hay en cada situación</div>
+        <div className="estado-cabecera">
+          <div>
+            <h2 className="graf-titulo">Estado de las órdenes</h2>
+            <div className="graf-sub">{rango.desde || rango.hasta ? "Órdenes que entraron en el periodo elegido" : "Cuántas hay en cada situación"}</div>
+          </div>
+          <div className="rango-fechas">
+            <div className="rango-atajos">
+              <button type="button" className={`chip-rango ${!rango.desde && !rango.hasta ? "activo" : ""}`} onClick={() => atajoRango("todo")}>Todo</button>
+              <button type="button" className="chip-rango" onClick={() => atajoRango("mes")}>Este mes</button>
+              <button type="button" className="chip-rango" onClick={() => atajoRango("30")}>Últimos 30 días</button>
+            </div>
+            <div className="rango-campos">
+              <label>Desde</label>
+              <SelectorFecha value={rango.desde} max={rango.hasta || undefined} onChange={(v) => cambiarRango({ ...rango, desde: v || "" })} />
+              <label>Hasta</label>
+              <SelectorFecha value={rango.hasta} min={rango.desde || undefined} onChange={(v) => cambiarRango({ ...rango, hasta: v || "" })} />
+            </div>
+          </div>
+        </div>
         <div className="estado-lista">
           {(() => {
             const total = porEstado.reduce((t, e) => t + e.cantidad, 0) || 1;
@@ -297,7 +338,7 @@ export default function Dashboard() {
       <div className="panel">
         <h2 style={{ marginBottom: 12, fontSize: 18 }}>Accesos rápidos</h2>
         <div className="toolbar">
-          <Link className="btn btn-secondary" to="/clientes">Registrar cliente</Link>
+          {hasPermission("clientes.crear") && <Link className="btn btn-secondary" to="/clientes?abrir_nuevo=1">Registrar cliente</Link>}
           <Link className="btn btn-secondary" to="/refacciones">Ver inventario de refacciones</Link>
         </div>
       </div>

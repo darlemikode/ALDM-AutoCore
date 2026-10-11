@@ -3424,3 +3424,48 @@ select option:disabled { color: #8d8d8f; }
 /* Súper admin · Módulos del sistema: insignia con el ícono de cada módulo */
 .sa-modulo-fila { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .icono-modulo-sis { flex: none; width: 36px; height: 36px; border-radius: 10px; margin-right: 0; }
+.insp-fieldset { border: 0; margin: 0; min-width: 0; }
+
+/* Panel: «Nueva orden de servicio» en naranja encendido, para que sea lo primero que se ve */
+.hero-orden {
+  background: linear-gradient(120deg, #ff8a1f 0%, #ff6a00 45%, #e8451b 100%) !important;
+  border: 1px solid #ff9a3c !important;
+  color: #fff !important;
+  box-shadow: 0 12px 28px rgba(255, 106, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+.hero-orden:hover { background: linear-gradient(120deg, #ff9530 0%, #ff7410 45%, #f04f22 100%) !important; box-shadow: 0 16px 34px rgba(255, 106, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important; }
+.hero-orden::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent) !important; }
+.hero-orden-icono { background: rgba(255, 255, 255, 0.22) !important; color: #fff !important; }
+.hero-orden-titulo, .hero-orden-sub, .hero-orden-flecha { color: #fff !important; }
+.hero-orden-sub { opacity: 0.95; }
+
+/* Panel: filtro por rango de fechas en «Estado de las órdenes» */
+.estado-cabecera { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.rango-fechas { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+.rango-atajos { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.chip-rango { font: 600 14px/1 var(--font-body, inherit); padding: 8px 14px; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--petrol-500) 35%, transparent); background: transparent; color: inherit; cursor: pointer; }
+.chip-rango:hover { background: color-mix(in srgb, var(--petrol-500) 10%, transparent); }
+.chip-rango.activo { background: var(--petrol-500); border-color: var(--petrol-500); color: #fff; }
+.rango-campos { display: grid; grid-template-columns: auto minmax(150px, 180px) auto minmax(150px, 180px); gap: 8px 10px; align-items: center; }
+.rango-campos label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; opacity: .75; }
+@media (max-width: 720px) {
+  .rango-fechas { align-items: stretch; width: 100%; }
+  .rango-atajos { justify-content: flex-start; }
+  .rango-campos { grid-template-columns: auto 1fr; }
+}
+
+/* Agregar refacciones: la ventana usa el alto de la pantalla y la lista ocupa el resto (antes se colapsaba) */
+.modal-grande.add-ref { height: min(92vh, 960px); max-height: 92vh; }
+.add-ref-grid { min-height: 240px; }
+.add-ref .cat-chips { flex: none; max-height: 30vh; overflow-y: auto; }
+@media (max-height: 640px) { .modal-grande.add-ref { height: 96vh; max-height: 96vh; padding: 14px 18px; } .add-ref-cab h2 { font-size: 20px; } .add-ref-grid { min-height: 160px; } }
+@media (max-height: 640px) { .add-ref .cat-chips { max-height: 17vh; } .add-ref-grid { min-height: 110px; } .modal-grande.add-ref > .modal-actions { margin-top: 8px; } }
+@media (max-width: 600px) {
+  .add-ref-cab { padding-right: 48px; gap: 10px; }
+  .add-ref-cab h2 { font-size: 20px; }
+  .add-ref-buscar { min-width: 0; width: 100%; flex-basis: 100%; }
+  .add-ref .cat-chips { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; max-height: none; padding-bottom: 6px; }
+  .add-ref .cat-chip { flex: none; }
+}
+@media (max-height: 640px) { .add-ref-grid { min-height: 0; } .add-ref-cab { margin-bottom: 8px !important; } .add-ref .cat-chips { margin: 2px 0 10px !important; } .modal-grande.add-ref { top: 0; margin: 2vh auto; } }
+.modal-grande.add-ref > .modal-actions { position: static !important; top: auto !important; }

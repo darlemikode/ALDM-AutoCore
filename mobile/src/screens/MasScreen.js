@@ -27,7 +27,7 @@ const ITEMS = [
   { to: "Proveedores", label: "Proveedores", desc: "Contactos, productos y deudas", icono: "business-outline", permiso: "proveedores.ver" },
   { to: "Citas", label: "Citas solicitadas", desc: "Lo que piden los clientes desde su app", icono: "calendar-outline" },
   { to: "Promociones", label: "Promociones", desc: "Lo que ven tus clientes en su app", icono: "pricetag-outline", permiso: "promociones.ver" },
-  { to: "Asistente", label: "Asistente", desc: "Consultas rápidas de uso interno", icono: "sparkles-outline" },
+  { to: "Asistente", label: "Asistente", desc: "Consultas rápidas de uso interno", icono: "sparkles-outline", permiso: "servicios.ver" },
 ];
 
 function Fila({ icono, titulo, desc, onPress, derecha, primera }) {

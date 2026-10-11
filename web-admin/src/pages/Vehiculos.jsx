@@ -55,7 +55,7 @@ export default function Vehiculos() {
   // abre el formulario de alta solo, ya con el cliente precargado, sin
   // que la persona tenga que volver a buscarlo ni dar clic en "+ Nuevo".
   useEffect(() => {
-    if (params.get("abrir_nuevo") === "1" && idCliente) {
+    if (params.get("abrir_nuevo") === "1" && idCliente && hasPermission("vehiculos.crear")) {
       setEditing({ id_cliente: Number(idCliente) });
       const nuevosParams = new URLSearchParams(params);
       nuevosParams.delete("abrir_nuevo");
@@ -166,7 +166,7 @@ export default function Vehiculos() {
     // Al dar de alta un vehículo nuevo se le ofrece, de una vez, agregarle
     // una foto (recién ahí ya existe su id_vehiculo, antes no se puede) y
     // crear su primera orden — dos cosas que casi siempre siguen después.
-    if (esNuevo && creado) {
+    if (esNuevo && creado && hasPermission("servicios.crear")) {
       setOfrecerSiguiente(creado);
     }
   }
@@ -203,8 +203,10 @@ export default function Vehiculos() {
               Quitar filtro
             </button>
           )}
+          {hasPermission("vehiculos.crear") && (
           <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({ id_cliente: idCliente ? Number(idCliente) : undefined })}>
             <span className="btn-nuevo-icono"><Icono nombre="car" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo vehículo</button>
+          )}
         </div>
       </div>
 
@@ -216,7 +218,7 @@ export default function Vehiculos() {
           <div className="ordenes-lista">
             {visibles.length === 0 && <div className="empty-state">No hay vehículos registrados todavía.</div>}
             {visibles.map((v) => (
-              <div key={v.id_vehiculo} className="orden-fila fila-acciones" style={{ "--acc": colorGrupo(nomMarcaV(v)) }} onClick={() => setEditing(v)}>
+              <div key={v.id_vehiculo} className="orden-fila fila-acciones" style={{ "--acc": colorGrupo(nomMarcaV(v)) }} onClick={() => hasPermission("vehiculos.editar") && setEditing(v)}>
                 <div className="cliente-avatar"><Icono nombre="car" size={26} /></div>
                 <div className="orden-main">
                   <div className="orden-titulo">{nombreMarca(v.id_marca_vehiculo)} {nombreModelo(v.id_modelo_vehiculo)} {v.id_year_vehiculo || ""}</div>
@@ -229,7 +231,9 @@ export default function Vehiculos() {
                 <div className="orden-estado"><span className="cliente-cuenta">{v.numero_cuenta}</span></div>
                 <div className="row-actions" onClick={(e) => e.stopPropagation()}>
                   <button className="btn-icono" title="Fotos" aria-label="Fotos" onClick={() => setFotosDe(v)}><IconoAuto valor="📷" size={18} /></button>
-                  <button className="btn-icono" title="Editar" aria-label="Editar" onClick={() => setEditing(v)}><Icono nombre="pencil" size={18} /></button>
+                  {hasPermission("vehiculos.editar") && (
+                    <button className="btn-icono" title="Editar" aria-label="Editar" onClick={() => setEditing(v)}><Icono nombre="pencil" size={18} /></button>
+                  )}
                   {hasPermission("vehiculos.eliminar") && (
                     <button className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => handleDelete(v)}><Icono nombre="trash" size={18} /></button>
                   )}

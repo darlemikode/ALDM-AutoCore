@@ -8,8 +8,10 @@ import HojaFormulario from "../ui/HojaFormulario";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
+import { useAuth } from "../context/AuthContext";
 
 export default function PromocionesScreen() {
+  const { hasPermission } = useAuth();
   const [promociones, setPromociones] = useState([]);
   const [previsualizando, setPrevisualizando] = useState(false);
   const [subiendoImagen, setSubiendoImagen] = useState(null);
@@ -111,7 +113,7 @@ export default function PromocionesScreen() {
           const uri = uriImagen(item.ruta_imagen);
           return (
             <View style={styles.card}>
-              <TouchableOpacity onPress={() => elegirImagen(item)}>
+              <TouchableOpacity onPress={() => elegirImagen(item)} disabled={!hasPermission("promociones.editar")}>
                 {uri ? (
                   <Image source={{ uri }} style={styles.imagen} resizeMode="cover" />
                 ) : (
@@ -124,8 +126,8 @@ export default function PromocionesScreen() {
                 <View style={styles.cardRow}>
                   <Text style={styles.cardTitle}>{item.titulo} {item.solo_nuevos_clientes ? <Text style={styles.badge}>Nuevos</Text> : null}</Text>
                   <View style={{ flexDirection: "row", gap: 14 }}>
-                    <TouchableOpacity onPress={() => setEditando(item)} hitSlop={8}><Ionicons name="create-outline" size={20} color={colors.ink700} /></TouchableOpacity>
-                    <TouchableOpacity onPress={() => quitar(item)} hitSlop={8}><Ionicons name="trash-outline" size={20} color={colors.red600} /></TouchableOpacity>
+                    {hasPermission("promociones.editar") && <TouchableOpacity onPress={() => setEditando(item)} hitSlop={8}><Ionicons name="create-outline" size={20} color={colors.ink700} /></TouchableOpacity>}
+                    {hasPermission("promociones.eliminar") && <TouchableOpacity onPress={() => quitar(item)} hitSlop={8}><Ionicons name="trash-outline" size={20} color={colors.red600} /></TouchableOpacity>}
                   </View>
                 </View>
                 {item.descripcion ? <Text style={styles.cardSub}>{item.descripcion}</Text> : null}
@@ -145,9 +147,11 @@ export default function PromocionesScreen() {
         ListEmptyComponent={<Text style={styles.empty}>Sin promociones todavía.</Text>}
       />
 
+      {hasPermission("promociones.crear") && (
       <TouchableOpacity style={styles.fab} onPress={() => setEditando({})}>
         <Text style={styles.fabTexto}>+</Text>
       </TouchableOpacity>
+      )}
 
       <HojaFormulario
         visible={!!editando}

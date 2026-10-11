@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { marcarCampo, propsContacto, limpiarValorContacto } from "../validacion";
 import { createPortal } from "react-dom";
 import { api } from "../api";
+import { useAuth } from "../context/AuthContext";
 import { IconoAuto, Icono } from "./Icono";
 
 const ESTADOS_MEXICO = [
@@ -23,6 +24,10 @@ const ESTADOS_MEXICO = [
  * contempla.
  */
 export default function ClienteFormModal({ title, initialValues, onSubmit, onClose }) {
+  const { hasPermission } = useAuth();
+  // Solo quien administra catálogos puede dar de alta un estado o ciudad nuevos;
+  // los demás guardan el cliente con los que ya existen.
+  const puedeCrearCatalogo = hasPermission("catalogos.crear");
   const [values, setValues] = useState(() => ({
     nombre_cliente: "", paterno_cliente: "", materno_cliente: "",
     telefono1: "", telefono2: "", correo_cliente: "", empresa_cliente: "", rfc_cliente: "",
@@ -87,6 +92,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
     if (estadoTexto?.trim()) {
       const estados = await api.get("/estados/");
       let estado = estados.find((e) => e.nombre_estado.toLowerCase() === estadoTexto.trim().toLowerCase());
+      if (!estado && !puedeCrearCatalogo) return { idEstado, idCiudad };
       if (!estado) {
         const paises = await api.get("/paises/");
         let mexico = paises.find((p) => p.nombre_pais.toLowerCase().includes("méxico") || p.nombre_pais.toLowerCase().includes("mexico"));
@@ -98,6 +104,7 @@ export default function ClienteFormModal({ title, initialValues, onSubmit, onClo
       if (ciudadTexto?.trim()) {
         const ciudades = await api.get(`/ciudades/?id_estado=${idEstado}`);
         let ciudad = ciudades.find((c) => c.nombre_ciudad.toLowerCase() === ciudadTexto.trim().toLowerCase());
+        if (!ciudad && !puedeCrearCatalogo) return { idEstado, idCiudad };
         if (!ciudad) ciudad = await api.post("/ciudades/", { nombre_ciudad: ciudadTexto.trim(), id_estado: idEstado });
         idCiudad = ciudad.id_ciudad;
       }

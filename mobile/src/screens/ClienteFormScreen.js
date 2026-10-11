@@ -7,6 +7,7 @@ import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import FormScroll from "../ui/FormScroll";
 import { mostrarDialogo, alerta } from "../ui/Dialogo";
+import { useAuth } from "../context/AuthContext";
 import { soloDigitos, telefonoValido, MENSAJE_TELEFONO_INVALIDO, correoValido, MENSAJE_CORREO_INVALIDO } from "../validaciones";
 
 const ESTADOS_MEXICO = [
@@ -26,6 +27,8 @@ const ESTADOS_MEXICO = [
  * Clientes) reciba el cliente recién creado sin tener que recargar nada.
  */
 export default function ClienteFormScreen({ navigation, route, onGuardado }) {
+  const { hasPermission } = useAuth();
+  const puedeCrearCatalogo = hasPermission("catalogos.crear");
   const clienteExistente = route?.params?.cliente || null;
   const alGuardar = onGuardado || route?.params?.onGuardado || null;
   const editando = !!clienteExistente;
@@ -113,6 +116,7 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
     if (estadoTexto?.trim()) {
       const estados = await api.get("/estados/");
       let estadoEncontrado = estados.find((e) => e.nombre_estado.toLowerCase() === estadoTexto.trim().toLowerCase());
+      if (!estadoEncontrado && !puedeCrearCatalogo) return { idEstado, idCiudad };
       if (!estadoEncontrado) {
         const paises = await api.get("/paises/");
         let mexico = paises.find((p) => p.nombre_pais.toLowerCase().includes("méxico") || p.nombre_pais.toLowerCase().includes("mexico"));
@@ -124,6 +128,7 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
       if (ciudadTexto?.trim()) {
         const ciudades = await api.get("/ciudades/");
         let ciudadEncontrada = ciudades.find((c) => c.nombre_ciudad.toLowerCase() === ciudadTexto.trim().toLowerCase() && c.id_estado === idEstado);
+        if (!ciudadEncontrada && !puedeCrearCatalogo) return { idEstado, idCiudad };
         if (!ciudadEncontrada) ciudadEncontrada = await api.post("/ciudades/", { nombre_ciudad: ciudadTexto.trim(), id_estado: idEstado });
         idCiudad = ciudadEncontrada.id_ciudad;
       }
@@ -177,7 +182,7 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
         return;
       }
 
-      if (editando) { navigation.goBack(); return; }
+      if (editando || !hasPermission("vehiculos.crear")) { navigation.goBack(); return; }
       mostrarDialogo({
         tono: "exito", icono: "person-add", etiqueta: nuevo.numero_cuenta ? `Cuenta ${nuevo.numero_cuenta}` : "Cliente registrado",
         titulo: "¡Cliente creado!",

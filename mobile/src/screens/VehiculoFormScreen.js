@@ -10,6 +10,7 @@ import { crearEstilos } from "../ui/estilos";
 import FormScroll from "../ui/FormScroll";
 import { mostrarDialogo, alerta } from "../ui/Dialogo";
 import { abrirOrdenDeVehiculo } from "../navigation/irAOrden";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * Captura de vehículo. Dos formas de usarse:
@@ -22,6 +23,9 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
   const clienteFijo = route?.params?.clienteFijo || null;
   const vehiculoExistente = route?.params?.vehiculoExistente || null;
   const editando = !!vehiculoExistente;
+  const { hasPermission } = useAuth();
+  // Sin permiso para guardar, el formulario queda en solo lectura
+  const sinPermiso = !hasPermission(editando ? "vehiculos.editar" : "vehiculos.crear");
 
   const [clientes, setClientes] = useState([]);
   const [marcas, setMarcas] = useState([]);
@@ -56,7 +60,7 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
   );
 
   const modelosDeLaMarca = marcaId ? modelos.filter((m) => m.id_marca_vehiculo === marcaId) : [];
-  const bloqueado = !editando && !clienteFijo && !clienteId;
+  const bloqueado = sinPermiso || (!editando && !clienteFijo && !clienteId);
 
   // Obligatorios en orden; al llenar uno se quita su error y se marca el siguiente pendiente
   function pendientes(m, mo, k) {
@@ -125,7 +129,7 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
         return;
       }
 
-      if (editando) { navigation.goBack(); return; }
+      if (editando || !hasPermission("servicios.crear")) { navigation.goBack(); return; }
       const dueno = clienteFijo || clientes.find((c) => c.id_cliente === Number(clienteId));
       mostrarDialogo({
         tono: "exito", icono: "car-sport", etiqueta: nuevo.numero_cuenta || "Vehículo registrado",
@@ -174,9 +178,11 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
                 ))}
               </Picker>
             </View>
+            {hasPermission("clientes.crear") && (
             <TouchableOpacity style={styles.botonMas} onPress={() => setMostrarAgregarCliente(true)}>
               <Text style={styles.botonMasTexto}>+</Text>
             </TouchableOpacity>
+            )}
           </View>
         </Campo>
       )}
@@ -249,9 +255,11 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
         <TextInput style={[styles.input, { minHeight: 70, textAlignVertical: "top" }]} value={comentarios} onChangeText={setComentarios} editable={!bloqueado} multiline placeholder="Detalles del vehículo (golpes, accesorios…)" placeholderTextColor={colors.ink500} />
       </Campo>
 
+      {!sinPermiso && (
       <TouchableOpacity style={[styles.button, bloqueado && styles.buttonDisabled]} onPress={guardar} disabled={bloqueado || guardando}>
         <Text style={styles.buttonText}>{guardando ? "Guardando…" : editando ? "Guardar cambios" : "Guardar vehículo"}</Text>
       </TouchableOpacity>
+      )}
     </FormScroll>
   );
 }

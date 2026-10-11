@@ -23,7 +23,7 @@ const ICONO_CATEGORIA = {
  * cada clic se guarda al momento y los comentarios al dejar de escribir.
  * El primer cambio crea la inspección; los siguientes la actualizan.
  */
-export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExistente, refacciones, onGuardado, onClose }) {
+export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExistente, refacciones, onGuardado, onClose, puedeEditar = true }) {
   const { notify } = useUI();
   const [items, setItems] = useState([]);
   const [resultados, setResultados] = useState({}); // { id_item: {estado, comentario, id_refaccion_sugerida} }
@@ -158,7 +158,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
           </div>
         </div>
 
-        <div className="insp-cuerpo">
+        <fieldset className="insp-cuerpo insp-fieldset" disabled={!puedeEditar}>
           {categorias.map((cat) => {
             const delaCat = items.filter((i) => i.categoria === cat);
             const malos = delaCat.filter((i) => resultados[i.id_item]?.estado === "mal").length;
@@ -168,9 +168,11 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
                   <span className="insp-categoria-icono"><Icono nombre={ICONO_CATEGORIA[cat] || "search"} size={22} /></span>
                   <h3>{cat}</h3>
                   {malos > 0 && <span className="badge badge-red">{malos} mal</span>}
+                  {puedeEditar && (
                   <button type="button" className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={() => marcarCategoria(cat, "bien")}>
                     <Icono nombre="check-circle" size={16} /> Todo bien
                   </button>
+                  )}
                 </div>
                 <div className="insp-grid">
                   {delaCat.map((item) => {
@@ -226,10 +228,10 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
 
           {idInspeccion && (
             <div style={{ marginTop: 10 }}>
-              <FotoGaleria entidadTipo="inspeccion" entidadId={idInspeccion} puedeEditar />
+              <FotoGaleria entidadTipo="inspeccion" entidadId={idInspeccion} puedeEditar={puedeEditar} />
             </div>
           )}
-        </div>
+        </fieldset>
 
       </div>
     </div>

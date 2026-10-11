@@ -5,6 +5,7 @@ import { propsContacto, limpiarValorContacto } from "../validacion";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api";
+import { useAuth } from "../context/AuthContext";
 import { IconoAuto, Icono } from "./Icono";
 
 /**
@@ -38,6 +39,7 @@ import { IconoAuto, Icono } from "./Icono";
  * del nombre del campo (correo, teléfono, precio, fecha, código postal…).
  */
 export default function FormModal({ title, fields, initialValues, onSubmit, onClose, footerExtra, icono, colorAcento = "petrol", subtitulo, grupos, bloqueExtra, permitirOtra }) {
+  const { hasPermission } = useAuth();
   const [values, setValues] = useState(initialValues || {});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -202,7 +204,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
               opciones={f.options}
               onChange={(v) => update(f.name, v === null || v === "" ? null : v)}
             />
-            {f.creatable && !f.disabled && (
+            {f.creatable && !f.disabled && hasPermission(f.creatable.permiso || "catalogos.crear") && (
               <button
                 type="button"
                 className="btn-quick-add"

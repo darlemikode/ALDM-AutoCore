@@ -15,7 +15,7 @@ import { soloDigitos, telefonoValido, MENSAJE_TELEFONO_INVALIDO } from "../valid
 const inicialesCliente = (c) => `${(c.nombre_cliente || "?")[0]}${(c.paterno_cliente || "")[0] || ""}`.toUpperCase();
 
 export default function UsuariosScreen({ navigation }) {
-  const { user: usuarioActual } = useAuth();
+  const { user: usuarioActual, hasPermission } = useAuth();
   const [tab, setTab] = useState("usuarios"); // "usuarios" | "clientes"
 
   const [usuarios, setUsuarios] = useState([]);
@@ -181,7 +181,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
         });
         idUsuarioResultante = creado.id_usuario;
       }
-      await sincronizarVinculoEmpleado(idUsuarioResultante);
+      if (hasPermission("empleados.editar")) await sincronizarVinculoEmpleado(idUsuarioResultante);
       await cargar();
       setModalAbierto(false);
       limpiarFormulario();
@@ -250,7 +250,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
             keyExtractor={(item) => String(item.id_usuario)}
             contentContainerStyle={{ paddingBottom: 40 }}
             renderItem={({ item }) => (
-              <TouchableOpacity style={[styles.row, !item.activo && styles.rowInactiva]} onPress={() => abrirEdicion(item)}>
+              <TouchableOpacity style={[styles.row, !item.activo && styles.rowInactiva]} onPress={() => abrirEdicion(item)} disabled={!hasPermission("usuarios.editar")}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowTitle}>{item.nombre_completo} <Text style={styles.rowUsername}>@{item.username}</Text></Text>
                   <Text style={styles.rowSubtitle}>{item.correo || "sin correo"} · {item.telefono || "sin teléfono"}</Text>
@@ -262,9 +262,11 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
             ListEmptyComponent={<Text style={styles.empty}>Sin usuarios.</Text>}
           />
 
+          {hasPermission("usuarios.crear") && (
           <TouchableOpacity style={styles.fab} onPress={abrirNuevo}>
             <Text style={styles.fabTexto}>+</Text>
           </TouchableOpacity>
+          )}
         </>
       ) : (
         <>
@@ -310,15 +312,18 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
                       </View>
                     </View>
                   </TouchableOpacity>
+                  {hasPermission("clientes.editar") && (
                   <TouchableOpacity style={styles.botonAcceso} onPress={() => generarAccesoCliente(cl)} hitSlop={6}>
                     <Ionicons name="key-outline" size={17} color={colors.petrol600} />
                   </TouchableOpacity>
+                  )}
                 </View>
               );
             }}
             ListEmptyComponent={<Text style={styles.empty}>{qClientes ? "Nadie coincide con la búsqueda." : "Aún no hay clientes."}</Text>}
           />
 
+          {hasPermission("clientes.crear") && (
           <TouchableOpacity
             style={styles.fabExtendido}
             onPress={() => navigation.navigate("Clientes", { screen: "ClienteForm" })}
@@ -326,6 +331,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
             <Ionicons name="person-add" size={18} color={colors.paper100} />
             <Text style={styles.fabExtendidoTexto}>Nuevo cliente</Text>
           </TouchableOpacity>
+          )}
         </>
       )}
 
@@ -360,7 +366,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
                   ))}
                 </Picker>
               </View>
-              {empleadosDisponibles.length > 0 && (
+              {empleadosDisponibles.length > 0 && hasPermission("empleados.editar") && (
                 <>
                   <Text style={styles.label}>Empleado vinculado (opcional)</Text>
                   <View style={styles.pickerWrap}>
@@ -387,7 +393,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
                 </TouchableOpacity>
               </View>
 
-              {editando && !esUsuarioActual && (
+              {editando && !esUsuarioActual && hasPermission(editando.activo ? "usuarios.eliminar" : "usuarios.editar") && (
                 editando.activo ? (
                   <TouchableOpacity style={styles.botonPeligro} onPress={() => confirmarDesactivar(editando)}>
                     <Text style={styles.botonPeligroTexto}>Desactivar usuario</Text>

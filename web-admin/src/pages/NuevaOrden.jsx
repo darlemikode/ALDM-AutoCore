@@ -92,7 +92,7 @@ export default function NuevaOrden() {
     setNuevoCliente(false);
     await cargar();
     elegirCliente(creado.id_cliente);
-    setNuevoVehiculo(true); // un cliente nuevo no tiene vehículos: se captura el suyo
+    if (hasPermission("vehiculos.crear")) setNuevoVehiculo(true); // un cliente nuevo no tiene vehículos: se captura el suyo
   }
 
   function camposVehiculo(values) {

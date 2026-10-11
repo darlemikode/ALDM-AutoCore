@@ -61,13 +61,18 @@ def resumen(db: Session = Depends(get_db), user=Depends(get_current_user)):
 
 
 @router.get("/servicios-por-estado")
-def servicios_por_estado(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    """Conteo de órdenes agrupadas por estado, para la gráfica de pastel/barras."""
-    filas = (
-        db.query(models.Servicio.status, func.count(models.Servicio.id_servicio))
-        .group_by(models.Servicio.status)
-        .all()
-    )
+def servicios_por_estado(desde: str | None = None, hasta: str | None = None, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Conteo de órdenes agrupadas por estado, para la gráfica de pastel/barras.
+    `desde` / `hasta` (AAAA-MM-DD, opcionales) acotan por fecha de entrada; `hasta` incluye todo ese día."""
+    q = db.query(models.Servicio.status, func.count(models.Servicio.id_servicio))
+    try:
+        if desde:
+            q = q.filter(models.Servicio.fecha_entrada_servicio >= datetime.strptime(desde, "%Y-%m-%d"))
+        if hasta:
+            q = q.filter(models.Servicio.fecha_entrada_servicio < datetime.strptime(hasta, "%Y-%m-%d") + timedelta(days=1))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Fecha inválida: usa el formato AAAA-MM-DD.")
+    filas = q.group_by(models.Servicio.status).all()
     conteo = {status: cantidad for status, cantidad in filas}
     return [
         {"estado": "Abierto", "cantidad": conteo.get("abierto", 0)},

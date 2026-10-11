@@ -56,7 +56,7 @@ router.include_router(make_crud_router(
 
 router.include_router(make_crud_router(
     model=models.InventarioRefaccion, schema_out=schemas.InventarioRefaccionOut, schema_in=schemas.InventarioRefaccionIn,
-    prefix="/api/inventario-refacciones", tags=["catálogos"], id_field="id_inventario_refaccion", filtro_campo="id_refaccion",
+    prefix="/api/inventario-refacciones", tags=["catálogos"], id_field="id_inventario_refaccion", filtro_campo="id_refaccion", permiso="inventario",
 ))
 
 # POST personalizado para compatibilidades: antes de crear, valida si YA
@@ -68,7 +68,7 @@ compat_router = APIRouter(prefix="/api/inventario-refacciones-compatibilidades",
 
 
 @compat_router.post("/", response_model=schemas.InventarioRefaccionCompatibilidadOut, status_code=201)
-def crear_compatibilidad(payload: schemas.InventarioRefaccionCompatibilidadIn, db: Session = Depends(get_db), user=Depends(require_permission("catalogos.crear"))):
+def crear_compatibilidad(payload: schemas.InventarioRefaccionCompatibilidadIn, db: Session = Depends(get_db), user=Depends(require_permission("inventario.crear"))):
     actual = db.query(models.InventarioRefaccion).filter(
         models.InventarioRefaccion.id_inventario_refaccion == payload.id_inventario_refaccion
     ).first()
@@ -100,7 +100,7 @@ router.include_router(compat_router)
 
 router.include_router(make_crud_router(
     model=models.InventarioRefaccionCompatibilidad, schema_out=schemas.InventarioRefaccionCompatibilidadOut, schema_in=schemas.InventarioRefaccionCompatibilidadIn,
-    prefix="/api/inventario-refacciones-compatibilidades", tags=["catálogos"], id_field="id_compatibilidad", filtro_campo="id_inventario_refaccion",
+    prefix="/api/inventario-refacciones-compatibilidades", tags=["catálogos"], id_field="id_compatibilidad", filtro_campo="id_inventario_refaccion", permiso="inventario",
 ))
 
 router.include_router(make_crud_router(

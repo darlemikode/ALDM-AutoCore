@@ -158,7 +158,7 @@ export default function InventarioListaScreen() {
                     </TouchableOpacity>
                   </>
                 )}
-                {hasPermission("refacciones.eliminar") && (
+                {hasPermission("inventario.eliminar") && (
                   <TouchableOpacity style={styles.accion} onPress={() => eliminar(f)}>
                     <Ionicons name="trash-outline" size={16} color={colors.red600} />
                   </TouchableOpacity>
@@ -175,7 +175,7 @@ export default function InventarioListaScreen() {
         }
       />
 
-      {hasPermission("refacciones.crear") && (
+      {hasPermission("inventario.crear") && (
         <TouchableOpacity style={styles.fab} onPress={() => setEditando({})} accessibilityLabel="Nuevo registro de inventario">
           <Ionicons name="add" size={28} color={colors.paper100} />
         </TouchableOpacity>

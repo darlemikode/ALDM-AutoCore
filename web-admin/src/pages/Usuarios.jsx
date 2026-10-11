@@ -92,7 +92,7 @@ export default function Usuarios() {
       name: "id_rol", label: "Rol", type: "select", required: true, grupo: "cuenta",
       options: roles.map((r) => ({ value: r.id_rol, label: r.nombre })),
     },
-    {
+    hasPermission("empleados.editar") && {
       name: "id_empleado", label: "Empleado vinculado (opcional)", type: "select", grupo: "cuenta",
       options: [{ value: "", label: "Ninguno" }].concat(
         empleadosDisponibles.map((e) => ({ value: e.id_empleado, label: `${e.nombre} ${e.paterno || ""}`.trim() }))
@@ -100,7 +100,7 @@ export default function Usuarios() {
     },
     { name: "correo", label: "Correo (para recuperar acceso)", grupo: "recuperacion" },
     { name: "telefono", label: "Teléfono (para recuperar acceso)", grupo: "recuperacion" },
-  ];
+  ].filter(Boolean);
 
   const gruposUsuario = {
     cuenta: { icono: "🔑", titulo: "Cuenta y rol" },
@@ -140,7 +140,7 @@ export default function Usuarios() {
       idUsuarioResultante = creado.id_usuario;
       notify("Usuario creado.", "success");
     }
-    await sincronizarVinculoEmpleado(idUsuarioResultante, id_empleado);
+    if (hasPermission("empleados.editar")) await sincronizarVinculoEmpleado(idUsuarioResultante, id_empleado);
     setEditing(null);
     load();
   }
@@ -241,7 +241,7 @@ export default function Usuarios() {
                       <td>{s.usuario?.nombre_completo || "—"} ({s.usuario?.username})</td>
                       <td className="mono">{s.identificador_usado}</td>
                       <td>{new Date(s.fecha_solicitud).toLocaleString("es-MX")}</td>
-                      <td><button className="btn btn-primary btn-sm" onClick={() => resolverSolicitud(s)}>Generar contraseña temporal</button></td>
+                      <td>{hasPermission("usuarios.editar") ? <button className="btn btn-primary btn-sm" onClick={() => resolverSolicitud(s)}>Generar contraseña temporal</button> : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
