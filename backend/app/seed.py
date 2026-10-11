@@ -115,12 +115,14 @@ MODULOS_SISTEMA = [
     ("reportes", "Reportes", "Indicadores del negocio y saldo por cobrar.", "📊", 12),
     ("app_movil", "App para clientes", "App para que los clientes den seguimiento a su vehículo, promociones y citas.", "📱", 13),
     ("facturacion", "Facturación electrónica", "Emisión y cancelación de CFDI 4.0 desde las órdenes de servicio.", "💳", 14),
+    ("app_taller", "App móvil del taller", "App para que el dueño y su equipo trabajen las órdenes desde el celular.", "📲", 15),
 ]
 
 # Módulos que antes venían "dentro" de otro: al crearse por primera vez se
 # agregan a los paquetes que ya tenían el módulo padre (o a todos, si antes
 # no dependían de ningún módulo), para que ningún taller pierda funciones.
 MODULOS_HEREDADOS = {
+    "app_taller": None,  # antes la app del taller venía en todos los paquetes
     "cotizaciones": "ordenes_servicio",
     "herramientas": "inventario",
     "refacciones": "inventario",
@@ -133,10 +135,10 @@ MODULOS_HEREDADOS = {
 PAQUETES_BASE = [
     ("Arranque", "Para el taller que va empezando: órdenes, cotizaciones, clientes y refacciones.", 599.0,
      ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones"]),
-    ("Taller Pro", "El más contratado: suma inventario y punto de venta, proveedores, herramientas, empleados y reportes.", 899.0,
+    ("Taller Pro", "El más contratado: suma inventario y punto de venta, proveedores, herramientas, empleados, roles y permisos, reportes y la app móvil del taller.", 899.0,
      ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones", "inventario", "herramientas",
-      "proveedores", "catalogos", "empleados", "reportes"]),
-    ("Full Garage", "Todo el sistema: nómina, roles y permisos, facturación electrónica y la app para tus clientes.", 1199.0,
+      "proveedores", "catalogos", "empleados", "roles_permisos", "reportes", "app_taller"]),
+    ("Full Garage", "Todo el sistema: nómina, facturación electrónica y la app para tus clientes.", 1199.0,
      [c for c, *_ in MODULOS_SISTEMA]),
 ]
 # Nombres anteriores de cada paquete (para actualizar sin duplicar)
@@ -147,7 +149,7 @@ NOMBRES_ANTERIORES = {
 }
 # Al subir este número, al arrancar se vuelven a aplicar PAQUETES_BASE a los
 # paquetes existentes (nombre, precio, descripción y módulos). Una sola vez por versión.
-VERSION_PAQUETES = 3
+VERSION_PAQUETES = 5  # 4: Taller Pro incluye roles y permisos · 5: app móvil del taller desde Taller Pro
 
 ROLES_BASE = [
     ("Administrador General", "Acceso total al sistema.", PERMISOS_ADMIN_GENERAL),
@@ -798,8 +800,27 @@ def _asegurar_admin(db, id_taller_principal: int):
     db.commit()
 
 
+def _migrar_comisiones_por_taller():
+    """Copia (una sola vez) las comisiones de la tabla vieja, que solo admitía una fila
+    por tipo de pago en toda la instalación, a «comisiones_taller» (una por taller)."""
+    inspector = inspect(engine)
+    tablas = set(inspector.get_table_names())
+    if "configuracion_comisiones" not in tablas or "comisiones_taller" not in tablas:
+        return
+    with engine.begin() as conn:
+        if conn.execute(text("SELECT COUNT(*) FROM comisiones_taller")).scalar():
+            return
+        filas = conn.execute(text("SELECT id_taller, tipo_pago, porcentaje FROM configuracion_comisiones")).fetchall()
+        for id_taller, tipo_pago, porcentaje in filas:
+            conn.execute(text("INSERT INTO comisiones_taller (id_taller, tipo_pago, porcentaje) VALUES (:t, :p, :v)"),
+                         {"t": id_taller, "p": tipo_pago, "v": porcentaje})
+    if filas:
+        print(f"[migración automática] comisiones por taller: {len(filas)} fila(s) copiadas")
+
+
 def run():
     Base.metadata.create_all(bind=engine)
+    _migrar_comisiones_por_taller()
     _sincronizar_columnas_faltantes()
     _ajustar_restricciones()
     _vin_unico_filtrado()

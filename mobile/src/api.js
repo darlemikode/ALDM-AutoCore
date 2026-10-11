@@ -62,7 +62,7 @@ async function fetchConLimite(url, opciones) {
 }
 
 async function requestReal(path, method, body, isForm) {
-  const headers = {};
+  const headers = { "X-App": "taller" }; // el servidor revisa que el plan incluya la app
   const token = await getToken();
   if (token && !esTokenLocal(token)) headers["Authorization"] = `Bearer ${token}`;
   if (!isForm) headers["Content-Type"] = "application/json";
@@ -178,7 +178,7 @@ export async function login(username, password) {
   try {
     const res = await fetchConLimite(`${API_URL}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "X-App": "taller" },
       body: form.toString(),
     });
     const data = await res.json().catch(() => null);

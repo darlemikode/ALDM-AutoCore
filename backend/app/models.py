@@ -753,12 +753,16 @@ class ServicioAbono(TenantMixin, Base):
 
 class ConfiguracionComision(TenantMixin, Base):
     """% de comisión por tipo de pago (Efectivo/Tarjeta/Mixto) — se usa para
-    mostrar la comisión estimada en cada nota/recibo finalizado. Una sola
-    fila por tipo_pago; se siembra con valores por defecto en seed.py."""
+    mostrar la comisión estimada en cada nota/recibo finalizado. Una fila por
+    tipo de pago EN CADA TALLER (la tabla vieja «configuracion_comisiones» tenía
+    tipo_pago como llave única global: solo el primer taller podía tener
+    comisiones; seed._migrar_comisiones_por_taller copia sus filas aquí)."""
 
-    __tablename__ = "configuracion_comisiones"
+    __tablename__ = "comisiones_taller"
+    __table_args__ = (UniqueConstraint("id_taller", "tipo_pago", name="uq_comision_taller_tipo"),)
 
-    tipo_pago = Column(String(20), primary_key=True)  # efectivo | tarjeta | mixto
+    id_comision = Column(Integer, primary_key=True, index=True)
+    tipo_pago = Column(String(20), nullable=False)  # efectivo | tarjeta | mixto
     porcentaje = Column(Float, default=0)
 
 

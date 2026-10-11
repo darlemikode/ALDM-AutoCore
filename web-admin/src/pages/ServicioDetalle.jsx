@@ -35,7 +35,9 @@ export default function ServicioDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { confirmDialog, notify } = useUI();
-  const { hasPermission } = useAuth();
+  const { hasPermission, estadoSuscripcion } = useAuth();
+  // Arranque no incluye Empleados: no se muestra «Empleado responsable»
+  const tieneModuloEmpleados = !estadoSuscripcion?.modulos || estadoSuscripcion.modulos.includes("empleados");
   const [servicio, setServicio] = useState(null);
   const [comentariosFinales, setComentariosFinales] = useState("");
   const [guardandoComentarios, setGuardandoComentarios] = useState(false);
@@ -682,7 +684,7 @@ export default function ServicioDetalle() {
               <div className="orden-hero-meta">{servicio.vehiculo?.numero_cuenta} · Placas {servicio.vehiculo?.placas_vehiculo || "—"}</div>
             </div>
           </div>
-          <div className="orden-hero-bloque" style={{ "--acc": "var(--violet-600)", "--acc-soft": "var(--violet-100)" }}>
+          {tieneModuloEmpleados && <div className="orden-hero-bloque" style={{ "--acc": "var(--violet-600)", "--acc-soft": "var(--violet-100)" }}>
             <span className="orden-hero-icono"><IconoAuto valor="👷" size={22} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="orden-hero-etiqueta">Empleado responsable</div>
@@ -697,7 +699,7 @@ export default function ServicioDetalle() {
                 <div className="orden-hero-valor">{empleados.find((e) => e.id_empleado === servicio.id_empleado_responsable)?.nombre || "Sin asignar"}</div>
               )}
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="orden-hero-fechas">

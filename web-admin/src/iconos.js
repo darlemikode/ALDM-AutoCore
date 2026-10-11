@@ -74,6 +74,7 @@ const RUTA_MODULO = {
 const ICONO_MODULO_EXTRA = {
   reportes: { nombre: "chart", color: "#7aa8ff" },
   app_movil: { nombre: "phone", color: "#ff8fb1" },
+  app_taller: { nombre: "phone", color: "#ff6b5f" },
 };
 export function iconoModuloSistema(clave) {
   if (ICONO_MODULO_EXTRA[clave]) return ICONO_MODULO_EXTRA[clave];
