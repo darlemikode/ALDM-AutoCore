@@ -84,7 +84,7 @@ const styles = crearEstilos({
   chip: { borderRadius: 20, paddingHorizontal: 13, paddingVertical: 7, backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300 },
   chipActivo: { backgroundColor: colors.petrol600, borderColor: colors.petrol600 },
   chipTexto: { fontSize: 13, fontWeight: "600", color: colors.ink700 },
-  chipTextoActivo: { color: colors.paper100 },
+  chipTextoActivo: { color: colors.sobreAcento },
   item: { backgroundColor: colors.paper100, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.ink300, gap: 4 },
   itemFila: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   nombre: { flex: 1, fontSize: 15.5, fontWeight: "700", color: colors.ink900 },

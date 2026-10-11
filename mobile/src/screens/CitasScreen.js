@@ -157,7 +157,7 @@ const styles = crearEstilos({
   botonRechazar: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 10, paddingVertical: 11, backgroundColor: colors.red100 },
   botonRechazarTexto: { fontSize: 14, fontWeight: "600", color: colors.red600 },
   botonConfirmar: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 10, paddingVertical: 11, backgroundColor: colors.petrol500 },
-  botonConfirmarTexto: { fontSize: 14, fontWeight: "600", color: colors.paper100 },
+  botonConfirmarTexto: { fontSize: 14, fontWeight: "600", color: colors.sobreAcento },
   botonOrden: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 10, paddingVertical: 11, marginTop: 12, backgroundColor: colors.petrol100 },
   botonOrdenTexto: { fontSize: 14, fontWeight: "600", color: colors.petrol600 },
   vacio: { alignItems: "center", gap: 8, paddingTop: 50 },

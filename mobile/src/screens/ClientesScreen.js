@@ -85,5 +85,5 @@ const styles = crearEstilos({
     position: "absolute", right: 18, bottom: 22, flexDirection: "row", alignItems: "center", gap: 7, height: 52, paddingHorizontal: 18, borderRadius: 26,
     backgroundColor: colors.petrol500, elevation: 5, shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
   },
-  fabTexto: { fontSize: 15, fontWeight: "700", color: colors.paper100 },
+  fabTexto: { fontSize: 15, fontWeight: "700", color: colors.sobreAcento },
 });

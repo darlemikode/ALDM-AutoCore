@@ -35,7 +35,9 @@ export default function ServicioDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { confirmDialog, notify } = useUI();
-  const { hasPermission } = useAuth();
+  const { hasPermission, estadoSuscripcion } = useAuth();
+  // Arranque no incluye Empleados: no se muestra «Empleado responsable»
+  const tieneModuloEmpleados = !estadoSuscripcion?.modulos || estadoSuscripcion.modulos.includes("empleados");
   const [servicio, setServicio] = useState(null);
   const [comentariosFinales, setComentariosFinales] = useState("");
   const [guardandoComentarios, setGuardandoComentarios] = useState(false);
@@ -114,6 +116,22 @@ export default function ServicioDetalle() {
 
   async function guardarClienteVehiculo(datos) {
     try {
+      // Orden nueva: si ese mismo cliente con ese mismo vehículo ya tiene una
+      // orden abierta, se va a esa (y se descarta esta, si sigue vacía).
+      if (!servicio.id_cliente && datos.id_cliente && datos.id_vehiculo) {
+        const abiertas = await api.get(`/servicios/?status=abierto&id_cliente=${datos.id_cliente}`);
+        const igual = (abiertas || []).find((o) => o.id_servicio !== servicio.id_servicio
+          && Number(o.id_cliente) === Number(datos.id_cliente) && Number(o.id_vehiculo) === Number(datos.id_vehiculo));
+        if (igual) {
+          if (!(servicio.detalles || []).length && !(servicio.abonos || []).length) {
+            await api.del(`/servicios/${servicio.id_servicio}`).catch(() => {});
+          }
+          setEligiendoCV(false);
+          notify(`Ese cliente y vehículo ya tienen la orden #${igual.id_servicio} abierta — te llevo a ella.`, "info");
+          navigate(`/servicios/${igual.id_servicio}`, { replace: true });
+          return;
+        }
+      }
       const actualizado = await api.put(`/servicios/${id}`, datos);
       setServicio(actualizado);
       setEligiendoCV(false);
@@ -666,7 +684,7 @@ export default function ServicioDetalle() {
               <div className="orden-hero-meta">{servicio.vehiculo?.numero_cuenta} · Placas {servicio.vehiculo?.placas_vehiculo || "—"}</div>
             </div>
           </div>
-          <div className="orden-hero-bloque" style={{ "--acc": "var(--violet-600)", "--acc-soft": "var(--violet-100)" }}>
+          {tieneModuloEmpleados && <div className="orden-hero-bloque" style={{ "--acc": "var(--violet-600)", "--acc-soft": "var(--violet-100)" }}>
             <span className="orden-hero-icono"><IconoAuto valor="👷" size={22} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="orden-hero-etiqueta">Empleado responsable</div>
@@ -681,7 +699,7 @@ export default function ServicioDetalle() {
                 <div className="orden-hero-valor">{empleados.find((e) => e.id_empleado === servicio.id_empleado_responsable)?.nombre || "Sin asignar"}</div>
               )}
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="orden-hero-fechas">

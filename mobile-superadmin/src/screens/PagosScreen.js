@@ -66,7 +66,7 @@ const styles = crearEstilos({
   chip: { borderRadius: 20, paddingHorizontal: 13, paddingVertical: 7, backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300 },
   chipActivo: { backgroundColor: colors.petrol600, borderColor: colors.petrol600 },
   chipTexto: { fontSize: 13, fontWeight: "600", color: colors.ink700 },
-  chipTextoActivo: { color: colors.paper100 },
+  chipTextoActivo: { color: colors.sobreAcento },
   total: { marginHorizontal: spacing.lg, marginVertical: 10, backgroundColor: colors.sidebarBg, borderRadius: 16, padding: 16 },
   totalEtiqueta: { fontSize: 12, color: colors.sidebarTextoTenue, fontWeight: "600" },
   totalMonto: { fontFamily: "BarlowCondensed_700Bold", fontSize: 36 },

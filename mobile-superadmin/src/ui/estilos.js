@@ -95,7 +95,7 @@ function normalizar(e, nombreEstilo, tema) {
   }
 
   // --- Inputs: borde 1.5px petróleo-300 (en oscuro, ink-300), como en la web
-  const bordeTenue = typeof o.borderColor === "string" && ["#d3e2e5", "#e3e9eb", "#263840"].includes(o.borderColor.toLowerCase());
+  const bordeTenue = typeof o.borderColor === "string" && ["#dcdce0", "#e3e9eb", "#2a2a30"].includes(o.borderColor.toLowerCase());
   const esCampo = /(input|search|buscar|busqueda|búsqueda|textarea|picker|select|campoTexto)/i.test(nombreEstilo);
   if (esCampo && o.borderWidth === 1 && bordeTenue && o.flexDirection == null) {
     o.borderWidth = 1.5;

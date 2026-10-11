@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "../../api";
 import FormModal from "../../components/FormModal";
+import { IconoModuloSistema } from "../../components/IconoModulo";
 import { useUI } from "../../context/UIContext";
 import { Cargando, fmt, useCargar } from "./comun";
 
@@ -88,7 +89,7 @@ export default function Catalogos() {
           <div className="sa-sub" style={{ marginBottom: 8 }}>Los define el sistema; aquí solo cambias cómo se muestran.</div>
           {modulos.map((m) => (
             <div key={m.id_modulo} className="sa-item">
-              <span><strong>{`${m.icono || ""} ${m.nombre}`.trim()}</strong><div className="sa-sub">{m.descripcion}</div></span>
+              <span className="sa-modulo-fila"><IconoModuloSistema clave={m.clave} /><span><strong>{m.nombre}</strong><div className="sa-sub">{m.descripcion}</div></span></span>
               <button className="btn btn-secondary btn-sm" onClick={() => setModal({ tipo: "modulo", item: m, iniciales: { ...m } })}>Editar</button>
             </div>
           ))}
@@ -110,7 +111,7 @@ export default function Catalogos() {
               hint: `Vacío = ${fmt(calculado(v.precio_mensual, t))}${t.descuento_porcentaje ? ` (−${t.descuento_porcentaje}%)` : ""}`,
             })),
             { name: "modulos", label: "Módulos incluidos", type: "multiselect", full: true, grupo: "modulos",
-              options: modulos.map((m) => ({ value: m.clave, label: `${m.icono || ""} ${m.nombre}`.trim() })) },
+              options: modulos.map((m) => ({ value: m.clave, label: m.nombre })) },
           ]}
           onSubmit={(v) => guardar("/superadmin/paquetes", modal.item?.id_paquete, {
             nombre: v.nombre, descripcion: v.descripcion || null, precio_mensual: Number(v.precio_mensual) || 0,
@@ -143,11 +144,10 @@ export default function Catalogos() {
           fields={[
             { name: "clave", label: "Clave del sistema", disabled: true },
             { name: "nombre", label: "Nombre que ven los talleres", required: true },
-            { name: "icono", label: "Ícono (emoji)" },
             { name: "orden", label: "Orden", type: "number" },
             { name: "descripcion", label: "Descripción", type: "textarea", full: true },
           ]}
-          onSubmit={(v) => guardar("/superadmin/modulos", modal.item.id_modulo, { nombre: v.nombre, descripcion: v.descripcion || null, icono: v.icono || null, orden: Number(v.orden) || 0 })}
+          onSubmit={(v) => guardar("/superadmin/modulos", modal.item.id_modulo, { nombre: v.nombre, descripcion: v.descripcion || null, orden: Number(v.orden) || 0 })}
           onClose={() => setModal(null)}
         />
       )}

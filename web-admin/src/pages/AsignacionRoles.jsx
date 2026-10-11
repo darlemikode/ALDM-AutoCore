@@ -102,7 +102,7 @@ export default function AsignacionRoles() {
           <div>
             <h1><IconoModulo ruta="/asignacion-roles" /> Asignación de roles</h1>
             <div className="subtitle">
-              Quién es quién y qué rol tiene cada uno · <Link to="/roles">editar qué puede hacer cada rol →</Link>
+              Quién es quién y qué rol tiene cada uno{hasPermission("roles.ver") && <> · <Link to="/roles">editar qué puede hacer cada rol →</Link></>}
             </div>
           </div>
         </div>

@@ -279,5 +279,5 @@ const styles = crearEstilos({
   hint: { fontSize: 12, color: colors.ink500, backgroundColor: colors.paper100, borderRadius: 8, padding: 10, marginBottom: spacing.md },
   button: { backgroundColor: colors.petrol500, borderRadius: 8, padding: 14, alignItems: "center", marginTop: spacing.md },
   buttonDisabled: { backgroundColor: colors.ink300 },
-  buttonText: { color: colors.paper100, fontWeight: "800", fontSize: 14, textTransform: "uppercase" },
+  buttonText: { color: colors.sobreAcento, fontWeight: "800", fontSize: 14, textTransform: "uppercase" },
 });

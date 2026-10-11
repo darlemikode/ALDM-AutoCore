@@ -22,7 +22,8 @@ import { useActualizacionGlobal } from "../useActualizacionGlobal";
 // puede entrar (antes solo la ruta lo bloqueaba, pero el enlace se veía
 // igual y llevaba a un redirect confuso).
 const NAV = [
-  { group: "General", items: [{ to: "/", label: "Panel", end: true }, { to: "/citas", label: "Citas solicitadas" }, { to: "/mi-dashboard", label: "Mi dashboard" }] },
+  // moduloRequerido: el enlace solo aparece si el paquete del taller incluye ese módulo
+  { group: "General", items: [{ to: "/", label: "Panel", end: true }, { to: "/citas", label: "Citas solicitadas", moduloRequerido: "app_movil" }, { to: "/mi-dashboard", label: "Mi dashboard", moduloRequerido: "empleados" }] },
   {
     group: "Operación",
     items: [
@@ -44,11 +45,14 @@ const NAV = [
     ],
   },
   { group: "Soporte", items: [{ to: "/errores", label: "Errores del sistema", permisoRequerido: "configuracion.editar" }] },
-  { group: "App de clientes", items: [{ to: "/promociones", label: "Promociones", permisoRequerido: "promociones.ver" }, { to: "/asistente", label: "Asistente (chatbot)" }] },
+  { group: "App de clientes", items: [{ to: "/promociones", label: "Promociones", permisoRequerido: "promociones.ver" }, { to: "/asistente", label: "Asistente (chatbot)", moduloRequerido: "app_movil" }] },
 ];
 
 export default function Layout() {
   const { user, logout, hasPermission, talleres, estadoSuscripcion, seleccionarTaller, eligiendoTaller, continuarEnTallerActual } = useAuth();
+  // Módulos del paquete contratado (null = sin restricción, p. ej. instalación local)
+  const modulosPaquete = estadoSuscripcion?.modulos || null;
+  const tieneModulo = (m) => !modulosPaquete || modulosPaquete.includes(m);
   const { confirmDialog } = useUI();
   async function cerrarSesion() {
     const ok = await confirmDialog("¿Seguro que quieres salir de tu cuenta?", { title: "Cerrar sesión", confirmar: "Sí, salir" });
@@ -112,7 +116,7 @@ export default function Layout() {
       : s
   );
   const nav = navBase
-    .map((s) => ({ ...s, items: s.items.filter((item) => !item.permisoRequerido || hasPermission(item.permisoRequerido)) }))
+    .map((s) => ({ ...s, items: s.items.filter((item) => (!item.permisoRequerido || hasPermission(item.permisoRequerido)) && (!item.moduloRequerido || tieneModulo(item.moduloRequerido))) }))
     .filter((s) => s.items.length > 0);
   if (user?.es_superadmin) nav.push({ group: "ALDM", items: [{ to: "/superadmin", label: "Súper admin" }] });
   const mostrarSelector = eligiendoTaller || eligiendo;
@@ -177,7 +181,17 @@ export default function Layout() {
       {menuMovilAbierto && <div className="sidebar-backdrop" onClick={() => setMenuMovilAbierto(false)} />}
       <aside className={"sidebar" + (sidebarCompacta ? " sidebar-compacta" : "") + (menuMovilAbierto ? " sidebar-abierta" : "")}>
         <div className="brand">
-          <span className="brand-texto"><img src={logoAldm} alt="ALDM AutoCore" className="brand-logo" /></span>
+          <span className="brand-texto">
+            <span className="brand-tarjeta">
+              <img src={logoAldm} alt="ALDM AutoCore" className="brand-logo" />
+              {user && (
+                <span className="brand-usuario" title={`${user.nombre_completo || ""} (@${user.username})`}>
+                  <span className="brand-usuario-nombre">{user.nombre_completo || user.username}</span>
+                  <span className="brand-usuario-alias">@{user.username}</span>
+                </span>
+              )}
+            </span>
+          </span>
           <button
             type="button"
             className="sidebar-colapsar"

@@ -137,7 +137,7 @@ const styles = crearEstilos({
   input: { flex: 1, fontSize: 15, color: colors.ink900, height: "100%", letterSpacing: 1 },
   error: { fontSize: 13, color: colors.red600, marginBottom: 8 },
   boton: { backgroundColor: colors.petrol500, borderRadius: 10, height: 46, alignItems: "center", justifyContent: "center", marginTop: 4 },
-  botonTexto: { fontSize: 15, fontWeight: "600", color: colors.paper100 },
+  botonTexto: { fontSize: 15, fontWeight: "600", color: colors.sobreAcento },
   link: { color: colors.petrol600, fontWeight: "600", fontSize: 13.5 },
   tallerBox: { alignItems: "center", gap: 6, backgroundColor: colors.paper0, borderRadius: 12, padding: 18, marginBottom: 16 },
   logo: { width: 72, height: 72, borderRadius: 12 },

@@ -39,6 +39,12 @@ RUTAS_SIEMPRE_PERMITIDAS = (
     "/api/auth/estado-suscripcion", "/api/portal-cliente/taller",
 )
 METODOS_LECTURA = {"GET", "HEAD", "OPTIONS"}
+MENSAJE_SIN_APP_TALLER = "Tu plan no incluye la app móvil del taller. Está disponible desde el plan Taller Pro."
+
+
+def es_app_taller(request: Request | None) -> bool:
+    """La app móvil del taller manda «X-App: taller» en cada petición."""
+    return request is not None and (request.headers.get("x-app") or "").lower() == "taller"
 
 
 def token_de_request(request: Request | None) -> str | None:
@@ -128,6 +134,8 @@ def preparar_sesion(db: Session, request: Request | None):
     if info is None or request is None:
         return
     ruta = request.url.path
+    if es_app_taller(request) and info["modulos"] is not None and "app_taller" not in info["modulos"] and not ruta.startswith("/api/auth/login"):
+        raise HTTPException(status_code=403, detail=MENSAJE_SIN_APP_TALLER)
     if any(ruta.startswith(r) for r in RUTAS_SIEMPRE_PERMITIDAS):
         return
     if info["bloqueado"]:

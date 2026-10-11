@@ -207,7 +207,7 @@ const styles = crearEstilos({
     backgroundColor: colors.paper100, borderTopWidth: 1, borderTopColor: colors.ink300, elevation: 8, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: -3 },
   },
   btnPrimario: { flex: 1.5, flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", backgroundColor: colors.petrol500, borderRadius: 10, height: 48 },
-  btnPrimarioTexto: { fontSize: 15, fontWeight: "600", color: colors.paper100 },
+  btnPrimarioTexto: { fontSize: 15, fontWeight: "600", color: colors.sobreAcento },
   btnSecundario: { flex: 1, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper0, borderWidth: 1, borderColor: colors.ink300, borderRadius: 10, height: 48 },
   btnSecundarioTexto: { fontSize: 15, fontWeight: "600", color: colors.ink900 },
 });

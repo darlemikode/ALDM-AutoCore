@@ -54,7 +54,7 @@ const styles = crearEstilos({
   title: { fontSize: 20, fontWeight: "800", color: colors.ink900, textTransform: "uppercase" },
   subtitle: { color: colors.ink500, fontSize: 13, marginTop: 4, textAlign: "center" },
   button: { backgroundColor: colors.petrol500, borderRadius: 8, padding: 14, alignItems: "center", marginTop: spacing.xl, width: "100%" },
-  buttonText: { color: colors.paper100, fontWeight: "800", fontSize: 14, textTransform: "uppercase" },
+  buttonText: { color: colors.sobreAcento, fontWeight: "800", fontSize: 14, textTransform: "uppercase" },
   error: { color: colors.red600, marginTop: spacing.md, fontSize: 13, textAlign: "center" },
   linkButton: { marginTop: spacing.lg },
   linkText: { color: colors.ink500, fontSize: 13, textDecorationLine: "underline" },

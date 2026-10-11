@@ -1,0 +1,15 @@
+{
+  "navigationFallback": { "rewrite": "/index.html", "exclude": ["/capturas/*", "/*.{png,webp,ico,svg,css,js,json}"] },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+  },
+  "routes": [
+    { "route": "/capturas/*", "headers": { "Cache-Control": "public, max-age=604800" } },
+    { "route": "/*.{png,webp}", "headers": { "Cache-Control": "public, max-age=604800" } },
+    { "route": "/bienvenida.html", "redirect": "/", "statusCode": 301 }
+  ],
+  "mimeTypes": { ".webp": "image/webp" }
+}

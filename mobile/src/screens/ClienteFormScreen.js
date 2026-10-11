@@ -393,5 +393,5 @@ const styles = crearEstilos({
   masDatosTexto: { fontSize: 14, fontWeight: "700", color: colors.petrol600 },
   pie: { paddingHorizontal: spacing.lg, paddingTop: 8, paddingBottom: 14, borderTopWidth: 1, borderTopColor: colors.ink300, backgroundColor: colors.paper0 },
   button: { backgroundColor: colors.petrol500, borderRadius: 8, padding: 14, alignItems: "center" },
-  buttonText: { color: colors.paper100, fontWeight: "800", fontSize: 14, textTransform: "uppercase" },
+  buttonText: { color: colors.sobreAcento, fontWeight: "800", fontSize: 14, textTransform: "uppercase" },
 });

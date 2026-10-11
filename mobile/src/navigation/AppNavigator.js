@@ -176,7 +176,7 @@ function MasStackScreen() {
   );
 }
 
-const COLOR_TAB = { Panel: "#2de2d0", Clientes: "#5ad1ff", Servicio: "#ffb454", Refacciones: "#ffcc4d", Más: "#9fb3ba" };
+const COLOR_TAB = { Panel: "#2de2d0", Clientes: "#5ad1ff", Servicio: "#ffb454", Refacciones: "#ffcc4d", Más: "#a8a8b0" };
 const ICONOS_TAB = {
   Panel: ["grid", "grid-outline"],
   Clientes: ["people", "people-outline"],
@@ -192,7 +192,7 @@ function BotonServicioGrande({ onPress, accessibilityState }) {
   return (
     <TouchableOpacity style={styles.tabItemBig} onPress={onPress} activeOpacity={0.85}>
       <View ref={refTour} collapsable={false} style={[styles.iconWrapBig, { borderColor: colors.paper100 }, enfocado && styles.iconWrapBigActivo]}>
-        <Ionicons name="add" size={32} color={temaActivo() === "oscuro" ? colors.paper100 : "#fff"} />
+        <Ionicons name="add" size={32} color={colors.sobreAcento} />
       </View>
       <Text style={[styles.tabLabelBig, enfocado && { color: colors.petrol600 }]}>Nueva orden</Text>
     </TouchableOpacity>

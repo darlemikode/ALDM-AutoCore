@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "backgroundColor": "#14181c"
+      "backgroundColor": "#070708"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -21,15 +21,15 @@
     "android": {
       "package": "com.tutaller.mecanicoadmin",
       "adaptiveIcon": {
-        "backgroundColor": "#14181c"
+        "backgroundColor": "#070708"
       }
     },
     "web": {
       "bundler": "metro",
       "name": "ALDM AutoCore",
       "shortName": "ALDM AutoCore",
-      "themeColor": "#14181c",
-      "backgroundColor": "#14181c",
+      "themeColor": "#070708",
+      "backgroundColor": "#070708",
       "display": "standalone",
       "orientation": "portrait"
     },

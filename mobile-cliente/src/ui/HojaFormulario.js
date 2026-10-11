@@ -291,7 +291,7 @@ const styles = crearEstilos({
   chip: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1.5, borderColor: colors.ink300, borderRadius: 100, paddingVertical: 8, paddingHorizontal: 14, backgroundColor: colors.paper100 },
   chipActivo: { backgroundColor: colors.petrol500, borderColor: colors.petrol500 },
   chipTexto: { fontSize: 14, fontWeight: "600", color: colors.ink700 },
-  chipTextoActivo: { color: colors.paper100 },
+  chipTextoActivo: { color: colors.sobreAcento },
   chipChico: { borderRadius: 100, paddingVertical: 5, paddingHorizontal: 11, backgroundColor: colors.petrol100 },
   chipChicoTexto: { fontSize: 12.5, fontWeight: "600", color: colors.petrol600 },
   selectorBoton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 10, paddingHorizontal: 13, height: 46 },
@@ -308,7 +308,7 @@ const styles = crearEstilos({
   errorTexto: { flex: 1, fontSize: 13.5, fontWeight: "600", color: colors.red600 },
   pie: { flexDirection: "row", gap: 10, paddingHorizontal: spacing.lg, paddingTop: 10, paddingBottom: 18, backgroundColor: colors.paper100, borderTopWidth: 1, borderTopColor: colors.ink300 },
   btnPrimario: { flex: 1.5, alignItems: "center", justifyContent: "center", backgroundColor: colors.petrol500, borderRadius: 10, height: 48 },
-  btnPrimarioTexto: { fontSize: 15, fontWeight: "600", color: colors.paper100 },
+  btnPrimarioTexto: { fontSize: 15, fontWeight: "600", color: colors.sobreAcento },
   btnSecundario: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper0, borderWidth: 1, borderColor: colors.ink300, borderRadius: 10, height: 48 },
   btnSecundarioTexto: { fontSize: 15, fontWeight: "600", color: colors.ink900 },
 });

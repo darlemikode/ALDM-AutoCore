@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "backgroundColor": "#132a33"
+      "backgroundColor": "#070708"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -18,7 +18,7 @@
     "android": {
       "package": "com.tutaller.mecanicocliente",
       "adaptiveIcon": {
-        "backgroundColor": "#132a33"
+        "backgroundColor": "#070708"
       }
     },
     "web": {

@@ -45,7 +45,7 @@ export default function AyudaScreen({ navigation }) {
                     {t.abrir && vistos.has(t.clave) ? <Text style={styles.visto}>Visto ✓</Text> : null}
                   </View>
                   {t.abrir ? (
-                    <View style={styles.ver}><Text style={[styles.verTexto, { color: temaActivo() === "oscuro" ? colors.paper100 : "#fff" }]}>Ver</Text></View>
+                    <View style={styles.ver}><Text style={[styles.verTexto, { color: colors.sobreAcento }]}>Ver</Text></View>
                   ) : (
                     <View style={styles.pronto}><Text style={styles.prontoTexto}>Próximamente</Text></View>
                   )}

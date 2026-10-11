@@ -32,7 +32,7 @@ async function loginReal(username, password) {
   form.set("password", password);
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: { "Content-Type": "application/x-www-form-urlencoded", "X-App": "taller" },
     body: form.toString(),
   });
   if (!res.ok) throw new Error("No se pudo iniciar sesión con el servidor real. Revisa usuario/contraseña y que el servidor esté prendido y accesible.");
@@ -45,6 +45,7 @@ async function llamar(path, method, body, token) {
     method,
     headers: {
       "Content-Type": "application/json",
+      "X-App": "taller",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,

@@ -62,3 +62,22 @@ export const COLORES_ICONO = {
   "/roles": "#6bdc8c",
   "/configuracion": "#9fb3ba",
 };
+
+// Ícono de cada módulo del sistema (por su clave), igual que en el menú lateral.
+// No se usa el emoji guardado en la base: en SQL Server se guarda como "??".
+const RUTA_MODULO = {
+  ordenes_servicio: "/servicios", cotizaciones: "/cotizaciones", clientes_vehiculos: "/clientes",
+  refacciones: "/refacciones", inventario: "/inventario", herramientas: "/herramientas",
+  proveedores: "/proveedores", catalogos: "/catalogos", empleados: "/empleados", nomina: "/nomina",
+  roles_permisos: "/roles", facturacion: "/facturacion",
+};
+const ICONO_MODULO_EXTRA = {
+  reportes: { nombre: "chart", color: "#7aa8ff" },
+  app_movil: { nombre: "phone", color: "#ff8fb1" },
+  app_taller: { nombre: "phone", color: "#ff6b5f" },
+};
+export function iconoModuloSistema(clave) {
+  if (ICONO_MODULO_EXTRA[clave]) return ICONO_MODULO_EXTRA[clave];
+  const ruta = RUTA_MODULO[clave];
+  return { nombre: (ruta && ICONOS[ruta]) || "puzzle", color: (ruta && COLORES_ICONO[ruta]) || "#e10600" };
+}

@@ -165,7 +165,7 @@ const styles = crearEstilos({
   icono: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center" },
   titulo: { fontSize: 14.5, fontWeight: "600", color: colors.ink900 },
   botonOrden: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.petrol500, borderRadius: 10, height: 40 },
-  botonOrdenTexto: { fontSize: 14, fontWeight: "600", color: colors.paper100 },
+  botonOrdenTexto: { fontSize: 14, fontWeight: "600", color: colors.sobreAcento },
   orden: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.paper100, borderRadius: 10, padding: 12, marginBottom: 8 },
   monto: { fontSize: 14.5, fontWeight: "700" },
 });

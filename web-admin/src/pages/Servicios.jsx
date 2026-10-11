@@ -130,12 +130,13 @@ export default function Servicios() {
   async function nuevaOrdenDirecta() {
     if (verificacion2Pasos) { openCreate(); return; } // con verificación en 2 pasos se conserva el formulario con código
     try {
-      // Solo se permite 1 orden abierta sin cliente: si ya existe, se va a esa.
+      // Si quedó una orden en blanco (sin cliente y sin nada capturado) se reutiliza
+      // en silencio para no juntar borradores. Al elegir cliente y vehículo, la orden
+      // revisa si ya hay una abierta con esos mismos datos y, solo entonces, lleva a ella.
       const abiertas = await api.get("/servicios/?status=abierto");
-      const vacia = abiertas.find((o) => !o.id_cliente && !o.cliente);
-      if (vacia) {
-        notify(`Ya tienes la orden #${vacia.id_servicio} abierta sin cliente — te llevo a ella.`, "info");
-        navigate(`/servicios/${vacia.id_servicio}`);
+      const enBlanco = abiertas.find((o) => !o.id_cliente && !o.cliente && !(o.detalles || []).length && !(o.abonos || []).length);
+      if (enBlanco) {
+        navigate(`/servicios/${enBlanco.id_servicio}`);
         return;
       }
       const s = await api.post("/servicios/", { nombre_servicio: "Servicio general", iva_porcentaje: 0, tipos_mantenimiento_ids: [], autorizado_cliente: false });

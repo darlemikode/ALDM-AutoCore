@@ -67,7 +67,7 @@ export default function Refacciones() {
     const [r, m, p, cat, marcasVeh, modelosVeh] = await Promise.all([
       api.get(`/refacciones/?${params}`),
       api.get("/refacciones-marcas/"),
-      api.get("/proveedores/"),
+      api.get("/proveedores/").catch(() => []), // Arranque no incluye Proveedores
       api.get("/refacciones-categorias/"),
       api.get("/vehiculos-marcas/"),
       api.get("/vehiculos-modelos/"),

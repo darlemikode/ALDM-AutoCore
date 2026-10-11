@@ -208,7 +208,7 @@ const styles = crearEstilos({
   tabAcceso: { borderWidth: 1, borderStyle: "dashed", borderColor: colors.petrol500, backgroundColor: "transparent" },
   tabActiva: { backgroundColor: colors.petrol500 },
   tabTexto: { fontSize: 13, fontWeight: "600", color: colors.ink700 },
-  tabTextoActiva: { color: colors.paper100 },
+  tabTextoActiva: { color: colors.sobreAcento },
   tabConteo: { fontSize: 11, fontWeight: "700", color: colors.ink500 },
   buscador: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.paper0, borderRadius: 12, paddingHorizontal: 12, height: 44 },
   buscadorInput: { flex: 1, fontSize: 15, color: colors.ink900, height: "100%" },

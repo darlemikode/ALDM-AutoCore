@@ -13,6 +13,7 @@ from ..security import (
 from ..suscripciones import contenido_qr, estado_taller, permiso_en_modulos
 from ..tenancy import MODO_SUPERADMIN, MODO_TALLER, fijar_tenant, taller_actual
 from ..rate_limit import limiter
+from ..sesion_taller import MENSAJE_SIN_APP_TALLER, es_app_taller
 from .usuarios import listar as _listar_usuarios, crear as _crear_usuario, actualizar as _actualizar_usuario, usuarios_del_taller, es_compartido
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -110,6 +111,10 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
             detail="Tu usuario está desactivado o no tiene ningún taller asignado. Pide acceso al administrador.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if id_taller is not None and es_app_taller(request):
+        info = estado_taller(db, id_taller)
+        if info and info["modulos"] is not None and "app_taller" not in info["modulos"]:
+            raise HTTPException(status_code=403, detail=MENSAJE_SIN_APP_TALLER)
     return _sesion_para(db, user, id_taller)
 
 
@@ -285,13 +290,22 @@ def desactivar_usuario(usuario_id: int, db: Session = Depends(get_db), user=Depe
 
 
 # --- Roles y permisos --------------------------------------------------------
+def _puede_ver_roles(user: models.Usuario = Depends(get_current_user)) -> models.Usuario:
+    """La lista de roles sirve para asignarlos al dar de alta usuarios: la ve quien administra
+    roles (módulo «Roles y permisos») o quien administra usuarios, aunque su paquete no incluya
+    ese módulo (Arranque: solo asigna los roles base, no los edita)."""
+    if user.tiene_permiso("roles.ver") or user.tiene_permiso("usuarios.ver"):
+        return user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tu rol no tiene permiso para ver los roles.")
+
+
 @router.get("/permisos", response_model=list[schemas.PermisoOut])
-def listar_permisos(db: Session = Depends(get_db), user=Depends(require_permission("roles.ver"))):
+def listar_permisos(db: Session = Depends(get_db), user=Depends(_puede_ver_roles)):
     return db.query(models.Permiso).order_by(models.Permiso.modulo, models.Permiso.clave).all()
 
 
 @router.get("/roles", response_model=list[schemas.RolOut])
-def listar_roles(db: Session = Depends(get_db), user=Depends(require_permission("roles.ver"))):
+def listar_roles(db: Session = Depends(get_db), user=Depends(_puede_ver_roles)):
     return db.query(models.Rol).options(joinedload(models.Rol.permisos)).order_by(models.Rol.nombre).all()
 
 

@@ -388,7 +388,7 @@ const styles = crearEstilos({
   segmento: { flex: 1, flexDirection: "row", gap: 5, paddingVertical: 9, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   segmentoActivo: { backgroundColor: colors.petrol500 },
   segmentoTexto: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: colors.ink700 },
-  segmentoTextoActivo: { color: colors.paper100 },
+  segmentoTextoActivo: { color: colors.sobreAcento },
   logout: { flexDirection: "row", gap: 8, marginTop: 28, borderRadius: 14, backgroundColor: colors.red100, height: 50, alignItems: "center", justifyContent: "center" },
   logoutText: { fontFamily: "Inter_600SemiBold", color: colors.red600, fontSize: 15 },
 });

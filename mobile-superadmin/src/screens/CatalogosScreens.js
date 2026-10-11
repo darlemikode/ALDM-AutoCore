@@ -57,7 +57,7 @@ export function PaquetesScreen() {
           hint: `Vacío = ${fmt(calculado(v.precio_mensual, t))}${t.descuento_porcentaje ? ` (−${t.descuento_porcentaje}%)` : ""}`,
         })),
         { name: "modulos", label: "Módulos incluidos", type: "multiselect", grupo: "modulos",
-          options: (extra?.modulos || []).map((m) => ({ value: m.clave, label: `${m.icono || ""} ${m.nombre}`.trim() })) },
+          options: (extra?.modulos || []).map((m) => ({ value: m.clave, label: m.nombre })) },
       ]}
       encabezado={<Text style={{ fontSize: 12.5, color: colors.ink700, marginBottom: 12 }}>Crea los planes que vendes, su precio por cada forma de cobro y qué módulos incluye. Lo que no incluya el plan no le aparece al taller.</Text>}
     />
@@ -74,17 +74,16 @@ export function ModulosScreen() {
       permitirCrear={false}
       permitirEliminar={false}
       cargarExtra={() => api.get("/superadmin/paquetes")}
-      titulo={(m) => `${m.icono || ""} ${m.nombre}`.trim()}
+      titulo={(m) => m.nombre}
       subtitulo={(m, paquetes) => {
         const en = (paquetes || []).filter((p) => p.modulos.some((x) => x.clave === m.clave)).map((p) => p.nombre);
         return `${m.descripcion || ""}\n${en.length ? `En: ${en.join(", ")}` : "No está en ningún paquete"}`;
       }}
-      prepararGuardar={(v) => ({ nombre: v.nombre, descripcion: v.descripcion || null, icono: v.icono || null, orden: v.orden || 0 })}
+      prepararGuardar={(v) => ({ nombre: v.nombre, descripcion: v.descripcion || null, orden: v.orden || 0 })}
       campos={[
         { name: "clave", label: "Clave del sistema", disabled: true },
         { name: "nombre", label: "Nombre que ven los talleres", required: true },
         { name: "descripcion", label: "Descripción", type: "textarea" },
-        { name: "icono", label: "Ícono (emoji)", mitad: true },
         { name: "orden", label: "Orden", type: "number", mitad: true },
       ]}
       encabezado={<Text style={{ fontSize: 12.5, color: colors.ink700, marginBottom: 12 }}>Los módulos los define el sistema (no se agregan ni se eliminan). Aquí solo cambias cómo se muestran; para decidir qué incluye cada plan ve a Paquetes.</Text>}
