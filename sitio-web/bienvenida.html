@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ALDM AutoCore · Bienvenida</title>
+<meta name="theme-color" content="#070708" />
+<link rel="icon" type="image/png" href="favicon.png" />
+<!--
+  Decide el modo ANTES de la primera pintura (sin parpadeo):
+  · intro-final → estado final estático: ya se vio en esta sesión, llegó con un
+    ancla a otra sección, prefiere menos movimiento o la pantalla mide ≤ 760 px de alto.
+  · intro-anim  → escena animada con el scroll.
+  Sin JavaScript no se pone ninguna clase y el CSS muestra el estado final.
+-->
+<script>
+(function () {
+  var d = document.documentElement, final = false;
+  try { final = sessionStorage.getItem("aldm-intro-vista") === "1"; } catch (e) { /* sin almacenamiento */ }
+  var h = location.hash;
+  if (h && h !== "#" && h !== "#inicio") final = true;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) final = true;
+  if (window.innerHeight <= 760) final = true;
+  d.classList.add(final ? "intro-final" : "intro-anim");
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<link rel="preload" as="image" href="logo-aldm-trazo.webp" type="image/webp" />
+<style>
+  :root {
+    color-scheme: dark;
+    --ink-950:#070708; --ink-900:#0d0d0f; --ink-800:#18181b; --ink-600:#313137;
+    --ink-400:#a0a0a8; --ink-300:#c4c4ca; --ink-100:#f2f2f4;
+    --electric-600:#c40000; --electric-500:#e10600; --electric-400:#ff4d45; --electric-300:#ff8f88;
+    --teal-500:#14b8a6; --teal-400:#2dd4bf;
+    --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --font-body: "Inter", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+    --nav-h: 0px; /* alto de la barra fija del sitio, si la escena va debajo de ella */
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--ink-950); color: var(--ink-100); font-family: var(--font-body); -webkit-font-smoothing: antialiased; line-height: 1.5; }
+
+  /* ============ Escena de bienvenida ============ */
+  .intro { position: relative; background: var(--ink-950); }
+  .intro-escenario {
+    position: relative; overflow: hidden; isolation: isolate;
+    min-height: 100vh; min-height: 100svh;
+    padding: calc(var(--nav-h) + 28px) 16px 28px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(14px, 2.4vh, 28px);
+    text-align: center;
+    background-image:
+      linear-gradient(rgba(225,6,0,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(225,6,0,0.06) 1px, transparent 1px);
+    background-size: 48px 48px; background-position: center;
+  }
+  /* Solo en modo animado: sección larga + escenario fijo (sticky) */
+  .intro-anim .intro { height: 250vh; height: 250svh; }
+  .intro-anim .intro-escenario { position: sticky; top: 0; height: 100vh; height: 100svh; }
+  @media (max-width: 760px) { .intro-anim .intro { height: 220vh; height: 220svh; } } /* celular: 1.2 pantallas de recorrido */
+
+  .intro-eyebrow { font-family: var(--font-mono); font-weight: 600; font-size: 12px; letter-spacing: .24em; text-transform: uppercase; color: var(--electric-400); margin: 0; }
+  .intro-titular {
+    margin: 0; max-width: 18ch; font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
+    font-size: clamp(36px, min(6.4vw, 6.2vh), 76px); line-height: .98; letter-spacing: .01em; color: #fff; text-wrap: balance;
+  }
+  .intro-titular .palabra { display: inline-block; }
+  .intro-titular .acento { color: var(--electric-500); }
+
+  /* Plano: el logotipo y sus trazos comparten exactamente la misma caja y el mismo sistema de coordenadas */
+  .intro-plano { position: relative; width: min(92vw, calc(44vh * 1200 / 870)); width: min(92vw, calc(44svh * 1200 / 870), 760px); aspect-ratio: 1200 / 870; max-width: 100%; }
+  .intro-resplandor {
+    position: absolute; inset: -18% -12%; z-index: -1; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(225,6,0,.32), rgba(225,6,0,.10) 55%, transparent 75%);
+    transform-origin: 50% 50%;
+  }
+  .intro-trazos { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .intro-trazos .linea { fill: none; stroke-linecap: butt; stroke-dasharray: 1 1.5; }
+  .intro-trazos .ext { stroke: var(--electric-400); stroke-width: 2.2; }
+  .intro-trazos .int { stroke: #e8e8ec; stroke-width: 1.6; }
+  .intro-trazos .guia { stroke: #e8e8ec; stroke-width: 1.2; opacity: .85; }
+  .intro-trazos .cruz { stroke: #fff; stroke-width: 1.6; fill: none; }
+  .intro-trazos .cota { font-family: var(--font-mono); font-size: 15px; fill: var(--ink-400); letter-spacing: .06em; }
+  .intro-logo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; transform-origin: 50% 50%; }
+  .intro-logo img { width: 100%; height: 100%; display: block; }
+
+  .intro-leyendas { display: grid; justify-items: center; min-height: 2.4em; }
+  .intro-leyendas > p { grid-area: 1 / 1; margin: 0; max-width: 40ch; }
+  .intro-leyenda-1 { font-family: var(--font-mono); font-weight: 600; font-size: clamp(13px, 1.6vh, 16px); letter-spacing: .22em; text-transform: uppercase; color: var(--ink-300); align-self: center; max-width: none !important; white-space: nowrap; }
+  .intro-leyenda-2 { font-size: clamp(17px, 2.2vh, 22px); font-weight: 600; color: var(--ink-100); text-wrap: balance; }
+
+  .intro-pildoras { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 0; padding: 0; list-style: none; max-width: 720px; }
+  .intro-pildora {
+    display: inline-flex; align-items: center; gap: 9px; padding: 8px 14px 8px 9px; border-radius: 999px;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12); font-size: 15px; font-weight: 600; color: var(--ink-100);
+  }
+  .intro-pildora svg { width: 22px; height: 22px; flex: none; overflow: visible; }
+  .intro-pildora .aro { fill: none; stroke: rgba(255,255,255,.35); stroke-width: 1.5; }
+  .intro-pildora .relleno { fill: var(--teal-500); transform-origin: 12px 12px; }
+  .intro-pildora .palomita { fill: none; stroke: #04201d; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1.5; }
+
+  .intro-aviso {
+    position: absolute; left: 50%; bottom: max(18px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-400); pointer-events: none;
+  }
+  .intro-aviso { white-space: nowrap; }
+  .intro-aviso svg { width: 16px; height: 16px; }
+  @media (max-width: 480px) {
+    .intro-eyebrow { font-size: 11px; letter-spacing: .12em; }
+    .intro-leyenda-1 { font-size: 11.5px; letter-spacing: .1em; }
+    .intro-aviso { font-size: 11px; letter-spacing: .12em; }
+    .intro-pildora { font-size: 14px; }
+  }
+  /* Capas propias solo mientras se anima (opacity/transform van al compositor) */
+  .intro-anim .intro-logo, .intro-anim .intro-resplandor { will-change: opacity, transform; }
+  .intro-omitir {
+    position: absolute; top: calc(var(--nav-h) + 14px); right: 16px; z-index: 2;
+    font: 600 14px/1 var(--font-body); color: var(--ink-300); text-decoration: none; background: rgba(13,13,15,.7);
+    border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: 11px 16px; cursor: pointer;
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .intro-omitir:hover { color: #fff; border-color: rgba(255,255,255,.32); }
+  .intro-omitir:focus-visible, .siguiente:focus-visible { outline: 2px solid var(--electric-400); outline-offset: 3px; }
+
+  /* Estado INICIAL del modo animado (p = 0), para la primera pintura antes de que corra el script.
+     Sin la clase intro-anim (sin JS, menos movimiento, ya vista, pantalla baja) todo queda en su estado final. */
+  .intro-anim .intro-titular .palabra { opacity: .16; }
+  .intro-anim .intro-trazos .linea { stroke-dashoffset: 1; }
+  .intro-anim .intro-trazos .cruz-g { opacity: 0; }
+  .intro-anim .intro-logo { opacity: 0; transform: scale(.96); }
+  .intro-anim .intro-resplandor { opacity: .25; transform: scale(.7); }
+  .intro-anim .intro-leyenda-1 { opacity: 0; transform: translateY(8px); }
+  .intro-anim .intro-leyenda-2 { opacity: 0; transform: translateY(8px); }
+  .intro-anim .intro-pildora { opacity: 0; transform: translateY(6px); }
+  .intro-anim .intro-pildora .relleno { opacity: 0; transform: scale(.4); }
+  .intro-anim .intro-pildora .palomita { stroke-dashoffset: 1; }
+  /* Estado final estático */
+  .intro-trazos-capa { opacity: .28; }
+  .intro-anim .intro-trazos-capa { opacity: 1; }
+  .intro-leyenda-1 { opacity: 0; }
+  .intro-anim .intro-leyenda-1 { opacity: 0; }
+  .intro-aviso { opacity: 0; }
+  .intro-anim .intro-aviso { opacity: 1; }
+  html:not(.intro-anim) .intro-aviso { display: none; }
+
+  /* Lo que sigue (demo) */
+  .siguiente { padding: 96px 16px; border-top: 1px solid rgba(255,255,255,.08); }
+  .siguiente:focus { outline: none; }
+  .siguiente .contenedor { max-width: 960px; margin: 0 auto; }
+  .siguiente h2 { font-family: var(--font-display); font-weight: 800; font-size: 40px; line-height: 1.05; margin: 0 0 12px; color: #fff; text-transform: uppercase; }
+  .siguiente p { color: var(--ink-300); max-width: 60ch; }
+  .siguiente a { color: var(--electric-300); }
+</style>
+</head>
+<body>
+
+<section class="intro" id="inicio" aria-labelledby="intro-titular">
+  <div class="intro-escenario">
+    <a href="#contenido" class="intro-omitir" data-intro-omitir>Omitir introducción</a>
+
+    <p class="intro-eyebrow">ALDM AutoCore · Ingeniería de software</p>
+    <h1 class="intro-titular" id="intro-titular">
+      <span class="palabra">Ingeniería</span> <span class="palabra">de</span> <span class="palabra">software</span>
+      <span class="palabra acento">para</span> <span class="palabra acento">tu</span> <span class="palabra acento">taller</span>
+    </h1>
+
+    <div class="intro-plano">
+      <div class="intro-resplandor" aria-hidden="true"></div>
+      <!-- Trazos de construcción. Mismo sistema de coordenadas que el logotipo
+           (recorte 1200 × 870 del original de 1254 px, desde x 30 · y 150).
+           Centros y radios medidos sobre el original: las cruces caen en el centro
+           de cada anillo y las guías horizontales son tangentes a «ALDM». -->
+      <svg class="intro-trazos" viewBox="30 150 1200 870" aria-hidden="true" focusable="false">
+        <g class="intro-trazos-capa">
+          <!-- Guías horizontales: altura de mayúsculas y línea base de ALDM -->
+          <path class="linea guia" data-d="0.05" pathLength="1" d="M -260 648.5 H 1520" />
+          <path class="linea guia" data-d="0.15" pathLength="1" d="M -260 814.5 H 1520" />
+          <!-- Guía a 45° por el centro del engrane -->
+          <path class="linea guia" data-d="0.35" pathLength="1" d="M 73 816 L 769 120" />
+
+          <!-- Exteriores, de izquierda a derecha: engrane (puntas), arco del techo, cabeza de la llave, nube -->
+          <path class="linea ext" data-d="0"    pathLength="1" d="M 103 486 A 300 300 0 1 1 703 486 A 300 300 0 1 1 103 486" />
+          <path class="linea ext" data-d="0.12" pathLength="1" d="M 196.7 632.8 A 451.4 451.4 0 1 1 1099.5 632.8 A 451.4 451.4 0 1 1 196.7 632.8" />
+          <path class="linea ext" data-d="0.24" pathLength="1" d="M 698.7 563 A 64.3 64.3 0 1 1 827.3 563 A 64.3 64.3 0 1 1 698.7 563" />
+          <path class="linea ext" data-d="0.36" pathLength="1" d="M 917.2 357.75 A 99.8 99.8 0 1 1 1116.8 357.75 A 99.8 99.8 0 1 1 917.2 357.75" />
+
+          <!-- Interiores: raíz del engrane, arco plateado, boca de la llave, arco exterior del wifi -->
+          <path class="linea int" data-d="0.25" pathLength="1" d="M 154 486 A 249 249 0 1 1 652 486 A 249 249 0 1 1 154 486" />
+          <path class="linea int" data-d="0.35" pathLength="1" d="M 269.5 615.1 A 401.2 401.2 0 1 1 1071.9 615.1 A 401.2 401.2 0 1 1 269.5 615.1" />
+          <path class="linea int" data-d="0.45" pathLength="1" d="M 739.6 559.5 A 35.9 35.9 0 1 1 811.4 559.5 A 35.9 35.9 0 1 1 739.6 559.5" />
+          <path class="linea int" data-d="0.55" pathLength="1" d="M 939.1 386.5 A 76.4 76.4 0 1 1 1091.9 386.5 A 76.4 76.4 0 1 1 939.1 386.5" />
+
+          <!-- Cruces de centro (segunda mitad del tramo) -->
+          <g class="cruz-g">
+            <path class="cruz" d="M 385 486 H 421 M 403 468 V 504" />
+            <path class="cruz" d="M 630.1 632.8 H 666.1 M 648.1 614.8 V 650.8" />
+            <path class="cruz" d="M 656.7 615.1 H 684.7 M 670.7 601.1 V 629.1" />
+            <path class="cruz" d="M 751 563 H 775 M 763 551 V 575" />
+            <path class="cruz" d="M 765.5 559.5 H 785.5 M 775.5 549.5 V 569.5" />
+            <path class="cruz" d="M 1003 357.75 H 1031 M 1017 343.75 V 371.75" />
+            <path class="cruz" d="M 1003.5 386.5 H 1027.5 M 1015.5 374.5 V 398.5" />
+            <text class="cota" x="728" y="160">45°</text>
+            <text class="cota" x="1132" y="640">ALDM · 166</text>
+          </g>
+        </g>
+      </svg>
+      <picture class="intro-logo">
+        <source srcset="logo-aldm-trazo.webp" type="image/webp" />
+        <img src="logo-aldm-trazo.png" width="1200" height="870" alt="ALDM AutoCore — Administración de talleres mecánicos" decoding="async" />
+      </picture>
+    </div>
+
+    <div class="intro-leyendas">
+      <p class="intro-leyenda-1" aria-hidden="true">Automotive Logic &amp; Data Management</p>
+      <p class="intro-leyenda-2">La era del papel terminó, todo en la palma de tu mano.</p>
+    </div>
+
+    <ul class="intro-pildoras" aria-label="Lo que incluye">
+      <li class="intro-pildora"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="aro" cx="12" cy="12" r="10.5"/><circle class="relleno" cx="12" cy="12" r="10.5"/><path class="palomita" pathLength="1" d="M7 12.4l3.2 3.2L17.2 8.6"/></svg>Órdenes de servicio</li>
+      <li class="intro-pildora"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="aro" cx="12" cy="12" r="10.5"/><circle class="relleno" cx="12" cy="12" r="10.5"/><path class="palomita" pathLength="1" d="M7 12.4l3.2 3.2L17.2 8.6"/></svg>Inventario</li>
+      <li class="intro-pildora"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="aro" cx="12" cy="12" r="10.5"/><circle class="relleno" cx="12" cy="12" r="10.5"/><path class="palomita" pathLength="1" d="M7 12.4l3.2 3.2L17.2 8.6"/></svg>Cobros y notas</li>
+      <li class="intro-pildora"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="aro" cx="12" cy="12" r="10.5"/><circle class="relleno" cx="12" cy="12" r="10.5"/><path class="palomita" pathLength="1" d="M7 12.4l3.2 3.2L17.2 8.6"/></svg>App para tu cliente</li>
+    </ul>
+
+    <p class="intro-aviso" aria-hidden="true">Desplácese para continuar
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </p>
+  </div>
+</section>
+
+<!-- Siguiente sección (aquí empieza el resto de la portada) -->
+<section class="siguiente" id="contenido" tabindex="-1" aria-labelledby="sig-titulo">
+  <div class="contenedor">
+    <h2 id="sig-titulo">Tu taller ya no cabe en una libreta</h2>
+    <p>Órdenes, inventario, cobros y clientes en un solo lugar, desde la compu o el celular. <a href="#demo">Pide una demo</a>.</p>
+  </div>
+</section>
+<section class="siguiente" id="demo" aria-labelledby="demo-titulo">
+  <div class="contenedor">
+    <h2 id="demo-titulo">Pide tu demo</h2>
+    <p>Sección de ejemplo para probar la navegación con teclado y las anclas.</p>
+  </div>
+</section>
+
+<script>
+(function () {
+  "use strict";
+  var raiz = document.documentElement;
+  var seccion = document.querySelector(".intro");
+  var escenario = seccion.querySelector(".intro-escenario");
+  var siguiente = document.getElementById("contenido");
+  var CLAVE = "aldm-intro-vista";
+  var mqMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)");
+  var mqBaja = window.matchMedia("(max-height: 760px)");
+  var terminarYa = function () {};
+
+  // «Omitir introducción» funciona en todo momento (también en el estado final):
+  // lleva a la siguiente sección y le pasa el foco.
+  seccion.querySelector("[data-intro-omitir]").addEventListener("click", function (ev) {
+    ev.preventDefault(); // sin JS el enlace #contenido hace lo mismo
+    terminarYa();
+    siguiente.scrollIntoView({ behavior: mqMovimiento.matches ? "auto" : "smooth", block: "start" });
+    siguiente.focus({ preventScroll: true });
+  });
+
+  if (!raiz.classList.contains("intro-anim")) return; // estado final estático: no hay nada que animar
+
+  // ---------- Elementos ----------
+  var palabras = [].slice.call(seccion.querySelectorAll(".intro-titular .palabra"));
+  var lineas = [].slice.call(seccion.querySelectorAll(".intro-trazos .linea")).map(function (el) {
+    return { el: el, d: parseFloat(el.getAttribute("data-d")) || 0 };
+  });
+  var capaTrazos = seccion.querySelector(".intro-trazos-capa");
+  var cruces = seccion.querySelector(".cruz-g");
+  var logo = seccion.querySelector(".intro-logo");
+  var resplandor = seccion.querySelector(".intro-resplandor");
+  var leyenda1 = seccion.querySelector(".intro-leyenda-1");
+  var leyenda2 = seccion.querySelector(".intro-leyenda-2");
+  var pildoras = [].slice.call(seccion.querySelectorAll(".intro-pildora")).map(function (el) {
+    return { el: el, relleno: el.querySelector(".relleno"), palomita: el.querySelector(".palomita") };
+  });
+  var aviso = seccion.querySelector(".intro-aviso");
+
+  // ---------- Matemática ----------
+  function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function ss(a, b, x) { var t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); } // smoothstep
+  function r4(x) { return Math.round(x * 10000) / 10000; }
+
+  // ---------- Pintar un valor de p (solo opacity, transform y stroke-dashoffset) ----------
+  var ultimoP = -1;
+  function pintar(p) {
+    if (p === ultimoP) return;
+    ultimoP = p;
+    raiz.style.setProperty("--p", r4(p));
+
+    // 0 → 0.30: palabras del titular de 16 % a 100 %, una tras otra
+    var n = palabras.length, ancho = 0.12, paso = (0.30 - ancho) / Math.max(1, n - 1);
+    for (var i = 0; i < n; i++) palabras[i].style.opacity = r4(0.16 + 0.84 * ss(i * paso, i * paso + ancho, p));
+
+    // 0.26 → 0.52: líneas con retrasos relativos; cruces y leyenda 1 en la segunda mitad
+    var u = clamp01((p - 0.26) / 0.26), dur = 0.45;
+    for (var k = 0; k < lineas.length; k++) {
+      var L = lineas[k];
+      L.el.style.strokeDashoffset = r4(1 - ss(L.d, L.d + dur, u));
+    }
+    var sCruz = ss(0.5, 1, u);
+    cruces.style.opacity = r4(sCruz);
+    var sLey1In = ss(0.55, 1, u);
+
+    // 0.50 → 0.66: aparece el logotipo; las líneas bajan a 28 %; crece el resplandor
+    var sLogo = ss(0.50, 0.66, p);
+    logo.style.opacity = r4(sLogo);
+    logo.style.transform = "scale(" + r4(0.96 + 0.04 * sLogo) + ")";
+    capaTrazos.style.opacity = r4(1 - 0.72 * sLogo);
+    var sBrillo = Math.max(0.35 * ss(0.26, 0.52, p), sLogo);
+    resplandor.style.opacity = r4(0.25 + 0.75 * sBrillo);
+    resplandor.style.transform = "scale(" + r4(0.7 + 0.3 * sBrillo) + ")";
+
+    // 0.64 → 0.88: sale la leyenda 1, entra la 2; se marcan las píldoras una por una
+    var sLey1Out = ss(0.64, 0.71, p);
+    var vis1 = sLey1In * (1 - sLey1Out);
+    leyenda1.style.opacity = r4(vis1);
+    leyenda1.style.transform = "translateY(" + r4(8 * (1 - sLey1In) - 8 * sLey1Out) + "px)";
+    var sLey2 = ss(0.69, 0.76, p);
+    leyenda2.style.opacity = r4(sLey2);
+    leyenda2.style.transform = "translateY(" + r4(8 * (1 - sLey2)) + "px)";
+    for (var j = 0; j < pildoras.length; j++) {
+      var P = pildoras[j];
+      var a = 0.68 + j * 0.02;
+      var sIn = ss(a, a + 0.05, p);
+      P.el.style.opacity = r4(sIn);
+      P.el.style.transform = "translateY(" + r4(6 * (1 - sIn)) + "px)";
+      var c0 = 0.74 + j * 0.035;
+      var sFill = ss(c0, c0 + 0.04, p);
+      P.relleno.style.opacity = r4(sFill);
+      P.relleno.style.transform = "scale(" + r4(0.4 + 0.6 * sFill) + ")";
+      P.palomita.style.strokeDashoffset = r4(1 - ss(c0 + 0.02, c0 + 0.035, p));
+    }
+
+    // Aviso «Desplácese para continuar»: se oculta pasado p = 0.6
+    aviso.style.opacity = r4(1 - ss(0.52, 0.60, p));
+  }
+
+  // ---------- Geometría del recorrido (se lee solo al cambiar de tamaño) ----------
+  var inicioSeccion = 0, tramo = 1;
+  function medir() {
+    var r = seccion.getBoundingClientRect();
+    inicioSeccion = r.top + window.scrollY;
+    tramo = Math.max(1, seccion.offsetHeight - escenario.offsetHeight);
+  }
+
+  // ---------- Estado de la animación ----------
+  var p = 0, v = 0;                       // valor mostrado y su velocidad (por segundo)
+  var OMEGA = 12.5;                       // resorte críticamente amortiguado: 90 % en ~0.31 s
+  var VMAX = (0.88 - 0.26) / 1.25;        // líneas → logotipo → píldoras duran al menos 1.2 s
+  var t0 = null, ESPERA = 250, INTRO = 1500;
+  var completando = null;                 // { desde, t0 } cuando la persona sale antes de terminar
+  var terminada = false, finalizada = false;
+  var ultimoScroll = performance.now(), tocando = false;
+  var raf = 0, tPrev = 0;
+
+  function introEnT(ms) {
+    var t = clamp01((ms - ESPERA) / INTRO);
+    return 0.26 * (1 - Math.pow(1 - t, 3)); // ease-out
+  }
+  function objetivoScroll() {
+    var recorrido = window.scrollY - inicioSeccion;
+    return 0.26 + 0.74 * clamp01(recorrido / (0.85 * tramo));
+  }
+  function salioDeLaEscena() {
+    return window.scrollY - inicioSeccion > tramo + 2;
+  }
+
+  function cuadro(ahora) {
+    raf = 0;
+    if (finalizada) return;
+    if (t0 === null) t0 = ahora;
+    var dt = Math.min(0.1, Math.max(0, (ahora - (tPrev || ahora)) / 1000));
+    tPrev = ahora;
+
+    if (!terminada) {
+      if (completando || salioDeLaEscena()) {
+        // Completa lo que falta en 0.3 s
+        if (!completando) completando = { desde: p, t0: ahora };
+        var k = clamp01((ahora - completando.t0) / 300);
+        p = completando.desde + (1 - completando.desde) * (1 - Math.pow(1 - k, 2));
+        v = 0;
+        if (k >= 1) p = 1;
+      } else {
+        var intro = introEnT(ahora - t0);
+        var objetivo = Math.max(intro, objetivoScroll(), p); // solo avanza
+        if (objetivo <= 0.26 && intro >= p) {
+          // Mientras manda la entrada automática, se sigue su curva tal cual
+          var dtIntro = Math.max(dt, 1 / 120);
+          v = (intro - p) / dtIntro;
+          p = intro;
+        } else {
+          // Resorte críticamente amortiguado, solución exacta para el dt real
+          var e0 = p - objetivo, w = OMEGA, ex = Math.exp(-w * dt);
+          var e = (e0 + (v + w * e0) * dt) * ex;
+          var vn = (v - w * (v + w * e0) * dt) * ex;
+          var nuevo = objetivo + e;
+          if (nuevo > objetivo) { nuevo = objetivo; vn = 0; }      // sin rebote
+          if (nuevo < p) { nuevo = p; vn = Math.max(0, vn); }       // nunca retrocede
+          if (nuevo - p > VMAX * dt) { nuevo = p + VMAX * dt; }     // velocidad máxima
+          v = Math.min(Math.max(vn, 0), VMAX);
+          p = nuevo;
+          if (objetivo - p < 0.0004 && objetivo >= 1) p = 1;
+        }
+      }
+      if (p >= 1) { p = 1; terminada = true; }
+      pintar(p);
+      // En reposo (entrada automática terminada y p ya en su objetivo) no se piden más cuadros;
+      // el siguiente scroll los vuelve a pedir.
+      if (!terminada && !completando && ahora - t0 > ESPERA + INTRO && Math.abs(Math.max(objetivoScroll(), p) - p) < 1e-6) {
+        v = 0; tPrev = 0; return;
+      }
+    }
+
+    if (terminada) {
+      // Fija el estado final cuando el scroll lleva 200 ms quieto
+      if (!tocando && ahora - ultimoScroll >= 200) { finalizar(); return; }
+    }
+    pedirCuadro();
+  }
+  function pedirCuadro() { if (!raf && !finalizada) raf = requestAnimationFrame(cuadro); }
+
+  // Quita el sticky (la sección queda de una pantalla) compensando el scroll para que nada salte
+  function finalizar() {
+    if (finalizada) return;
+    finalizada = true; terminada = true; p = 1;
+    pintar(1);
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    var y = window.scrollY;
+    var dentro = Math.min(Math.max(y - inicioSeccion, 0), tramo);
+    raiz.classList.remove("intro-anim");
+    raiz.classList.add("intro-final");
+    if (dentro > 0) {
+      var sb = raiz.style.scrollBehavior;
+      raiz.style.scrollBehavior = "auto";
+      window.scrollTo(0, y - dentro);
+      raiz.style.scrollBehavior = sb;
+    }
+    try { sessionStorage.setItem(CLAVE, "1"); } catch (e) { /* sin almacenamiento */ }
+    quitarEscuchas();
+  }
+
+  // Termina ya (Omitir, teclado, menos movimiento, pantalla baja)
+  terminarYa = function () { terminada = true; finalizar(); };
+
+  // ---------- Escuchas (todas pasivas: nunca se frena el scroll) ----------
+  function alScroll() { ultimoScroll = performance.now(); pedirCuadro(); }
+  function alTocar() { tocando = true; }
+  function alSoltar() { tocando = false; ultimoScroll = performance.now(); pedirCuadro(); }
+  function alRedimensionar() { medir(); pedirCuadro(); }
+  function alEnfocar(ev) {
+    var el = ev.target;
+    if (!el || el === document.body || seccion.contains(el)) return;
+    if (seccion.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) {
+      terminarYa();
+      el.scrollIntoView({ block: "nearest" });
+    }
+  }
+  function alCambiarAncla() {
+    var h = location.hash;
+    if (h && h !== "#inicio") terminarYa();
+  }
+  function alCambiarMedia() { if (mqMovimiento.matches || mqBaja.matches) terminarYa(); }
+  var ro = ("ResizeObserver" in window) ? new ResizeObserver(alRedimensionar) : null;
+
+  function escuchar(m) {
+    window[m]("scroll", alScroll, { passive: true });
+    window[m]("touchstart", alTocar, { passive: true });
+    window[m]("touchend", alSoltar, { passive: true });
+    window[m]("touchcancel", alSoltar, { passive: true });
+    window[m]("resize", alRedimensionar, { passive: true });
+    window[m]("hashchange", alCambiarAncla);
+    document[m]("focusin", alEnfocar);
+    [mqMovimiento, mqBaja].forEach(function (mq) {
+      if (mq[m]) mq[m]("change", alCambiarMedia);                       // navegadores actuales
+      else if (m === "addEventListener") mq.addListener(alCambiarMedia); // Safari < 14
+      else mq.removeListener(alCambiarMedia);
+    });
+  }
+  function quitarEscuchas() {
+    escuchar("removeEventListener");
+    if (ro) ro.disconnect();
+  }
+
+  // ---------- Arranque ----------
+  medir();
+  escuchar("addEventListener");
+  if (ro) ro.observe(seccion);
+  pintar(0);
+  pedirCuadro();
+})();
+</script>
+</body>
+</html>

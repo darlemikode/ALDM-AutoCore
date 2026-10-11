@@ -114,6 +114,22 @@ export default function ServicioDetalle() {
 
   async function guardarClienteVehiculo(datos) {
     try {
+      // Orden nueva: si ese mismo cliente con ese mismo vehículo ya tiene una
+      // orden abierta, se va a esa (y se descarta esta, si sigue vacía).
+      if (!servicio.id_cliente && datos.id_cliente && datos.id_vehiculo) {
+        const abiertas = await api.get(`/servicios/?status=abierto&id_cliente=${datos.id_cliente}`);
+        const igual = (abiertas || []).find((o) => o.id_servicio !== servicio.id_servicio
+          && Number(o.id_cliente) === Number(datos.id_cliente) && Number(o.id_vehiculo) === Number(datos.id_vehiculo));
+        if (igual) {
+          if (!(servicio.detalles || []).length && !(servicio.abonos || []).length) {
+            await api.del(`/servicios/${servicio.id_servicio}`).catch(() => {});
+          }
+          setEligiendoCV(false);
+          notify(`Ese cliente y vehículo ya tienen la orden #${igual.id_servicio} abierta — te llevo a ella.`, "info");
+          navigate(`/servicios/${igual.id_servicio}`, { replace: true });
+          return;
+        }
+      }
       const actualizado = await api.put(`/servicios/${id}`, datos);
       setServicio(actualizado);
       setEligiendoCV(false);

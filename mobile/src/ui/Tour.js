@@ -180,7 +180,7 @@ export function TourHost() {
               </TouchableOpacity>
             )}
             <TouchableOpacity onPress={() => ir(1)} style={[styles.boton, { backgroundColor: colors.petrol600 }]} accessibilityRole="button">
-              <Text style={[styles.botonTexto, { color: oscuro ? colors.paper100 : "#fff" }]}>{i === 0 ? "Empezar" : ultimo ? "Terminar" : "Siguiente"}</Text>
+              <Text style={[styles.botonTexto, { color: colors.sobreAcento }]}>{i === 0 ? "Empezar" : ultimo ? "Terminar" : "Siguiente"}</Text>
             </TouchableOpacity>
           </View>
         </View>

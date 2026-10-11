@@ -147,7 +147,7 @@ const styles = crearEstilos({
   boton: { flexDirection: "row", gap: 8, backgroundColor: colors.petrol600, borderRadius: 12, paddingVertical: 13, paddingHorizontal: 16, alignItems: "center", justifyContent: "center" },
   botonSecundario: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300 },
   botonPeligro: { backgroundColor: colors.red100 },
-  botonTexto: { color: colors.paper100, fontWeight: "700", fontSize: 14.5 },
+  botonTexto: { color: colors.sobreAcento, fontWeight: "700", fontSize: 14.5 },
   fab: { position: "absolute", right: 20, bottom: 24, width: 58, height: 58, borderRadius: 29, backgroundColor: colors.petrol600, alignItems: "center", justifyContent: "center", elevation: 6, shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   vacio: { alignItems: "center", paddingVertical: spacing.xxl, gap: 10 },
   vacioTexto: { fontSize: 13.5, color: colors.ink700, textAlign: "center" },

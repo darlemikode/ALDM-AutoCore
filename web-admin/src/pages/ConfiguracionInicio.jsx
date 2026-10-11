@@ -162,6 +162,7 @@ export default function ConfiguracionInicio() {
         <section className="cat-grupo ayuda-seccion" id="ayuda" ref={refAyuda} aria-labelledby="ayuda-titulo">
           <div className="cat-grupo-titulo" id="ayuda-titulo">Ayuda</div>
           <p className="ayuda-intro">Recorridos con globos de texto que te muestran, paso a paso, cómo se usa cada módulo.</p>
+          <div className="ayuda-panel">
           <div className="ayuda-grid">
             {ayuda.map((m) => {
               const listos = m.tutoriales.filter((t) => t.pasos).length;
@@ -188,6 +189,7 @@ export default function ConfiguracionInicio() {
                 </div>
               );
             })}
+          </div>
           </div>
         </section>
 

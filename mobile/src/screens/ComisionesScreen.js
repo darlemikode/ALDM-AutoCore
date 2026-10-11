@@ -124,5 +124,5 @@ const styles = crearEstilos({
   ejemploMonto: { fontWeight: "800", color: colors.ink900 },
   pie: { paddingHorizontal: spacing.lg, paddingTop: 8, paddingBottom: 14, borderTopWidth: 1, borderTopColor: colors.ink300, backgroundColor: colors.paper0 },
   boton: { backgroundColor: colors.petrol500, borderRadius: 12, paddingVertical: 15, alignItems: "center" },
-  botonTexto: { color: colors.paper100, fontWeight: "800", fontSize: 15, textTransform: "uppercase" },
+  botonTexto: { color: colors.sobreAcento, fontWeight: "800", fontSize: 15, textTransform: "uppercase" },
 });

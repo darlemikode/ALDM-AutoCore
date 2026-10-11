@@ -27,3 +27,18 @@ export async function registrarPush() {
     // sin permiso, sin internet o sin credenciales de push: la app sigue normal
   }
 }
+
+// Al tocar una notificación se abre la pantalla que le corresponde.
+// También cubre el caso de la app cerrada: el toque que la abrió se atiende al iniciar.
+const atendidas = new Set();
+export function escucharToquesPush(abrir) {
+  const atender = (respuesta) => {
+    const id = respuesta?.notification?.request?.identifier;
+    if (!respuesta || (id && atendidas.has(id))) return;
+    if (id) atendidas.add(id);
+    abrir(respuesta.notification.request.content?.data || {});
+  };
+  Notifications.getLastNotificationResponseAsync().then(atender).catch(() => {});
+  const sub = Notifications.addNotificationResponseReceivedListener(atender);
+  return () => sub.remove();
+}

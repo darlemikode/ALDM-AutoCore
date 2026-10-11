@@ -80,7 +80,7 @@ export default function App() {
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold,
     BarlowCondensed_600SemiBold, BarlowCondensed_700Bold,
   });
-  if (!fuentes) return <View style={{ flex: 1, backgroundColor: "#132a33" }} />;
+  if (!fuentes) return <View style={{ flex: 1, backgroundColor: "#141416" }} />;
   return (
     <TemaProvider>
       <AuthProvider>

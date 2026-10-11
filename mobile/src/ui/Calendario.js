@@ -171,7 +171,7 @@ const styles = crearEstilos({
   diaHoy: { borderWidth: 1.5, borderColor: colors.petrol500 },
   diaActivo: { backgroundColor: colors.petrol500, shadowColor: colors.petrol500, shadowOpacity: 0.55, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 6 },
   diaTexto: { fontSize: 17, fontWeight: "600", color: colors.ink900 },
-  diaTextoActivo: { color: colors.paper0, fontWeight: "800" },
+  diaTextoActivo: { color: colors.sobreAcento, fontWeight: "800" },
   rejilla: { flexDirection: "row", flexWrap: "wrap" },
   celdaMes: { width: "33.33%", height: 72, padding: 5 },
   celdaAnio: { width: "25%", height: FILA_ANIO, padding: 4 },

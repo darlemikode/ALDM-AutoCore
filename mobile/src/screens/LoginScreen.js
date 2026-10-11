@@ -212,7 +212,7 @@ const styles = crearEstilos({
     backgroundColor: colors.petrol500, borderRadius: 10, height: 46, alignItems: "center", justifyContent: "center", marginTop: 4,
     shadowColor: colors.petrol500, shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3,
   },
-  btnPrimaryTexto: { fontFamily: "Inter_600SemiBold", color: colors.paper100, fontSize: 15 },
+  btnPrimaryTexto: { fontFamily: "Inter_600SemiBold", color: colors.sobreAcento, fontSize: 15 },
   linkBtn: { marginTop: 16, alignItems: "center", padding: 4 },
   link: { fontFamily: "Inter_600SemiBold", color: colors.petrol500, fontSize: 13, textDecorationLine: "underline" },
   subtitulo: { fontFamily: "Inter_700Bold", fontSize: 16, color: colors.ink900, marginBottom: 6 },

@@ -1,4 +1,5 @@
-import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
+import { useEffect } from "react";
+import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View } from "react-native";
@@ -15,6 +16,16 @@ import UsuariosScreen from "../screens/UsuariosScreen";
 import SolicitudesScreen from "../screens/SolicitudesScreen";
 import UsuarioDetalleScreen from "../screens/UsuarioDetalleScreen";
 import { PaquetesScreen, ModulosScreen, TiposCobroScreen } from "../screens/CatalogosScreens";
+import { escucharToquesPush } from "../push";
+
+const navRef = createNavigationContainerRef();
+let pendiente = null; // toque que llegó antes de que la navegación estuviera lista
+
+function abrirDesdePush(data) {
+  if (data?.tipo !== "solicitud_demo") return;
+  if (!navRef.isReady()) { pendiente = data; return; }
+  navRef.navigate("MasTab", { screen: "Solicitudes", initial: false });
+}
 
 const Tab = createBottomTabNavigator();
 const InicioStack = createNativeStackNavigator();
@@ -81,8 +92,9 @@ const ICONOS = {
 
 export default function AppNavigator() {
   const base = temaActivo() === "oscuro" ? DarkTheme : DefaultTheme;
+  useEffect(() => escucharToquesPush(abrirDesdePush), []);
   return (
-    <NavigationContainer theme={{ ...base, colors: { ...base.colors, primary: colors.petrol500, background: colors.paper0, card: colors.paper100, text: colors.ink900, border: colors.ink300 } }}>
+    <NavigationContainer ref={navRef} onReady={() => { if (pendiente) { const d = pendiente; pendiente = null; abrirDesdePush(d); } }} theme={{ ...base, colors: { ...base.colors, primary: colors.petrol500, background: colors.paper0, card: colors.paper100, text: colors.ink900, border: colors.ink300 } }}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,

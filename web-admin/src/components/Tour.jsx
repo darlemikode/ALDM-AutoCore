@@ -82,8 +82,9 @@ export default function Tour({ pasos, abierto, onTerminar }) {
   const globoRef = useRef(null);
   const dir = useRef(1);
   const yaDesplazado = useRef(-1); // para no desplazar dos veces en el mismo paso
+  const ultimoFoco = useRef(null); // el foco se queda donde estaba mientras se mide el siguiente paso
 
-  useEffect(() => { if (abierto) { setI(0); dir.current = 1; } }, [abierto]);
+  useEffect(() => { if (abierto) { setI(0); dir.current = 1; ultimoFoco.current = null; } }, [abierto]);
 
   const paso = pasos[i];
 
@@ -151,15 +152,19 @@ export default function Tour({ pasos, abierto, onTerminar }) {
   if (!abierto || !paso) return null;
   const ultimo = i === pasos.length - 1;
   const listo = paso.centro || medido === i;
-  const foco = !paso.centro && listo && rect
+  let foco = !paso.centro && listo && rect
     ? { left: rect.left - RELLENO, top: rect.top - RELLENO, width: rect.width + RELLENO * 2, height: rect.height + RELLENO * 2 }
     : null;
+  if (foco) ultimoFoco.current = foco;
+  else if (!paso.centro) foco = ultimoFoco.current; // midiendo: no parpadea, luego se desliza al nuevo
+  else ultimoFoco.current = null;
+  const visible = !!(pos && listo);
 
   return createPortal(
     <div className="tour-capa" role="dialog" aria-modal="true" aria-labelledby="tour-titulo">
       {foco ? <div className="tour-foco" style={foco} /> : <div className="tour-velo" />}
-      <div ref={globoRef} className={"tour-globo" + (paso.centro ? " tour-globo-centro" : "")}
-        style={pos && listo ? { left: pos.x, top: pos.y } : { left: -9999, top: 0 }}>
+      <div ref={globoRef} className={"tour-globo" + (paso.centro ? " tour-globo-centro" : "") + (visible ? " tour-globo-visible" : "")}
+        style={visible ? { left: pos.x, top: pos.y } : { left: 0, top: 0 }}>
         <div className="tour-cuenta">Paso {i + 1} de {pasos.length}</div>
         <h3 id="tour-titulo" className="tour-titulo">{paso.titulo}</h3>
         <p className="tour-texto">{paso.texto}</p>

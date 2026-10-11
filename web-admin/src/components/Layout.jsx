@@ -177,7 +177,17 @@ export default function Layout() {
       {menuMovilAbierto && <div className="sidebar-backdrop" onClick={() => setMenuMovilAbierto(false)} />}
       <aside className={"sidebar" + (sidebarCompacta ? " sidebar-compacta" : "") + (menuMovilAbierto ? " sidebar-abierta" : "")}>
         <div className="brand">
-          <span className="brand-texto"><img src={logoAldm} alt="ALDM AutoCore" className="brand-logo" /></span>
+          <span className="brand-texto">
+            <span className="brand-tarjeta">
+              <img src={logoAldm} alt="ALDM AutoCore" className="brand-logo" />
+              {user && (
+                <span className="brand-usuario" title={`${user.nombre_completo || ""} (@${user.username})`}>
+                  <span className="brand-usuario-nombre">{user.nombre_completo || user.username}</span>
+                  <span className="brand-usuario-alias">@{user.username}</span>
+                </span>
+              )}
+            </span>
+          </span>
           <button
             type="button"
             className="sidebar-colapsar"

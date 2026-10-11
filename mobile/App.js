@@ -76,7 +76,7 @@ export default function App() {
     BarlowCondensed_700Bold,
   });
 
-  if (!fontsCargadas) return <View style={{ flex: 1, backgroundColor: "#132a33" }} />;
+  if (!fontsCargadas) return <View style={{ flex: 1, backgroundColor: "#141416" }} />;
 
   return (
     <TemaProvider>

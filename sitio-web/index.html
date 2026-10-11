@@ -7,6 +7,19 @@
 <link rel="icon" type="image/png" href="favicon.png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <meta name="theme-color" content="#070708" />
+<script>
+(function () {
+  var d = document.documentElement, final = false;
+  try { final = sessionStorage.getItem("aldm-intro-vista") === "1"; } catch (e) { /* sin almacenamiento */ }
+  var h = location.hash;
+  if (h && h !== "#" && h !== "#inicio") final = true;
+  // La escena avanza solo cuando la persona desplaza (no se mueve sola), así que también corre con «reducir movimiento».
+  if (window.innerHeight <= 560) final = true;
+  d.classList.add(final ? "intro-final" : "intro-anim", "js");
+  if ("IntersectionObserver" in window) d.classList.add("anim"); // con «reducir movimiento» solo hay fundidos suaves
+})();
+</script>
+<link rel="preload" as="image" href="logo-aldm-trazo.webp" type="image/webp" />
 <meta name="description" content="ALDM AutoCore: el sistema web y app móvil que ordena tu taller mecánico o refaccionaria — órdenes de servicio, inventario, clientes y cobros, todo en un solo lugar." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -225,6 +238,7 @@
   .benefit-ico.red { background: rgba(255,68,56,0.15); }
   .benefit-card h3 { font-size: 20px; }
   .benefit-card p { margin-top: 10px; font-size: 14px; color: var(--ink-400); line-height: 1.6; }
+  @media (min-width: 1100px) { html .benefit-grid { grid-template-columns: repeat(4, 1fr); } }
 
   /* ---------- Precios ---------- */
   .pricing-grid { display: grid; gap: 22px; grid-template-columns: 1fr; align-items: stretch; }
@@ -291,7 +305,7 @@
     .nav-planes { display: inline-block; }
     .hero-ctas .btn, .demo-form { flex-direction: row; }
     .card-grid { grid-template-columns: repeat(2, 1fr); }
-    .benefit-grid { grid-template-columns: repeat(3, 1fr); }
+    .benefit-grid { grid-template-columns: repeat(2, 1fr); }
     .screen-body { padding: 26px; }
     .footer-grid { grid-template-columns: repeat(2, 1fr); }
     .section-head h2, .hero h1 { font-size: 48px; }
@@ -309,6 +323,282 @@
     .plan.featured { transform: translateY(-12px); }
     .footer-grid { grid-template-columns: 1.6fr 1fr 1fr 1fr; }
   }
+</style>
+<style>
+  /* ============ Escena de bienvenida (portada) ============ */
+  :root { --teal-500: #14b8a6; --nav-h: 72px; }
+  .intro { position: relative; background: var(--ink-950); }
+  .intro-escenario {
+    position: relative; overflow: hidden; isolation: isolate;
+    min-height: 100vh; min-height: 100svh;
+    padding: calc(var(--nav-h) + 28px) 16px 28px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(14px, 2.4vh, 28px);
+    text-align: center;
+    background-image:
+      linear-gradient(rgba(225,6,0,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(225,6,0,0.06) 1px, transparent 1px);
+    background-size: 48px 48px; background-position: center;
+  }
+  /* Solo en modo animado: sección larga + escenario fijo (sticky) */
+  .intro-anim .intro { height: 250vh; height: 250svh; }
+  .intro-anim .intro-escenario { position: sticky; top: 0; height: 100vh; height: 100svh; }
+  @media (max-width: 760px) { .intro-anim .intro { height: 220vh; height: 220svh; } } /* celular: 1.2 pantallas de recorrido */
+
+  .intro-eyebrow { font-family: var(--font-mono); font-weight: 600; font-size: 12px; letter-spacing: .24em; text-transform: uppercase; color: var(--electric-400); margin: 0; }
+  .intro-titular {
+    margin: 0; max-width: 18ch; font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
+    font-size: clamp(36px, min(6.4vw, 6.2vh), 76px); line-height: .98; letter-spacing: .01em; color: #fff; text-wrap: balance;
+  }
+  .intro-titular .palabra { display: inline-block; }
+  .intro-titular .acento { color: var(--electric-500); }
+
+  /* Plano: el logotipo y sus trazos comparten exactamente la misma caja y el mismo sistema de coordenadas */
+  .intro-plano { position: relative; width: min(92vw, calc(44vh * 1200 / 870)); width: min(92vw, calc(44svh * 1200 / 870), 760px); aspect-ratio: 1200 / 870; max-width: 100%; }
+  .intro-resplandor {
+    position: absolute; inset: -18% -12%; z-index: -1; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(225,6,0,.32), rgba(225,6,0,.10) 55%, transparent 75%);
+    transform-origin: 50% 50%;
+  }
+  .intro-trazos { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .intro-trazos .linea { fill: none; stroke-linecap: butt; stroke-dasharray: 1 1.5; }
+  .intro-trazos .ext { stroke: var(--electric-400); stroke-width: 2.2; }
+  .intro-trazos .int { stroke: #e8e8ec; stroke-width: 1.6; }
+  .intro-trazos .guia { stroke: #e8e8ec; stroke-width: 1.2; opacity: .85; }
+  .intro-trazos .cruz { stroke: #fff; stroke-width: 1.6; fill: none; }
+  .intro-trazos .cota { font-family: var(--font-mono); font-size: 15px; fill: var(--ink-400); letter-spacing: .06em; }
+  .intro-logo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; transform-origin: 50% 50%; }
+  .intro-logo img { width: 100%; height: 100%; display: block; }
+
+  .intro-leyendas { display: grid; justify-items: center; min-height: 2.4em; }
+  .intro-leyendas > p { grid-area: 1 / 1; margin: 0; max-width: 40ch; }
+  .intro-leyenda-1 { font-family: var(--font-mono); font-weight: 600; font-size: clamp(13px, 1.6vh, 16px); letter-spacing: .22em; text-transform: uppercase; color: var(--ink-300); align-self: center; max-width: none !important; white-space: nowrap; }
+  .intro-leyenda-2 { font-size: clamp(17px, 2.2vh, 22px); font-weight: 600; color: var(--ink-100); text-wrap: balance; }
+
+  .intro-pildoras { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 0; padding: 0; list-style: none; max-width: 720px; }
+  .intro-pildora {
+    display: inline-flex; align-items: center; gap: 9px; padding: 8px 14px 8px 9px; border-radius: 999px;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12); font-size: 15px; font-weight: 600; color: var(--ink-100);
+  }
+  .intro-pildora svg { width: 22px; height: 22px; flex: none; overflow: visible; }
+  .intro-pildora .aro { fill: none; stroke: rgba(255,255,255,.35); stroke-width: 1.5; }
+  .intro-pildora .relleno { fill: var(--teal-500); transform-origin: 12px 12px; }
+  .intro-pildora .palomita { fill: none; stroke: #04201d; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1.5; }
+
+  .intro-aviso {
+    position: absolute; left: 50%; bottom: max(18px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-400); pointer-events: none;
+  }
+  .intro-aviso { white-space: nowrap; }
+  .intro-aviso svg { width: 16px; height: 16px; }
+  @media (max-width: 480px) {
+    .intro-eyebrow { font-size: 11px; letter-spacing: .12em; }
+    .intro-leyenda-1 { font-size: 11.5px; letter-spacing: .1em; }
+    .intro-aviso { font-size: 11px; letter-spacing: .12em; }
+    .intro-pildora { font-size: 14px; }
+  }
+  /* Capas propias solo mientras se anima (opacity/transform van al compositor) */
+  .intro-anim .intro-logo, .intro-anim .intro-resplandor { will-change: opacity, transform; }
+  .intro-omitir {
+    position: absolute; top: calc(var(--nav-h) + 14px); right: 16px; z-index: 2;
+    font: 600 14px/1 var(--font-body); color: var(--ink-300); text-decoration: none; background: rgba(13,13,15,.7);
+    border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: 11px 16px; cursor: pointer;
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .intro-omitir:hover { color: #fff; border-color: rgba(255,255,255,.32); }
+  .intro-omitir:focus-visible, .siguiente:focus-visible { outline: 2px solid var(--electric-400); outline-offset: 3px; }
+
+  /* Estado INICIAL del modo animado (p = 0), para la primera pintura antes de que corra el script.
+     Sin la clase intro-anim (sin JS, menos movimiento, ya vista, pantalla baja) todo queda en su estado final. */
+  .intro-anim .intro-titular .palabra { opacity: .16; }
+  .intro-anim .intro-trazos .linea { stroke-dashoffset: 1; }
+  .intro-anim .intro-trazos .cruz-g { opacity: 0; }
+  .intro-anim .intro-logo { opacity: 0; transform: scale(.96); }
+  .intro-anim .intro-resplandor { opacity: .25; transform: scale(.7); }
+  .intro-anim .intro-leyenda-1 { opacity: 0; transform: translateY(8px); }
+  .intro-anim .intro-leyenda-2 { opacity: 0; transform: translateY(8px); }
+  .intro-anim .intro-pildora { opacity: 0; transform: translateY(6px); }
+  .intro-anim .intro-pildora .relleno { opacity: 0; transform: scale(.4); }
+  .intro-anim .intro-pildora .palomita { stroke-dashoffset: 1; }
+  /* Estado final estático */
+  .intro-trazos-capa { opacity: .28; }
+  .intro-anim .intro-trazos-capa { opacity: 1; }
+  .intro-leyenda-1 { opacity: 0; }
+  .intro-anim .intro-leyenda-1 { opacity: 0; }
+  .intro-aviso { opacity: 0; }
+  .intro-anim .intro-aviso { opacity: 1; }
+  html:not(.intro-anim) .intro-aviso { display: none; }
+
+  /* La portada original queda después de la escena */
+  .intro ~ .hero { padding-top: 104px; border-top: 1px solid rgba(255,255,255,0.05) !important; }
+  #contenido { scroll-margin-top: 72px; }
+  #contenido:focus { outline: none; }
+</style>
+
+<style>
+  /* ============ Capturas reales y módulos destacados ============ */
+  .shot { margin: 0; background: var(--ink-900); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; box-shadow: 0 30px 70px -24px rgba(0,0,0,0.6), 0 0 0 1px rgba(225,6,0,0.06); }
+  .shot img, .shot-img { display: block; width: 100%; height: auto; background: #0b0b0c; }
+  .shot-nota { margin: 10px 0 0; text-align: center; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-500); }
+
+  .dest-lista { display: flex; flex-direction: column; gap: 96px; }
+  .dest-fila { display: grid; gap: 36px; align-items: center; scroll-margin-top: 96px; }
+  .dest-num { font-family: var(--font-mono); font-weight: 600; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--electric-400); }
+  .dest-texto h3 { margin-top: 12px; font-size: 34px; line-height: 1.08; }
+  .dest-texto p { margin: 14px 0 0; color: var(--ink-300); font-size: 17px; max-width: 46ch; }
+  .dest-puntos { margin-top: 20px; display: grid; gap: 10px; }
+  .dest-puntos li { display: flex; gap: 10px; align-items: flex-start; color: var(--ink-100); font-size: 16px; }
+  .dest-puntos .check-ico { flex: none; margin-top: 3px; color: var(--electric-400); }
+  @media (min-width: 960px) {
+    .dest-fila { grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 56px; }
+    .dest-fila.invertida .dest-texto { order: 2; }
+    .dest-texto h3 { font-size: 40px; }
+  }
+
+  .telefonos { display: flex; justify-content: center; align-items: flex-start; gap: 22px; flex-wrap: wrap; }
+  .telefono { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .telefono figcaption { font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-400); }
+  .telefono:nth-child(2) { margin-top: 40px; }
+  @media (max-width: 640px) { .telefono:nth-child(2) { margin-top: 0; } .phone { width: min(280px, 86vw); } }
+
+  /* App del taller (mismo tema oscuro de la app) */
+  .phone-app { background: #0b0b0c; }
+  .papp { padding: 2px 12px 0; color: #f2f2f4; font-size: 11px; }
+  .papp svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .papp-top { display: flex; align-items: center; justify-content: space-between; padding: 6px 2px 10px; color: #b4b4bb; }
+  .papp-top b { font-family: var(--font-display); font-size: 17px; letter-spacing: .04em; color: #f2f2f4; }
+  .papp-hero { display: flex; gap: 10px; align-items: center; padding: 12px; border-radius: 12px; background: linear-gradient(135deg, #e8251b, #a80000); }
+  .papp-hero-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.16); color: #fff; flex: none; }
+  .papp-hero b { display: block; font-size: 13px; color: #fff; }
+  .papp-hero small { display: block; font-size: 10px; color: rgba(255,255,255,.85); }
+  .papp-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .papp-kpis div { background: #17171a; border: 1px solid #2a2a30; border-left: 3px solid #e8251b; border-radius: 10px; padding: 8px 10px; }
+  .papp-kpis small { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: #7d7d85; font-weight: 700; }
+  .papp-kpis b { display: block; font-family: var(--font-display); font-size: 20px; line-height: 1.1; }
+  .papp-kpis b.rojo { color: #ff4a3f; }
+  .papp-sub { margin: 12px 2px 6px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #7d7d85; }
+  .papp-orden { display: flex; align-items: center; gap: 8px; background: #17171a; border: 1px solid #2a2a30; border-radius: 10px; padding: 8px 8px 8px 0; margin-bottom: 6px; overflow: hidden; }
+  .papp-barra { width: 3px; align-self: stretch; border-radius: 0 3px 3px 0; flex: none; }
+  .papp-orden span:nth-child(2) { flex: 1; min-width: 0; }
+  .papp-orden b { display: block; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .papp-orden small { display: block; font-size: 9.5px; color: #7d7d85; }
+  .papp-orden i { font-style: normal; font-size: 8.5px; font-weight: 700; padding: 3px 6px; border-radius: 99px; background: rgba(232,37,27,.16); color: #ff7a70; white-space: nowrap; }
+  .papp-orden i.ambar { background: rgba(240,168,56,.16); color: #f0a838; }
+  .papp-orden i.verde { background: rgba(63,214,144,.16); color: #3fd690; }
+  .papp-tabs { display: flex; align-items: center; justify-content: space-between; margin: 10px -12px 0; padding: 10px 14px 14px; background: #17171a; border-top: 1px solid #2a2a30; font-size: 9.5px; color: #7d7d85; font-weight: 600; }
+  .papp-tabs .on { color: #ff4a3f; }
+  .papp-fab { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #e8251b; color: #fff; font-size: 20px; line-height: 1; margin-top: -18px; box-shadow: 0 6px 16px rgba(232,37,27,.4); }
+
+  .galeria { display: grid; gap: 28px; grid-template-columns: 1fr; position: relative; z-index: 1; }
+  .galeria-item { margin: 0; }
+  .galeria-item figcaption { margin-top: 12px; color: var(--ink-300); font-size: 15px; }
+  .galeria-item figcaption b { color: #fff; margin-right: 6px; }
+  @media (min-width: 900px) { .galeria { grid-template-columns: 1fr 1fr; } .galeria-item.ancho { grid-column: 1 / -1; } }
+</style>
+
+<style>
+  /* ============ Pantallas grandes, visor y animaciones al desplazarse ============ */
+  @media (min-width: 960px) {
+    .dest-fila.ancha { grid-template-columns: 1fr; gap: 34px; }
+    .dest-fila.ancha .dest-texto { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 64px; align-items: start; }
+    .dest-fila.ancha .dest-num, .dest-fila.ancha h3 { grid-column: 1; }
+    .dest-fila.ancha p { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; max-width: none; }
+    .dest-fila.ancha .dest-puntos { grid-column: 2; }
+  }
+  .dest-fila.ancha .shot { border-radius: 18px; }
+  .shot img { image-rendering: auto; }
+
+  .visor { position: relative; z-index: 1; }
+  .visor-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 22px; }
+  .visor-tab { font: 700 15px/1 var(--font-body); color: var(--ink-300); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 12px 18px; transition: background .2s, color .2s, border-color .2s; }
+  .visor-tab:hover { color: #fff; border-color: rgba(255,255,255,0.28); }
+  .visor-tab.activo { color: #fff; background: rgba(225,6,0,0.18); border-color: rgba(225,6,0,0.55); }
+  .visor-tab:focus-visible { outline: 2px solid var(--electric-400); outline-offset: 3px; }
+  .visor-panel { margin: 0; }
+  .visor-panel figcaption { margin-top: 14px; color: var(--ink-300); font-size: 16px; text-align: center; }
+  .visor-panel figcaption b { color: #fff; margin-right: 6px; }
+  .visor-panel .galeria-item, .visor-panel > figure { margin: 0; }
+  /* Sin JS se ven las tres una tras otra; con JS, una a la vez con fundido */
+  html:not(.js) .visor-tabs { display: none; }
+  html:not(.js) .visor-paneles { display: grid; gap: 40px; }
+  html.js .visor-paneles { display: grid; }
+  html.js .visor-panel { grid-area: 1 / 1; opacity: 0; visibility: hidden; transform: translateY(10px) scale(.985); transition: opacity .45s ease, transform .55s cubic-bezier(.2,.7,.2,1), visibility 0s .45s; }
+  html.js .visor-panel.activo { opacity: 1; visibility: visible; transform: none; transition: opacity .45s ease, transform .55s cubic-bezier(.2,.7,.2,1), visibility 0s; }
+
+  /* Aparecer al desplazarse (solo con JS y sin «reducir movimiento») */
+  html.anim .rv { opacity: 0; transform: translateY(32px); transition: opacity .8s ease, transform .9s cubic-bezier(.16,.8,.24,1); transition-delay: calc(var(--i, 0) * 90ms); }
+  html.anim .rv.visible { opacity: 1; transform: none; }
+  html.anim .rv-pantalla { opacity: 0; transform: perspective(1600px) rotateX(14deg) translateY(60px) scale(.94); transform-origin: 50% 100%; transition: opacity .9s ease, transform 1.2s cubic-bezier(.16,.8,.24,1); }
+  html.anim .rv-pantalla.visible { opacity: 1; transform: none; }
+  html.anim .rv-izq { opacity: 0; transform: translateX(-60px) rotate(-4deg); transition: opacity .9s ease, transform 1.1s cubic-bezier(.16,.8,.24,1); }
+  html.anim .rv-der { opacity: 0; transform: translateX(60px) rotate(4deg); transition: opacity .9s ease .15s, transform 1.1s cubic-bezier(.16,.8,.24,1) .15s; }
+  html.anim .rv-izq.visible, html.anim .rv-der.visible { opacity: 1; transform: none; }
+  /* Brillo que recorre la pantalla al aparecer */
+  .shot { position: relative; }
+  html.anim .rv-pantalla.visible .shot::after, html.anim .rv-pantalla.visible.shot::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.10) 50%, transparent 65%);
+    transform: translateX(-100%); animation: barrido 1.6s .5s ease-out forwards;
+  }
+  @keyframes barrido { to { transform: translateX(100%); } }
+  /* Los teléfonos flotan suavemente */
+  html.anim .telefono.visible .phone { animation: flotar 6s ease-in-out 1.2s infinite; }
+  html.anim .telefono.rv-der.visible .phone { animation-delay: 2.2s; }
+  @keyframes flotar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  /* Con «reducir movimiento» (Windows: Efectos de animación apagados) nada se mueve: solo aparece con un fundido */
+  @media (prefers-reduced-motion: reduce) {
+    html.anim .rv, html.anim .rv-pantalla, html.anim .rv-izq, html.anim .rv-der { transform: translateY(14px) !important; transition: opacity .7s ease, transform .8s ease !important; }
+    html.anim .rv.visible, html.anim .rv-pantalla.visible, html.anim .rv-izq.visible, html.anim .rv-der.visible { transform: none !important; }
+    .telefono .phone, .shot::after { animation: none !important; }
+  }
+
+  /* Escena de bienvenida en pantallas bajas (laptops) */
+  @media (max-height: 820px) {
+    .intro-titular { font-size: clamp(30px, min(5.6vw, 5.2vh), 60px); }
+    .intro-plano { width: min(92vw, calc(38vh * 1200 / 870)); width: min(92vw, calc(38svh * 1200 / 870), 640px); }
+    .intro-escenario { gap: clamp(10px, 1.8vh, 20px); }
+    .intro-pildora { padding: 6px 12px 6px 8px; font-size: 14px; }
+  }
+</style>
+
+<style>
+  /* Página 10 % más grande en computadora (la escena de bienvenida ya se ajusta sola a la pantalla) */
+  @media (min-width: 900px) {
+    .navbar, .section, body > footer { zoom: 1.1; }
+    :root { --nav-h: 80px; }
+    #contenido { scroll-margin-top: 73px; } /* dentro de la sección con zoom: 73 × 1.1 ≈ 80 */
+  }
+</style>
+
+<style>
+  /* ============ Demo: colores del logotipo y texto en blanco ============ */
+  .demo-box {
+    max-width: 760px; padding: 48px 36px 40px; border-radius: 24px; overflow: hidden;
+    background:
+      radial-gradient(120% 80% at 50% 0%, rgba(225,6,0,0.34), rgba(225,6,0,0.08) 45%, transparent 70%),
+      linear-gradient(180deg, #141416, #0b0b0c);
+    border: 1px solid rgba(255,77,69,0.45);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset, 0 30px 80px -30px rgba(225,6,0,0.55), 0 0 60px -20px rgba(225,6,0,0.4);
+  }
+  .demo-box::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: linear-gradient(90deg, transparent, #e10600 20%, #ff4d45 50%, #e10600 80%, transparent); }
+  .demo-logo { display: block; width: 190px; height: auto; margin: -6px auto 10px; filter: drop-shadow(0 8px 24px rgba(225,6,0,0.35)); }
+  .demo-etiqueta { display: inline-block; font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: #fff; background: #e10600; padding: 7px 14px; border-radius: 999px; box-shadow: 0 6px 18px rgba(225,6,0,0.45); }
+  .demo-box h2 { margin-top: 16px; font-size: 44px; line-height: 1.05; color: #fff; }
+  .demo-rojo { color: #ff2a1f; text-shadow: 0 0 28px rgba(255,42,31,0.45); }
+  .demo-box > p { color: #f2f2f4; font-size: 18px; max-width: 520px; }
+  .demo-form { max-width: 520px; gap: 14px; }
+  .demo-form input { background: #0b0b0c; border: 1.5px solid rgba(255,255,255,0.22); border-radius: 12px; padding: 15px 18px; font-size: 16px; font-weight: 500; color: #fff; }
+  .demo-form input::placeholder { color: #c4c4ca; opacity: 1; }
+  .demo-form input:hover { border-color: rgba(255,255,255,0.38); }
+  .demo-form input:focus { border-color: #ff2a1f; box-shadow: 0 0 0 4px rgba(225,6,0,0.25); background: #121214; }
+  .demo-form .btn { margin-top: 4px; padding: 17px 20px; font-size: 16px; letter-spacing: .08em; color: #fff; background: linear-gradient(180deg, #ff2a1f, #c40000); border: 1px solid rgba(255,255,255,0.25); box-shadow: 0 12px 30px -8px rgba(225,6,0,0.7); }
+  .demo-form .btn:hover { background: linear-gradient(180deg, #ff4d45, #e10600); transform: translateY(-1px); }
+  .demo-form .btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  .demo-confianza { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px; margin-top: 22px; }
+  .demo-confianza li { display: inline-flex; align-items: center; gap: 7px; font-size: 14.5px; font-weight: 600; color: #fff; }
+  .demo-confianza svg { width: 17px; height: 17px; fill: none; stroke: #ff2a1f; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .demo-msg { font-size: 16px; }
+  @media (max-width: 640px) { .demo-box { padding: 36px 18px 30px; } .demo-box h2 { font-size: 34px; } .demo-logo { width: 150px; } }
 </style>
 </head>
 <body>
@@ -337,8 +627,83 @@
   </div>
 </header>
 
+<!-- ============ ESCENA DE BIENVENIDA ============ -->
+<section class="intro" id="inicio" aria-labelledby="intro-titular">
+  <div class="intro-escenario">
+    <a href="#contenido" class="intro-omitir" data-intro-omitir>Omitir introducción</a>
+
+    <p class="intro-eyebrow">ALDM AutoCore · Ingeniería de software</p>
+    <h2 class="intro-titular" id="intro-titular">
+      <span class="palabra">Ingeniería</span> <span class="palabra">de</span> <span class="palabra">software</span>
+      <span class="palabra acento">para</span> <span class="palabra acento">tu</span> <span class="palabra acento">taller</span>
+    </h2>
+
+    <div class="intro-plano">
+      <div class="intro-resplandor" aria-hidden="true"></div>
+      <!-- Trazos de construcción. Mismo sistema de coordenadas que el logotipo
+           (recorte 1200 × 870 del original de 1254 px, desde x 30 · y 150).
+           Centros y radios medidos sobre el original: las cruces caen en el centro
+           de cada anillo y las guías horizontales son tangentes a «ALDM». -->
+      <svg class="intro-trazos" viewBox="30 150 1200 870" aria-hidden="true" focusable="false">
+        <g class="intro-trazos-capa">
+          <!-- Guías horizontales: altura de mayúsculas y línea base de ALDM -->
+          <path class="linea guia" data-d="0.05" pathLength="1" d="M -260 648.5 H 1520" />
+          <path class="linea guia" data-d="0.15" pathLength="1" d="M -260 814.5 H 1520" />
+          <!-- Guía a 45° por el centro del engrane -->
+          <path class="linea guia" data-d="0.35" pathLength="1" d="M 73 816 L 769 120" />
+
+          <!-- Exteriores, de izquierda a derecha: engrane (puntas), arco del techo, cabeza de la llave, nube -->
+          <path class="linea ext" data-d="0"    pathLength="1" d="M 103 486 A 300 300 0 1 1 703 486 A 300 300 0 1 1 103 486" />
+          <path class="linea ext" data-d="0.12" pathLength="1" d="M 196.7 632.8 A 451.4 451.4 0 1 1 1099.5 632.8 A 451.4 451.4 0 1 1 196.7 632.8" />
+          <path class="linea ext" data-d="0.24" pathLength="1" d="M 698.7 563 A 64.3 64.3 0 1 1 827.3 563 A 64.3 64.3 0 1 1 698.7 563" />
+          <path class="linea ext" data-d="0.36" pathLength="1" d="M 917.2 357.75 A 99.8 99.8 0 1 1 1116.8 357.75 A 99.8 99.8 0 1 1 917.2 357.75" />
+
+          <!-- Interiores: raíz del engrane, arco plateado, boca de la llave, arco exterior del wifi -->
+          <path class="linea int" data-d="0.25" pathLength="1" d="M 154 486 A 249 249 0 1 1 652 486 A 249 249 0 1 1 154 486" />
+          <path class="linea int" data-d="0.35" pathLength="1" d="M 269.5 615.1 A 401.2 401.2 0 1 1 1071.9 615.1 A 401.2 401.2 0 1 1 269.5 615.1" />
+          <path class="linea int" data-d="0.45" pathLength="1" d="M 739.6 559.5 A 35.9 35.9 0 1 1 811.4 559.5 A 35.9 35.9 0 1 1 739.6 559.5" />
+          <path class="linea int" data-d="0.55" pathLength="1" d="M 939.1 386.5 A 76.4 76.4 0 1 1 1091.9 386.5 A 76.4 76.4 0 1 1 939.1 386.5" />
+
+          <!-- Cruces de centro (segunda mitad del tramo) -->
+          <g class="cruz-g">
+            <path class="cruz" d="M 385 486 H 421 M 403 468 V 504" />
+            <path class="cruz" d="M 630.1 632.8 H 666.1 M 648.1 614.8 V 650.8" />
+            <path class="cruz" d="M 656.7 615.1 H 684.7 M 670.7 601.1 V 629.1" />
+            <path class="cruz" d="M 751 563 H 775 M 763 551 V 575" />
+            <path class="cruz" d="M 765.5 559.5 H 785.5 M 775.5 549.5 V 569.5" />
+            <path class="cruz" d="M 1003 357.75 H 1031 M 1017 343.75 V 371.75" />
+            <path class="cruz" d="M 1003.5 386.5 H 1027.5 M 1015.5 374.5 V 398.5" />
+            <text class="cota" x="728" y="160">45°</text>
+            <text class="cota" x="1132" y="640">ALDM · 166</text>
+          </g>
+        </g>
+      </svg>
+      <picture class="intro-logo">
+        <source srcset="logo-aldm-trazo.webp" type="image/webp" />
+        <img src="logo-aldm-trazo.png" width="1200" height="870" alt="ALDM AutoCore — Administración de talleres mecánicos" decoding="async" />
+      </picture>
+    </div>
+
+    <div class="intro-leyendas">
+      <p class="intro-leyenda-1" aria-hidden="true">Automotive Logic &amp; Data Management</p>
+      <p class="intro-leyenda-2">La era del papel terminó, todo en la palma de tu mano.</p>
+    </div>
+
+    <ul class="intro-pildoras" aria-label="Lo que incluye">
+      <li class="intro-pildora"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="aro" cx="12" cy="12" r="10.5"/><circle class="relleno" cx="12" cy="12" r="10.5"/><path class="palomita" pathLength="1" d="M7 12.4l3.2 3.2L17.2 8.6"/></svg>Órdenes de servicio</li>
+      <li class="intro-pildora"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="aro" cx="12" cy="12" r="10.5"/><circle class="relleno" cx="12" cy="12" r="10.5"/><path class="palomita" pathLength="1" d="M7 12.4l3.2 3.2L17.2 8.6"/></svg>Inventario</li>
+      <li class="intro-pildora"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="aro" cx="12" cy="12" r="10.5"/><circle class="relleno" cx="12" cy="12" r="10.5"/><path class="palomita" pathLength="1" d="M7 12.4l3.2 3.2L17.2 8.6"/></svg>Cobros y notas</li>
+      <li class="intro-pildora"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="aro" cx="12" cy="12" r="10.5"/><circle class="relleno" cx="12" cy="12" r="10.5"/><path class="palomita" pathLength="1" d="M7 12.4l3.2 3.2L17.2 8.6"/></svg>App para tu cliente</li>
+    </ul>
+
+    <p class="intro-aviso" aria-hidden="true">Desplácese para continuar
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </p>
+  </div>
+</section>
+
 <!-- ============ HERO ============ -->
-<section class="section hero bg-grid" style="border-top:none">
+<section class="section hero bg-grid" id="contenido" tabindex="-1" style="border-top:none">
   <div class="glow" style="top:-260px; left:50%; transform:translateX(-50%); width:900px; height:900px; background:rgba(225,6,0,0.18);"></div>
   <div class="glow" style="bottom:-80px; right:-80px; width:460px; height:460px; background:rgba(255,68,56,0.1);"></div>
 
@@ -371,49 +736,171 @@
           <span class="mockup-dot" style="background:#34d39999"></span>
           <span class="mockup-url">app.aldmautocore.com</span>
         </div>
-        <div class="mockup-body">
-          <div class="mockup-kpis">
-            <div class="mockup-kpi">
-              <div class="mockup-kpi-label">Órdenes abiertas</div>
-              <div class="mockup-kpi-value">18</div>
-            </div>
-            <div class="mockup-kpi">
-              <div class="mockup-kpi-label">Cobrado hoy</div>
-              <div class="mockup-kpi-value" style="color:var(--electric-400)">$14,320</div>
-            </div>
-            <div class="mockup-kpi">
-              <div class="mockup-kpi-label">Stock crítico</div>
-              <div class="mockup-kpi-value" style="color:var(--sport-500)">3</div>
-            </div>
+        <img class="shot-img" src="capturas/panel-1200.webp" srcset="capturas/panel-1200.webp 1200w, capturas/panel.webp 2320w" sizes="(min-width: 1024px) 560px, 100vw" width="2320" height="1800" alt="Panel general de ALDM AutoCore: órdenes abiertas, por cobrar y gráficas del mes" decoding="async" />
+      </div>
+      <p class="shot-nota">Pantalla real del sistema · datos de ejemplo</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MÓDULOS DESTACADOS ============ -->
+<section id="destacados" class="section">
+  <div class="glow" style="top:120px; right:-160px; width:520px; height:520px; background:rgba(225,6,0,0.10);"></div>
+  <div class="container" style="position:relative; z-index:1;">
+    <div class="section-head">
+      <span class="eyebrow blue">Los que más vas a usar</span>
+      <h2>Cinco módulos que ordenan tu día</h2>
+      <p>Pantallas reales del sistema con datos de ejemplo. Lo tuyo se ve igual, con tus clientes y tus números.</p>
+    </div>
+    <div class="dest-lista">
+      <article class="dest-fila ancha" id="orden-servicio">
+        <div class="dest-texto">
+          <span class="dest-num">01 · Orden de servicio</span>
+          <h3>Abres la orden en segundos y todo queda ahí</h3>
+          <p>Cliente, vehículo, refacciones, mano de obra, abonos y el avance del carro en una sola pantalla. El total y el saldo se calculan solos.</p>
+          <ul class="dest-puntos">
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Etapas: recibido, diagnóstico, en reparación, listo para entrega</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Abonos, pago mixto y nota en PDF o por WhatsApp</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Fotos de la revisión de entrada y chat con el cliente</span></li>
+          </ul>
+        </div>
+        <div class="dest-visual">
+          <figure class="shot">
+          <div class="mockup-topbar">
+            <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+            <span class="mockup-dot" style="background:#eab30899"></span>
+            <span class="mockup-dot" style="background:#34d39999"></span>
+            <span class="mockup-url">app.aldmautocore.com</span>
           </div>
-          <div class="mockup-list">
-            <div class="mockup-row">
-              <span class="mockup-bar" style="background:var(--electric-500)"></span>
-              <div>
-                <div class="mockup-row-title">Nissan Versa · Placas HXR-812</div>
-                <div class="mockup-row-sub">Diagnóstico · Juan P.</div>
+          <img src="capturas/orden-1200.webp" srcset="capturas/orden-1200.webp 1200w, capturas/orden.webp 2320w" sizes="(min-width: 1240px) 1180px, 96vw" width="2320" height="1800" alt="Orden de servicio #106 con cliente, vehículo, opciones de la nota y estatus del servicio" loading="lazy" decoding="async" />
+        </figure>
+        </div>
+      </article>
+      <article class="dest-fila ancha" id="clientes">
+        <div class="dest-texto">
+          <span class="dest-num">02 · Clientes</span>
+          <h3>Tu cartera de clientes, sin libreta</h3>
+          <p>Encuentras a cualquiera por nombre, teléfono o correo, aunque lo escribas sin acentos. Desde su ficha ves sus carros y sus órdenes.</p>
+          <ul class="dest-puntos">
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Ficha con teléfonos, correo y datos para factura</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Invitación a la app con un código de activación</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Todo su historial de servicios en un clic</span></li>
+          </ul>
+        </div>
+        <div class="dest-visual">
+          <figure class="shot">
+          <div class="mockup-topbar">
+            <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+            <span class="mockup-dot" style="background:#eab30899"></span>
+            <span class="mockup-dot" style="background:#34d39999"></span>
+            <span class="mockup-url">app.aldmautocore.com</span>
+          </div>
+          <img src="capturas/clientes-1200.webp" srcset="capturas/clientes-1200.webp 1200w, capturas/clientes.webp 2320w" sizes="(min-width: 1240px) 1180px, 96vw" width="2320" height="1800" alt="Lista de clientes con buscador, cuenta de cliente y acciones rápidas" loading="lazy" decoding="async" />
+        </figure>
+        </div>
+      </article>
+      <article class="dest-fila ancha" id="vehiculos">
+        <div class="dest-texto">
+          <span class="dest-num">03 · Vehículos</span>
+          <h3>El historial de cada carro, siempre a la mano</h3>
+          <p>Marca, modelo, año, placas, kilometraje y VIN. Filtras por marca y llegas a todo lo que se le ha hecho al carro.</p>
+          <ul class="dest-puntos">
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Kilometraje y próximo servicio sugerido</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Fotos del vehículo y su dueño ligado</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Si ya tiene una orden abierta, el sistema te avisa</span></li>
+          </ul>
+        </div>
+        <div class="dest-visual">
+          <figure class="shot">
+          <div class="mockup-topbar">
+            <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+            <span class="mockup-dot" style="background:#eab30899"></span>
+            <span class="mockup-dot" style="background:#34d39999"></span>
+            <span class="mockup-url">app.aldmautocore.com</span>
+          </div>
+          <img src="capturas/vehiculos-1200.webp" srcset="capturas/vehiculos-1200.webp 1200w, capturas/vehiculos.webp 2320w" sizes="(min-width: 1240px) 1180px, 96vw" width="2320" height="1800" alt="Lista de vehículos filtrable por marca con placas, dueño y kilometraje" loading="lazy" decoding="async" />
+        </figure>
+        </div>
+      </article>
+      <article class="dest-fila ancha" id="inventario">
+        <div class="dest-texto">
+          <span class="dest-num">04 · Inventario</span>
+          <h3>Sabes qué tienes, dónde está y cuándo se acaba</h3>
+          <p>Cada refacción con su stock, precio de venta y ubicación en el anaquel. El color te dice cuándo resurtir.</p>
+          <ul class="dest-puntos">
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Avisos de poco stock antes de quedarte sin pieza</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Se descuenta solo al usarla en una orden</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Compatibilidad con marcas y modelos de vehículo</span></li>
+          </ul>
+        </div>
+        <div class="dest-visual">
+          <figure class="shot">
+          <div class="mockup-topbar">
+            <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+            <span class="mockup-dot" style="background:#eab30899"></span>
+            <span class="mockup-dot" style="background:#34d39999"></span>
+            <span class="mockup-url">app.aldmautocore.com</span>
+          </div>
+          <img src="capturas/inventario-1200.webp" srcset="capturas/inventario-1200.webp 1200w, capturas/inventario.webp 2320w" sizes="(min-width: 1240px) 1180px, 96vw" width="2320" height="1800" alt="Inventario por categoría con stock, precio de venta y ubicación" loading="lazy" decoding="async" />
+        </figure>
+        </div>
+      </article>
+      <article class="dest-fila" id="app">
+        <div class="dest-texto">
+          <span class="dest-num">05 · App móvil</span>
+          <h3>Tu taller en el celular, y el de tu cliente también</h3>
+          <p>Tú y tu equipo capturan desde el celular, parados junto al carro. Tu cliente ve cómo va su orden sin tener que llamarte.</p>
+          <ul class="dest-puntos">
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Notificación al cliente en cada cambio de estatus</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Fotos de la falla subidas directo a la orden</span></li>
+            <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Funciona aunque se vaya el internet y se sincroniza después</span></li>
+          </ul>
+        </div>
+        <div class="dest-visual">
+          <div class="telefonos">
+            <figure class="telefono">
+              <div class="phone phone-app" role="img" aria-label="App del taller: panel con nueva orden, indicadores y órdenes abiertas">
+              <div class="phone-notch"><span></span></div>
+              <div class="papp">
+                <div class="papp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><b>PANEL</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+                <div class="papp-hero"><span class="papp-hero-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span><span><b>Nueva orden de servicio</b><small>Toca para abrir una orden rápida</small></span></div>
+                <div class="papp-kpis">
+                  <div><small>Órdenes abiertas</small><b>7</b></div>
+                  <div><small>Por cobrar</small><b>$6,780</b></div>
+                  <div><small>Clientes</small><b>8</b></div>
+                  <div><small>Poco stock</small><b class="rojo">4</b></div>
+                </div>
+                <div class="papp-sub">Órdenes abiertas</div>
+                <div class="papp-orden"><span class="papp-barra" style="background:#e8251b"></span><span><b>#106 · Nissan Versa</b><small>Afinación mayor</small></span><i>En reparación</i></div>
+                <div class="papp-orden"><span class="papp-barra" style="background:#f0a838"></span><span><b>#107 · VW Jetta</b><small>Balatas y rectificado</small></span><i class="ambar">Esperando refacciones</i></div>
+                <div class="papp-orden"><span class="papp-barra" style="background:#3fd690"></span><span><b>#110 · Ford Ranger</b><small>Aceite y filtros</small></span><i class="verde">Listo para entrega</i></div>
+                <div class="papp-tabs"><span class="on">Panel</span><span>Clientes</span><span class="papp-fab">+</span><span>Servicios</span><span>Más</span></div>
               </div>
-              <span class="mockup-badge" style="background:rgba(225,6,0,0.15); color:var(--electric-300)">En proceso</span>
             </div>
-            <div class="mockup-row">
-              <span class="mockup-bar" style="background:var(--sport-500)"></span>
-              <div>
-                <div class="mockup-row-title">VW Jetta · Placas GPT-330</div>
-                <div class="mockup-row-sub">Frenos y suspensión · Marco R.</div>
+              <figcaption>App del taller</figcaption>
+            </figure>
+            <figure class="telefono">
+              <div class="phone" role="img" aria-label="App del cliente: seguimiento de su orden paso a paso">
+              <div class="phone-notch"><span></span></div>
+              <div class="phone-body">
+                <div class="phone-title">
+                  <div class="order">TU ORDEN #106</div>
+                  <div class="car">Nissan Versa 2019 · GTO-482-K</div>
+                </div>
+                <div class="phone-steps">
+                  <div class="phone-step"><span class="dot done"></span><span class="phone-step-label">Recibido</span><span class="phone-step-time">9:12 am</span></div>
+                  <div class="phone-step"><span class="dot done"></span><span class="phone-step-label">Diagnóstico completado</span><span class="phone-step-time">9:47 am</span></div>
+                  <div class="phone-step active"><span class="dot now"></span><span class="phone-step-label">En reparación</span><span class="phone-step-time">ahora</span></div>
+                  <div class="phone-step todo"><span class="dot todo"></span><span class="phone-step-label">Listo para entrega</span></div>
+                </div>
+                <button class="phone-cta" type="button" tabindex="-1">Ver fotos del avance</button>
               </div>
-              <span class="mockup-badge" style="background:rgba(255,68,56,0.15); color:var(--sport-400)">Esperando refacción</span>
             </div>
-            <div class="mockup-row">
-              <span class="mockup-bar" style="background:var(--emerald-400)"></span>
-              <div>
-                <div class="mockup-row-title">Chevrolet Aveo · Placas LKM-045</div>
-                <div class="mockup-row-sub">Servicio mayor · Diego H.</div>
-              </div>
-              <span class="mockup-badge" style="background:rgba(52,211,153,0.15); color:var(--emerald-300)">Listo para entrega</span>
-            </div>
+              <figcaption>App de tu cliente</figcaption>
+            </figure>
           </div>
         </div>
-      </div>
+      </article>
     </div>
   </div>
 </section>
@@ -498,187 +985,51 @@
   <div class="container">
     <div class="section-head">
       <span class="eyebrow blue">Las pantallas</span>
-      <h2>Así se ve, sin maquillaje</h2>
+      <h2>Así se ve, sin grasa</h2>
       <p>Son las pantallas del sistema con datos de ejemplo. Lo tuyo se ve igual, con tus clientes y tus números.</p>
     </div>
-    <div class="screens-grid">
-      <div class="screen-card">
-        <div class="mockup-topbar">
-          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
-          <span class="mockup-dot" style="background:#eab30899"></span>
-          <span class="mockup-dot" style="background:#34d39999"></span>
-          <span class="screen-label">Panel · Hoy</span>
-        </div>
-        <div class="screen-body">
-          <div class="screen-stats">
-            <div class="screen-stat"><div class="screen-stat-label">Órdenes abiertas</div><div class="screen-stat-value">18</div></div><div class="screen-stat"><div class="screen-stat-label">Cobrado hoy</div><div class="screen-stat-value" style=color:var(--emerald-400)>$14,320</div></div><div class="screen-stat"><div class="screen-stat-label">Stock bajo</div><div class="screen-stat-value" style=color:var(--sport-500)>3</div></div>
-          </div>
-          <div class="chart-wrap">
-            <div class="chart-head"><h4>Cobrado por día</h4><span>▲ 18% vs. semana pasada</span></div>
-            <div class="chart-bars"><div class="chart-col"><div class="chart-bar" style="height:38%"></div><span class="chart-day">L</span></div>
-<div class="chart-col"><div class="chart-bar" style="height:55%"></div><span class="chart-day">M</span></div>
-<div class="chart-col"><div class="chart-bar" style="height:47%"></div><span class="chart-day">M</span></div>
-<div class="chart-col"><div class="chart-bar" style="height:70%"></div><span class="chart-day">J</span></div>
-<div class="chart-col"><div class="chart-bar peak" style="height:100%"></div><span class="chart-day">V</span></div>
-<div class="chart-col"><div class="chart-bar" style="height:82%"></div><span class="chart-day">S</span></div>
-<div class="chart-col"><div class="chart-bar" style="height:24%"></div><span class="chart-day">D</span></div></div>
-          </div>
-          <div class="table-wrap-mock"><table class="table-mock">
-            <thead><tr><th>Ya les toca servicio</th><th>Último servicio</th><th>Teléfono</th></tr></thead>
-            <tbody>
-              <tr><td class="strong">Rosa Méndez · Aveo</td><td>Hace 6 meses</td><td>55 1234 8890</td></tr>
-              <tr><td class="strong">Luis Ortega · Versa</td><td>Hace 5 meses</td><td>33 4821 0075</td></tr>
-            </tbody></table></div>
-        </div>
+    <div class="visor" data-visor>
+      <div class="visor-tabs" role="tablist" aria-label="Pantallas del sistema">
+        <button type="button" role="tab" class="visor-tab activo" id="tab-visor-ordenes" aria-controls="visor-ordenes" aria-selected="true">Órdenes de servicio</button>
+        <button type="button" role="tab" class="visor-tab" id="tab-visor-costos" aria-controls="visor-costos" aria-selected="false" tabindex="-1">Resumen de costos</button>
+        <button type="button" role="tab" class="visor-tab" id="tab-visor-refacciones" aria-controls="visor-refacciones" aria-selected="false" tabindex="-1">Catálogo de refacciones</button>
       </div>
-      <div class="screen-card">
-        <div class="mockup-topbar">
-          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
-          <span class="mockup-dot" style="background:#eab30899"></span>
-          <span class="mockup-dot" style="background:#34d39999"></span>
-          <span class="screen-label">Órdenes de servicio</span>
-        </div>
-        <div class="screen-body">
-          <div class="app-main-head"><h4>Órdenes de hoy</h4><span class="app-search">🔍 Buscar por placas o cliente…</span></div>
-          <div class="table-wrap-mock"><table class="table-mock">
-            <thead><tr><th>Carro</th><th>Mecánico</th><th>Estatus</th><th>Total</th></tr></thead>
-            <tbody>
-              <tr><td class="strong">Nissan Versa · HXR-812</td><td>Juan P.</td><td><span class="status-pill" style="background:rgba(225,6,0,0.15); color:var(--electric-300)">En proceso</span></td><td>$2,150</td></tr>
-              <tr><td class="strong">VW Jetta · GPT-330</td><td>Marco R.</td><td><span class="status-pill" style="background:rgba(255,68,56,0.15); color:var(--sport-400)">Esperando refacción</span></td><td>$3,480</td></tr>
-              <tr><td class="strong">Chevrolet Aveo · LKM-045</td><td>Diego H.</td><td><span class="status-pill" style="background:rgba(52,211,153,0.15); color:var(--emerald-300)">Listo para entrega</span></td><td>$1,920</td></tr>
-              <tr><td class="strong">Kia Rio · MXP-221</td><td>Juan P.</td><td><span class="status-pill" style="background:rgba(234,179,8,0.15); color:#eab308">Diagnóstico</span></td><td>—</td></tr>
-              <tr><td class="strong">Ford Fiesta · TRN-908</td><td>Marco R.</td><td><span class="status-pill" style="background:rgba(52,211,153,0.15); color:var(--emerald-300)">Autorizada por el cliente</span></td><td>$1,240</td></tr>
-            </tbody></table></div>
-        </div>
-      </div>
-      <div class="screen-card">
-        <div class="mockup-topbar">
-          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
-          <span class="mockup-dot" style="background:#eab30899"></span>
-          <span class="mockup-dot" style="background:#34d39999"></span>
-          <span class="screen-label">Cotización #0142 · VW Jetta</span>
-        </div>
-        <div class="screen-body">
-          <div class="table-wrap-mock"><table class="table-mock">
-            <thead><tr><th>Concepto</th><th>Cant.</th><th>Importe</th></tr></thead>
-            <tbody>
-              <tr><td class="strong">Balatas delanteras (cerámica)</td><td>1</td><td>$980</td></tr>
-              <tr><td class="strong">Rectificado de discos</td><td>2</td><td>$600</td></tr>
-              <tr><td class="strong">Mano de obra · frenos</td><td>1</td><td>$450</td></tr>
-              <tr><td class="strong">Cambio de líquido de frenos</td><td>1</td><td>$320</td></tr>
-            </tbody></table></div>
-          <div class="screen-stats" style="margin-top:14px">
-            <div class="screen-stat"><div class="screen-stat-label">Subtotal</div><div class="screen-stat-value">$2,350</div></div><div class="screen-stat"><div class="screen-stat-label">IVA 16%</div><div class="screen-stat-value">$376</div></div><div class="screen-stat"><div class="screen-stat-label">Total</div><div class="screen-stat-value" style=color:var(--electric-400)>$2,726</div></div>
+      <div class="visor-paneles">
+        <div class="visor-panel activo" id="visor-ordenes" role="tabpanel" aria-labelledby="tab-visor-ordenes">
+        <figure class="shot">
+          <div class="mockup-topbar">
+            <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+            <span class="mockup-dot" style="background:#eab30899"></span>
+            <span class="mockup-dot" style="background:#34d39999"></span>
+            <span class="mockup-url">app.aldmautocore.com</span>
           </div>
-          <div class="pay-row"><span>El cliente recibe un código para autorizar</span><span class="status-pill" style="background:rgba(234,179,8,0.15); color:#eab308">Pendiente de autorizar</span></div>
+          <img src="capturas/ordenes-1200.webp" srcset="capturas/ordenes-1200.webp 1200w, capturas/ordenes.webp 2320w" sizes="(min-width: 1240px) 1180px, 96vw" width="2320" height="1800" alt="Lista de órdenes de servicio con estatus, saldo y filtros" loading="lazy" decoding="async" />
+        </figure>
+        <figcaption><b>Órdenes de servicio</b> Todas tus órdenes con su etapa, lo cobrado y lo que falta por cobrar.</figcaption>
         </div>
-      </div>
-      <div class="screen-card">
-        <div class="mockup-topbar">
-          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
-          <span class="mockup-dot" style="background:#eab30899"></span>
-          <span class="mockup-dot" style="background:#34d39999"></span>
-          <span class="screen-label">Chat con el cliente · Orden #318</span>
-        </div>
-        <div class="screen-body">
-          <div class="chat-mock">
-            <div class="msg them">Buenas tardes, ¿ya quedó mi Aveo?<small>Rosa · 4:12 pm</small></div>
-            <div class="msg me">Sí, ya está listo. Le mandamos fotos del cambio de amortiguadores.<small>Taller · 4:15 pm</small></div>
-            <div class="msg photo">📷 3 fotos del avance</div>
-            <div class="msg them">¡Perfecto, paso por él a las 6!<small>Rosa · 4:16 pm</small></div>
+        <div class="visor-panel" id="visor-costos" role="tabpanel" aria-labelledby="tab-visor-costos">
+        <figure class="shot">
+          <div class="mockup-topbar">
+            <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+            <span class="mockup-dot" style="background:#eab30899"></span>
+            <span class="mockup-dot" style="background:#34d39999"></span>
+            <span class="mockup-url">app.aldmautocore.com</span>
           </div>
+          <img src="capturas/costos-1200.webp" srcset="capturas/costos-1200.webp 1200w, capturas/costos.webp 2320w" sizes="(min-width: 1240px) 1180px, 96vw" width="2320" height="860" alt="Resumen de costos de una orden: subtotal, IVA, total y saldo pendiente" loading="lazy" decoding="async" />
+        </figure>
+        <figcaption><b>Resumen de costos</b> Subtotal, IVA opcional, total y saldo de cada orden.</figcaption>
         </div>
-      </div>
-      <div class="screen-card">
-        <div class="mockup-topbar">
-          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
-          <span class="mockup-dot" style="background:#eab30899"></span>
-          <span class="mockup-dot" style="background:#34d39999"></span>
-          <span class="screen-label">Mi suscripción · Pagar en línea</span>
-        </div>
-        <div class="screen-body">
-          <div class="pay-card">
-            <div class="pay-plan">Plan Full Garage <em>· vence en 5 días</em></div>
-            <div class="pay-opt on"><span>Mensual</span><b>$1,390.84</b></div>
-            <div class="pay-opt"><span>Anual (2 meses gratis)</span><b>$14,990.00</b></div>
-            <div class="pay-btn">Ir a pagar</div>
-            <div class="pay-note">Tarjeta, OXXO o transferencia SPEI. Al aprobarse, tu plan se renueva solo.</div>
+        <div class="visor-panel" id="visor-refacciones" role="tabpanel" aria-labelledby="tab-visor-refacciones">
+        <figure class="shot">
+          <div class="mockup-topbar">
+            <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
+            <span class="mockup-dot" style="background:#eab30899"></span>
+            <span class="mockup-dot" style="background:#34d39999"></span>
+            <span class="mockup-url">app.aldmautocore.com</span>
           </div>
-        </div>
-      </div>
-      <div class="screen-card">
-        <div class="mockup-topbar">
-          <span class="mockup-dot" style="background:rgba(255,68,56,0.7)"></span>
-          <span class="mockup-dot" style="background:#eab30899"></span>
-          <span class="mockup-dot" style="background:#34d39999"></span>
-          <span class="screen-label">Súper admin · Resumen</span>
-        </div>
-        <div class="screen-body">
-          <div class="screen-stats">
-            <div class="screen-stat"><div class="screen-stat-label">Cobrado este mes</div><div class="screen-stat-value" style=color:var(--emerald-400)>$38,900</div></div><div class="screen-stat"><div class="screen-stat-label">Talleres vigentes</div><div class="screen-stat-value">12</div></div><div class="screen-stat"><div class="screen-stat-label">Por vencer</div><div class="screen-stat-value" style=color:var(--sport-500)>3</div></div>
-          </div>
-          <div class="table-wrap-mock"><table class="table-mock">
-            <thead><tr><th>Taller</th><th>Plan</th><th>Vence</th><th>Estado</th></tr></thead>
-            <tbody>
-              <tr><td class="strong">Taller Los Pinos</td><td>Full Garage</td><td>3 oct</td><td><span class="status-pill" style="background:rgba(234,179,8,0.15); color:#eab308">Por vencer</span></td></tr>
-              <tr><td class="strong">Refaccionaria El Buen Precio</td><td>Arranque</td><td>14 oct</td><td><span class="status-pill" style="background:rgba(225,6,0,0.15); color:var(--electric-300)">En prueba</span></td></tr>
-              <tr><td class="strong">Autoservicio Ramírez</td><td>Full Garage</td><td>28 nov</td><td><span class="status-pill" style="background:rgba(52,211,153,0.15); color:var(--emerald-300)">Activa</span></td></tr>
-            </tbody></table></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ APP MÓVIL ============ -->
-<section id="app" class="section">
-  <div class="glow" style="top:50%; left:-120px; transform:translateY(-50%); width:460px; height:460px; background:rgba(225,6,0,0.12);"></div>
-  <div class="container app-grid">
-    <div class="app-col-text">
-      <span class="eyebrow blue">En el celular</span>
-      <h2 style="font-size:38px; margin-top:14px;">Tu taller en el celular, y el de tu cliente también</h2>
-      <p class="hero-lead" style="margin-top:18px;">Tú y tu equipo capturan desde el celular, sin correr a la compu. Tu cliente ve cómo va su carro sin tener que llamarte.</p>
-
-      <div class="app-points">
-        <div class="app-point">
-          <div class="app-point-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#e10600" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
-          <div>
-            <h4>Notificaciones automáticas al cliente</h4>
-            <p>Cada cambio de estatus le llega por notificación push — sin que tú tengas que escribirle.</p>
-          </div>
-        </div>
-        <div class="app-point">
-          <div class="app-point-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#e10600" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-          <div>
-            <h4>Evidencia fotográfica de fallas</h4>
-            <p>Toma fotos del daño real y súbelas a la orden — se acaban los reclamos de "eso no estaba roto".</p>
-          </div>
-        </div>
-        <div class="app-point">
-          <div class="app-point-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#e10600" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg></div>
-          <div>
-            <h4>Consulta a pie de vehículo</h4>
-            <p>Revisa historial, refacciones compatibles y precios parado junto al auto, sin ir y venir al mostrador.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="app-col-phone phone-wrap">
-      <div class="phone">
-        <div class="phone-notch"><span></span></div>
-        <div class="phone-body">
-          <div class="phone-title">
-            <div class="order">TU ORDEN #1042</div>
-            <div class="car">Nissan Versa 2019 · HXR-812</div>
-          </div>
-          <div class="phone-steps">
-            <div class="phone-step"><span class="dot done"></span><span class="phone-step-label">Recibido</span><span class="phone-step-time">9:12 am</span></div>
-            <div class="phone-step"><span class="dot done"></span><span class="phone-step-label">Diagnóstico completado</span><span class="phone-step-time">9:47 am</span></div>
-            <div class="phone-step active"><span class="dot now"></span><span class="phone-step-label">En reparación</span><span class="phone-step-time">ahora</span></div>
-            <div class="phone-step todo"><span class="dot todo"></span><span class="phone-step-label">Listo para entrega</span></div>
-          </div>
-          <button class="phone-cta">Ver fotos del avance</button>
+          <img src="capturas/refacciones-1200.webp" srcset="capturas/refacciones-1200.webp 1200w, capturas/refacciones.webp 2320w" sizes="(min-width: 1240px) 1180px, 96vw" width="2320" height="1800" alt="Catálogo de refacciones por categoría con stock y precio" loading="lazy" decoding="async" />
+        </figure>
+        <figcaption><b>Catálogo de refacciones</b> Por categoría, con stock y precio al cliente.</figcaption>
         </div>
       </div>
     </div>
@@ -690,7 +1041,7 @@
   <div class="container">
     <div class="section-head">
       <span class="eyebrow red">Para qué te sirve</span>
-      <h2>Menos desorden, más carros saliendo</h2>
+      <h2>Menos desorden, más circulación de vehículos</h2>
     </div>
     <div class="benefit-grid">
       <div class="benefit-card">
@@ -707,6 +1058,11 @@
         <div class="benefit-ico blue"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e10600" stroke-width="2"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="18" cy="8.5" r="2.3"/></svg></div>
         <h3>Lo ves desde donde estés</h3>
         <p>Revisas cómo va el día desde tu celular, y te llega un aviso cuando algo necesita tu atención.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-ico red"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ff4438" stroke-width="2"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div>
+        <h3>Tu historial te respalda</h3>
+        <p>Cada carro guarda su último servicio: qué se hizo, cuándo, con qué kilometraje y qué refacciones llevó. Si te reclaman una garantía que no te corresponde, lo demuestras en segundos.</p>
       </div>
     </div>
   </div>
@@ -775,8 +1131,10 @@
   <div class="glow" style="top:0; left:50%; transform:translateX(-50%); width:700px; height:400px; background:rgba(225,6,0,0.1);"></div>
   <div class="container">
     <div class="demo-box">
-      <h2>¿Quieres verlo funcionando?</h2>
-      <p>Déjanos tus datos y te escribimos para enseñártelo con información parecida a la de tu negocio. Son 20 minutos.</p>
+      <img class="demo-logo" src="logo-aldm-trazo.webp" width="1200" height="870" alt="ALDM AutoCore" loading="lazy" decoding="async" />
+      <span class="demo-etiqueta">Demo gratis · 20 minutos</span>
+      <h2>¿Quieres verlo <span class="demo-rojo">funcionando</span>?</h2>
+      <p>Déjanos tus datos y te escribimos para enseñártelo con información parecida a la de tu negocio.</p>
       <form id="demo-form" class="demo-form" novalidate>
         <input type="text" name="negocio" required maxlength="120" placeholder="Nombre de tu taller o refaccionaria" />
         <input type="text" name="nombre" required maxlength="120" placeholder="Tu nombre" />
@@ -788,6 +1146,11 @@
         <input type="text" name="web" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute; left:-9999px; opacity:0; height:0;" />
         <button type="submit" class="btn btn-white btn-block">Quiero mi demo</button>
       </form>
+      <ul class="demo-confianza">
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>Sin compromiso</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>Te escribimos por WhatsApp</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>Tus datos no se comparten</li>
+      </ul>
       <p id="demo-error" class="demo-msg hidden" style="color:var(--sport-400)"></p>
       <p id="demo-msg" class="demo-msg hidden">¡Listo! Ya recibimos tus datos. Te escribimos pronto.</p>
     </div>
@@ -866,6 +1229,320 @@
       .then(function () { f.classList.add('hidden'); document.getElementById('demo-msg').classList.remove('hidden'); })
       .catch(function (x) { err.textContent = x.message || 'No se pudo enviar, intenta de nuevo.'; err.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Quiero mi demo'; });
   });
+</script>
+
+<!-- Escena de bienvenida: animación con el scroll -->
+<script>
+(function () {
+  "use strict";
+  var raiz = document.documentElement;
+  var seccion = document.querySelector(".intro");
+  var escenario = seccion.querySelector(".intro-escenario");
+  var siguiente = document.getElementById("contenido");
+  var CLAVE = "aldm-intro-vista";
+  var mqMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)");
+  var mqBaja = window.matchMedia("(max-height: 560px)");
+  var terminarYa = function () {};
+
+  // «Omitir introducción» funciona en todo momento (también en el estado final):
+  // lleva a la siguiente sección y le pasa el foco.
+  seccion.querySelector("[data-intro-omitir]").addEventListener("click", function (ev) {
+    ev.preventDefault(); // sin JS el enlace #contenido hace lo mismo
+    terminarYa();
+    siguiente.scrollIntoView({ behavior: mqMovimiento.matches ? "auto" : "smooth", block: "start" });
+    siguiente.focus({ preventScroll: true });
+  });
+
+  if (!raiz.classList.contains("intro-anim")) return; // estado final estático: no hay nada que animar
+
+  // ---------- Elementos ----------
+  var palabras = [].slice.call(seccion.querySelectorAll(".intro-titular .palabra"));
+  var lineas = [].slice.call(seccion.querySelectorAll(".intro-trazos .linea")).map(function (el) {
+    return { el: el, d: parseFloat(el.getAttribute("data-d")) || 0 };
+  });
+  var capaTrazos = seccion.querySelector(".intro-trazos-capa");
+  var cruces = seccion.querySelector(".cruz-g");
+  var logo = seccion.querySelector(".intro-logo");
+  var resplandor = seccion.querySelector(".intro-resplandor");
+  var leyenda1 = seccion.querySelector(".intro-leyenda-1");
+  var leyenda2 = seccion.querySelector(".intro-leyenda-2");
+  var pildoras = [].slice.call(seccion.querySelectorAll(".intro-pildora")).map(function (el) {
+    return { el: el, relleno: el.querySelector(".relleno"), palomita: el.querySelector(".palomita") };
+  });
+  var aviso = seccion.querySelector(".intro-aviso");
+
+  // ---------- Matemática ----------
+  function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function ss(a, b, x) { var t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); } // smoothstep
+  function r4(x) { return Math.round(x * 10000) / 10000; }
+
+  // ---------- Pintar un valor de p (solo opacity, transform y stroke-dashoffset) ----------
+  var ultimoP = -1;
+  function pintar(p) {
+    if (p === ultimoP) return;
+    ultimoP = p;
+    raiz.style.setProperty("--p", r4(p));
+
+    // 0 → 0.30: palabras del titular de 16 % a 100 %, una tras otra
+    var n = palabras.length, ancho = 0.12, paso = (0.30 - ancho) / Math.max(1, n - 1);
+    for (var i = 0; i < n; i++) palabras[i].style.opacity = r4(0.16 + 0.84 * ss(i * paso, i * paso + ancho, p));
+
+    // 0.26 → 0.52: líneas con retrasos relativos; cruces y leyenda 1 en la segunda mitad
+    var u = clamp01((p - 0.26) / 0.26), dur = 0.45;
+    for (var k = 0; k < lineas.length; k++) {
+      var L = lineas[k];
+      L.el.style.strokeDashoffset = r4(1 - ss(L.d, L.d + dur, u));
+    }
+    var sCruz = ss(0.5, 1, u);
+    cruces.style.opacity = r4(sCruz);
+    var sLey1In = ss(0.55, 1, u);
+
+    // 0.50 → 0.66: aparece el logotipo; las líneas bajan a 28 %; crece el resplandor
+    var sLogo = ss(0.50, 0.66, p);
+    logo.style.opacity = r4(sLogo);
+    logo.style.transform = "scale(" + r4(0.96 + 0.04 * sLogo) + ")";
+    capaTrazos.style.opacity = r4(1 - 0.72 * sLogo);
+    var sBrillo = Math.max(0.35 * ss(0.26, 0.52, p), sLogo);
+    resplandor.style.opacity = r4(0.25 + 0.75 * sBrillo);
+    resplandor.style.transform = "scale(" + r4(0.7 + 0.3 * sBrillo) + ")";
+
+    // 0.64 → 0.88: sale la leyenda 1, entra la 2; se marcan las píldoras una por una
+    var sLey1Out = ss(0.64, 0.71, p);
+    var vis1 = sLey1In * (1 - sLey1Out);
+    leyenda1.style.opacity = r4(vis1);
+    leyenda1.style.transform = "translateY(" + r4(8 * (1 - sLey1In) - 8 * sLey1Out) + "px)";
+    var sLey2 = ss(0.69, 0.76, p);
+    leyenda2.style.opacity = r4(sLey2);
+    leyenda2.style.transform = "translateY(" + r4(8 * (1 - sLey2)) + "px)";
+    for (var j = 0; j < pildoras.length; j++) {
+      var P = pildoras[j];
+      var a = 0.68 + j * 0.02;
+      var sIn = ss(a, a + 0.05, p);
+      P.el.style.opacity = r4(sIn);
+      P.el.style.transform = "translateY(" + r4(6 * (1 - sIn)) + "px)";
+      var c0 = 0.74 + j * 0.035;
+      var sFill = ss(c0, c0 + 0.04, p);
+      P.relleno.style.opacity = r4(sFill);
+      P.relleno.style.transform = "scale(" + r4(0.4 + 0.6 * sFill) + ")";
+      P.palomita.style.strokeDashoffset = r4(1 - ss(c0 + 0.02, c0 + 0.035, p));
+    }
+
+    // Aviso «Desplácese para continuar»: se oculta pasado p = 0.6
+    aviso.style.opacity = r4(1 - ss(0.52, 0.60, p));
+  }
+
+  // ---------- Geometría del recorrido (se lee solo al cambiar de tamaño) ----------
+  var inicioSeccion = 0, tramo = 1;
+  function medir() {
+    var r = seccion.getBoundingClientRect();
+    inicioSeccion = r.top + window.scrollY;
+    tramo = Math.max(1, seccion.offsetHeight - escenario.offsetHeight);
+  }
+
+  // ---------- Estado de la animación ----------
+  var p = 0, v = 0;                       // valor mostrado y su velocidad (por segundo)
+  var OMEGA = 12.5;                       // resorte críticamente amortiguado: 90 % en ~0.31 s
+  var VMAX = (0.88 - 0.26) / 1.25;        // líneas → logotipo → píldoras duran al menos 1.2 s
+  var t0 = null, ESPERA = 250, INTRO = 1500;
+  var completando = null;                 // { desde, t0 } cuando la persona sale antes de terminar
+  var terminada = false, finalizada = false;
+  var ultimoScroll = performance.now(), tocando = false;
+  var raf = 0, tPrev = 0;
+
+  function introEnT(ms) {
+    var t = clamp01((ms - ESPERA) / INTRO);
+    return 0.26 * (1 - Math.pow(1 - t, 3)); // ease-out
+  }
+  function objetivoScroll() {
+    var recorrido = window.scrollY - inicioSeccion;
+    return 0.26 + 0.74 * clamp01(recorrido / (0.85 * tramo));
+  }
+  function salioDeLaEscena() {
+    return window.scrollY - inicioSeccion > tramo + 2;
+  }
+
+  function cuadro(ahora) {
+    raf = 0;
+    if (finalizada) return;
+    if (t0 === null) t0 = ahora;
+    var dt = Math.min(0.1, Math.max(0, (ahora - (tPrev || ahora)) / 1000));
+    tPrev = ahora;
+
+    if (!terminada) {
+      if (completando || salioDeLaEscena()) {
+        // Completa lo que falta en 0.3 s
+        if (!completando) completando = { desde: p, t0: ahora };
+        var k = clamp01((ahora - completando.t0) / 300);
+        p = completando.desde + (1 - completando.desde) * (1 - Math.pow(1 - k, 2));
+        v = 0;
+        if (k >= 1) p = 1;
+      } else {
+        var intro = introEnT(ahora - t0);
+        var objetivo = Math.max(intro, objetivoScroll(), p); // solo avanza
+        if (objetivo <= 0.26 && intro >= p) {
+          // Mientras manda la entrada automática, se sigue su curva tal cual
+          var dtIntro = Math.max(dt, 1 / 120);
+          v = (intro - p) / dtIntro;
+          p = intro;
+        } else {
+          // Resorte críticamente amortiguado, solución exacta para el dt real
+          var e0 = p - objetivo, w = OMEGA, ex = Math.exp(-w * dt);
+          var e = (e0 + (v + w * e0) * dt) * ex;
+          var vn = (v - w * (v + w * e0) * dt) * ex;
+          var nuevo = objetivo + e;
+          if (nuevo > objetivo) { nuevo = objetivo; vn = 0; }      // sin rebote
+          if (nuevo < p) { nuevo = p; vn = Math.max(0, vn); }       // nunca retrocede
+          if (nuevo - p > VMAX * dt) { nuevo = p + VMAX * dt; }     // velocidad máxima
+          v = Math.min(Math.max(vn, 0), VMAX);
+          p = nuevo;
+          if (objetivo - p < 0.0004 && objetivo >= 1) p = 1;
+        }
+      }
+      if (p >= 1) { p = 1; terminada = true; }
+      pintar(p);
+      // En reposo (entrada automática terminada y p ya en su objetivo) no se piden más cuadros;
+      // el siguiente scroll los vuelve a pedir.
+      if (!terminada && !completando && ahora - t0 > ESPERA + INTRO && Math.abs(Math.max(objetivoScroll(), p) - p) < 1e-6) {
+        v = 0; tPrev = 0; return;
+      }
+    }
+
+    if (terminada) {
+      // Fija el estado final cuando el scroll lleva 200 ms quieto
+      if (!tocando && ahora - ultimoScroll >= 200) { finalizar(); return; }
+    }
+    pedirCuadro();
+  }
+  function pedirCuadro() { if (!raf && !finalizada) raf = requestAnimationFrame(cuadro); }
+
+  // Quita el sticky (la sección queda de una pantalla) compensando el scroll para que nada salte
+  function finalizar() {
+    if (finalizada) return;
+    finalizada = true; terminada = true; p = 1;
+    pintar(1);
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    var y = window.scrollY;
+    var dentro = Math.min(Math.max(y - inicioSeccion, 0), tramo);
+    raiz.classList.remove("intro-anim");
+    raiz.classList.add("intro-final");
+    if (dentro > 0) {
+      var sb = raiz.style.scrollBehavior;
+      raiz.style.scrollBehavior = "auto";
+      window.scrollTo(0, y - dentro);
+      raiz.style.scrollBehavior = sb;
+    }
+    try { sessionStorage.setItem(CLAVE, "1"); } catch (e) { /* sin almacenamiento */ }
+    quitarEscuchas();
+  }
+
+  // Termina ya (Omitir, teclado, menos movimiento, pantalla baja)
+  terminarYa = function () { terminada = true; finalizar(); };
+
+  // ---------- Escuchas (todas pasivas: nunca se frena el scroll) ----------
+  function alScroll() { ultimoScroll = performance.now(); pedirCuadro(); }
+  function alTocar() { tocando = true; }
+  function alSoltar() { tocando = false; ultimoScroll = performance.now(); pedirCuadro(); }
+  function alRedimensionar() { medir(); pedirCuadro(); }
+  function alEnfocar(ev) {
+    var el = ev.target;
+    if (!el || el === document.body || seccion.contains(el)) return;
+    if (seccion.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) {
+      terminarYa();
+      el.scrollIntoView({ block: "nearest" });
+    }
+  }
+  function alCambiarAncla() {
+    // Un enlace a otra sección: el navegador desplaza hasta allá y, al salir de la escena,
+    // ésta se completa en 0.3 s y se fija cuando el scroll se detiene (sin saltos).
+    var h = location.hash;
+    if (h && h !== "#inicio" && !terminada && !completando) { completando = { desde: p, t0: performance.now() }; pedirCuadro(); }
+  }
+  function alCambiarMedia() { if (mqBaja.matches) terminarYa(); }
+  var ro = ("ResizeObserver" in window) ? new ResizeObserver(alRedimensionar) : null;
+
+  function escuchar(m) {
+    window[m]("scroll", alScroll, { passive: true });
+    window[m]("touchstart", alTocar, { passive: true });
+    window[m]("touchend", alSoltar, { passive: true });
+    window[m]("touchcancel", alSoltar, { passive: true });
+    window[m]("resize", alRedimensionar, { passive: true });
+    window[m]("hashchange", alCambiarAncla);
+    document[m]("focusin", alEnfocar);
+    [mqMovimiento, mqBaja].forEach(function (mq) {
+      if (mq[m]) mq[m]("change", alCambiarMedia);                       // navegadores actuales
+      else if (m === "addEventListener") mq.addListener(alCambiarMedia); // Safari < 14
+      else mq.removeListener(alCambiarMedia);
+    });
+  }
+  function quitarEscuchas() {
+    escuchar("removeEventListener");
+    if (ro) ro.disconnect();
+  }
+
+  // ---------- Arranque ----------
+  medir();
+  escuchar("addEventListener");
+  if (ro) ro.observe(seccion);
+  pintar(0);
+  pedirCuadro();
+})();
+</script>
+
+<!-- Visor de pantallas y animaciones al desplazarse -->
+<script>
+(function () {
+  "use strict";
+  // Visor con pestañas (teclado: flechas izquierda/derecha)
+  [].forEach.call(document.querySelectorAll("[data-visor]"), function (visor) {
+    var tabs = [].slice.call(visor.querySelectorAll('[role="tab"]'));
+    function activar(k, enfocar) {
+      tabs.forEach(function (t, i) {
+        var on = i === k, panel = document.getElementById(t.getAttribute("aria-controls"));
+        t.classList.toggle("activo", on);
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.tabIndex = on ? 0 : -1;
+        panel.classList.toggle("activo", on);
+        panel.toggleAttribute("inert", !on);
+        if (on && enfocar) t.focus();
+      });
+    }
+    tabs.forEach(function (t, i) {
+      t.addEventListener("click", function () { activar(i, false); });
+      t.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowRight") { e.preventDefault(); activar((i + 1) % tabs.length, true); }
+        if (e.key === "ArrowLeft") { e.preventDefault(); activar((i - 1 + tabs.length) % tabs.length, true); }
+      });
+    });
+    activar(0, false);
+  });
+
+  // Aparecer al desplazarse
+  var raiz = document.documentElement;
+  if (!raiz.classList.contains("anim")) return;
+  function marcar(sel, clase, escalonar) {
+    [].forEach.call(document.querySelectorAll(sel), function (el, i) {
+      if (el.closest(".intro")) return;
+      el.classList.add(clase);
+      if (escalonar) el.style.setProperty("--i", String(Array.prototype.indexOf.call(el.parentNode.children, el) % 4));
+    });
+  }
+  marcar(".section-head, .dest-texto, .hero-grid > div:first-child, .visor-tabs, .demo-grid > *, .plan-note", "rv", false);
+  marcar(".feature-card, .benefit-card, .plan", "rv", true);
+  marcar(".dest-fila.ancha .dest-visual, .mockup-wrap, .visor-paneles", "rv-pantalla", false);
+  marcar(".telefono:first-child", "rv-izq", false);
+  marcar(".telefono:nth-child(2)", "rv-der", false);
+  var io = new IntersectionObserver(function (entradas) {
+    entradas.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); }
+    });
+  }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
+  [].forEach.call(document.querySelectorAll(".rv, .rv-pantalla, .rv-izq, .rv-der"), function (el) { io.observe(el); });
+  // Si algo se enfoca con el teclado, se muestra al momento
+  document.addEventListener("focusin", function (e) {
+    var el = e.target.closest && e.target.closest(".rv, .rv-pantalla, .rv-izq, .rv-der");
+    if (el) el.classList.add("visible");
+  });
+})();
 </script>
 
 </body>

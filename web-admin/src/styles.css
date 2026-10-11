@@ -151,6 +151,13 @@ button {
 .sidebar .brand .brand-texto span { color: var(--petrol-300); }
 .sidebar .brand .brand-texto { flex: 1; min-width: 0; display: flex; justify-content: center; }
 .sidebar .brand-logo { display: block; width: 100%; max-width: 170px; height: auto; border-radius: 12px; }
+/* Logo + usuario conectado en una sola tarjeta negra (el nombre ocupa el margen inferior del logo) */
+.sidebar .brand-tarjeta { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 170px; background: #000; border-radius: 12px; overflow: hidden; }
+.sidebar .brand-tarjeta .brand-logo { border-radius: 0; margin-bottom: -17%; }
+.sidebar .brand-usuario { position: relative; display: flex; flex-direction: column; align-items: center; width: 100%; padding: 0 10px 10px; text-align: center;
+  font-family: var(--font-body); text-transform: none; letter-spacing: 0; line-height: 1.25; }
+.sidebar .brand .brand-texto .brand-usuario-nombre { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; color: #f4f4f6; }
+.sidebar .brand .brand-texto .brand-usuario-alias { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; color: #ff6b66; }
 .topbar-movil-logo { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; object-position: 50% 30%; vertical-align: middle; margin-right: 8px; }
 
 .sidebar-colapsar {
@@ -370,7 +377,7 @@ button {
 
 .datos-3-bloques {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 16px;
   margin-bottom: 20px;
   align-items: stretch;
@@ -2141,6 +2148,15 @@ tbody td:last-child {
 .ayuda-ver { flex: none; min-width: 72px; min-height: 40px; font-size: 15px; }
 .ayuda-pronto { flex: none; font-size: 12.5px; font-weight: 700; color: var(--ink-500); background: var(--paper-0); border: 1px solid var(--contorno); border-radius: 100px; padding: 4px 10px; }
 @media (max-width: 640px) { .ayuda-grid { grid-template-columns: 1fr; } .ayuda-seccion { scroll-margin-top: 136px; } }
+/* Ayuda en un solo apartado: un panel con los módulos como secciones */
+.ayuda-panel { border: 1.5px solid var(--contorno); border-radius: 16px; background: var(--paper-100); box-shadow: var(--shadow-card); padding: 6px 0; }
+.ayuda-panel .ayuda-grid { display: block; columns: 3 320px; column-gap: 0; column-rule: 1px solid var(--contorno); }
+.ayuda-panel .ayuda-modulo { border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; break-inside: avoid; padding: 6px 0 10px; }
+.ayuda-panel .ayuda-modulo-cabeza { border-bottom: 0; padding: 10px 16px 6px; }
+.ayuda-panel .ayuda-modulo-icono { width: 32px; height: 32px; }
+.ayuda-panel .ayuda-item { padding: 10px 16px; }
+.ayuda-panel .ayuda-item + .ayuda-item { border-top: 1px dashed color-mix(in srgb, var(--contorno) 70%, transparent); }
+@media (max-width: 640px) { .ayuda-panel .ayuda-grid { columns: 1; } .ayuda-panel .ayuda-modulo + .ayuda-modulo { border-top: 1px solid var(--contorno); } }
 
 /* Campanita de notificaciones (ver components/CampanaNotificaciones.jsx) */
 .campana-wrap { position: relative; display: inline-flex; }
@@ -3078,7 +3094,11 @@ kbd { font-family: inherit; font-size: 13px; font-weight: 800; color: var(--ink-
 .lateral-acciones .btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--red-600) 20%, transparent); }
 
 /* Datos del cliente / vehículo / taller: fichas compactas en dos columnas */
-.datos-3-bloques .datos-lista { grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
+.datos-3-bloques .datos-lista { grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); gap: 8px; align-items: stretch; }
+/* Que nada se corte dentro de los recuadros: etiquetas y valores pueden bajar de renglón sin partir números */
+.datos-3-bloques .dato dt { white-space: normal; overflow-wrap: break-word; line-height: 1.2; }
+.datos-3-bloques .dato dd { overflow-wrap: break-word; word-break: normal; min-width: 0; }
+.datos-3-bloques .dato .veh-input { width: 100%; min-width: 0; box-sizing: border-box; text-overflow: ellipsis; }
 .datos-3-bloques .dato { display: flex; flex-direction: column; gap: 3px; padding: 8px 12px; border-radius: 10px; min-width: 0;
   background: color-mix(in srgb, var(--ink-500) 9%, transparent); border: 1px solid color-mix(in srgb, var(--ink-500) 20%, transparent);
   border-left: 3px solid color-mix(in srgb, var(--petrol-500) 70%, transparent); }
@@ -3355,10 +3375,14 @@ select option:disabled { color: #8d8d8f; }
 .tour-capa { position: fixed; inset: 0; z-index: 9000; }
 .tour-velo { position: fixed; inset: 0; background: rgba(6, 6, 7, .72); }
 .tour-foco { position: fixed; border-radius: 14px; border: 3px solid var(--petrol-500); pointer-events: none;
-  box-shadow: 0 0 0 9999px rgba(6, 6, 7, .72); transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; }
+  box-shadow: 0 0 0 9999px rgba(6, 6, 7, .72); transition: left .32s cubic-bezier(.22,.8,.24,1), top .32s cubic-bezier(.22,.8,.24,1), width .32s cubic-bezier(.22,.8,.24,1), height .32s cubic-bezier(.22,.8,.24,1); }
 .tour-globo { position: fixed; width: min(400px, calc(100vw - 24px)); padding: 20px 20px 16px; border-radius: 14px; z-index: 9001;
   background: #1c1c1e; color: #f4f4f6; border: 1.5px solid color-mix(in srgb, var(--petrol-500) 70%, transparent); border-left: 6px solid var(--petrol-500);
-  box-shadow: 0 16px 40px rgba(0,0,0,.55); transition: left .2s ease, top .2s ease; }
+  box-shadow: 0 16px 40px rgba(0,0,0,.55);
+  opacity: 0; visibility: hidden; transform: translateY(6px); pointer-events: none; }
+/* El globo no viaja por la pantalla: aparece en su lugar con un fundido corto */
+.tour-globo-visible { opacity: 1; visibility: visible; transform: none; pointer-events: auto;
+  transition: opacity .2s ease .08s, transform .2s ease .08s, visibility 0s .08s; }
 .tour-globo-centro { width: min(460px, calc(100vw - 24px)); }
 :root:not([data-theme="dark"]) .tour-globo { background: #fff; color: #18181b; }
 .tour-cuenta { font-size: 12.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--petrol-300); }
@@ -3367,7 +3391,9 @@ select option:disabled { color: #8d8d8f; }
 .tour-texto { margin: 0; font-size: 17px; line-height: 1.5; }
 .tour-puntos { display: flex; gap: 6px; margin: 14px 0 12px; }
 .tour-puntos span { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--ink-500) 45%, transparent); }
+.tour-puntos span { transition: width .2s ease, background-color .2s ease; }
 .tour-puntos span.on { width: 22px; border-radius: 99px; background: var(--petrol-500); }
+@media (prefers-reduced-motion: reduce) { .tour-foco, .tour-globo-visible, .tour-puntos span { transition: none; } .tour-globo { transform: none; } }
 .tour-acciones { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .tour-nav { display: flex; gap: 8px; margin-left: auto; }
 .tour-nav .btn { min-height: 44px; padding: 0 18px; font-size: 16px; font-weight: 800; }
@@ -3394,3 +3420,7 @@ select option:disabled { color: #8d8d8f; }
 .sa-filtro-taller { min-width: 220px; max-width: 100%; font-size: 15px; }
 .sa-conteo { margin: -6px 0 10px; font-size: 13.5px; color: var(--ink-500); }
 @media (max-width: 700px) { .sa-filtro-taller { flex: 1 1 100%; } }
+
+/* Súper admin · Módulos del sistema: insignia con el ícono de cada módulo */
+.sa-modulo-fila { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.icono-modulo-sis { flex: none; width: 36px; height: 36px; border-radius: 10px; margin-right: 0; }

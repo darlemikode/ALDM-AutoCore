@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import IconoModulo from "../components/IconoModulo";
-import { IconoAuto } from "../components/Icono";
+import { Icono } from "../components/Icono";
+import { iconoModuloSistema } from "../iconos";
 import PagarSuscripcion from "../components/PagarSuscripcion";
 
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
@@ -92,7 +93,7 @@ export default function Suscripcion() {
               <div className="susc-modulos">
                 {s.modulos_incluidos.map((m) => (
                   <div className="susc-modulo activo" key={m.clave}>
-                    <span className="susc-modulo-ico"><IconoAuto valor={m.icono || "✔️"} size={22} /></span>
+                    <span className="susc-modulo-ico"><Icono nombre={iconoModuloSistema(m.clave).nombre} size={22} /></span>
                     <div><b>{m.nombre}</b>{m.descripcion && <small>{m.descripcion}</small>}</div>
                     <span className="susc-ok">✓</span>
                   </div>
@@ -112,7 +113,7 @@ export default function Suscripcion() {
                 <div className="susc-modulos">
                   {s.modulos_disponibles.map((m) => (
                     <button type="button" key={m.clave} className={`susc-modulo opcion ${elegidos.includes(m.clave) ? "elegido" : ""}`} onClick={() => alternar(m.clave)}>
-                      <span className="susc-modulo-ico"><IconoAuto valor={m.icono || "➕"} size={22} /></span>
+                      <span className="susc-modulo-ico"><Icono nombre={iconoModuloSistema(m.clave).nombre} size={22} /></span>
                       <div><b>{m.nombre}</b>{m.descripcion && <small>{m.descripcion}</small>}</div>
                       <span className="susc-ok">{elegidos.includes(m.clave) ? "✓" : "+"}</span>
                     </button>

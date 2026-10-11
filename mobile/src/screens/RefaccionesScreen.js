@@ -199,7 +199,7 @@ const styles = crearEstilos({
   chip: { borderWidth: 1, borderColor: colors.ink300, borderRadius: 100, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.paper100 },
   chipActivo: { backgroundColor: colors.petrol500, borderColor: colors.petrol500 },
   chipTexto: { fontSize: 13, fontWeight: "600", color: colors.ink700 },
-  chipTextoActivo: { color: colors.paper100 },
+  chipTextoActivo: { color: colors.sobreAcento },
   tarjeta: { flex: 1, minWidth: 0, backgroundColor: colors.paper100, borderRadius: 12, padding: 12 },
   tarjetaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 6 },
   nombre: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.ink900 },

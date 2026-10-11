@@ -131,7 +131,7 @@ const styles = crearEstilos({
   segmento: { flex: 1, alignItems: "center", paddingVertical: 7, borderRadius: 8 },
   segmentoActivo: { backgroundColor: colors.petrol500 },
   segmentoTexto: { fontSize: 12.5, fontWeight: "600", color: colors.ink700 },
-  segmentoTextoActivo: { color: colors.paper100 },
+  segmentoTextoActivo: { color: colors.sobreAcento },
   segmentoConteo: { fontSize: 11, fontWeight: "700", color: colors.ink500 },
   tarjeta: { backgroundColor: colors.paper100, borderRadius: 12, padding: 14, marginBottom: 10, gap: 4 },
   tarjetaTop: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -151,5 +151,5 @@ const styles = crearEstilos({
     position: "absolute", right: 18, bottom: 22, flexDirection: "row", alignItems: "center", gap: 6, height: 52, paddingHorizontal: 18, borderRadius: 26,
     backgroundColor: colors.petrol500, elevation: 5, shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
   },
-  fabTexto: { fontSize: 15, fontWeight: "700", color: colors.paper100 },
+  fabTexto: { fontSize: 15, fontWeight: "700", color: colors.sobreAcento },
 });

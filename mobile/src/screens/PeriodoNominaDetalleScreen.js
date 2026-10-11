@@ -130,7 +130,7 @@ export default function PeriodoNominaDetalleScreen({ route, navigation }) {
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
           <TouchableOpacity onPress={recalcular} style={[styles.botonChico, { flex: 1, alignItems: "center", paddingVertical: 10 }]}><Text style={styles.botonChicoTexto}>Recalcular</Text></TouchableOpacity>
           <TouchableOpacity onPress={pagarTodo} disabled={pendiente <= 0} style={[styles.botonChico, styles.botonChicoPrincipal, { flex: 2, alignItems: "center", paddingVertical: 10 }]}>
-            <Text style={[styles.botonChicoTexto, { color: colors.paper0 }]}>Pagar todo ({fmt(pendiente)})</Text>
+            <Text style={[styles.botonChicoTexto, { color: colors.sobreAcento }]}>Pagar todo ({fmt(pendiente)})</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -168,7 +168,7 @@ export default function PeriodoNominaDetalleScreen({ route, navigation }) {
                     <Text style={styles.botonChicoTexto}>Ajustar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => marcarPagado(r)} style={[styles.botonChico, styles.botonChicoPrincipal]}>
-                    <Text style={[styles.botonChicoTexto, { color: colors.paper0 }]}>Marcar pagado</Text>
+                    <Text style={[styles.botonChicoTexto, { color: colors.sobreAcento }]}>Marcar pagado</Text>
                   </TouchableOpacity>
                 </>
               )
@@ -241,5 +241,5 @@ const styles = crearEstilos({
   campoLabel: { fontSize: 12.5, color: colors.ink700, marginTop: 10, marginBottom: 4 },
   input: { borderWidth: 1, borderColor: colors.ink300, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: colors.ink900 },
   botonGuardar: { backgroundColor: colors.petrol600, borderRadius: 12, paddingVertical: 13, alignItems: "center", marginTop: 18 },
-  botonGuardarTexto: { color: colors.paper0, fontWeight: "700", fontSize: 15 },
+  botonGuardarTexto: { color: colors.sobreAcento, fontWeight: "700", fontSize: 15 },
 });

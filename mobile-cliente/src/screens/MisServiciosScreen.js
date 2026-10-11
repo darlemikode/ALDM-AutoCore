@@ -137,7 +137,7 @@ const styles = crearEstilos({
   sinActivas: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.paper100, borderRadius: 14, padding: 16, marginBottom: 12 },
   sinActivasTitulo: { fontSize: 15, fontWeight: "600", color: colors.ink900 },
   botonChico: { backgroundColor: colors.petrol500, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14 },
-  botonChicoTexto: { fontSize: 13.5, fontWeight: "600", color: colors.paper100 },
+  botonChicoTexto: { fontSize: 13.5, fontWeight: "600", color: colors.sobreAcento },
   seccion: { fontSize: 12.5, fontWeight: "700", color: colors.ink700, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 18, marginBottom: 10 },
   promo: { width: 250, backgroundColor: colors.paper100, borderRadius: 14, overflow: "hidden" },
   promoImagen: { width: "100%", height: 120, backgroundColor: colors.paper0 },
