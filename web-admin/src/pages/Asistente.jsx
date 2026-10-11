@@ -1,6 +1,7 @@
 import { Icono, IconoAuto } from "../components/Icono";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
 
 /**
@@ -11,6 +12,8 @@ import IconoModulo from "../components/IconoModulo";
  * navegando por varias pantallas: inicia solo, sin pedir nada.
  */
 export default function Asistente() {
+  const { hasPermission } = useAuth();
+  const puedeManuales = hasPermission("configuracion.editar") && hasPermission("servicios.editar");
   const [mensajes, setMensajes] = useState([]);
   const [cargando, setCargando] = useState(null);
   const [busquedaCliente, setBusquedaCliente] = useState("");
@@ -264,8 +267,8 @@ export default function Asistente() {
               <option value="">Sin manual</option>
               {manuales.map((m) => <option key={m.id} value={m.id}>{m.titulo}</option>)}
             </select>
-            <button type="button" className="btn-icono" title="Agregar manual (PDF)" aria-label="Agregar manual" onClick={() => inputManual.current?.click()}><Icono nombre="book" size={18} /></button>
-            {idManual && <button type="button" className="btn-icono btn-icono-peligro" title="Quitar este manual" aria-label="Quitar manual" onClick={borrarManual}><Icono nombre="trash" size={18} /></button>}
+            {puedeManuales && <button type="button" className="btn-icono" title="Agregar manual (PDF)" aria-label="Agregar manual" onClick={() => inputManual.current?.click()}><Icono nombre="book" size={18} /></button>}
+            {idManual && puedeManuales && <button type="button" className="btn-icono btn-icono-peligro" title="Quitar este manual" aria-label="Quitar manual" onClick={borrarManual}><Icono nombre="trash" size={18} /></button>}
             <a className="btn-icono" href="https://mecanicadelmotor.com/" target="_blank" rel="noopener noreferrer" title="Buscar manuales en mecanicadelmotor.com (descárgalo y súbelo con el libro)" aria-label="Buscar manuales en línea"><Icono nombre="search" size={18} /></a>
             <input ref={inputManual} type="file" accept="application/pdf,.pdf" hidden onChange={subirManual} />
             {imagenes.map((f, i) => (

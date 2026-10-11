@@ -848,10 +848,12 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         {pestana === "estatus" && (
           <>
             <View style={styles.accesos}>
+              {(inspeccionActual || (puedeEditar && hasPermission("servicios.crear"))) && (
               <TouchableOpacity style={styles.acceso} onPress={() => setMostrandoInspeccion(true)} disabled={!abierta && !inspeccionActual}>
                 <Ionicons name="clipboard-outline" size={24} color={colors.petrol600} />
                 <Text style={styles.accesoTexto}>{inspeccionActual ? "Ver inspección" : "Nueva inspección"}</Text>
               </TouchableOpacity>
+              )}
               <TouchableOpacity style={styles.acceso} onPress={() => setChatAbierto(true)}>
                 <Ionicons name="chatbubbles-outline" size={24} color={colors.petrol600} />
                 <Text style={styles.accesoTexto}>Chat con el cliente</Text>
@@ -905,11 +907,11 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
             <Bloque icono="car-outline" titulo="Vehículo">
               <Dato etiqueta="Marca / modelo" valor={[vehiculo.marca?.nombre_marca, vehiculo.modelo?.nombre_modelo].filter(Boolean).join(" ")} />
-              <DatoEditable etiqueta="Placas" valor={vehiculo.placas_vehiculo} editable={puedeEditar && !!vehiculo.id_vehiculo} mayusculas onGuardar={(v) => guardarCampoVehiculo({ placas_vehiculo: v.toUpperCase() })} />
+              <DatoEditable etiqueta="Placas" valor={vehiculo.placas_vehiculo} editable={hasPermission("vehiculos.editar") && !!vehiculo.id_vehiculo} mayusculas onGuardar={(v) => guardarCampoVehiculo({ placas_vehiculo: v.toUpperCase() })} />
               <Dato etiqueta="Color" valor={vehiculo.color?.nombre_color} />
               <DatoEditable etiqueta="Km de llegada" valor={servicio.km_llegada} editable={puedeEditar && abierta} teclado="number-pad" onGuardar={(v) => guardarCampoVehiculo({ km_llegada: v })} />
               <DatoEditable etiqueta="Próximo servicio (km)" valor={servicio.km_proximo_servicio} editable={puedeEditar && abierta} teclado="number-pad" onGuardar={(v) => guardarCampoVehiculo({ km_proximo_servicio: v })} />
-              <DatoEditable etiqueta="VIN" valor={vehiculo.numserie_vehiculo} editable={puedeEditar && !!vehiculo.id_vehiculo} mayusculas onGuardar={(v) => guardarCampoVehiculo({ numserie_vehiculo: v.toUpperCase() })} />
+              <DatoEditable etiqueta="VIN" valor={vehiculo.numserie_vehiculo} editable={hasPermission("vehiculos.editar") && !!vehiculo.id_vehiculo} mayusculas onGuardar={(v) => guardarCampoVehiculo({ numserie_vehiculo: v.toUpperCase() })} />
               {fotoVehiculo && <Image source={{ uri: urlArchivo(fotoVehiculo.ruta_archivo) }} style={styles.fotoVehiculo} />}
               {servicio.diagnostico ? <Dato etiqueta="Diagnóstico" valor={servicio.diagnostico} /> : null}
               {servicio.operaciones ? <Dato etiqueta="Operaciones" valor={servicio.operaciones} /> : null}
@@ -948,9 +950,11 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
             <Bloque icono="document-text-outline" titulo="Documentos">
               <View style={{ gap: 10 }}>
+                {hasPermission("servicios.ver_precios") && <>
                 <Boton icono="eye-outline" texto="Vista previa del recibo" onPress={() => descargarPdf("recibo")} deshabilitado={detalles.length === 0} cargando={descargando === "recibo"} />
                 {servicio.status === "cerrado" && <Boton icono="document-text-outline" texto="Nota de remisión" onPress={() => descargarPdf("remision")} cargando={descargando === "remision"} />}
                 <Boton icono="logo-whatsapp" texto="Enviar nota por WhatsApp" onPress={enviarNotaWhatsApp} deshabilitado={detalles.length === 0} cargando={descargando === "whatsapp"} />
+                </>}
                 {factura ? (
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <Boton chico icono="download-outline" texto={`Factura ${factura.serie}-${factura.folio} PDF`} onPress={() => descargarFactura("pdf")} cargando={descargandoFactura === "pdf"} estilo={{ flex: 1 }} />
@@ -1012,6 +1016,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         refacciones={refacciones}
         onGuardado={(g) => { setInspeccionActual(g); setMostrandoInspeccion(false); }}
         onClose={() => setMostrandoInspeccion(false)}
+        puedeEditar={puedeEditar && abierta}
       />
 
       {/* Chat */}

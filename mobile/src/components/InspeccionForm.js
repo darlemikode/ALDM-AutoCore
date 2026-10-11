@@ -25,7 +25,7 @@ const ICONO_CATEGORIA = {
  * comentarios al dejar de escribir (con una breve pausa). El primer cambio
  * crea la inspección; los siguientes la actualizan.
  */
-export default function InspeccionForm({ visible, idVehiculo, idServicio, inspeccionExistente, refacciones, onGuardado, onClose }) {
+export default function InspeccionForm({ visible, idVehiculo, idServicio, inspeccionExistente, refacciones, onGuardado, onClose, puedeEditar = true }) {
   const [items, setItems] = useState([]);
   const [resultados, setResultados] = useState({});
   const [comentarioGeneral, setComentarioGeneral] = useState("");
@@ -108,11 +108,13 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
   }
 
   function actualizar(idItem, campo, valor) {
+    if (!puedeEditar) return; // solo lectura
     setResultados((prev) => ({ ...prev, [idItem]: { ...prev[idItem], [campo]: valor } }));
     guardarLuego(campo === "comentario" ? 900 : 0);
   }
 
   function marcarCategoria(cat, estado) {
+    if (!puedeEditar) return;
     setResultados((prev) => {
       const siguiente = { ...prev };
       items.filter((i) => i.categoria === cat).forEach((i) => { siguiente[i.id_item] = { ...siguiente[i.id_item], estado }; });
@@ -174,9 +176,11 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
                 {malos > 0 && (
                   <View style={styles.badgeMal}><Text style={styles.badgeMalTexto}>{malos} mal</Text></View>
                 )}
+                {puedeEditar && (
                 <TouchableOpacity style={styles.botonTodoBien} onPress={() => marcarCategoria(cat, "bien")}>
                   <Text style={styles.botonTodoBienTexto}>✅ Todo bien</Text>
                 </TouchableOpacity>
+                )}
               </View>
               {delaCat.map((item) => {
                 const r = resultados[item.id_item] || { estado: "bien", comentario: "", id_refaccion_sugerida: null };
@@ -197,6 +201,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
                     {r.estado !== "bien" && (
                       <View style={{ marginTop: 8 }}>
                         <TextInput placeholderTextColor={colors.ink500}
+                          editable={puedeEditar}
                           style={styles.input}
                           placeholder="📝 Comentario (opcional)"
                           value={r.comentario}
@@ -226,6 +231,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
 
         <Text style={styles.label}>📋 Comentario general</Text>
         <TextInput placeholderTextColor={colors.ink500}
+          editable={puedeEditar}
           style={[styles.input, styles.textarea]}
           value={comentarioGeneral}
           onChangeText={(v) => { setComentarioGeneral(v); guardarLuego(900); }}
@@ -235,7 +241,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
 
         {idInspeccion && (
           <View style={{ marginTop: spacing.lg }}>
-            <FotoGaleria entidadTipo="inspeccion" entidadId={idInspeccion} />
+            <FotoGaleria entidadTipo="inspeccion" entidadId={idInspeccion} soloLectura={!puedeEditar} />
           </View>
         )}
       </ScrollCampos>

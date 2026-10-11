@@ -72,7 +72,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     await cargar();
     setIdCliente(creado.id_cliente);
     setIdVehiculo("");
-    setNuevoVehiculo(true);
+    if (hasPermission("vehiculos.crear")) setNuevoVehiculo(true);
   }
 
   function camposVehiculo(values) {

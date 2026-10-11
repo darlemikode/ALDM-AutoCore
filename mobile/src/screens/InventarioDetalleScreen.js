@@ -7,6 +7,7 @@ import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import FormScroll from "../ui/FormScroll";
 import { alerta } from "../ui/Dialogo";
+import { useAuth } from "../context/AuthContext";
 
 const ZONAS_ABC = [
   { valor: "A", etiqueta: "A — rota mucho" },
@@ -15,6 +16,7 @@ const ZONAS_ABC = [
 ];
 
 export default function InventarioDetalleScreen({ route }) {
+  const { hasPermission } = useAuth();
   const { id } = route.params;
   const [refaccion, setRefaccion] = useState(null);
   const [marcasRefaccion, setMarcasRefaccion] = useState([]);
@@ -198,9 +200,11 @@ export default function InventarioDetalleScreen({ route }) {
         </View>
       </Campo>
 
+      {hasPermission("refacciones.editar") && (
       <TouchableOpacity style={styles.boton} onPress={guardar} disabled={guardando}>
         <Text style={styles.botonTexto}>{guardando ? "Guardando…" : "Guardar inventario"}</Text>
       </TouchableOpacity>
+      )}
     </FormScroll>
   );
 }

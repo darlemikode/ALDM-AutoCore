@@ -233,7 +233,7 @@ export default function Inventario() {
           <h1><IconoModulo ruta="/inventario" /> Inventario</h1>
           <div className="subtitle">Stock y precio por refacción, con las marcas/modelos de vehículo con las que es compatible</div>
         </div>
-        {hasPermission("refacciones.crear") && (
+        {hasPermission("inventario.crear") && (
           <button className="btn btn-primary btn-nuevo" onClick={() => { setEditing({}); setCompatNueva({ id_marca_vehiculo: "", id_modelo_vehiculo: "" }); setCompatibilidadesNuevas([]); }}><span className="btn-nuevo-icono"><Icono nombre="cube" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo registro</button>
         )}
       </div>
@@ -267,8 +267,8 @@ export default function Inventario() {
                 acentoFila={() => colorGrupo(cat)}
                 columns={columns}
                 rows={gruposPorCategoria[cat]}
-                onEdit={hasPermission("refacciones.editar") ? (r) => { setEditing(r); setCompatNueva({ id_marca_vehiculo: "", id_modelo_vehiculo: "" }); } : undefined}
-                onDelete={hasPermission("refacciones.eliminar") ? eliminar : undefined}
+                onEdit={hasPermission("inventario.editar") ? (r) => { setEditing(r); setCompatNueva({ id_marca_vehiculo: "", id_modelo_vehiculo: "" }); } : undefined}
+                onDelete={hasPermission("inventario.eliminar") ? eliminar : undefined}
               />
             </div>
           ))

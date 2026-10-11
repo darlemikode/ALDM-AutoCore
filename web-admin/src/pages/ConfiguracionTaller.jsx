@@ -22,7 +22,8 @@ const SECCIONES = [
 
 export default function ConfiguracionTaller() {
   const { notify } = useUI();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const puedeFiscal = hasPermission("facturacion.configurar");
   const [data, setData] = useState(null);
   const [estados, setEstados] = useState([]);
   const [ciudades, setCiudades] = useState([]);
@@ -84,7 +85,7 @@ export default function ConfiguracionTaller() {
   }, [data]);
 
   useEffect(() => {
-    if (!fiscal) return;
+    if (!fiscal || !puedeFiscal) return;
     const cuerpo = JSON.stringify({ ...fiscal, rfc_emisor: (fiscal.rfc_emisor || "").toUpperCase() });
     if (ultimoFiscal.current === null) { ultimoFiscal.current = cuerpo; return; }
     if (cuerpo === ultimoFiscal.current) return;
@@ -275,7 +276,7 @@ export default function ConfiguracionTaller() {
             {!fiscal ? (
               <div className="loading-text">Cargando…</div>
             ) : (
-              <>
+              <fieldset className="insp-fieldset" disabled={!puedeFiscal}>
                 <div className="form-grid">
                   <div className="field full">
                     <label>Razón social (como en tu constancia de situación fiscal)</label>
@@ -300,7 +301,7 @@ export default function ConfiguracionTaller() {
                 <div className="field-hint" style={{ marginTop: 4, marginBottom: 12 }}>
                   Serie, folio y demás ajustes de timbrado están en Facturación → <IconoAuto valor="⚙️" size={18} /> Configuración fiscal.
                 </div>
-              </>
+              </fieldset>
             )}
           </section>
         )}

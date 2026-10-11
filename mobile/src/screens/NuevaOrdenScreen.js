@@ -11,6 +11,7 @@ import { isVerificacion2PasosActiva } from "../configuracionApp";
 import { crearEstilos } from "../ui/estilos";
 import FormScroll from "../ui/FormScroll";
 import { mostrarDialogo, alerta } from "../ui/Dialogo";
+import { useAuth } from "../context/AuthContext";
 
 /*
  * Nueva orden en pasos (pensado para el celular): una pregunta a la vez,
@@ -30,6 +31,9 @@ const nombreCliente = (c) => (c ? `${c.nombre_cliente || ""} ${c.paterno_cliente
 const nombreVehiculo = (v) => (v ? [v.marca?.nombre_marca, v.modelo?.nombre_modelo].filter(Boolean).join(" ") || "Vehículo" : "—");
 
 export default function NuevaOrdenScreen({ navigation, route }) {
+  const { hasPermission } = useAuth();
+  const puedeCrearCliente = hasPermission("clientes.crear");
+  const puedeCrearVehiculo = hasPermission("vehiculos.crear");
   const [paso, setPaso] = useState(0);
   const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -130,7 +134,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
       setVehiculos(lista);
       if (lista.length === 1 && !conservarVehiculo) elegirVehiculo(lista[0]); // si solo tiene uno, ya queda elegido
       // Cliente sin vehículos: se sugiere registrar uno de una vez
-      if (lista.length === 0) {
+      if (lista.length === 0 && puedeCrearVehiculo) {
         mostrarDialogo({
           tono: "info", icono: "car-sport", etiqueta: c.numero_cuenta || "Cliente",
           titulo: "Este cliente no tiene vehículos",
@@ -338,10 +342,12 @@ export default function NuevaOrdenScreen({ navigation, route }) {
                   <Ionicons name="search" size={18} color={colors.ink500} />
                   <TextInput style={styles.buscadorInput} placeholder="Nombre, teléfono o cuenta" placeholderTextColor={colors.ink500} value={busqueda} onChangeText={setBusqueda} />
                 </View>
+                {puedeCrearCliente && (
                 <TouchableOpacity style={styles.opcionNueva} onPress={() => setMostrarAgregarCliente(true)}>
                   <Ionicons name="person-add-outline" size={20} color={colors.petrol600} />
                   <Text style={styles.opcionNuevaTexto}>Cliente nuevo</Text>
                 </TouchableOpacity>
+                )}
                 {clientesFiltrados.length === 0 ? (
                   <Text style={styles.vacio}>{clientes.length === 0 ? "Todavía no hay clientes. Da de alta el primero." : "Nadie coincide con la búsqueda."}</Text>
                 ) : clientesFiltrados.slice(0, 60).map((c) => (
@@ -383,6 +389,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
                     </TouchableOpacity>
                   );
                 })}
+                {puedeCrearVehiculo && (
                 <TouchableOpacity
                   style={styles.opcionNueva}
                   onPress={() => navigation.navigate("Clientes", { screen: "VehiculoForm", params: { clienteFijo: cliente }, initial: false })}
@@ -390,6 +397,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
                   <Ionicons name="car-outline" size={20} color={colors.petrol600} />
                   <Text style={styles.opcionNuevaTexto}>Registrar otro vehículo</Text>
                 </TouchableOpacity>
+                )}
               </>
             )}
           </>
@@ -403,7 +411,8 @@ export default function NuevaOrdenScreen({ navigation, route }) {
           </>
         )}
 
-        {/* Fotos al final: cámara o galería */}
+        {/* Fotos al final: cámara o galería (se suben a la orden: piden poder editarla) */}
+        {hasPermission("servicios.editar") && <>
         <Text style={[styles.label, { marginTop: 18 }]}>Fotos <Text style={styles.labelNota}>(opcional, cómo llegó el vehículo)</Text></Text>
         <View style={styles.fotosFila}>
           {fotos.map((f, i) => (
@@ -427,6 +436,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
             </>
           )}
         </View>
+        </>}
 
         {error ? (
           <View style={styles.errorCaja}>
