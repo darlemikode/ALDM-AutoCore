@@ -1,5 +1,5 @@
-// Nueva orden: ya no manda a la orden en blanco con aviso; solo lleva a una
-// orden existente cuando el cliente Y el vehículo elegidos coinciden.
+// Nueva orden: primero se elige cliente y vehículo. Solo lleva a una orden existente
+// cuando ambos coinciden; si no, crea la orden nueva (sin borradores en blanco).
 const { test, expect } = require("@playwright/test");
 const { SUFIJO, apiComo, crearTallerConAdmin, entrarAlPanel } = require("./helpers");
 
@@ -12,7 +12,7 @@ async function elegirCliente(page, nombre) {
   await modal.getByRole("button", { name: "Aceptar y continuar" }).click();
 }
 
-test("nueva orden: solo lleva a la abierta si cliente y vehículo coinciden", async ({ page }) => {
+test("nueva orden: elige primero y solo redirige si cliente y vehículo coinciden", async ({ page }) => {
   const sa = await apiComo();
   const T = await crearTallerConAdmin(sa);
   const api = await apiComo(T.usuario, T.password);
@@ -22,30 +22,34 @@ test("nueva orden: solo lleva a la abierta si cliente y vehículo coinciden", as
   const existente = await api.post("/servicios/", { id_cliente: c1.id_cliente, id_vehiculo: v1.id_vehiculo, nombre_servicio: "Ya abierta" });
   const c2 = await api.post("/clientes/", { nombre_cliente: `Nuevo ${s}`, telefono1: "4777654321" });
   await api.post("/vehiculos/", { id_cliente: c2.id_cliente, placas_vehiculo: `N${s.slice(-5)}` });
-  // Una orden en blanco olvidada: se reutiliza sin aviso
-  const blanco = await api.post("/servicios/", { nombre_servicio: "Servicio general" });
 
   await entrarAlPanel(page, T.usuario, T.password);
   await page.goto("/servicios");
-  await page.locator(".btn-nuevo").click();
-  await expect(page).toHaveURL(new RegExp(`/servicios/${blanco.id_servicio}$`));
-  await expect(page.locator(".toast", { hasText: "abierta sin cliente" })).toHaveCount(0);
+  const antes = (await api.get("/servicios/?status=abierto")).length;
 
-  // Mismo cliente + vehículo -> va a la existente y descarta la de en blanco
+  // «Nueva orden» primero pide cliente y vehículo; si se cancela no se crea nada
+  await page.locator(".btn-nuevo").click();
+  await expect(page.locator(".ecv-modal")).toBeVisible();
+  await expect(page).toHaveURL(/\/servicios$/);
+  await page.locator(".ecv-modal").getByRole("button", { name: "Cancelar" }).click();
+  expect((await api.get("/servicios/?status=abierto")).length).toBe(antes);
+
+  // Mismo cliente + vehículo -> va a la orden que ya está abierta
+  await page.locator(".btn-nuevo").click();
   await elegirCliente(page, `Repetido ${s}`);
   await expect(page).toHaveURL(new RegExp(`/servicios/${existente.id_servicio}$`));
   await expect(page.locator(".toast", { hasText: `#${existente.id_servicio}` })).toBeVisible();
-  const abiertas = await api.get("/servicios/?status=abierto");
-  expect(abiertas.some((o) => o.id_servicio === blanco.id_servicio)).toBe(false);
+  expect((await api.get("/servicios/?status=abierto")).length).toBe(antes);
 
-  // Otro cliente -> se queda en la orden nueva
+  // Otro cliente -> se crea una orden nueva ya con sus datos
   await page.goto("/servicios");
   await page.locator(".btn-nuevo").click();
+  await elegirCliente(page, `Nuevo ${s}`);
+  await expect(page.locator(".toast", { hasText: "Orden creada" })).toBeVisible();
   await expect(page).toHaveURL(/\/servicios\/\d+$/);
   const idNueva = Number(page.url().split("/").pop());
   expect(idNueva).not.toBe(existente.id_servicio);
-  await elegirCliente(page, `Nuevo ${s}`);
-  await expect(page.locator(".toast", { hasText: "guardados en la orden" })).toBeVisible();
-  await expect(page).toHaveURL(new RegExp(`/servicios/${idNueva}$`));
+  const nueva = await api.get(`/servicios/${idNueva}`);
+  expect(nueva.id_cliente).toBe(c2.id_cliente);
   await api.cerrar(); await sa.cerrar();
 });

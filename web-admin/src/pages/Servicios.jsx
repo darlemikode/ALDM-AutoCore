@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { api } from "../api";
 import FormModal from "../components/FormModal";
 import ModalPortal from "../components/ModalPortal";
+import ElegirClienteVehiculo from "../components/ElegirClienteVehiculo";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
@@ -35,6 +36,7 @@ export default function Servicios() {
   const [servicios, setServicios] = useState([]);
   const [status, setStatus] = useState(() => searchParams.get("status") || "");
   const [creating, setCreating] = useState(false);
+  const [eligiendoNueva, setEligiendoNueva] = useState(false);
   const yaCreoDirecta = useRef(false);
   const [garantiaOriginal, setGarantiaOriginal] = useState(null); // servicio original si venimos de "Reclamar garantía"
   const [prefillVehiculo, setPrefillVehiculo] = useState(null); // { id_cliente, id_vehiculo } si venimos de "crear orden" tras dar de alta un vehículo
@@ -130,18 +132,26 @@ export default function Servicios() {
   async function nuevaOrdenDirecta() {
     if (!hasPermission("servicios.crear")) return;
     if (verificacion2Pasos) { openCreate(); return; } // con verificación en 2 pasos se conserva el formulario con código
+    // Primero se elige cliente y vehículo; la orden se crea hasta aceptar (sin borradores en blanco)
+    setEligiendoNueva(true);
+  }
+
+  // Si ese cliente con ese vehículo ya tiene una orden abierta, se lleva a ella;
+  // si no, se crea la orden nueva ya con sus datos.
+  async function confirmarNuevaOrden({ id_cliente, id_vehiculo }) {
     try {
-      // Si quedó una orden en blanco (sin cliente y sin nada capturado) se reutiliza
-      // en silencio para no juntar borradores. Al elegir cliente y vehículo, la orden
-      // revisa si ya hay una abierta con esos mismos datos y, solo entonces, lleva a ella.
-      const abiertas = await api.get("/servicios/?status=abierto");
-      const enBlanco = abiertas.find((o) => !o.id_cliente && !o.cliente && !(o.detalles || []).length && !(o.abonos || []).length);
-      if (enBlanco) {
-        navigate(`/servicios/${enBlanco.id_servicio}`);
-        return;
+      if (id_vehiculo) {
+        const abiertas = await api.get(`/servicios/?status=abierto&id_cliente=${id_cliente}`);
+        const igual = (abiertas || []).find((o) => Number(o.id_cliente) === Number(id_cliente) && Number(o.id_vehiculo) === Number(id_vehiculo));
+        if (igual) {
+          setEligiendoNueva(false);
+          notify(`Ese cliente y vehículo ya tienen la orden #${igual.id_servicio} abierta — te llevo a ella.`, "info");
+          navigate(`/servicios/${igual.id_servicio}`);
+          return;
+        }
       }
-      const s = await api.post("/servicios/", { nombre_servicio: "Servicio general", iva_porcentaje: 0, tipos_mantenimiento_ids: [], autorizado_cliente: false });
-      navigate(`/servicios/${s.id_servicio}`);
+      setEligiendoNueva(false);
+      await crearDirectaConVehiculo({ id_cliente, id_vehiculo });
     } catch (err) {
       notify(err.message, "error");
     }
@@ -332,6 +342,9 @@ export default function Servicios() {
 
   return (
     <>
+      {eligiendoNueva && (
+        <ElegirClienteVehiculo onConfirmar={confirmarNuevaOrden} onCerrar={() => setEligiendoNueva(false)} />
+      )}
       <div className="page-header">
         <div>
           <h1><IconoModulo ruta="/servicios" /> Órdenes de servicio</h1>
