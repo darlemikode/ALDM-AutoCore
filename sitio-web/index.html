@@ -596,11 +596,11 @@
 </style>
 
 <style>
-  /* Página 10 % más grande en computadora (la escena de bienvenida ya se ajusta sola a la pantalla) */
+  /* Página al 80 % en computadora (la escena de bienvenida ya se ajusta sola a la pantalla) */
   @media (min-width: 900px) {
-    .navbar, .section, body > footer { zoom: 1.1; }
+    .navbar, .section, body > footer { zoom: 0.8; }
     :root { --nav-h: 80px; }
-    #contenido { scroll-margin-top: 73px; } /* dentro de la sección con zoom: 73 × 1.1 ≈ 80 */
+    #contenido { scroll-margin-top: 100px; } /* dentro de la sección con zoom: 100 × 0.8 = 80 */
   }
 </style>
 
@@ -1192,7 +1192,6 @@
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Asistente IA y Agente WhatsApp con IA</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Soporte prioritario</li>
         </ul>
-        <p style="margin-top:14px; font-size:12px; color:var(--electric-400); background:rgba(225,6,0,0.08); border:1px solid rgba(225,6,0,0.2); border-radius:10px; padding:8px 10px;">Incluye 60 consultas de IA, 80 facturas CFDI y 150 interacciones del agente WhatsApp al mes. Excedente: $6 por consulta/interacción, $3 por factura.</p>
         <a href="#demo" class="btn btn-outline">Empezar</a>
       </div>
     </div>
@@ -1259,7 +1258,6 @@
       <ul>
         <li><a href="#">Nosotros</a></li>
         <li><a href="#demo">Solicitar demo</a></li>
-        <li><a href="#cotizacion">Cotización personalizada</a></li>
         <li><a href="aviso-legal.html">Contacto</a></li>
       </ul>
     </div>
@@ -1304,21 +1302,6 @@
       .catch(function (x) { err.textContent = x.message || 'No se pudo enviar, intenta de nuevo.'; err.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Quiero mi demo'; });
   });
 
-  document.getElementById('cotizacion-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    var f = this, err = document.getElementById('cotizacion-error'), btn = f.querySelector('button');
-    err.classList.add('hidden');
-    var d = { negocio: f.negocio.value.trim(), nombre: f.nombre.value.trim(), telefono: f.telefono.value.trim(),
-              correo: f.correo.value.trim(),
-              mensaje: ('[Plan Empresa · ' + f.sucursales.value.trim() + ' sucursales] ' + f.mensaje.value.trim()).trim(),
-              web: f.web.value };
-    if (!d.negocio || !d.nombre || !d.telefono || !f.sucursales.value.trim()) { err.textContent = 'Falta el nombre de la empresa, tu nombre, teléfono y número de sucursales.'; err.classList.remove('hidden'); return; }
-    btn.disabled = true; btn.textContent = 'Enviando…';
-    fetch(API_BASE + '/api/contacto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) })
-      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || 'No se pudo enviar.'); }); })
-      .then(function () { f.classList.add('hidden'); document.getElementById('cotizacion-msg').classList.remove('hidden'); })
-      .catch(function (x) { err.textContent = x.message || 'No se pudo enviar, intenta de nuevo.'; err.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Solicitar cotización'; });
-  });
 </script>
 
 <!-- Escena de bienvenida: animación con el scroll -->
