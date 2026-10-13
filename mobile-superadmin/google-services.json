@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "145866643556",
+    "project_id": "aldmautocore",
+    "storage_bucket": "aldmautocore.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:145866643556:android:ed2fca9f9786dcf721e771",
+        "android_client_info": {
+          "package_name": "com.aldm.superadmin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHZEUJ4Di5-awtapkPklVgpi8qJY639W8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

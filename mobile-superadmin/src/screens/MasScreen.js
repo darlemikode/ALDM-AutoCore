@@ -29,7 +29,7 @@ export default function MasScreen({ navigation }) {
   async function guardarPassword(v) {
     if (v.password_nueva !== v.confirmar) throw new Error("La contraseña nueva y su confirmación no coinciden.");
     const n = v.password_nueva || "";
-    if (n.length < 12 || !/[A-Za-z]/.test(n) || !/[0-9]/.test(n)) throw new Error("Usa al menos 12 caracteres, con letras y números.");
+    if (n.length < 8 || !/[A-Za-z]/.test(n) || !/[0-9]/.test(n)) throw new Error("Usa al menos 8 caracteres, con letras y números.");
     const r = await api.put("/auth/password", { password_actual: v.password_actual, password_nueva: v.password_nueva });
     if (r?.access_token) await setToken(r.access_token); // las demás sesiones se cierran; esta sigue
     setCambiandoPassword(false);

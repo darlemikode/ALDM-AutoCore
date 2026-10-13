@@ -1,10 +1,11 @@
 {
   "expo": {
-    "name": "Mi Taller",
+    "name": "ALDMAutoCore Cliente",
     "slug": "sistema-mecanico-cliente",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
     "splash": {
       "backgroundColor": "#070708"
     },
@@ -18,6 +19,7 @@
     "android": {
       "package": "com.tutaller.mecanicocliente",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#070708"
       }
     },
