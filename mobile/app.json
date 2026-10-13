@@ -1,10 +1,11 @@
 {
   "expo": {
-    "name": "ALDM AutoCore",
+    "name": "ALDMAutoCore",
     "slug": "sistema-mecanico-admin",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
     "splash": {
       "backgroundColor": "#070708"
     },
@@ -21,13 +22,14 @@
     "android": {
       "package": "com.tutaller.mecanicoadmin",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#070708"
       }
     },
     "web": {
       "bundler": "metro",
-      "name": "ALDM AutoCore",
-      "shortName": "ALDM AutoCore",
+      "name": "ALDMAutoCore",
+      "shortName": "ALDMAutoCore",
       "themeColor": "#070708",
       "backgroundColor": "#070708",
       "display": "standalone",

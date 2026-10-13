@@ -248,8 +248,8 @@ def cambiar_password(payload: schemas.PasswordChange, db: Session = Depends(get_
         raise HTTPException(status_code=400, detail="La contraseña actual no es correcta")
     if len(payload.password_nueva) < 6:
         raise HTTPException(status_code=400, detail="La nueva contraseña debe tener al menos 6 caracteres")
-    if user.es_superadmin and (len(payload.password_nueva) < 12 or payload.password_nueva.isalpha() or payload.password_nueva.isdigit()):
-        raise HTTPException(status_code=400, detail="La contraseña del súper administrador debe tener al menos 12 caracteres, con letras y números.")
+    if user.es_superadmin and (len(payload.password_nueva) < 8 or payload.password_nueva.isalpha() or payload.password_nueva.isdigit()):
+        raise HTTPException(status_code=400, detail="La contraseña del súper administrador debe tener al menos 8 caracteres, con letras y números.")
     user.hashed_password = hash_password(payload.password_nueva)
     invalidar_tokens(user)  # se cierran las demás sesiones (otros celulares, otra PC)
     db.commit()

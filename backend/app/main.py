@@ -276,7 +276,17 @@ if SITIO_DIR:
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    """También la usa el workflow mantener-bd-activa.yml: al tocar la base
+    evita que Azure SQL Serverless entre en pausa por inactividad."""
+    from sqlalchemy import text
+    from .database import engine
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        bd = "ok"
+    except Exception:
+        bd = "error"
+    return {"status": "ok", "bd": bd}
 
 
 # Página web (web-admin compilada con `npm run build`). En producción el mismo
