@@ -23,7 +23,7 @@
       "package": "com.tutaller.mecanicoadmin",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#070708"
+        "backgroundColor": "#08080a"
       }
     },
     "web": {

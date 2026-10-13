@@ -20,7 +20,7 @@
       "package": "com.tutaller.mecanicocliente",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#070708"
+        "backgroundColor": "#18449e"
       }
     },
     "web": {
