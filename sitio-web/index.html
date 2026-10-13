@@ -270,8 +270,13 @@
   .footer-grid { display: grid; gap: 40px; grid-template-columns: 1fr; }
   .footer-about p { margin-top: 16px; font-size: 14px; color: var(--ink-400); max-width: 340px; line-height: 1.6; }
   .footer-social { margin-top: 22px; display: flex; gap: 12px; }
-  .social-btn { width: 36px; height: 36px; border-radius: 10px; background: var(--ink-900); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; }
-  .social-btn:hover { border-color: rgba(225,6,0,0.5); }
+  .social-btn { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: filter .15s ease, transform .15s ease; }
+  .social-btn:hover { filter: brightness(1.12); transform: translateY(-2px); }
+  .social-btn.social-fb { background: #1877F2; }
+  .social-btn.social-ig { background: radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+  .social-btn.social-wa { background: #25D366; }
+  .nav-social { display: flex; align-items: center; gap: 8px; }
+  .nav-social .social-btn { width: 32px; height: 32px; }
   .footer-col h4 { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; font-size: 13px; color: #fff; }
   .footer-col ul { margin-top: 16px; display: flex; flex-direction: column; gap: 11px; font-size: 14px; color: var(--ink-400); }
   .footer-col a:hover { color: #fff; }
@@ -670,6 +675,11 @@
     </nav>
 
     <div class="nav-right">
+      <div class="nav-social">
+        <a href="https://www.facebook.com/profile.php?id=61595449403596" target="_blank" rel="noopener" aria-label="Facebook" class="social-btn social-fb"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M13.5 21v-7.5h2.5l.5-3h-3V8.5c0-.9.3-1.5 1.6-1.5H16.5V4.3C16.2 4.3 15.2 4 14 4c-2.4 0-4 1.5-4 4.2v2.3H7.5v3H10V21z"/></svg></a>
+        <a href="https://www.instagram.com/aldm_autocore/" target="_blank" rel="noopener" aria-label="Instagram" class="social-btn social-ig"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg></a>
+        <a href="https://wa.me/523346475940" target="_blank" rel="noopener" aria-label="WhatsApp" class="social-btn social-wa"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm5.4 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.7-2.8-1.1-4.6-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-1.9 1-2.2.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.7.8 1.8.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.7-.1.3.1 1.7.8 2 1 .3.1.5.2.5.4.1.2.1.7-.1 1.2z"/></svg></a>
+      </div>
       <a href="#precios" class="nav-planes">Ver planes</a>
       <a href="#demo" class="btn btn-primary btn-sm">
         Quiero una demo
@@ -1142,7 +1152,7 @@
       <div class="plan">
         <h3>Arranque</h3>
         <p class="plan-desc">Para el taller que va empezando a ordenarse.</p>
-        <div class="plan-price"><span class="amount">$599</span><span class="period">MXN / mes + IVA</span></div>
+        <div class="plan-price"><span class="amount">$699</span><span class="period">MXN / mes + IVA</span></div>
         <ul class="plan-features">
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Órdenes de servicio y cotizaciones</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Clientes y vehículos con su historial</li>
@@ -1157,7 +1167,7 @@
         <span class="plan-tag">Más elegido</span>
         <h3>Taller Pro</h3>
         <p class="plan-desc">Para el taller con movimiento diario y personal.</p>
-        <div class="plan-price"><span class="amount">$899</span><span class="period">MXN / mes + IVA</span></div>
+        <div class="plan-price"><span class="amount">$999</span><span class="period">MXN / mes + IVA</span></div>
         <ul class="plan-features">
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Todo lo del plan Arranque</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Inventario y venta en mostrador</li>
@@ -1173,18 +1183,20 @@
       <div class="plan">
         <h3>Full Garage</h3>
         <p class="plan-desc">Todo el sistema, para el taller que quiere ir más lejos.</p>
-        <div class="plan-price"><span class="amount">$1,199</span><span class="period">MXN / mes + IVA</span></div>
+        <div class="plan-price"><span class="amount">$1,399</span><span class="period">MXN / mes + IVA</span></div>
         <ul class="plan-features">
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Todo lo del plan Taller Pro</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> App para tus clientes (seguimiento, chat y promos)</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Facturación electrónica CFDI 4.0</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Nómina y recibos de pago</li>
+          <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Asistente IA y Agente WhatsApp con IA</li>
           <li><svg class="check-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg> Soporte prioritario</li>
         </ul>
+        <p style="margin-top:14px; font-size:12px; color:var(--electric-400); background:rgba(225,6,0,0.08); border:1px solid rgba(225,6,0,0.2); border-radius:10px; padding:8px 10px;">Incluye 60 consultas de IA, 80 facturas CFDI y 150 interacciones del agente WhatsApp al mes. Excedente: $6 por consulta/interacción, $3 por factura.</p>
         <a href="#demo" class="btn btn-outline">Empezar</a>
       </div>
     </div>
-    <p style="text-align:center; margin-top:28px; color:var(--ink-300, #9fb3ba)">¿Tienes varias sucursales? Plan <b>Empresa</b> a cotización — <a href="#demo" style="color:inherit; text-decoration:underline">habla con ventas</a>.</p>
+    <p style="text-align:center; margin-top:28px; color:var(--ink-300, #9fb3ba)">Órdenes de servicio siempre ilimitadas, en todos los planes. ¿Tienes varias sucursales? Plan <b>Empresa</b> a cotización — <a href="#demo" style="color:inherit; text-decoration:underline">habla con ventas</a>.</p>
   </div>
 </section>
 
@@ -1225,9 +1237,9 @@
       <img src="logo-aldm.png" alt="ALDM AutoCore" class="brand-logo brand-logo-pie" />
       <p>Sistema web y app para talleres mecánicos y refaccionarias.</p>
       <div class="footer-social">
-        <a href="#" aria-label="Facebook" class="social-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="#a0a0a8"><path d="M13.5 21v-7.5h2.5l.5-3h-3V8.5c0-.9.3-1.5 1.6-1.5H16.5V4.3C16.2 4.3 15.2 4 14 4c-2.4 0-4 1.5-4 4.2v2.3H7.5v3H10V21z"/></svg></a>
-        <a href="#" aria-label="Instagram" class="social-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a0a0a8" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg></a>
-        <a href="#" aria-label="WhatsApp" class="social-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="#a0a0a8"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm5.4 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.7-2.8-1.1-4.6-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-1.9 1-2.2.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.7.8 1.8.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.7-.1.3.1 1.7.8 2 1 .3.1.5.2.5.4.1.2.1.7-.1 1.2z"/></svg></a>
+        <a href="https://www.facebook.com/profile.php?id=61595449403596" target="_blank" rel="noopener" aria-label="Facebook" class="social-btn social-fb"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M13.5 21v-7.5h2.5l.5-3h-3V8.5c0-.9.3-1.5 1.6-1.5H16.5V4.3C16.2 4.3 15.2 4 14 4c-2.4 0-4 1.5-4 4.2v2.3H7.5v3H10V21z"/></svg></a>
+        <a href="https://www.instagram.com/aldm_autocore/" target="_blank" rel="noopener" aria-label="Instagram" class="social-btn social-ig"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg></a>
+        <a href="https://wa.me/523346475940" target="_blank" rel="noopener" aria-label="WhatsApp" class="social-btn social-wa"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm5.4 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.7-2.8-1.1-4.6-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-1.9 1-2.2.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.7.8 1.8.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.7-.1.3.1 1.7.8 2 1 .3.1.5.2.5.4.1.2.1.7-.1 1.2z"/></svg></a>
       </div>
     </div>
 
@@ -1247,6 +1259,7 @@
       <ul>
         <li><a href="#">Nosotros</a></li>
         <li><a href="#demo">Solicitar demo</a></li>
+        <li><a href="#cotizacion">Cotización personalizada</a></li>
         <li><a href="aviso-legal.html">Contacto</a></li>
       </ul>
     </div>
@@ -1289,6 +1302,22 @@
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || 'No se pudo enviar.'); }); })
       .then(function () { f.classList.add('hidden'); document.getElementById('demo-msg').classList.remove('hidden'); })
       .catch(function (x) { err.textContent = x.message || 'No se pudo enviar, intenta de nuevo.'; err.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Quiero mi demo'; });
+  });
+
+  document.getElementById('cotizacion-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = this, err = document.getElementById('cotizacion-error'), btn = f.querySelector('button');
+    err.classList.add('hidden');
+    var d = { negocio: f.negocio.value.trim(), nombre: f.nombre.value.trim(), telefono: f.telefono.value.trim(),
+              correo: f.correo.value.trim(),
+              mensaje: ('[Plan Empresa · ' + f.sucursales.value.trim() + ' sucursales] ' + f.mensaje.value.trim()).trim(),
+              web: f.web.value };
+    if (!d.negocio || !d.nombre || !d.telefono || !f.sucursales.value.trim()) { err.textContent = 'Falta el nombre de la empresa, tu nombre, teléfono y número de sucursales.'; err.classList.remove('hidden'); return; }
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    fetch(API_BASE + '/api/contacto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || 'No se pudo enviar.'); }); })
+      .then(function () { f.classList.add('hidden'); document.getElementById('cotizacion-msg').classList.remove('hidden'); })
+      .catch(function (x) { err.textContent = x.message || 'No se pudo enviar, intenta de nuevo.'; err.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'Solicitar cotización'; });
   });
 </script>
 

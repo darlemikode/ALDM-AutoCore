@@ -116,6 +116,8 @@ MODULOS_SISTEMA = [
     ("app_movil", "App para clientes", "App para que los clientes den seguimiento a su vehículo, promociones y citas.", "📱", 13),
     ("facturacion", "Facturación electrónica", "Emisión y cancelación de CFDI 4.0 desde las órdenes de servicio.", "💳", 14),
     ("app_taller", "App móvil del taller", "App para que el dueño y su equipo trabajen las órdenes desde el celular.", "📲", 15),
+    ("asistente_ia", "Asistente IA", "Chat con inteligencia artificial para dudas del día a día del taller. 60 consultas/mes incluidas, excedente con costo adicional.", "🤖", 16),
+    ("agente_whatsapp", "Agente WhatsApp (IA)", "Atiende y da seguimiento a clientes por WhatsApp de forma automática con IA. 150 interacciones/mes incluidas, excedente con costo adicional.", "💬", 17),
 ]
 
 # Módulos que antes venían "dentro" de otro: al crearse por primera vez se
@@ -130,15 +132,16 @@ MODULOS_HEREDADOS = {
     "empleados": None,
 }
 
-# Paquetes base (precios oct-2026: $599 / $899 / $1,199 al mes + IVA). El
+# Paquetes base (precios definitivos 13-oct-2026: $699 / $999 / $1,399 al mes
+# + IVA; no se vuelven a subir — ver claude/paquetes_precios_oct2026.md). El
 # súper administrador puede editarlos o crear otros desde su app.
 PAQUETES_BASE = [
-    ("Arranque", "Para el taller que va empezando: órdenes, cotizaciones, clientes y refacciones.", 599.0,
+    ("Arranque", "Para el taller que va empezando: órdenes ilimitadas, cotizaciones, clientes y refacciones.", 699.0,
      ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones"]),
-    ("Taller Pro", "El más contratado: suma inventario y punto de venta, proveedores, herramientas, empleados, roles y permisos, reportes y la app móvil del taller.", 899.0,
+    ("Taller Pro", "El más contratado: suma inventario y punto de venta, proveedores, herramientas, empleados, roles y permisos, reportes, app móvil del taller y asistente IA.", 999.0,
      ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones", "inventario", "herramientas",
-      "proveedores", "catalogos", "empleados", "roles_permisos", "reportes", "app_taller"]),
-    ("Full Garage", "Todo el sistema: nómina, facturación electrónica y la app para tus clientes.", 1199.0,
+      "proveedores", "catalogos", "empleados", "roles_permisos", "reportes", "app_taller", "asistente_ia"]),
+    ("Full Garage", "Todo el sistema: nómina, facturación electrónica, app para tus clientes y agente de WhatsApp con IA.", 1399.0,
      [c for c, *_ in MODULOS_SISTEMA]),
 ]
 # Nombres anteriores de cada paquete (para actualizar sin duplicar)
@@ -149,7 +152,7 @@ NOMBRES_ANTERIORES = {
 }
 # Al subir este número, al arrancar se vuelven a aplicar PAQUETES_BASE a los
 # paquetes existentes (nombre, precio, descripción y módulos). Una sola vez por versión.
-VERSION_PAQUETES = 5  # 4: Taller Pro incluye roles y permisos · 5: app móvil del taller desde Taller Pro
+VERSION_PAQUETES = 6  # 4: Taller Pro incluye roles y permisos · 5: app móvil del taller desde Taller Pro · 6: precios $699/$999/$1,399, Asistente IA (Taller Pro) y Agente WhatsApp (Full Garage)
 
 ROLES_BASE = [
     ("Administrador General", "Acceso total al sistema.", PERMISOS_ADMIN_GENERAL),
