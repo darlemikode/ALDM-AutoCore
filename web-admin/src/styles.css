@@ -2210,8 +2210,8 @@ tbody td:last-child {
 @media (max-width: 780px) {
   /* Debajo de la barra superior móvil (que ya trae su propio z-index) en
      vez de encimarse con ella. */
-  .campana-flotante { top: 70px; right: 14px; }
-  .campana-wrap-grande .campana-boton-grande { width: 44px; height: 44px; }
+  .campana-flotante { top: 70px; right: 12px; }
+  .campana-wrap-grande .campana-boton-grande { width: 42px; height: 42px; }
 }
 .campana-encabezado {
   display: flex; align-items: center; justify-content: space-between;
@@ -2537,10 +2537,14 @@ form div:has(> .select-with-add :user-invalid) > label {
 .h1-icono, .nav-link-icono { color: color-mix(in srgb, var(--ico) 80%, var(--ink-700)) !important; background: color-mix(in srgb, var(--ico) 11%, transparent) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ico) 26%, transparent) !important; }
 
 
-.reloj-vivo { display: flex; align-items: center; gap: 12px; padding: 10px 18px; border-radius: 16px; color: #3ddc97;
-  background: color-mix(in srgb, #3ddc97 12%, transparent); border: 1px solid color-mix(in srgb, #3ddc97 38%, transparent); }
+.reloj-vivo { display: flex; align-items: center; gap: 12px; padding: 10px 18px; border-radius: 16px; color: var(--teal-600);
+  background: color-mix(in srgb, var(--teal-600) 14%, transparent); border: 1px solid color-mix(in srgb, var(--teal-600) 45%, transparent); }
 .reloj-hora { font-family: var(--font-display); font-size: 28px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .reloj-fecha { font-size: 13px; opacity: .85; text-transform: capitalize; margin-top: 3px; }
+/* En tema claro el teal se pierde contra fondos blancos; se refuerza con
+   fondo sólido (igual que .badge-teal) para que no se vea apagado. */
+:root:not([data-theme="dark"]) .reloj-vivo { background: var(--teal-100); border-color: color-mix(in srgb, var(--teal-600) 55%, transparent); }
+:root:not([data-theme="dark"]) .reloj-fecha { opacity: .8; }
 
 /* Lista de órdenes */
 .ordenes-lista { display: flex; flex-direction: column; gap: 10px; }
@@ -3403,7 +3407,7 @@ select option:disabled { color: #8d8d8f; }
   box-shadow: 0 4px 14px rgba(0,0,0,.28); }
 .ayuda-flotante:hover { background: color-mix(in srgb, var(--petrol-500) 16%, var(--paper-100)); }
 :root:not([data-theme="dark"]) .ayuda-flotante { color: var(--petrol-600); }
-@media (max-width: 900px) { .ayuda-flotante { top: 70px; right: 66px; width: 44px; height: 44px; font-size: 20px; } }
+@media (max-width: 780px) { .ayuda-flotante { top: 70px; right: 64px; width: 42px; height: 42px; font-size: 20px; } }
 
 /* Estado de usuario: interruptor Activo / Inactivo */
 .estado-switch { display: inline-flex; align-items: center; gap: 10px; border: 0; background: none; padding: 6px 0; font: inherit; font-weight: 700; color: var(--ink-500); cursor: pointer; }
