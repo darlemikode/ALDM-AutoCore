@@ -6,6 +6,7 @@ import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from "@expo-goog
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { TemaProvider, useTema } from "./src/context/TemaContext";
 import LoginScreen from "./src/screens/LoginScreen";
+import BiometricLockScreen from "./src/screens/BiometricLockScreen";
 import TallerScreen, { consultarTaller } from "./src/screens/TallerScreen";
 import { extraerCodigo, getTallerCodigo, setTallerCodigo } from "./src/taller";
 import ChatbotScreen from "./src/screens/ChatbotScreen";
@@ -14,7 +15,7 @@ import { colors } from "./src/theme";
 import { DialogoHost } from "./src/ui/Dialogo";
 
 function Contenido() {
-  const { cliente, loading } = useAuth();
+  const { cliente, loading, lockedByBiometrics } = useAuth();
   const { tema } = useTema();
   const [mostrarChatbot, setMostrarChatbot] = useState(false);
   // undefined = todavía leyendo; null = sin taller elegido
@@ -52,6 +53,8 @@ function Contenido() {
         <ActivityIndicator color={colors.petrol500} size="large" />
       </View>
     );
+  } else if (lockedByBiometrics) {
+    pantalla = <BiometricLockScreen />;
   } else if (pedirTaller) {
     pantalla = (
       <TallerScreen

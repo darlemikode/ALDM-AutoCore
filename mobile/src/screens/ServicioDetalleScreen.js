@@ -16,6 +16,7 @@ import InspeccionForm from "../components/InspeccionForm";
 import { useAuth } from "../context/AuthContext";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
+import { useBarraInferior } from "../ui/AvisoSuscripcion";
 import Calendario from "../ui/Calendario";
 import { contiene } from "../lib/texto";
 
@@ -140,6 +141,9 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   const puedeEditar = hasPermission("servicios.editar");
 
   const [servicio, setServicio] = useState(null);
+  // La barra fija "Agregar refacción / Cobrar" (más abajo) tapa el aviso de
+  // suscripción si no le avisamos su alto para que suba.
+  useBarraInferior(servicio?.status === "abierto" && puedeEditar ? 70 : 0);
   const [refacciones, setRefacciones] = useState([]);
   const [inventarioVehiculo, setInventarioVehiculo] = useState([]);
   const [tipos, setTipos] = useState([]);

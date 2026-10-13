@@ -11,7 +11,7 @@ import BiometricLockScreen from "./src/screens/BiometricLockScreen";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { colors } from "./src/theme";
 import { DialogoHost } from "./src/ui/Dialogo";
-import { AvisoSuscripcion, PantallaBloqueo } from "./src/ui/AvisoSuscripcion";
+import { AvisoSuscripcion, OffsetBarraProvider, PantallaBloqueo } from "./src/ui/AvisoSuscripcion";
 import SelectorTaller from "./src/ui/SelectorTaller";
 import { TourHost } from "./src/ui/Tour";
 import { iniciarActualizacionesGlobales } from "./src/actualizacionesGlobales";
@@ -76,12 +76,14 @@ export default function App() {
     BarlowCondensed_700Bold,
   });
 
-  if (!fontsCargadas) return <View style={{ flex: 1, backgroundColor: "#141416" }} />;
+  if (!fontsCargadas) return <View style={{ flex: 1, backgroundColor: "#132a33" }} />;
 
   return (
     <TemaProvider>
       <AuthProvider>
-        <Root />
+        <OffsetBarraProvider>
+          <Root />
+        </OffsetBarraProvider>
       </AuthProvider>
     </TemaProvider>
   );

@@ -5,12 +5,13 @@ import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from "@expo-goog
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { TemaProvider, useTema } from "./src/context/TemaContext";
 import LoginScreen from "./src/screens/LoginScreen";
+import BiometricLockScreen from "./src/screens/BiometricLockScreen";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { colors } from "./src/theme";
 import { DialogoHost } from "./src/ui/Dialogo";
 
 function Contenido() {
-  const { usuario, cargando } = useAuth();
+  const { usuario, cargando, lockedByBiometrics } = useAuth();
   const { tema } = useTema();
   let pantalla;
   if (cargando) {
@@ -19,6 +20,8 @@ function Contenido() {
         <ActivityIndicator color={colors.petrol500} size="large" />
       </View>
     );
+  } else if (lockedByBiometrics) {
+    pantalla = <BiometricLockScreen />;
   } else {
     pantalla = usuario ? <AppNavigator /> : <LoginScreen />;
   }
