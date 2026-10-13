@@ -176,7 +176,13 @@ function MasStackScreen() {
   );
 }
 
-const COLOR_TAB = { Panel: "#2de2d0", Clientes: "#5ad1ff", Servicio: "#ffb454", Refacciones: "#ffcc4d", Más: "#a8a8b0" };
+// Colores del tema (ya ajustados para contraste en claro/oscuro) en vez de
+// pasteles fijos: en tema claro esos pasteles casi no se veían sobre el
+// fondo blanco del tab bar.
+const colorTab = (nombre) => ({
+  Panel: colors.teal600, Clientes: colors.blue600, Servicio: colors.warn600,
+  Refacciones: colors.violet600, Más: colors.ink500,
+}[nombre]);
 const ICONOS_TAB = {
   Panel: ["grid", "grid-outline"],
   Clientes: ["people", "people-outline"],
@@ -228,7 +234,7 @@ function TallerTabs() {
         tabBarInactiveTintColor: colors.ink500,
         tabBarIcon: ({ focused, color }) => {
           const par = ICONOS_TAB[route.name];
-          const colorModulo = COLOR_TAB[route.name];
+          const colorModulo = colorTab(route.name);
           return par && colorModulo
             ? <View style={{ opacity: focused ? 1 : 0.7 }}><BadgeIcono icono={par[1]} color={colorModulo} size={32} activo={focused} /></View>
             : par ? <Ionicons name={focused ? par[0] : par[1]} size={22} color={color} /> : null;

@@ -1,6 +1,6 @@
 // Aviso de la suscripción del taller (por vencer, periodo de gracia /
 // solo consulta). Si está bloqueada, App.js muestra PantallaBloqueo.
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, Modal, Linking, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { initialWindowMetrics } from "react-native-safe-area-context";
@@ -9,19 +9,40 @@ import { api } from "../api";
 import { colors } from "../theme";
 import { crearEstilos } from "./estilos";
 
+// El aviso vive fuera del navegador y no sabe si la pantalla activa tiene su
+// propia barra fija abajo (p. ej. "Agregar refacción / Cobrar" en el detalle
+// de la orden). Esas pantallas avisan su alto con useBarraInferior() y el
+// aviso sube esa misma distancia para no encimarse.
+const OffsetBarraContext = createContext({ extra: 0, setExtra: () => {} });
+
+export function OffsetBarraProvider({ children }) {
+  const [extra, setExtra] = useState(0);
+  return <OffsetBarraContext.Provider value={{ extra, setExtra }}>{children}</OffsetBarraContext.Provider>;
+}
+
+export function useBarraInferior(altura = 0) {
+  const { setExtra } = useContext(OffsetBarraContext);
+  useEffect(() => {
+    setExtra(altura);
+    return () => setExtra(0);
+  }, [altura]);
+}
+
 export function AvisoSuscripcion() {
   const { estadoSuscripcion, hasPermission } = useAuth();
   const [pagando, setPagando] = useState(false);
   const [oculto, setOculto] = useState(false);
+  const { extra } = useContext(OffsetBarraContext);
   // Fuera del NavigationContainer no hay proveedor de márgenes: se usan los del arranque
   const insets = initialWindowMetrics?.insets || { bottom: 0 };
   if (!estadoSuscripcion?.mensaje || estadoSuscripcion.bloqueado) return null;
   const grave = estadoSuscripcion.solo_lectura;
   if (oculto && !grave) return null;
-  // Flotante, abajo y encima de la barra de pestañas: ya no se encima con la barra de estado
-  // ni empuja el encabezado (evita el espacio en blanco arriba).
+  // Flotante, abajo y encima de la barra de pestañas (o de la barra fija de
+  // la pantalla activa, ver useBarraInferior): ya no se encima con la barra
+  // de estado ni empuja el encabezado (evita el espacio en blanco arriba).
   return (
-    <View style={[styles.barra, styles.flotante, { bottom: insets.bottom + 74, backgroundColor: grave ? colors.red100 : colors.warn100, borderColor: grave ? colors.red600 : colors.warn600 }]}>
+    <View style={[styles.barra, styles.flotante, { bottom: insets.bottom + 74 + extra, backgroundColor: grave ? colors.red100 : colors.warn100, borderColor: grave ? colors.red600 : colors.warn600 }]}>
       <Ionicons name={grave ? "lock-closed-outline" : "time-outline"} size={14} color={grave ? colors.red600 : colors.warn600} />
       <Text style={[styles.texto, { color: grave ? colors.red600 : colors.warn600 }]}>{estadoSuscripcion.mensaje}</Text>
       {hasPermission?.("configuracion.editar") ? (

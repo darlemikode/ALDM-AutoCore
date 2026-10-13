@@ -19,7 +19,10 @@ function Kpi({ icono, valor, etiqueta, tono = "petrol600", onPress }) {
 export default function InicioScreen({ navigation }) {
   const { usuario } = useAuth();
   const { datos: r, recargar, refrescando } = useCargar(() => api.get("/superadmin/resumen"));
+  const { datos: solicitudes } = useCargar(() => api.get("/superadmin/solicitudes"));
   const irTalleres = (filtro) => navigation.navigate("TalleresTab", { screen: "Talleres", params: { filtro } });
+  const irSolicitudes = () => navigation.navigate("MasTab", { screen: "Solicitudes", initial: false });
+  const pendientes = (solicitudes || []).filter((s) => !s.atendida).length;
 
   if (!r) return <View style={styles.screen} />;
   const maxMes = Math.max(1, ...r.ingresos_por_mes.map((m) => m.ingresos));
@@ -28,6 +31,16 @@ export default function InicioScreen({ navigation }) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }} refreshControl={<RefreshControl refreshing={refrescando} onRefresh={() => recargar(true)} />}>
       <Text style={styles.saludo}>Hola, {usuario?.nombre_completo?.split(" ")[0] || usuario?.username}</Text>
+
+      <TouchableOpacity style={styles.botonSolicitudes} onPress={irSolicitudes} activeOpacity={0.85}>
+        <View style={styles.botonSolicitudesIcono}><Ionicons name="mail-unread-outline" size={22} color={colors.petrol600} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.botonSolicitudesTitulo}>Solicitudes de demo</Text>
+          <Text style={styles.botonSolicitudesSub}>{pendientes > 0 ? `${pendientes} sin atender` : "Quién pidió información desde la página"}</Text>
+        </View>
+        {pendientes > 0 ? <View style={styles.botonSolicitudesBadge}><Text style={styles.botonSolicitudesBadgeTexto}>{pendientes}</Text></View> : null}
+        <Ionicons name="chevron-forward" size={20} color={colors.ink500} />
+      </TouchableOpacity>
 
       <View style={styles.hero}>
         <Text style={styles.heroEtiqueta}>COBRADO ESTE MES</Text>
@@ -117,6 +130,12 @@ export default function InicioScreen({ navigation }) {
 const styles = crearEstilos({
   screen: { flex: 1, backgroundColor: colors.paper0 },
   saludo: { fontFamily: "BarlowCondensed_700Bold", fontSize: 28, color: colors.ink900, marginBottom: 12 },
+  botonSolicitudes: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.paper100, borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: colors.ink300 },
+  botonSolicitudesIcono: { width: 40, height: 40, borderRadius: 20, backgroundColor: `${colors.petrol600}22`, alignItems: "center", justifyContent: "center" },
+  botonSolicitudesTitulo: { fontSize: 15, fontWeight: "700", color: colors.ink900 },
+  botonSolicitudesSub: { fontSize: 12.5, color: colors.ink700, marginTop: 1 },
+  botonSolicitudesBadge: { minWidth: 22, height: 22, paddingHorizontal: 5, borderRadius: 11, backgroundColor: colors.petrol600, alignItems: "center", justifyContent: "center" },
+  botonSolicitudesBadgeTexto: { fontSize: 12, fontWeight: "700", color: colors.sobreAcento },
   hero: { backgroundColor: colors.sidebarBg, borderRadius: 18, padding: 20, marginBottom: 14 },
   heroEtiqueta: { fontSize: 11.5, fontWeight: "700", letterSpacing: 1.3, color: colors.sidebarTextoTenue },
   heroMonto: { fontFamily: "BarlowCondensed_700Bold", fontSize: 44 },
