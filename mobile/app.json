@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ALDMAutoCore",
+    "name": "ALDM Taller",
     "slug": "sistema-mecanico-admin",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,6 +21,7 @@
     },
     "android": {
       "package": "com.tutaller.mecanicoadmin",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#08080a"
@@ -28,8 +29,8 @@
     },
     "web": {
       "bundler": "metro",
-      "name": "ALDMAutoCore",
-      "shortName": "ALDMAutoCore",
+      "name": "ALDM Taller",
+      "shortName": "ALDM Taller",
       "themeColor": "#070708",
       "backgroundColor": "#070708",
       "display": "standalone",
