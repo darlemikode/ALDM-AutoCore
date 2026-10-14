@@ -1,4 +1,3 @@
-from ..busqueda import coincide
 """
 Facturación electrónica — CFDI 4.0 de ingreso.
 
@@ -17,8 +16,8 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..consumo import registrar_consumo
 from ..database import get_db
-from .. import almacenamiento
 from ..facturacion_pac import RFC_GENERICO_NACIONAL, ErrorPAC, cancelar, consultar_estado, descargar_archivo, modo_pac, llave_facturapi, timbrar
 from ..security import get_current_user, require_permission
 
@@ -167,8 +166,6 @@ def prefactura_servicio(servicio_id: int, db: Session = Depends(get_db), user=De
     servicio = db.query(models.Servicio).filter(models.Servicio.id_servicio == servicio_id).first()
     if not servicio:
         raise HTTPException(status_code=404, detail="Orden de servicio no encontrada")
-    if servicio.status != "cerrado":
-        raise HTTPException(status_code=400, detail="Solo se pueden facturar órdenes finalizadas (cerradas).")
     config = _config(db)
     existente = (
         db.query(models.Factura)
@@ -243,44 +240,6 @@ def receptor_de_cliente(cliente_id: int, db: Session = Depends(get_db), user=Dep
     }
 
 
-@router.get("/ordenes-por-facturar")
-def ordenes_por_facturar(db: Session = Depends(get_db), user=Depends(require_permission("facturacion.crear"))):
-    """Órdenes finalizadas que todavía no tienen una factura vigente."""
-    from .servicios import _calcular_costos
-
-    facturadas = {
-        f.id_servicio for f in db.query(models.Factura.id_servicio)
-        .filter(models.Factura.id_servicio.isnot(None), models.Factura.estado.in_(["timbrada", "cancelacion_pendiente"]))
-    }
-    servicios = (
-        db.query(models.Servicio)
-        .filter(models.Servicio.status == "cerrado")
-        .order_by(models.Servicio.fecha_salida_servicio.desc(), models.Servicio.id_servicio.desc())
-        .limit(300)
-        .all()
-    )
-    resultado = []
-    for s in servicios:
-        if s.id_servicio in facturadas:
-            continue
-        c, v = s.cliente, s.vehiculo
-        resultado.append({
-            "id_servicio": s.id_servicio,
-            "cliente": " ".join(filter(None, [c.nombre_cliente, c.paterno_cliente])) if c else "—",
-            "rfc": (c.rfc_cliente or "") if c else "",
-            "vehiculo": " ".join(filter(None, [
-                v.marca.nombre_marca if v and v.marca else None,
-                v.modelo.nombre_modelo if v and v.modelo else None,
-                v.placas_vehiculo if v else None,
-            ])) or "—",
-            "nombre_servicio": s.nombre_servicio,
-            "fecha_salida": s.fecha_salida_servicio.isoformat() if s.fecha_salida_servicio else None,
-            "total": _calcular_costos(s).total,
-            "pagado": bool(s.pagado),
-        })
-    return resultado
-
-
 # --- Emisión -----------------------------------------------------------------
 def _validar(payload: schemas.FacturaIn, config) -> None:
     rec = payload.receptor
@@ -335,21 +294,9 @@ def _validar(payload: schemas.FacturaIn, config) -> None:
 
 
 def _guardar_archivo(nombre: str, contenido: bytes) -> str:
-    almacenamiento.guardar("facturas/" + nombre, contenido)
+    with open(os.path.join(CARPETA_FACTURAS, nombre), "wb") as f:
+        f.write(contenido)
     return nombre
-
-
-def _regenerar_pdf(db: Session, factura: models.Factura, config) -> None:
-    """PDF con el diseño del sistema (logo y datos del taller), a partir del
-    XML timbrado — se usa igual para modo simulado y para Facturapi."""
-    from ..factura_pdf import generar_factura_pdf
-
-    xml = None
-    if factura.ruta_xml:
-        xml = almacenamiento.leer("facturas/" + factura.ruta_xml)
-    taller = db.query(models.ConfiguracionTaller).first()
-    nombre = factura.ruta_pdf or f"{factura.serie}{factura.folio}_{factura.uuid or factura.id_factura}.pdf"
-    factura.ruta_pdf = _guardar_archivo(nombre, generar_factura_pdf(factura, config, taller, xml))
 
 
 @router.post("/facturas", response_model=schemas.FacturaOut, status_code=201)
@@ -357,22 +304,19 @@ def emitir(payload: schemas.FacturaIn, db: Session = Depends(get_db), user=Depen
     config = _config(db)
     _validar(payload, config)
 
-    # La facturación siempre parte de una orden finalizada — así cada CFDI
-    # corresponde a un trabajo real y entregado, con los mismos importes.
-    if not payload.id_servicio:
-        raise HTTPException(status_code=400, detail="Solo se pueden facturar órdenes de servicio finalizadas.")
-    servicio = db.query(models.Servicio).filter(models.Servicio.id_servicio == payload.id_servicio).first()
-    if not servicio:
-        raise HTTPException(status_code=404, detail="Orden de servicio no encontrada")
-    if servicio.status != "cerrado":
-        raise HTTPException(status_code=400, detail="Solo se pueden facturar órdenes finalizadas (cerradas).")
-    duplicada = db.query(models.Factura).filter(
-        models.Factura.id_servicio == payload.id_servicio,
-        models.Factura.estado.in_(["timbrada", "cancelacion_pendiente"]),
-    ).first()
-    if duplicada:
-        raise HTTPException(status_code=400, detail=f"Esta orden ya tiene la factura {duplicada.serie}-{duplicada.folio}. Cancélala antes de emitir otra.")
-    payload.id_cliente = payload.id_cliente or servicio.id_cliente
+    if payload.id_servicio:
+        servicio = db.query(models.Servicio).filter(models.Servicio.id_servicio == payload.id_servicio).first()
+        if not servicio:
+            raise HTTPException(status_code=404, detail="Orden de servicio no encontrada")
+        if servicio.status == "cancelado":
+            raise HTTPException(status_code=400, detail="No se puede facturar una orden cancelada.")
+        duplicada = db.query(models.Factura).filter(
+            models.Factura.id_servicio == payload.id_servicio,
+            models.Factura.estado.in_(["timbrada", "cancelacion_pendiente"]),
+        ).first()
+        if duplicada:
+            raise HTTPException(status_code=400, detail=f"Esta orden ya tiene la factura {duplicada.serie}-{duplicada.folio}. Cancélala antes de emitir otra.")
+        payload.id_cliente = payload.id_cliente or servicio.id_cliente
 
     tasa = payload.iva_porcentaje / 100
     conceptos = []
@@ -383,14 +327,6 @@ def emitir(payload: schemas.FacturaIn, db: Session = Depends(get_db), user=Depen
     subtotal = round(sum(c["importe"] for c in conceptos), 2)
     iva = round(sum(c["iva"] for c in conceptos), 2)
     total = round(subtotal + iva, 2)
-
-    from .servicios import _calcular_costos
-    subtotal_orden = _calcular_costos(servicio).subtotal
-    if abs(subtotal_orden - subtotal) > 0.05:
-        raise HTTPException(
-            status_code=400,
-            detail=f"El subtotal de la factura (${subtotal:,.2f}) no coincide con el de la orden (${subtotal_orden:,.2f}). Reabre la orden si necesitas cambiar importes.",
-        )
 
     serie, folio, ahora = config.serie or "A", config.folio_siguiente or 1, datetime.now()
     datos = {
@@ -416,13 +352,15 @@ def emitir(payload: schemas.FacturaIn, db: Session = Depends(get_db), user=Depen
     db.add(factura)
     config.folio_siguiente = folio + 1
     db.flush()
+    registrar_consumo(db, "cfdi")  # cuenta para el tope mensual de CFDI (plan Full Garage)
 
     base = f"{serie}{folio}_{(resultado['uuid'] or factura.id_factura)}"
     factura.ruta_xml = _guardar_archivo(f"{base}.xml", resultado["xml"])
-    if resultado["pdf"]:  # el PDF propio del PAC se conserva aparte, por si se necesita
-        _guardar_archivo(f"{base}_pac.pdf", resultado["pdf"])
-    factura.ruta_pdf = f"{base}.pdf"
-    _regenerar_pdf(db, factura, config)
+    if resultado["pdf"]:
+        factura.ruta_pdf = _guardar_archivo(f"{base}.pdf", resultado["pdf"])
+    else:
+        from ..factura_pdf import generar_factura_pdf
+        factura.ruta_pdf = _guardar_archivo(f"{base}.pdf", generar_factura_pdf(factura, config, simulada=True))
 
     if payload.guardar_datos_cliente and payload.id_cliente and rec.rfc != RFC_GENERICO_NACIONAL:
         cliente = db.query(models.Cliente).filter(models.Cliente.id_cliente == payload.id_cliente).first()
@@ -446,8 +384,10 @@ def listar(estado: str = None, id_servicio: int = None, q: str = None, db: Sessi
     if id_servicio:
         query = query.filter(models.Factura.id_servicio == id_servicio)
     if q:
-        facturas = query.order_by(models.Factura.fecha_emision.desc()).all()
-        return [f for f in facturas if coincide(q, f.receptor_rfc, f.receptor_nombre, f.uuid)][:500]
+        like = f"%{q.strip()}%"
+        query = query.filter(
+            models.Factura.receptor_rfc.ilike(like) | models.Factura.receptor_nombre.ilike(like) | models.Factura.uuid.ilike(like)
+        )
     return query.order_by(models.Factura.fecha_emision.desc()).limit(500).all()
 
 
@@ -461,13 +401,11 @@ def descargar(factura_id: int, tipo: str, db: Session = Depends(get_db), user=De
     if tipo not in ("pdf", "xml"):
         raise HTTPException(status_code=404, detail="Formato no disponible")
     factura = _factura_o_404(db, factura_id)
-    if tipo == "pdf" and not (factura.ruta_pdf and almacenamiento.existe("facturas/" + factura.ruta_pdf)):
-        _regenerar_pdf(db, factura, _config(db))
-        db.commit()
     ruta = factura.ruta_pdf if tipo == "pdf" else factura.ruta_xml
-    contenido = almacenamiento.leer("facturas/" + ruta) if ruta else None
-    if contenido is not None:
-        pass
+    ruta_completa = os.path.join(CARPETA_FACTURAS, ruta) if ruta else None
+    if ruta_completa and os.path.exists(ruta_completa):
+        with open(ruta_completa, "rb") as f:
+            contenido = f.read()
     elif factura.proveedor == "facturapi" and factura.pac_id:
         try:
             contenido = descargar_archivo(factura, tipo)
@@ -505,7 +443,9 @@ def cancelar_factura(factura_id: int, payload: schemas.CancelarFacturaIn, db: Se
     factura.uuid_sustitucion = payload.uuid_sustitucion
     if nuevo_estado == "cancelada":
         factura.fecha_cancelacion = datetime.now()
-    _regenerar_pdf(db, factura, config)  # marca de agua CANCELADA / aviso de cancelación pendiente
+        if factura.proveedor == "simulado":
+            from ..factura_pdf import generar_factura_pdf
+            _guardar_archivo(factura.ruta_pdf, generar_factura_pdf(factura, config, simulada=True))
     db.commit()
     db.refresh(factura)
     return factura
@@ -523,7 +463,6 @@ def actualizar_estado(factura_id: int, db: Session = Depends(get_db), user=Depen
         factura.estado = estado
         if estado == "cancelada":
             factura.fecha_cancelacion = datetime.now()
-        _regenerar_pdf(db, factura, _config(db))
         db.commit()
         db.refresh(factura)
     return factura
