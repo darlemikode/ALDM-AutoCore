@@ -1227,6 +1227,23 @@ class PagoSuscripcion(Base):
     tipo_cobro = relationship("TipoCobro")
 
 
+class ConsumoMensual(TenantMixin, Base):
+    """Contador de uso del mes de cada taller para los módulos con tope
+    (Asistente IA, Agente WhatsApp, facturación CFDI) del plan Full Garage.
+    Una fila por taller y mes (`anio_mes` = "2026-10"); se crea al primer
+    uso del mes. El excedente sobre el tope se cobra aparte — ver
+    `consumo.py` para los topes, precios y el cálculo."""
+    __tablename__ = "consumo_mensual"
+    __table_args__ = (UniqueConstraint("id_taller", "anio_mes", name="uq_consumo_taller_mes"),)
+
+    id_consumo = Column(Integer, primary_key=True, index=True)
+    anio_mes = Column(String(7), nullable=False, index=True)  # "AAAA-MM"
+    consultas_ia = Column(Integer, default=0)
+    facturas_cfdi = Column(Integer, default=0)
+    interacciones_wp = Column(Integer, default=0)
+    actualizado = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 # ---------------------------------------------------------------------------
 # Facturación electrónica (CFDI 4.0)
 # ---------------------------------------------------------------------------
