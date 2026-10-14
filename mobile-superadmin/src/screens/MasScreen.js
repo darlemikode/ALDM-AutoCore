@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
@@ -25,6 +25,24 @@ export default function MasScreen({ navigation }) {
   const { usuario, logout } = useAuth();
   const { preferencia, cambiarPreferencia } = useTema();
   const [cambiandoPassword, setCambiandoPassword] = useState(false);
+  const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
+
+  // Marca roja en "Solicitudes de información" con cuántas de la página web
+  // siguen sin atender — se refresca al volver a esta pantalla.
+  useEffect(() => {
+    let activo = true;
+    async function cargarSolicitudes() {
+      try {
+        const lista = await api.get("/superadmin/solicitudes");
+        if (activo) setSolicitudesPendientes(Array.isArray(lista) ? lista.filter((s) => !s.atendida).length : 0);
+      } catch {
+        // sin conexión: no se muestra marca, no se interrumpe la pantalla
+      }
+    }
+    cargarSolicitudes();
+    const salir = navigation.addListener("focus", cargarSolicitudes);
+    return () => { activo = false; salir(); };
+  }, [navigation]);
 
   async function guardarPassword(v) {
     if (v.password_nueva !== v.confirmar) throw new Error("La contraseña nueva y su confirmación no coinciden.");
@@ -45,6 +63,11 @@ export default function MasScreen({ navigation }) {
             <Text style={styles.titulo}>{titulo}</Text>
             <Text style={styles.desc}>{desc}</Text>
           </View>
+          {ruta === "Solicitudes" && solicitudesPendientes > 0 && (
+            <View style={styles.contadorBadge}>
+              <Text style={styles.contadorBadgeTexto}>{solicitudesPendientes > 99 ? "99+" : solicitudesPendientes}</Text>
+            </View>
+          )}
           <Ionicons name="chevron-forward" size={18} color={colors.ink500} />
         </TouchableOpacity>
       ))}
@@ -104,4 +127,6 @@ const styles = crearEstilos({
   segmentoTexto: { fontSize: 13.5, fontWeight: "600", color: colors.ink700 },
   salir: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.red100, borderRadius: 12, paddingVertical: 13 },
   salirTexto: { color: colors.red600, fontWeight: "700", fontSize: 14.5 },
+  contadorBadge: { backgroundColor: colors.red600, borderRadius: 100, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center", marginRight: 6 },
+  contadorBadgeTexto: { fontSize: 11, fontWeight: "700", color: "#fff" },
 });

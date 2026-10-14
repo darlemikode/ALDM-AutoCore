@@ -27,10 +27,10 @@ const ITEMS = [
   { to: "Proveedores", label: "Proveedores", desc: "Contactos, productos y deudas", icono: "business-outline", permiso: "proveedores.ver" },
   { to: "Citas", label: "Citas solicitadas", desc: "Lo que piden los clientes desde su app", icono: "calendar-outline" },
   { to: "Promociones", label: "Promociones", desc: "Lo que ven tus clientes en su app", icono: "pricetag-outline", permiso: "promociones.ver" },
-  { to: "Asistente", label: "Asistente", desc: "Consultas rápidas de uso interno", icono: "sparkles-outline", permiso: "servicios.ver" },
+  { to: "Asistente", label: "Asistente", desc: "Consultas rápidas de uso interno", icono: "sparkles-outline" },
 ];
 
-function Fila({ icono, titulo, desc, onPress, derecha, primera }) {
+function Fila({ icono, titulo, desc, onPress, derecha, primera, contador }) {
   const Contenedor = onPress ? TouchableOpacity : View;
   return (
     <Contenedor style={[styles.fila, !primera && styles.divisor]} onPress={onPress} activeOpacity={0.6}>
@@ -44,6 +44,11 @@ function Fila({ icono, titulo, desc, onPress, derecha, primera }) {
         <Text style={styles.rowTitle}>{titulo}</Text>
         {desc ? <Text style={styles.rowSubtitle}>{desc}</Text> : null}
       </View>
+      {!!contador && (
+        <View style={styles.contadorBadge}>
+          <Text style={styles.contadorBadgeTexto}>{contador > 99 ? "99+" : contador}</Text>
+        </View>
+      )}
       {derecha !== undefined ? derecha : <Ionicons name="chevron-forward" size={18} color={colors.ink500} />}
     </Contenedor>
   );
@@ -83,6 +88,7 @@ export default function MasScreen({ navigation }) {
   const [cambiandoPassword, setCambiandoPassword] = useState(false);
   const [modoLocal, setModoLocal] = useState(MODO_LOCAL);
   const [verificandoConexion, setVerificandoConexion] = useState(false);
+  const [citasPendientes, setCitasPendientes] = useState(0);
 
   async function actualizarPendientes() {
     setPendientes(await contarPendientesTotal());
@@ -97,6 +103,24 @@ export default function MasScreen({ navigation }) {
       await actualizarPendientes();
     })();
   }, []);
+
+  // Marca roja en "Citas solicitadas" con el número de citas sin revisar —
+  // se refresca cada vez que la persona vuelve a esta pantalla (ej. después
+  // de confirmar/rechazar alguna desde Citas).
+  useEffect(() => {
+    let activo = true;
+    async function cargarCitasPendientes() {
+      try {
+        const lista = await api.get("/citas/?estado=pendiente");
+        if (activo) setCitasPendientes(Array.isArray(lista) ? lista.length : 0);
+      } catch {
+        // sin conexión o sin permiso: no se muestra marca, no se interrumpe la pantalla
+      }
+    }
+    cargarCitasPendientes();
+    const salir = navigation.addListener("focus", cargarCitasPendientes);
+    return () => { activo = false; salir(); };
+  }, [navigation]);
 
   // Modo local ya no es fijo (ver localMode.js): se prende y se apaga solo
   // según haya o no servidor. Esta pantalla se suscribe para reflejarlo, y
@@ -288,7 +312,11 @@ export default function MasScreen({ navigation }) {
 
       <Grupo titulo="Módulos">
         {ITEMS.filter((item) => !item.permiso || hasPermission(item.permiso)).map((item, i) => (
-          <Fila key={item.to} primera={i === 0} icono={item.icono} titulo={item.label} desc={item.desc} onPress={() => navigation.navigate(item.to)} />
+          <Fila
+            key={item.to} primera={i === 0} icono={item.icono} titulo={item.label} desc={item.desc}
+            contador={item.to === "Citas" ? citasPendientes : undefined}
+            onPress={() => navigation.navigate(item.to)}
+          />
         ))}
       </Grupo>
 
@@ -388,7 +416,9 @@ const styles = crearEstilos({
   segmento: { flex: 1, flexDirection: "row", gap: 5, paddingVertical: 9, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   segmentoActivo: { backgroundColor: colors.petrol500 },
   segmentoTexto: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: colors.ink700 },
-  segmentoTextoActivo: { color: colors.sobreAcento },
+  segmentoTextoActivo: { color: colors.paper100 },
   logout: { flexDirection: "row", gap: 8, marginTop: 28, borderRadius: 14, backgroundColor: colors.red100, height: 50, alignItems: "center", justifyContent: "center" },
   logoutText: { fontFamily: "Inter_600SemiBold", color: colors.red600, fontSize: 15 },
+  contadorBadge: { backgroundColor: colors.red600, borderRadius: 100, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center", marginRight: 6 },
+  contadorBadgeTexto: { fontFamily: "Inter_700Bold", fontSize: 11, color: "#fff" },
 });
