@@ -22,9 +22,14 @@ export function AuthProvider({ children }) {
     try {
       const me = await api.get("/auth/me");
       if (me.es_superadmin) { setUsuario(me); setLockedByBiometrics(false); registrarPush(); }
-      else await setToken(null);
+      else { await setToken(null); setUsuario(null); setLockedByBiometrics(false); }
     } catch {
+      // Token vencido o inválido: se borra y se libera el bloqueo biométrico
+      // para que caiga al login normal, en vez de quedarse pidiendo huella
+      // sin fin (no hay token con qué validar).
       await setToken(null);
+      setUsuario(null);
+      setLockedByBiometrics(false);
     } finally {
       setCargando(false);
     }

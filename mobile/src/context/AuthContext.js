@@ -45,7 +45,12 @@ export function AuthProvider({ children }) {
       setPermisos(me.permisos || []);
       setLockedByBiometrics(false);
     } catch {
+      // Token vencido o inválido: se borra y se libera el bloqueo biométrico
+      // para que caiga al login normal, en vez de quedarse pidiendo huella
+      // sin fin (no hay token con qué validar).
       await setToken(null);
+      setUser(null);
+      setLockedByBiometrics(false);
     } finally {
       setLoading(false);
     }
