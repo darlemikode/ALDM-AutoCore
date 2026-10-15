@@ -9,6 +9,7 @@ import {
 import { olvidarNavegacion } from "../navigation/estadoNavegacion";
 import { suscribirActualizacionGlobal } from "../actualizacionesGlobales";
 import { alerta } from "../ui/Dialogo";
+import { registrarPush } from "../push";
 
 const AuthContext = createContext(null);
 
@@ -44,6 +45,7 @@ export function AuthProvider({ children }) {
       setUser(me);
       setPermisos(me.permisos || []);
       setLockedByBiometrics(false);
+      registrarPush();
     } catch {
       // Token vencido o inválido: se borra y se libera el bloqueo biométrico
       // para que caiga al login normal, en vez de quedarse pidiendo huella
@@ -111,6 +113,7 @@ export function AuthProvider({ children }) {
       setEligiendoTaller((data.talleres || []).length > 1);
     }
     setLockedByBiometrics(false);
+    registrarPush();
     await ofrecerActivarBiometria();
   }
 
@@ -121,6 +124,7 @@ export function AuthProvider({ children }) {
     setUser(me);
     setPermisos(me.permisos || []);
     setLockedByBiometrics(false);
+    registrarPush();
   }
 
   // Cambiar de taller: nuevo token ligado a ese taller y se vuelve a

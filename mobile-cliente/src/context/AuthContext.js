@@ -4,6 +4,7 @@ import { olvidarNavegacion } from "../navigation/estadoNavegacion";
 import { iniciarActualizacionesGlobales, detenerActualizacionesGlobales } from "../actualizacionesGlobales";
 import { isBiometricHardwareAvailable, isBiometricEnabled, setBiometricEnabled, authenticateWithBiometrics } from "../biometrics";
 import { alerta } from "../ui/Dialogo";
+import { registrarPush } from "../push";
 
 const AuthContext = createContext(null);
 
@@ -37,6 +38,7 @@ export function AuthProvider({ children }) {
       setCliente(perfil);
       setLockedByBiometrics(false);
       iniciarActualizacionesGlobales();
+      registrarPush();
     } catch {
       // Token vencido o inválido: se borra y se libera el bloqueo biométrico
       // para que caiga al login normal, en vez de quedarse pidiendo huella

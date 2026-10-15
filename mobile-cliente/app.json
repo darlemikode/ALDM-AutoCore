@@ -18,6 +18,7 @@
     },
     "android": {
       "package": "com.tutaller.mecanicocliente",
+      "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -41,7 +42,8 @@
         {
           "cameraPermission": "La cámara se usa para escanear el código QR de tu taller."
         }
-      ]
+      ],
+      "expo-notifications"
     ]
   }
 }
