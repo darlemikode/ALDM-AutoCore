@@ -23,6 +23,44 @@
           "other_platform_oauth_client": []
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:145866643556:android:050efd63621381bd21e771",
+        "android_client_info": {
+          "package_name": "com.tutaller.mecanicoadmin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHZEUJ4Di5-awtapkPklVgpi8qJY639W8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:145866643556:android:d5c457d942dbd6ee21e771",
+        "android_client_info": {
+          "package_name": "com.tutaller.mecanicocliente"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHZEUJ4Di5-awtapkPklVgpi8qJY639W8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"
