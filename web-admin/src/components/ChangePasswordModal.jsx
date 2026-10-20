@@ -4,9 +4,12 @@ import { createPortal } from "react-dom";
 import { api, setToken } from "../api";
 import { Icono } from "./Icono";
 import { useUI } from "../context/UIContext";
+import { useAuth } from "../context/AuthContext";
+import { validarPassword } from "../validarPassword";
 
 export default function ChangePasswordModal({ onClose, onChanged, precargada = "" }) {
   const { notify } = useUI();
+  const { user } = useAuth();
   const [passwordActual, setPasswordActual] = useState(precargada);
   const [passwordNueva, setPasswordNueva] = useState("");
   const [confirmacion, setConfirmacion] = useState("");
@@ -14,9 +17,15 @@ export default function ChangePasswordModal({ onClose, onChanged, precargada = "
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const reglas = validarPassword(passwordNueva, [user?.username, user?.correo, user?.nombre_completo]);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    if (!reglas.every((r) => r.ok)) {
+      setError("La contraseña no cumple los requisitos.");
+      return;
+    }
     if (passwordNueva !== confirmacion) {
       const campos = e.currentTarget.querySelectorAll("input[type=password]");
       marcarCampo(campos[campos.length - 1], "La confirmación no coincide con la nueva contraseña");
@@ -56,11 +65,21 @@ export default function ChangePasswordModal({ onClose, onChanged, precargada = "
             <div className="field">
               <label>Nueva contraseña</label>
               <div className="pass-caja">
-                <input type={ver.n ? "text" : "password"} required minLength={6} value={passwordNueva} onChange={(e) => setPasswordNueva(e.target.value)} />
+                <input type={ver.n ? "text" : "password"} required value={passwordNueva} onChange={(e) => setPasswordNueva(e.target.value)} />
                 <button type="button" className={"pass-ojo" + (ver.n ? " activo" : "")} aria-pressed={ver.n} aria-label={ver.n ? "Ocultar contraseña" : "Ver contraseña"} onMouseDown={(e) => e.preventDefault()} onClick={() => setVer((v) => ({ ...v, n: !v.n }))}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" /><circle cx="12" cy="12" r="3" />{!ver.n && <path d="M3 3l18 18" />}</svg>
                 </button>
               </div>
+              {passwordNueva && (
+                <ul className="password-checklist">
+                  {reglas.map((r) => (
+                    <li key={r.clave} className={r.ok ? "ok" : ""}>
+                      <Icono nombre={r.ok ? "check-circle" : "x-circle"} size={14} />
+                      {r.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="field">
               <label>Confirmar nueva contraseña</label>
@@ -75,7 +94,7 @@ export default function ChangePasswordModal({ onClose, onChanged, precargada = "
           {error && <div className="error-text">{error}</div>}
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? "Guardando..." : "Guardar"}</button>
+            <button type="submit" className="btn btn-primary" disabled={saving || !reglas.every((r) => r.ok) || passwordNueva !== confirmacion}>{saving ? "Guardando..." : "Guardar"}</button>
           </div>
         </form>
       </div>

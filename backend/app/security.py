@@ -35,7 +35,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 def authenticate_user(db: Session, username: str, password: str) -> Optional[models.Usuario]:
-    user = db.query(models.Usuario).filter(models.Usuario.username == username).first()
+    """El acceso es por correo electrónico; se sigue aceptando el username
+    por compatibilidad (apps/sesiones ya guardadas, usuarios sembrados)."""
+    identificador = (username or "").strip()
+    user = db.query(models.Usuario).filter(
+        (models.Usuario.username == identificador) | (models.Usuario.correo.ilike(identificador))
+    ).first()
     if not user or not user.activo:
         return None
     if not verify_password(password, user.hashed_password):

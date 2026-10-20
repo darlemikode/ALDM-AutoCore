@@ -22,7 +22,7 @@ const SECCIONES = [
 
 export default function ConfiguracionTaller() {
   const { notify } = useUI();
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, refrescarPerfil } = useAuth();
   const puedeFiscal = hasPermission("facturacion.configurar");
   const [data, setData] = useState(null);
   const [estados, setEstados] = useState([]);
@@ -61,6 +61,7 @@ export default function ConfiguracionTaller() {
       telefono: d.telefono, telefono2: d.telefono2, telefono3: d.telefono3,
       correo: d.correo, correo2: d.correo2, rfc: d.rfc, cp: d.cp, calle: d.calle,
       numero_taller: d.numero_taller, id_estado: d.id_estado || null, id_ciudad: d.id_ciudad || null,
+      codigo_taller: d.codigo_taller || null,
     };
   }
 
@@ -72,10 +73,11 @@ export default function ConfiguracionTaller() {
     const t = setTimeout(async () => {
       setEstadoGuardado("Guardando…");
       try {
-        await api.put("/configuracion-taller/", JSON.parse(cuerpo));
+        const actualizado = await api.put("/configuracion-taller/", JSON.parse(cuerpo));
         ultimoTaller.current = cuerpo;
         ultimoError.current = "";
         setEstadoGuardado("Guardado ✓");
+        if (actualizado.codigo_taller && !user?.codigo_taller) refrescarPerfil();
       } catch (err) {
         setEstadoGuardado("");
         if (ultimoError.current !== err.message) { ultimoError.current = err.message; notify(err.message, "error"); }
@@ -190,6 +192,15 @@ export default function ConfiguracionTaller() {
             <div className="field">
               <label>Nombre del taller</label>
               <input value={data.nombre_taller || ""} onChange={(e) => setData({ ...data, nombre_taller: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Código del taller (para su QR)</label>
+              {data.codigo_taller ? (
+                <input value={data.codigo_taller} disabled title="Ya quedó fijo; no se puede cambiar." />
+              ) : (
+                <input value={data.codigo_taller || ""} onChange={(e) => setData({ ...data, codigo_taller: e.target.value.toUpperCase() })} placeholder="Ej. MITALLER" />
+              )}
+              <div className="field-hint">{data.codigo_taller ? "Ya quedó fijo: no se puede cambiar." : "Elígelo con cuidado: una vez guardado, ya no se puede cambiar."}</div>
             </div>
             <div className="field">
               <label>Teléfono 1</label>

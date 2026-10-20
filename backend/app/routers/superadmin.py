@@ -14,12 +14,13 @@ from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
-from sqlalchemy.orm import Session, joinedload, object_session
+from sqlalchemy.orm import Session, joinedload
 
-from .. import models, schemas
+from .. import models, schemas, password_tokens
 from ..database import get_db_global
-from ..security import hash_password, invalidar_tokens, require_superadmin
-from ..seed import _generar_codigo, rol_admin_de, sembrar_taller
+from ..notifications import enviar_correo_bienvenida_taller
+from ..security import generar_password_temporal, hash_password, invalidar_tokens, require_superadmin
+from ..seed import rol_admin_de, sembrar_taller
 from ..suscripciones import (
     registrar_renovacion,
     ESTADOS_MANUALES, calcular_estado, contenido_qr, invalidar, obtener_config, precio_periodo, sumar_meses,
@@ -230,9 +231,7 @@ def _uso_por_taller(db: Session) -> dict[int, dict]:
 def _taller_out(taller: models.Taller, config, uso: dict | None = None) -> schemas.TallerOut:
     salida = schemas.TallerOut.model_validate(taller)
     salida.qr = contenido_qr(taller.codigo)
-    tiene_usuarios = object_session(taller).query(models.UsuarioTaller.id_usuario_taller).filter(models.UsuarioTaller.id_taller == taller.id_taller).first() is not None
-    salida.pendiente_activacion = not tiene_usuarios
-    salida.codigo_activacion = taller.codigo_activacion if not tiene_usuarios else None
+    salida.codigo_activacion = None
     info = calcular_estado(taller, config)
     salida.estado = schemas.EstadoTallerOut(**{k: info[k] for k in schemas.EstadoTallerOut.model_fields})
     susc = taller.suscripcion
@@ -273,25 +272,6 @@ def ver_taller(taller_id: int, db: Session = Depends(get_db_global), user=Depend
     return _taller_out(_obtener_taller(db, taller_id), obtener_config(db), _uso_por_taller(db))
 
 
-def _codigo_activacion() -> str:
-    import secrets
-
-    alfabeto = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # sin 0/O ni 1/I/L
-    return "".join(secrets.choice(alfabeto) for _ in range(8))
-
-
-@router.post("/talleres/{taller_id}/codigo-activacion", response_model=schemas.TallerOut)
-def nuevo_codigo_activacion(taller_id: int, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
-    """Genera otro código de activación (si el anterior se perdió). Solo
-    mientras el taller no tenga usuarios."""
-    taller = _obtener_taller(db, taller_id)
-    if db.query(models.UsuarioTaller).filter(models.UsuarioTaller.id_taller == taller_id).first():
-        raise HTTPException(status_code=400, detail="Este taller ya tiene su administrador registrado.")
-    taller.codigo_activacion = _codigo_activacion()
-    db.commit()
-    return _taller_out(_obtener_taller(db, taller_id), obtener_config(db), _uso_por_taller(db))
-
-
 def _codigo_libre(db: Session, codigo: str, id_taller: int | None = None) -> str:
     import re
 
@@ -304,26 +284,52 @@ def _codigo_libre(db: Session, codigo: str, id_taller: int | None = None) -> str
     return limpio
 
 
+def _invitar_admin(db: Session, taller: models.Taller) -> models.Usuario:
+    """Crea (si hace falta) al usuario Administrador General del taller,
+    pendiente de que él mismo cree su contraseña, y le manda el enlace."""
+    rol_admin = rol_admin_de(db, taller.id_taller)
+    admin = db.query(models.Usuario).join(models.UsuarioTaller).filter(models.UsuarioTaller.id_taller == taller.id_taller).first()
+    if not admin:
+        admin = db.query(models.Usuario).filter(func.lower(models.Usuario.correo) == taller.correo.strip().lower()).first()
+        if not admin:
+            admin = models.Usuario(
+                username=taller.correo.strip(), hashed_password=hash_password(generar_password_temporal()),
+                nombre_completo=taller.contacto_nombre or taller.nombre_comercial, correo=taller.correo,
+                telefono=taller.telefono, id_rol_base=rol_admin.id_rol, activo=True, id_ultimo_taller=taller.id_taller,
+            )
+            db.add(admin)
+            db.flush()
+        db.add(models.UsuarioTaller(id_usuario=admin.id_usuario, id_taller=taller.id_taller, id_rol=rol_admin.id_rol, activo=True))
+    taller.codigo_activacion = None
+    taller.pendiente_activacion = True
+    db.commit()
+    token = password_tokens.generar_token(admin, password_tokens.TIPO_SETUP)
+    enviar_correo_bienvenida_taller(admin.correo, taller.nombre_comercial, token)
+    return admin
+
+
 @router.post("/talleres", response_model=schemas.TallerOut, status_code=201)
 def crear_taller(payload: schemas.TallerCreate, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
-    """Alta completa: taller + su código QR + suscripción (en prueba o
-    activa) + roles base + su usuario Administrador General."""
+    """Alta completa: taller + su código QR (si se captura; si no, lo pone
+    el dueño después) + suscripción (en prueba o activa) + roles base. Ya
+    no se comparte ningún código a mano: se manda un enlace al correo del
+    taller para que su dueño cree su usuario y contraseña de administrador."""
     config = obtener_config(db)
     id_paquete = payload.id_paquete or config.id_paquete_prueba
     paquete = db.get(models.Paquete, id_paquete) if id_paquete else None
     if not paquete:
         raise HTTPException(status_code=400, detail="Elige el paquete del taller.")
     tipo = db.get(models.TipoCobro, payload.id_tipo_cobro) if payload.id_tipo_cobro else None
+    correo = (payload.correo or "").strip()
+    if not correo:
+        raise HTTPException(status_code=400, detail="Captura el correo del taller: ahí se manda el enlace para dar de alta a su administrador.")
+    if db.query(models.Usuario).filter(func.lower(models.Usuario.correo) == correo.lower()).first():
+        raise HTTPException(status_code=400, detail="Ya hay una cuenta con ese correo.")
 
-    admin_existente = None
-    if payload.admin:
-        admin_existente = db.query(models.Usuario).filter(func.lower(models.Usuario.username) == payload.admin.username.strip().lower()).first()
-        if not admin_existente and (not payload.admin.password or len(payload.admin.password) < 6):
-            raise HTTPException(status_code=400, detail="La contraseña del administrador debe tener al menos 6 caracteres.")
-
-    datos = payload.model_dump(exclude={"admin", "id_paquete", "id_tipo_cobro", "en_prueba", "codigo"})
-    codigo = _codigo_libre(db, payload.codigo) if payload.codigo else _generar_codigo(db, payload.nombre_comercial)
-    taller = models.Taller(**datos, codigo=codigo, activo=True, codigo_activacion=None if payload.admin else _codigo_activacion())
+    datos = payload.model_dump(exclude={"id_paquete", "id_tipo_cobro", "en_prueba", "codigo"})
+    datos["correo"] = correo
+    codigo = _codigo_libre(db, payload.codigo) if payload.codigo else None
+    taller = models.Taller(**datos, codigo=codigo, activo=True, codigo_activacion=None, pendiente_activacion=True)
     db.add(taller)
     db.flush()
     hoy = date.today()
@@ -335,24 +341,22 @@ def crear_taller(payload: schemas.TallerCreate, db: Session = Depends(get_db_glo
     db.commit()
 
     sembrar_taller(taller.id_taller)
-    if not payload.admin:
-        invalidar(taller.id_taller)
-        return _taller_out(_obtener_taller(db, taller.id_taller), config, _uso_por_taller(db))
-    rol_admin = rol_admin_de(db, taller.id_taller)
-    if admin_existente:
-        admin = admin_existente
-    else:
-        admin = models.Usuario(
-            username=payload.admin.username.strip(), hashed_password=hash_password(payload.admin.password),
-            nombre_completo=payload.admin.nombre_completo, correo=payload.admin.correo, telefono=payload.admin.telefono,
-            id_rol_base=rol_admin.id_rol, activo=True, id_ultimo_taller=taller.id_taller,
-        )
-        db.add(admin)
-        db.flush()
-    db.add(models.UsuarioTaller(id_usuario=admin.id_usuario, id_taller=taller.id_taller, id_rol=rol_admin.id_rol, activo=True))
-    db.commit()
+    _invitar_admin(db, taller)
     invalidar(taller.id_taller)
     return _taller_out(_obtener_taller(db, taller.id_taller), config, _uso_por_taller(db))
+
+
+@router.post("/talleres/{taller_id}/reenviar-invitacion", response_model=schemas.TallerOut)
+def reenviar_invitacion(taller_id: int, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    """Vuelve a mandar el enlace de alta de administrador — solo mientras
+    el taller siga pendiente de activar."""
+    taller = _obtener_taller(db, taller_id)
+    if not taller.pendiente_activacion:
+        raise HTTPException(status_code=400, detail="Este taller ya tiene su administrador registrado.")
+    if not taller.correo:
+        raise HTTPException(status_code=400, detail="Este taller no tiene correo registrado; captúralo en Datos del taller.")
+    _invitar_admin(db, taller)
+    return _taller_out(_obtener_taller(db, taller_id), obtener_config(db), _uso_por_taller(db))
 
 
 @router.put("/talleres/{taller_id}", response_model=schemas.TallerOut)

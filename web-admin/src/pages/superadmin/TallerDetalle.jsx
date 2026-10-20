@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api";
 import FormModal from "../../components/FormModal";
 import QrTaller from "../../components/QrTaller";
 import { useUI } from "../../context/UIContext";
 import { CAMPOS_TALLER, GRUPOS_TALLER } from "./Talleres";
-import { Cargando, Dato, ESTADOS_MANUALES, EstadoBadge, METODOS_PAGO, copiar, fmt, fmtFecha, useCargar } from "./comun";
+import { Cargando, Dato, ESTADOS_MANUALES, EstadoBadge, METODOS_PAGO, fmt, fmtFecha, useCargar } from "./comun";
 
 export default function TallerDetalle() {
   const { id } = useParams();
@@ -13,6 +13,14 @@ export default function TallerDetalle() {
   const { confirmDialog, notify } = useUI();
   const [modal, setModal] = useState(null); // { tipo: "pago"|"suscripcion"|"datos", iniciales }
   const [verQr, setVerQr] = useState(false);
+  const [enviandoInvitacion, setEnviandoInvitacion] = useState(false);
+  const [cooldownInvitacion, setCooldownInvitacion] = useState(0);
+
+  useEffect(() => {
+    if (cooldownInvitacion <= 0) return;
+    const t = setInterval(() => setCooldownInvitacion((s) => (s > 1 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [cooldownInvitacion]);
   const { datos, error, recargar } = useCargar(async () => {
     const [taller, pagos, usuarios, paquetes, tipos] = await Promise.all([
       api.get(`/superadmin/talleres/${id}`),
@@ -78,7 +86,7 @@ export default function TallerDetalle() {
   }
 
   async function suspender() {
-    const ok = await confirmDialog(`${t.nombre_comercial} dejará de poder entrar al sistema. Sus datos se conservan.`, { title: "Suspender taller", danger: true });
+    const ok = await confirmDialog(`${t.nombre_comercial} dejará de poder entrar al sistema. Sus datos se conservan.`, { title: "Suspender taller", danger: true, confirmar: "Sí, suspender" });
     if (!ok) return;
     try { await api.post(`/superadmin/talleres/${id}/suspender`, { motivo: null }); recargar(); } catch (err) { notify(err.message, "error"); }
   }
@@ -86,16 +94,24 @@ export default function TallerDetalle() {
     try { await api.post(`/superadmin/talleres/${id}/reactivar`); recargar(); notify("Taller reactivado.", "success"); } catch (err) { notify(err.message, "error"); }
   }
   async function eliminarPago(p) {
-    const ok = await confirmDialog(`¿Eliminar el pago de ${fmt(p.monto)} del ${fmtFecha(p.fecha_pago)}? La fecha de vencimiento NO se regresa sola; ajústala en la suscripción si hace falta.`, { title: "Eliminar pago", danger: true });
+    const ok = await confirmDialog(`¿Eliminar el pago de ${fmt(p.monto)} del ${fmtFecha(p.fecha_pago)}? La fecha de vencimiento NO se regresa sola; ajústala en la suscripción si hace falta.`, { title: "Eliminar pago", danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try { await api.del(`/superadmin/pagos/${p.id_pago}`); recargar(); } catch (err) { notify(err.message, "error"); }
   }
-  async function nuevoCodigo() {
-    const ok = await confirmDialog("El código de activación anterior dejará de servir.", { title: "Nuevo código de activación" });
-    if (!ok) return;
-    try { await api.post(`/superadmin/talleres/${id}/codigo-activacion`); recargar(); } catch (err) { notify(err.message, "error"); }
+  async function reenviarInvitacion() {
+    if (cooldownInvitacion > 0) return;
+    setEnviandoInvitacion(true);
+    try {
+      await api.post(`/superadmin/talleres/${id}/reenviar-invitacion`);
+      recargar();
+      notify(`Se mandó el enlace a ${t.correo}.`, "success");
+      setCooldownInvitacion(60);
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setEnviandoInvitacion(false);
+    }
   }
-  const mensajeActivacion = `Bienvenido a ALDM AutoCore\n\nPara entrar por primera vez a tu sistema abre la página o la app del taller, toca "¿Primera vez? Activa tu taller" y escribe:\n\nCódigo del taller: ${t.codigo}\nCódigo de activación: ${t.codigo_activacion}\n\nAhí creas tu usuario y contraseña de administrador.`;
 
   return (
     <>
@@ -113,8 +129,8 @@ export default function TallerDetalle() {
         </div>
         {e.mensaje && <div className="sa-mensaje" style={{ color: e.bloqueado ? "var(--red-600)" : "var(--warn-600)" }}>{e.mensaje}</div>}
         <div className="sa-acciones">
-          <span className="sa-codigo mono">{t.codigo}</span>
-          <button className="btn btn-secondary btn-sm" onClick={() => setVerQr((x) => !x)}>{verQr ? "Ocultar QR" : "Ver QR"}</button>
+          {t.codigo ? <span className="sa-codigo mono">{t.codigo}</span> : <span className="sa-sub">Sin código aún: lo captura el dueño</span>}
+          {t.codigo && <button className="btn btn-secondary btn-sm" onClick={() => setVerQr((x) => !x)}>{verQr ? "Ocultar QR" : "Ver QR"}</button>}
           <span style={{ flex: 1 }} />
           <button className="btn btn-primary" onClick={() => setModal({ tipo: "pago", iniciales: { id_tipo_cobro: s?.id_tipo_cobro || opcionesTipos[0]?.value, metodo_pago: "transferencia" } })}>Registrar pago</button>
           <button className="btn btn-secondary" onClick={() => setModal({ tipo: "suscripcion", iniciales: {
@@ -133,11 +149,11 @@ export default function TallerDetalle() {
       {t.pendiente_activacion && (
         <div className="panel sa-activacion">
           <h2 className="sa-titulo">Pendiente de activar</h2>
-          <div className="subtitle">Todavía nadie registró el administrador. El dueño lo crea la primera vez que entra, con el código del taller y este código de activación:</div>
-          {t.codigo_activacion ? <div className="sa-activacion-codigo mono">{t.codigo_activacion}</div> : <div className="subtitle">Sin código vigente: genera uno.</div>}
+          <div className="subtitle">Todavía nadie registró el administrador. Se mandó un enlace a <b>{t.correo || "su correo"}</b> para que cree su usuario y contraseña.</div>
           <div className="sa-acciones">
-            {t.codigo_activacion && <button className="btn btn-primary" onClick={() => copiar(mensajeActivacion, notify)}>Copiar mensaje para el dueño</button>}
-            <button className="btn btn-secondary" onClick={nuevoCodigo}>Nuevo código</button>
+            <button className="btn btn-danger" onClick={reenviarInvitacion} disabled={enviandoInvitacion || cooldownInvitacion > 0}>
+              {enviandoInvitacion ? "Enviando…" : cooldownInvitacion > 0 ? `Reenviado ✓ · de nuevo en ${cooldownInvitacion}s` : "Reenviar enlace"}
+            </button>
           </div>
         </div>
       )}

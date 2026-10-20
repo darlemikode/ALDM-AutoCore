@@ -3,13 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import FormModal from "../components/FormModal";
+import MensajeModal from "../components/MensajeModal";
 import ModalPortal from "../components/ModalPortal";
+import FotoGaleria from "../components/FotoGaleria";
 import ElegirClienteVehiculo from "../components/ElegirClienteVehiculo";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 import IconoModulo from "../components/IconoModulo";
 import { Icono } from "../components/Icono";
+import { contiene } from "../lib/texto";
 
 const STATUS_BADGE = {
   abierto: "badge-petrol",
@@ -17,24 +20,67 @@ const STATUS_BADGE = {
   cancelado: "badge-red",
 };
 
-const ETIQUETAS_ETAPA = {
-  recibido: "Recibido",
-  diagnostico: "En diagnóstico",
-  esperando_autorizacion: "Esperando autorización del cliente",
-  en_reparacion: "En reparación",
-  esperando_refacciones: "Esperando refacciones",
-  control_calidad: "Control de calidad",
-  listo_entrega: "Listo para entrega",
-};
+// Catálogo unificado de estatus — el mismo que ETAPAS_SERVICIO en el
+// backend (ya integra lo que antes eran "status" + "etapa" + la marca de
+// garantía en un solo campo `etapa`). Es la única fuente de verdad: los
+// chips de filtro y las columnas del Kanban salen de aquí.
+const OPCIONES_ESTATUS = [
+  { clave: "", etiqueta: "Todas", emoji: "⚪", color: "var(--ink-500)" },
+  { clave: "en_proceso", etiqueta: "Recibido", emoji: "🔵", color: "#6aa7ff" },
+  { clave: "abierto", etiqueta: "En piso", emoji: "🟢", color: "#3ddc97" },
+  { clave: "pendiente", etiqueta: "Confirmación del cliente", emoji: "🟡", color: "#f0c419" },
+  { clave: "espera_refacciones", etiqueta: "Espera refacciones", emoji: "🟠", color: "#f0a838" },
+  { clave: "en_reparacion", etiqueta: "En reparación", emoji: "🔧", color: "#5fb8e0" },
+  { clave: "listo_entrega", etiqueta: "Listo para entrega", emoji: "✅", color: "#3fd690" },
+  { clave: "cerrado", etiqueta: "Órdenes finalizadas", emoji: "⚫", color: "#6b6b6d" },
+  { clave: "garantia", etiqueta: "Garantía", emoji: "🟣", color: "#a58aef" },
+  { clave: "cancelado", etiqueta: "Cancelado", emoji: "🔴", color: "#ff7a70" },
+];
+const ETIQUETAS_ETAPA = Object.fromEntries(OPCIONES_ESTATUS.filter((op) => op.clave).map((op) => [op.clave, op.etiqueta]));
+const COLOR_ETAPA = Object.fromEntries(OPCIONES_ESTATUS.filter((op) => op.clave).map((op) => [op.clave, op.color]));
+
+// "Abierto" sigue siendo el status real de la orden (gobierna si se puede
+// editar) — para el filtro, una orden "abierto" cuya etapa ya no esté en
+// este catálogo (dato viejo) también cuenta como "Abierto" genérico.
+function coincideConEstatus(s, clave) {
+  // "abierto" ya no es el estatus genérico "lo que sea que siga abierto" —
+  // ahora es una etapa concreta del flujo ("En piso"), así que se compara
+  // igual que cualquier otra etapa (último return) y no se trata aparte.
+  if (clave === "") return true;
+  if (clave === "cerrado") return s.status === "cerrado";
+  if (clave === "cancelado") return s.status === "cancelado";
+  return s.status === "abierto" && s.etapa === clave;
+}
+
+// Columnas del Kanban — el mismo catálogo de arriba, sin "Todas" (no aporta
+// como columna propia).
+const KANBAN_COLUMNAS = OPCIONES_ESTATUS.filter((op) => op.clave !== "");
+// Posición de cada estatus en el flujo (Recibido → … → Garantía/Cancelado),
+// para que la vista "Lista" también salga ordenada por estatus y no solo el Kanban.
+const INDICE_ESTATUS = Object.fromEntries(KANBAN_COLUMNAS.map((op, i) => [op.clave, i]));
+
+// A qué columna cae cada orden: cancelado/cerrado por su status real;
+// cualquier otra cae directo por su etapa (ya es la misma clave).
+function columnaKanbanDe(s) {
+  if (s.status === "cancelado") return "cancelado";
+  if (s.status === "cerrado") return "cerrado";
+  if (ETIQUETAS_ETAPA[s.etapa] && s.etapa !== "cerrado" && s.etapa !== "cancelado") return s.etapa;
+  return "abierto"; // dato viejo (ej. "recibido"/"diagnostico") o sin etapa
+}
 
 export default function Servicios() {
-  const { notify } = useUI();
+  const { notify, confirmDialog } = useUI();
   const { hasPermission } = useAuth();
   const puedeVerPorCobrar = hasPermission("dashboard.ver_por_cobrar");
   const puedeVerPrecios = hasPermission("servicios.ver_precios");
+  const puedeEditarKanban = hasPermission("servicios.editar");
   const [searchParams] = useSearchParams();
   const [servicios, setServicios] = useState([]);
   const [status, setStatus] = useState(() => searchParams.get("status") || "");
+  const [q, setQ] = useState("");
+  const [vista, setVista] = useState(() => localStorage.getItem("sm_servicios_vista") || "lista"); // "lista" | "kanban"
+  const [arrastrando, setArrastrando] = useState(null); // id_servicio que se está arrastrando
+  const [sobreColumna, setSobreColumna] = useState(null); // clave de columna con el cursor encima
   const [creating, setCreating] = useState(false);
   const [eligiendoNueva, setEligiendoNueva] = useState(false);
   const yaCreoDirecta = useRef(false);
@@ -47,13 +93,16 @@ export default function Servicios() {
   const [loading, setLoading] = useState(true);
   const [verificacion2Pasos, setVerificacion2Pasos] = useState(() => localStorage.getItem("sm_verificacion_2_pasos") === "true");
   const [modalConfirmar, setModalConfirmar] = useState(null); // { valores, codigo } cuando está pidiendo el código
+  const [fotosModal, setFotosModal] = useState(null); // { tipo: "vehiculo"|"servicio", id, titulo }
   const [codigoIngresado, setCodigoIngresado] = useState("");
   const [errorCodigo, setErrorCodigo] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Los chips de filtro ya no son solo "status" del backend (ahora mezclan
+  // etapa y garantía), así que se trae todo y se filtra en el navegador.
   async function load() {
-    const data = await api.get(`/servicios/${status ? `?status=${status}` : ""}`);
+    const data = await api.get("/servicios/");
     setServicios(data);
     setLoading(false);
   }
@@ -61,7 +110,7 @@ export default function Servicios() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, []);
 
   useActualizacionGlobal("servicios", load);
 
@@ -340,6 +389,85 @@ export default function Servicios() {
 
   const fmt = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
+  function cambiarVista(v) { setVista(v); localStorage.setItem("sm_servicios_vista", v); }
+
+  // Búsqueda libre: por #orden, descripción, cliente, placas o vehículo.
+  function coincideBusqueda(s) {
+    if (!q.trim()) return true;
+    const cli = s.cliente ? `${s.cliente.nombre_cliente} ${s.cliente.paterno_cliente || ""}` : "";
+    return (
+      contiene(String(s.id_servicio), q) ||
+      contiene(s.nombre_servicio, q) ||
+      contiene(cli, q) ||
+      contiene(s.vehiculo?.placas_vehiculo, q) ||
+      contiene(s.vehiculo?.marca?.nombre_marca, q) ||
+      contiene(s.vehiculo?.modelo?.nombre_modelo, q)
+    );
+  }
+  // Lista: el chip de estatus sí filtra qué filas se ven, y dentro de eso
+  // se ordenan por estatus (siguiendo el flujo del taller) y, dentro del
+  // mismo estatus, las más recientes primero.
+  const filtrados = servicios
+    .filter((s) => coincideConEstatus(s, status) && coincideBusqueda(s))
+    .sort((a, b) => {
+      const ia = INDICE_ESTATUS[columnaKanbanDe(a)] ?? 999;
+      const ib = INDICE_ESTATUS[columnaKanbanDe(b)] ?? 999;
+      if (ia !== ib) return ia - ib;
+      return b.id_servicio - a.id_servicio;
+    });
+  // Kanban: el chip NO oculta las demás columnas — nada más resalta la
+  // seleccionada y achica las otras (se ven todas, igual que el tablero real).
+  const filtradosKanban = servicios.filter((s) => coincideBusqueda(s));
+  const columnaResaltada = vista === "kanban" ? status : "";
+
+  const porColumna = {};
+  filtradosKanban.forEach((s) => {
+    const k = columnaKanbanDe(s);
+    (porColumna[k] = porColumna[k] || []).push(s);
+  });
+
+  async function moverServicio(s, columnaClave) {
+    try {
+      if (columnaClave === "cancelado") {
+        const ok = await confirmDialog("¿Cancelar esta orden de servicio? Si fue un error, podrás reabrirla más adelante.", { danger: true, confirmar: "Sí, cancelar" });
+        if (!ok) return;
+        const actualizado = await api.put(`/servicios/${s.id_servicio}`, { status: "cancelado" });
+        setServicios((prev) => prev.map((x) => (x.id_servicio === s.id_servicio ? actualizado : x)));
+        notify("Se actualizó el estado de la orden.", "success");
+        return;
+      }
+      if (columnaClave === "cerrado") {
+        const ok = await confirmDialog(
+          "Esto solo marca la orden como cerrada, sin cobrar ni avisar al cliente. Para eso usa «Finalizar y generar nota» dentro de la orden. ¿Cerrarla de todos modos?",
+          { title: "Cerrar orden", confirmar: "Sí, cerrar" }
+        );
+        if (!ok) return;
+        const actualizado = await api.put(`/servicios/${s.id_servicio}`, { status: "cerrado" });
+        setServicios((prev) => prev.map((x) => (x.id_servicio === s.id_servicio ? actualizado : x)));
+        notify("Se actualizó el estado de la orden.", "success");
+        return;
+      }
+      // en_proceso / pendiente / espera_refacciones / garantía / listo_entrega:
+      // la clave de la columna ya ES la etapa a guardar.
+      if (s.status !== "abierto") { notify("Solo se puede cambiar la etapa de órdenes abiertas — reábrela primero.", "error"); return; }
+      const actualizado = await api.put(`/servicios/${s.id_servicio}/etapa`, { etapa: columnaClave, comentario: null });
+      setServicios((prev) => prev.map((x) => (x.id_servicio === s.id_servicio ? actualizado : x)));
+      notify(`Orden #${s.id_servicio}: estatus "${ETIQUETAS_ETAPA[columnaClave]}". Se avisó al cliente.`, "success");
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
+
+  function alSoltar(e, columnaClave) {
+    e.preventDefault();
+    setSobreColumna(null);
+    if (!puedeEditarKanban) return;
+    const idServicio = Number(e.dataTransfer.getData("text/plain"));
+    const s = servicios.find((x) => x.id_servicio === idServicio);
+    if (!s || columnaKanbanDe(s) === columnaClave) return;
+    moverServicio(s, columnaClave);
+  }
+
   return (
     <>
       {eligiendoNueva && (
@@ -348,7 +476,7 @@ export default function Servicios() {
       <div className="page-header">
         <div>
           <h1><IconoModulo ruta="/servicios" /> Órdenes de servicio</h1>
-          <div className="subtitle">{servicios.length} orden(es)</div>
+          <div className="subtitle">{filtrados.length}{filtrados.length !== servicios.length ? ` de ${servicios.length}` : ""} orden(es)</div>
         </div>
         {hasPermission("servicios.crear") && (
         <button className="btn btn-primary btn-nuevo" onClick={nuevaOrdenDirecta}>
@@ -356,25 +484,107 @@ export default function Servicios() {
         )}
       </div>
 
-      <div className="panel">
+      <div className={`panel ${vista === "kanban" ? "panel-kanban" : ""}`}>
+        <div className="toolbar">
+          <input className="search-input" placeholder="Buscar por orden, cliente, vehículo o placas…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div className="vista-toggle vista-toggle-iconos">
+            <button type="button" className={`vista-toggle-btn ${vista === "lista" ? "activo" : ""}`} title="Vista de lista" aria-label="Vista de lista" onClick={() => cambiarVista("lista")}>
+              <Icono nombre="list" size={19} />
+            </button>
+            <button type="button" className={`vista-toggle-btn ${vista === "kanban" ? "activo" : ""}`} title="Vista de tablero Kanban" aria-label="Vista de tablero Kanban" onClick={() => cambiarVista("kanban")}>
+              <Icono nombre="grid" size={19} />
+            </button>
+          </div>
+        </div>
+
         <div className="cat-chips">
-          {[["", "Todas", "var(--petrol-500)"], ["abierto", "Abierto", "#3ddc97"], ["cerrado", "Cerrado", "#6aa7ff"], ["cancelado", "Cancelado", "#ff7a70"]].map(([v, t, c]) => (
-            <button type="button" key={v} className={`cat-chip ${status === v ? "cat-chip-on" : ""}`} style={{ "--c": c }} onClick={() => setStatus(v)}>
-              <span className="cat-punto" />{t}
+          {OPCIONES_ESTATUS.map((op) => (
+            <button type="button" key={op.clave} className={`cat-chip ${status === op.clave ? "cat-chip-on" : ""}`} style={{ "--c": op.color }} onClick={() => setStatus(op.clave)}>
+              <span className="cat-chip-emoji">{op.emoji}</span>{op.etiqueta}
             </button>
           ))}
         </div>
 
         {loading ? (
           <div className="loading-text">Cargando…</div>
-        ) : servicios.length === 0 ? (
-          <div className="empty-state">No hay órdenes de servicio con este filtro.</div>
+        ) : (vista === "kanban" ? filtradosKanban : filtrados).length === 0 ? (
+          <div className="empty-state">{q.trim() ? "Ninguna orden coincide con la búsqueda." : "No hay órdenes de servicio con este filtro."}</div>
+        ) : vista === "kanban" ? (
+          <div className="kanban-tablero">
+            {KANBAN_COLUMNAS.map((col) => {
+              const vacia = (porColumna[col.clave] || []).length === 0;
+              const resaltada = columnaResaltada === col.clave;
+              const atenuada = columnaResaltada && !resaltada;
+              return (
+              <div
+                key={col.clave}
+                className={`kanban-columna${sobreColumna === col.clave ? " sobre" : ""}${vacia ? " vacia" : ""}${resaltada ? " resaltada" : ""}${atenuada ? " atenuada" : ""}`}
+                style={{ "--c": col.color || "var(--violet-600)" }}
+                onDragOver={(e) => { if (puedeEditarKanban) e.preventDefault(); }}
+                onDragEnter={() => puedeEditarKanban && setSobreColumna(col.clave)}
+                onDragLeave={(e) => { if (e.currentTarget === e.target) setSobreColumna(null); }}
+                onDrop={(e) => alSoltar(e, col.clave)}
+              >
+                <div className="kanban-columna-header" style={{ "--c": col.color || "var(--violet-600)" }}>
+                  {col.emoji && <span className="kanban-columna-icono">{col.emoji}</span>}
+                  <span className="kanban-columna-titulo">{col.etiqueta}</span>
+                  <span className="kanban-columna-conteo">{(porColumna[col.clave] || []).length}</span>
+                </div>
+                <div className="kanban-columna-body">
+                  {(porColumna[col.clave] || []).length === 0 ? (
+                    <div className="kanban-vacio">Sin órdenes</div>
+                  ) : (
+                    (porColumna[col.clave] || []).map((s) => {
+                      const cli = s.cliente ? `${s.cliente.nombre_cliente} ${s.cliente.paterno_cliente || ""}`.trim() : null;
+                      return (
+                        <div
+                          key={s.id_servicio}
+                          className={`kanban-tarjeta${arrastrando === s.id_servicio ? " arrastrando" : ""}`}
+                          draggable={puedeEditarKanban}
+                          onDragStart={(e) => { e.dataTransfer.setData("text/plain", String(s.id_servicio)); e.dataTransfer.effectAllowed = "move"; setArrastrando(s.id_servicio); }}
+                          onDragEnd={() => setArrastrando(null)}
+                          onClick={() => navigate(`/servicios/${s.id_servicio}`)}
+                        >
+                          <div className="kanban-tarjeta-top">
+                            <span className="kanban-tarjeta-num">#{s.id_servicio}</span>
+                            {s.es_garantia && <IconoAuto valor="🛡️" size={14} />}
+                          </div>
+                          <div className="kanban-tarjeta-titulo">{s.nombre_servicio}</div>
+                          <div className="kanban-tarjeta-cliente"><Icono nombre="user" size={14} /> {cli || "Sin cliente"}</div>
+                          {(() => {
+                            const marcaModelo = [s.vehiculo?.marca?.nombre_marca, s.vehiculo?.modelo?.nombre_modelo].filter(Boolean).join(" ");
+                            return s.vehiculo ? (
+                              <div className="kanban-tarjeta-vehiculo">
+                                <Icono nombre="car" size={14} />
+                                <span className="kanban-tarjeta-vehiculo-nombre">{marcaModelo || "Vehículo"}</span>
+                                {s.vehiculo?.placas_vehiculo && <span className="kanban-tarjeta-placa">{s.vehiculo.placas_vehiculo}</span>}
+                              </div>
+                            ) : (
+                              <div className="kanban-tarjeta-vehiculo kanban-tarjeta-vehiculo-vacio"><Icono nombre="car" size={14} /> Sin vehículo</div>
+                            );
+                          })()}
+                          {(puedeVerPrecios || puedeVerPorCobrar) && (
+                            <div className="kanban-tarjeta-dinero">
+                              {puedeVerPrecios && <span className="mono">{fmt(s.costos.total)}</span>}
+                              {puedeVerPorCobrar && !s.pagado && s.costos.saldo_pendiente > 0 && <span className="kanban-tarjeta-saldo">Saldo {fmt(s.costos.saldo_pendiente)}</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="ordenes-lista">
-            {servicios.map((s) => {
+            {filtrados.map((s) => {
               const cli = s.cliente ? `${s.cliente.nombre_cliente} ${s.cliente.paterno_cliente || ""}`.trim() : null;
+              const claveFila = columnaKanbanDe(s);
               return (
-                <div key={s.id_servicio} className={`orden-fila est-${s.status}`} onClick={() => navigate(`/servicios/${s.id_servicio}`)}>
+                <div key={s.id_servicio} className={`orden-fila est-${s.status}`} style={{ "--acc": COLOR_ETAPA[claveFila] || "#3ddc97" }} onClick={() => navigate(`/servicios/${s.id_servicio}`)}>
                   <div className="orden-num">#{s.id_servicio}</div>
                   <div className="orden-main">
                     <div className="orden-titulo">{s.es_garantia && <><IconoAuto valor="🛡️" size={16} />{" "}</>}{s.nombre_servicio}</div>
@@ -385,8 +595,14 @@ export default function Servicios() {
                     </div>
                   </div>
                   <div className="orden-estado">
-                    <span className={`badge ${STATUS_BADGE[s.status] || "badge-grey"}`}>{s.status}</span>
-                    {s.status === "abierto" && s.etapa && <div className="orden-etapa">{ETIQUETAS_ETAPA[s.etapa] || s.etapa}</div>}
+                    {(() => {
+                      const clave = columnaKanbanDe(s);
+                      return (
+                        <span className="badge-etapa" style={{ "--c": COLOR_ETAPA[clave] || "var(--ink-500)" }}>
+                          {ETIQUETAS_ETAPA[clave] || clave}
+                        </span>
+                      );
+                    })()}
                   </div>
                   {(puedeVerPrecios || puedeVerPorCobrar) && (
                     <div className="orden-dinero">
@@ -429,25 +645,21 @@ export default function Servicios() {
       )}
 
       {modalConfirmar && (
-        <ModalPortal>
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setModalConfirmar(null)}>
-          <div className="modal" style={{ maxWidth: 380 }}>
-            <h2 style={{ fontSize: 18 }}>Verificación en 2 pasos</h2>
-            <p style={{ fontSize: 13.5, color: "var(--ink-500)", marginBottom: 10 }}>
-              Dile este código al cliente y pídele que lo confirme: <b style={{ fontSize: 18, letterSpacing: 2 }}>{modalConfirmar.codigo}</b>
-            </p>
-            <div className="field">
-              <label>Código que confirmó el cliente</label>
-              <input value={codigoIngresado} onChange={(e) => setCodigoIngresado(e.target.value)} placeholder="0000" autoFocus />
-            </div>
-            {errorCodigo && <div className="error-text">{errorCodigo}</div>}
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setModalConfirmar(null)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={confirmarYCrear}>Confirmar y crear orden</button>
-            </div>
+        <MensajeModal
+          icono="🔒"
+          titulo="Verificación en 2 pasos"
+          ancho={380}
+          onCerrar={() => setModalConfirmar(null)}
+          primario={{ texto: "Confirmar y crear orden", onClick: confirmarYCrear }}
+          secundario={{ texto: "Cancelar", onClick: () => setModalConfirmar(null) }}
+        >
+          <p>Dile este código al cliente y pídele que lo confirme: <b style={{ fontSize: 18, letterSpacing: 2 }}>{modalConfirmar.codigo}</b></p>
+          <div className="field" style={{ textAlign: "left" }}>
+            <label>Código que confirmó el cliente</label>
+            <input value={codigoIngresado} onChange={(e) => setCodigoIngresado(e.target.value)} placeholder="0000" autoFocus />
           </div>
-        </div>
-        </ModalPortal>
+          {errorCodigo && <div className="error-text">{errorCodigo}</div>}
+        </MensajeModal>
       )}
     </>
   );

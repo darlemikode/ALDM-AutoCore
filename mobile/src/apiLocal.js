@@ -196,16 +196,17 @@ export async function solicitudLocal(path, method, body) {
 
   // ---------------- SERVICIOS (órdenes), con detalles y abonos anidados ----------------
 // Debe reflejar exactamente ETAPAS_SERVICIO en app/routers/servicios.py
-// (backend real) — es el catálogo fijo de etapas de trabajo dentro de una
-// orden abierta.
+// (backend real) — catálogo unificado de estatus (oct-2026).
 const ETAPAS_SERVICIO_LOCAL = [
-  { clave: "recibido", etiqueta: "Recibido" },
-  { clave: "diagnostico", etiqueta: "En diagnóstico" },
-  { clave: "esperando_autorizacion", etiqueta: "Esperando autorización del cliente" },
+  { clave: "en_proceso", etiqueta: "Recibido" },
+  { clave: "abierto", etiqueta: "En piso" },
+  { clave: "pendiente", etiqueta: "Confirmación del cliente" },
+  { clave: "espera_refacciones", etiqueta: "Espera refacciones" },
   { clave: "en_reparacion", etiqueta: "En reparación" },
-  { clave: "esperando_refacciones", etiqueta: "Esperando refacciones" },
-  { clave: "control_calidad", etiqueta: "Control de calidad" },
   { clave: "listo_entrega", etiqueta: "Listo para entrega" },
+  { clave: "cerrado", etiqueta: "Órdenes finalizadas" },
+  { clave: "garantia", etiqueta: "Garantía" },
+  { clave: "cancelado", etiqueta: "Cancelado" },
 ];
 
   if (seg[0] === "servicios") {
@@ -223,7 +224,7 @@ const ETAPAS_SERVICIO_LOCAL = [
         return lista.map((x) => servicioCompleto(x, ctx)).sort((a, b) => b.id_servicio - a.id_servicio);
       }
       if (method === "POST") {
-        const etapaInicial = body.es_garantia ? "diagnostico" : "recibido";
+        const etapaInicial = body.es_garantia ? "garantia" : "en_proceso";
         const todosLosTipos = await colGetAll("tipos_servicio");
         const tiposElegidos = (body.tipos_mantenimiento_ids || []).map((id) => todosLosTipos.find((t) => t.id_tipo_servicio === id)).filter(Boolean);
         const { tipos_mantenimiento_ids, ...bodySinIds } = body;

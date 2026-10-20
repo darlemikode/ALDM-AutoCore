@@ -54,7 +54,7 @@ export default function Proveedores() {
   }
 
   async function handleDelete(p) {
-    const ok = await confirmDialog(`¿Eliminar al proveedor "${p.nombre_proveedor}"?`, { danger: true });
+    const ok = await confirmDialog(`¿Eliminar al proveedor "${p.nombre_proveedor}"?`, { danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try {
       await api.del(`/proveedores/${p.id_proveedor}`);

@@ -144,7 +144,7 @@ export default function Refacciones() {
       .filter((r) => r.id_refaccion !== editing?.id_refaccion && norm(r.nombre_refaccion) === norm(capturados.nombre_refaccion) && norm(r.categoria) !== norm(nombreCat))
       .map((r) => r.categoria || "Sin categoría"))];
     if (enOtras.length) {
-      const ok = await confirmDialog(`"${capturados.nombre_refaccion}" ya está registrada en ${enOtras.join(", ")}. ¿La agregas también en ${nombreCat || "esta categoría"}?`, { title: "Ya existe en otra categoría" });
+      const ok = await confirmDialog(`"${capturados.nombre_refaccion}" ya está registrada en ${enOtras.join(", ")}. ¿La agregas también en ${nombreCat || "esta categoría"}?`, { title: "Ya existe en otra categoría", confirmar: "Sí, agregar" });
       if (!ok) throw new Error(`No se guardó: "${capturados.nombre_refaccion}" ya existe en ${enOtras.join(", ")}.`);
     }
     // Los datos de stock, precios y proveedor viven en Inventario: al editar se conservan tal cual
@@ -193,7 +193,7 @@ export default function Refacciones() {
   }
 
   async function handleDelete(r) {
-    const ok = await confirmDialog(`¿Eliminar "${r.nombre_refaccion}" del inventario?`, { danger: true });
+    const ok = await confirmDialog(`¿Eliminar "${r.nombre_refaccion}" del inventario?`, { danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try {
       await api.del(`/refacciones/${r.id_refaccion}`);

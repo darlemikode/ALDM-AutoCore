@@ -134,10 +134,15 @@ export default function Layout() {
     const clave = tourClave;
     setTourClave(null);
     if (!clave) return;
-    if (clave === "bienvenida") setTourVisto(true);
+    if (clave === "bienvenida") {
+      setTourVisto(true);
+      // Taller nuevo (entró por el enlace de correo): todavía no capturó
+      // el código de su taller ni sus datos — se le manda directo a eso.
+      if (!user?.codigo_taller && hasPermission("configuracion.editar")) navigate("/configuracion-taller");
+    }
     vistosSesion.add(clave);
     api.put("/auth/tutoriales", { clave }).catch(() => {});
-  }, [tourClave]);
+  }, [tourClave, user, hasPermission, navigate]);
 
   // Abrir un recorrido desde Ayuda: se va a su pantalla y ahí se muestra
   useEffect(() => {

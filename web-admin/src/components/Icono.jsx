@@ -126,7 +126,7 @@ const EMOJI_A_ICONO = {
   "✅": "check-circle", "⚠": "warning", "❌": "x-circle", "✓": "check", "✔": "check", "✕": "close", "✖": "close",
   "👁": "eye", "🖨": "printer", "📊": "chart", "🕘": "clock", "⏳": "clock", "➕": "add", "✏": "pencil", "💾": "save",
   "📋": "list", "📎": "clip", "💬": "chatbubble", "🌙": "moon", "☰": "menu", "🟠": "dot", "🔴": "dot", "🚨": "warning",
-  "🧰": "hammer", "📞": "phone", "📧": "mail", "🗓": "calendar", "🪪": "id-card", "📦": "cube", "👑": "shield-check",
+  "🧰": "hammer", "👑": "shield-check",
 };
 
 export function IconoAuto({ valor, size = 18 }) {

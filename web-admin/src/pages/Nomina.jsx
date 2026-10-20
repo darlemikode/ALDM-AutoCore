@@ -159,7 +159,7 @@ export default function Nomina() {
   }
 
   async function eliminar(p) {
-    const ok = await confirmDialog(`¿Eliminar el periodo ${fechaCorta(p.fecha_inicio)} — ${fechaCorta(p.fecha_fin)} y sus recibos?`, { danger: true });
+    const ok = await confirmDialog(`¿Eliminar el periodo ${fechaCorta(p.fecha_inicio)} — ${fechaCorta(p.fecha_fin)} y sus recibos?`, { danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try {
       await api.del(`/nomina/periodos/${p.id_periodo}`);

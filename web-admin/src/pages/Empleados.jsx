@@ -87,7 +87,7 @@ export default function Empleados() {
   async function cambiarEstatus(emp, estatus) {
     if (estatus === emp.estatus) return;
     if (estatus === "baja") {
-      const ok = await confirmDialog(`¿Dar de baja a ${emp.nombre}? Su historial se conserva y ya no saldrá en nómina ni como responsable.`, { danger: true });
+      const ok = await confirmDialog(`¿Dar de baja a ${emp.nombre}? Su historial se conserva y ya no saldrá en nómina ni como responsable.`, { danger: true, confirmar: "Sí, dar de baja" });
       if (!ok) return;
     }
     try {

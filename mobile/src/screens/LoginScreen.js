@@ -42,7 +42,7 @@ export default function LoginScreen() {
   // Primera vez: activar el taller y registrar al administrador
   const [activando, setActivando] = useState(false);
   const [tallerActivar, setTallerActivar] = useState(null);
-  const [act, setAct] = useState({ codigo_taller: "", codigo_activacion: "", nombre_completo: "", username: "", password: "", confirmar: "" });
+  const [act, setAct] = useState({ codigo_taller: "", codigo_activacion: "", nombre_completo: "", username: "", correo: "", password: "", confirmar: "" });
   const [errorAct, setErrorAct] = useState("");
   const [cargandoAct, setCargandoAct] = useState(false);
   const campoAct = (k) => (v) => setAct((a) => ({ ...a, [k]: v }));
@@ -63,13 +63,15 @@ export default function LoginScreen() {
   async function activarTaller() {
     setErrorAct("");
     if (!act.nombre_completo.trim() || !act.username.trim()) return setErrorAct("Escribe tu nombre y el usuario con el que vas a entrar.");
+    if (!act.correo.trim()) return setErrorAct("Escribe tu correo electrónico: por ahí vas a entrar de aquí en adelante.");
     if (act.password.length < 6) return setErrorAct("La contraseña debe tener al menos 6 caracteres.");
     if (act.password !== act.confirmar) return setErrorAct("Las contraseñas no coinciden.");
     setCargandoAct(true);
     try {
       const data = await api.post("/auth/activar-taller", {
         codigo_taller: act.codigo_taller, codigo_activacion: act.codigo_activacion,
-        nombre_completo: act.nombre_completo, username: act.username.trim(), password: act.password,
+        nombre_completo: act.nombre_completo, username: act.username.trim(),
+        correo: act.correo.trim(), password: act.password,
       });
       await entrarConToken(data.access_token);
     } catch (err) {
@@ -94,7 +96,7 @@ export default function LoginScreen() {
     setCargandoRecuperacion(true);
     setMensajeRecuperacion("");
     try {
-      const res = await api.post("/auth/recuperar-password", { identificador });
+      const res = await api.post("/auth/password/solicitar", { correo: identificador });
       setMensajeRecuperacion(res.detail);
     } catch (err) {
       setMensajeRecuperacion(err.message);
@@ -124,6 +126,7 @@ export default function LoginScreen() {
                   <Text style={styles.ayuda}>Crea tu usuario de administrador. Con él vas a entrar de aquí en adelante.</Text>
                   <Campo etiqueta="Nombre completo" icono="person-outline" value={act.nombre_completo} onChangeText={campoAct("nombre_completo")} />
                   <Campo etiqueta="Usuario" icono="at-outline" value={act.username} onChangeText={campoAct("username")} autoCapitalize="none" autoCorrect={false} />
+                  <Campo etiqueta="Correo electrónico" icono="mail-outline" value={act.correo} onChangeText={campoAct("correo")} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} placeholder="Con este vas a entrar" />
                   <Campo etiqueta="Contraseña" icono="lock-closed-outline" value={act.password} onChangeText={campoAct("password")} secureTextEntry placeholder="Mínimo 6 caracteres" />
                   <Campo etiqueta="Confirmar contraseña" icono="lock-closed-outline" value={act.confirmar} onChangeText={campoAct("confirmar")} secureTextEntry onSubmitEditing={activarTaller} />
                 </>
@@ -138,7 +141,7 @@ export default function LoginScreen() {
             </>
           ) : !recuperando ? (
             <>
-              <Campo etiqueta="Usuario" icono="person-outline" value={username} onChangeText={setUsername} autoCapitalize="none" autoFocus />
+              <Campo etiqueta="Correo electrónico" icono="person-outline" value={username} onChangeText={setUsername} autoCapitalize="none" keyboardType="email-address" autoFocus />
               <Campo
                 etiqueta="Contraseña"
                 icono="lock-closed-outline"
@@ -169,12 +172,12 @@ export default function LoginScreen() {
             </>
           ) : (
             <>
-              <Campo etiqueta="Usuario, correo o teléfono" icono="at-outline" value={identificador} onChangeText={setIdentificador} autoCapitalize="none" placeholder="Con lo que te registró el admin" autoFocus />
+              <Campo etiqueta="Correo electrónico" icono="at-outline" value={identificador} onChangeText={setIdentificador} autoCapitalize="none" keyboardType="email-address" placeholder="Con el que entras al sistema" autoFocus />
 
               {mensajeRecuperacion ? <Text style={styles.recoveryMsg}>{mensajeRecuperacion}</Text> : null}
 
               <TouchableOpacity style={[styles.btnPrimary, cargandoRecuperacion && { opacity: 0.7 }]} onPress={handleRecuperar} disabled={cargandoRecuperacion} activeOpacity={0.85}>
-                {cargandoRecuperacion ? <ActivityIndicator color={colors.paper100} /> : <Text style={styles.btnPrimaryTexto}>Avisar al administrador</Text>}
+                {cargandoRecuperacion ? <ActivityIndicator color={colors.paper100} /> : <Text style={styles.btnPrimaryTexto}>Mandarme el enlace</Text>}
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => setRecuperando(false)} style={styles.linkBtn}>

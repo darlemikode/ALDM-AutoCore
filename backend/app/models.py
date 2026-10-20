@@ -623,7 +623,7 @@ class Servicio(TenantMixin, Base):
     fecha_entrada_servicio = Column(DateTime, default=datetime.utcnow)
     fecha_salida_servicio = Column(DateTime, nullable=True)
     status = Column(String(20), default="abierto")  # abierto, cerrado, cancelado
-    etapa = Column(String(30), default="recibido")  # ver ETAPAS_SERVICIO — progreso dentro de "abierto"
+    etapa = Column(String(30), default="en_proceso")  # ver ETAPAS_SERVICIO — catálogo unificado de estatus
     pagado = Column(Boolean, default=False)
     iva_porcentaje = Column(Float, default=0.0)  # sin IVA automático
 
@@ -655,7 +655,8 @@ class Servicio(TenantMixin, Base):
     empleado_responsable = relationship("Empleado", back_populates="servicios_responsable")
     tipo_mantenimiento = relationship("TipoServicio")
     tipos_mantenimiento = relationship("TipoServicio", secondary="servicio_tipos_mantenimiento")
-    detalles = relationship("ServicioDetalle", back_populates="servicio", cascade="all, delete-orphan")
+    detalles = relationship("ServicioDetalle", back_populates="servicio", cascade="all, delete-orphan",
+                             order_by="(ServicioDetalle.orden, ServicioDetalle.fecha_detalle)")
     abonos = relationship("ServicioAbono", back_populates="servicio", cascade="all, delete-orphan")
     servicio_original = relationship("Servicio", remote_side=[id_servicio], foreign_keys=[id_servicio_original])
     historial_etapas = relationship("ServicioEtapaHistorial", back_populates="servicio", cascade="all, delete-orphan", order_by="ServicioEtapaHistorial.fecha")
@@ -690,6 +691,7 @@ class ServicioDetalle(TenantMixin, Base):
     costo_refaccion = Column(Float, default=0)
     costo_extra = Column(Float, default=0)
     fecha_detalle = Column(DateTime, default=datetime.utcnow)
+    orden = Column(Integer, default=0)  # posición manual dentro de la orden (arrastrar para reordenar)
 
     servicio = relationship("Servicio", back_populates="detalles")
     refaccion = relationship("Refaccion")
@@ -1130,6 +1132,9 @@ class Taller(Base):
     # administrador la primera vez (se borra al activar). No confundir con
     # `codigo`, que es público (va en el QR de los clientes).
     codigo_activacion = Column(String(12), nullable=True)
+    # True hasta que el administrador que recibió el enlace por correo crea
+    # su contraseña (ver password_tokens.py / auth.establecer_password).
+    pendiente_activacion = Column(Boolean, default=True)
     nombre_comercial = Column(String(150), nullable=False)
     razon_social = Column(String(150), nullable=True)
     tipo_negocio = Column(String(20), default="taller")  # taller | refaccionaria | ambos

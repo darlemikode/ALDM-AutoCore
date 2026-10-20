@@ -76,7 +76,7 @@ export default function Promociones() {
   }
 
   async function handleDelete(promo) {
-    const ok = await confirmDialog(`¿Eliminar la promoción "${promo.titulo}"?`, { danger: true });
+    const ok = await confirmDialog(`¿Eliminar la promoción "${promo.titulo}"?`, { danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try {
       await api.del(`/promociones/${promo.id_promocion}`);

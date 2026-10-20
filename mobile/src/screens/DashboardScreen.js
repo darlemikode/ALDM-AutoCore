@@ -14,13 +14,14 @@ import CampanaNotificaciones from "../ui/CampanaNotificaciones";
 import { useObjetivoTour } from "../ui/Tour";
 import { bienvenidaSiFalta } from "../tutoriales/bienvenida";
 
+// Catálogo unificado de estatus — mismo catálogo que ETAPAS_SERVICIO en el
+// backend. Aquí solo se usan los pasos de progreso real (dentro de "abierto");
+// Abierto/Cerrado/Cancelado ya están cubiertos por GRUPOS_ESTATUS abajo.
 const ETAPAS = [
-  ["recibido", "Recibido", "ink500"],
-  ["diagnostico", "Diagnóstico", "blue600"],
-  ["esperando_autorizacion", "Autorización", "warn600"],
-  ["en_reparacion", "Reparación", "petrol500"],
-  ["esperando_refacciones", "Refacciones", "red600"],
-  ["control_calidad", "Calidad", "violet600"],
+  ["en_proceso", "Recibido", "petrol500"],
+  ["pendiente", "Confirmación", "warn600"],
+  ["espera_refacciones", "Refacciones", "red600"],
+  ["en_reparacion", "Reparación", "blue600"],
   ["listo_entrega", "Listo", "teal600"],
 ];
 const ETIQUETA_ETAPA = Object.fromEntries(ETAPAS.map(([k, t]) => [k, t]));

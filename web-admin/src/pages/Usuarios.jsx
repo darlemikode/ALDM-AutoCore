@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
 import FormModal from "../components/FormModal";
-import ModalPortal from "../components/ModalPortal";
+import MensajeModal from "../components/MensajeModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
@@ -85,31 +85,37 @@ export default function Usuarios() {
   );
 
   const fields = [
-    { name: "username", label: "Usuario (para iniciar sesión)", required: true, grupo: "cuenta" },
-    { name: "password", label: "Contraseña", type: "password", required: true, grupo: "cuenta" },
+    { name: "username", label: "Usuario", required: true, full: true, grupo: "cuenta" },
+    { name: "correo", label: "Correo", type: "email", required: true, full: true, grupo: "cuenta" },
+    {
+      name: "password", label: "Contraseña", type: "password", full: true, grupo: "cuenta",
+      hint: "Déjalo vacío para que le llegue un enlace a su correo y la cree él mismo.",
+    },
+    { name: "confirmar_password", label: "Confirmar contraseña", type: "password", full: true, grupo: "cuenta" },
     { name: "nombre_completo", label: "Nombre completo", required: true, full: true, grupo: "cuenta" },
     {
-      name: "id_rol", label: "Rol", type: "select", required: true, grupo: "cuenta",
+      name: "id_rol", label: "Rol", type: "select", required: true, full: true, grupo: "cuenta",
       options: roles.map((r) => ({ value: r.id_rol, label: r.nombre })),
     },
     hasPermission("empleados.editar") && {
-      name: "id_empleado", label: "Empleado vinculado (opcional)", type: "select", grupo: "cuenta",
+      name: "id_empleado", label: "Empleado vinculado", type: "select", full: true, grupo: "cuenta",
       options: [{ value: "", label: "Ninguno" }].concat(
         empleadosDisponibles.map((e) => ({ value: e.id_empleado, label: `${e.nombre} ${e.paterno || ""}`.trim() }))
       ),
     },
-    { name: "correo", label: "Correo (para recuperar acceso)", grupo: "recuperacion" },
-    { name: "telefono", label: "Teléfono (para recuperar acceso)", grupo: "recuperacion" },
+    { name: "telefono", label: "Teléfono", required: true, full: true, grupo: "cuenta" },
   ].filter(Boolean);
 
   const gruposUsuario = {
-    cuenta: { icono: "🔑", titulo: "Cuenta y rol" },
-    recuperacion: { icono: "📱", titulo: "Recuperación de acceso", acento: "acento-ambar" },
+    cuenta: { icono: "🔑", titulo: "Datos del usuario" },
   };
 
   // Al editar no se cambia la contraseña desde aquí (eso es autoservicio de
   // cada quien, o vía "Generar contraseña temporal" en una solicitud).
-  const fieldsEditar = fields.filter((f) => f.name !== "password");
+  const fieldsEditar = fields.filter((f) => f.name !== "password" && f.name !== "confirmar_password");
+  // Al crear, el usuario siempre entra por correo con un enlace — no se
+  // capturan usuario/contraseña a mano.
+  const fieldsCrear = fields.filter((f) => !["username", "password", "confirmar_password", "id_empleado"].includes(f.name));
 
   // El vínculo usuario↔empleado vive del lado del empleado (id_usuario),
   // así que guardar el usuario no basta — hay que reflejarlo ahí también:
@@ -129,7 +135,14 @@ export default function Usuarios() {
   }
 
   async function handleSave(values) {
-    const { id_empleado, ...datosUsuario } = values;
+    const { id_empleado, confirmar_password, ...datosUsuario } = values;
+    if (!editing?.id_usuario) {
+      // El usuario entra por correo (ya no se captura "usuario" a mano) —
+      // se usa el correo como nombre de usuario interno.
+      datosUsuario.username = datosUsuario.correo;
+    } else if (datosUsuario.username?.includes(" ")) {
+      throw new Error("El nombre de usuario no puede llevar espacios.");
+    }
     let idUsuarioResultante;
     if (editing?.id_usuario) {
       await api.put(`/auth/usuarios/${editing.id_usuario}`, datosUsuario);
@@ -146,7 +159,7 @@ export default function Usuarios() {
   }
 
   async function handleDesactivar(u) {
-    const ok = await confirmDialog(`¿Desactivar a "${u.nombre_completo}"? Ya no podrá iniciar sesión.`, { danger: true });
+    const ok = await confirmDialog(`¿Desactivar a "${u.nombre_completo}"? Ya no podrá iniciar sesión.`, { danger: true, confirmar: "Sí, desactivar" });
     if (!ok) return;
     try {
       await api.put(`/auth/usuarios/${u.id_usuario}/desactivar`);
@@ -159,7 +172,7 @@ export default function Usuarios() {
 
   async function handleActivar(u) {
     try {
-      await api.put(`/usuarios/${u.id_usuario}`, { activo: true });
+      await api.put(`/auth/usuarios/${u.id_usuario}/activar`);
       load();
       notify(`${u.nombre_completo} puede volver a iniciar sesión.`, "success");
     } catch (err) {
@@ -167,10 +180,36 @@ export default function Usuarios() {
     }
   }
 
+  const [enviandoEnlace, setEnviandoEnlace] = useState(false);
+  const [cooldownEnlace, setCooldownEnlace] = useState(0);
+
+  useEffect(() => {
+    setCooldownEnlace(0);
+  }, [editing?.id_usuario]);
+
+  useEffect(() => {
+    if (cooldownEnlace <= 0) return;
+    const t = setInterval(() => setCooldownEnlace((s) => (s > 1 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [cooldownEnlace]);
+
+  async function handleRestablecerEnlace(u) {
+    setEnviandoEnlace(true);
+    try {
+      const res = await api.post(`/auth/usuarios/${u.id_usuario}/restablecer-enlace`);
+      notify(res.detail, "success");
+      setCooldownEnlace(60);
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setEnviandoEnlace(false);
+    }
+  }
+
   async function resolverSolicitud(s) {
     const ok = await confirmDialog(
       `Se generará una contraseña temporal para "${s.usuario?.nombre_completo}". Tendrás que comunicársela tú (llamada, WhatsApp, en persona) — el sistema no envía correos/SMS automáticos.`,
-      { title: "Generar contraseña temporal" }
+      { title: "Generar contraseña temporal", confirmar: "Sí, generar" }
     );
     if (!ok) return;
     try {
@@ -187,7 +226,11 @@ export default function Usuarios() {
       cliente.cuenta_activada
         ? `"${cliente.nombre_cliente}" ya puede entrar a la app. ¿Generar una contraseña temporal nueva? La anterior deja de servir.`
         : `Se creará un usuario (su teléfono o correo) y una contraseña temporal para que "${cliente.nombre_cliente}" entre a la app de clientes.`,
-      { title: cliente.cuenta_activada ? "Restablecer acceso" : "Generar acceso a la app", danger: cliente.cuenta_activada }
+      {
+        title: cliente.cuenta_activada ? "Restablecer acceso" : "Generar acceso a la app",
+        danger: cliente.cuenta_activada,
+        confirmar: cliente.cuenta_activada ? "Sí, generar nueva" : "Sí, generar acceso",
+      }
     );
     if (!ok) return;
     try {
@@ -337,57 +380,69 @@ export default function Usuarios() {
           title={editing.id_usuario ? `Editar usuario — ${editing.username}` : "Nuevo usuario"}
           icono="👤"
           subtitulo="Cuenta de acceso y datos de recuperación."
-          fields={editing.id_usuario ? fieldsEditar : fields}
+          fields={editing.id_usuario ? fieldsEditar : fieldsCrear}
           grupos={gruposUsuario}
           initialValues={editing}
           onSubmit={handleSave}
           onClose={() => setEditing(null)}
+          footerExtra={
+            editing.id_usuario && hasPermission("usuarios.editar") ? (
+              <button
+                type="button"
+                className="btn-accion-discreta"
+                disabled={enviandoEnlace || cooldownEnlace > 0}
+                onClick={() => handleRestablecerEnlace(editing)}
+                style={{ marginTop: 4, marginBottom: 4 }}
+              >
+                <Icono nombre="mail" size={15} />
+                {enviandoEnlace
+                  ? "Enviando…"
+                  : cooldownEnlace > 0
+                  ? `Reenviar en ${cooldownEnlace}s`
+                  : "Mandarle un enlace para restablecer su contraseña"}
+              </button>
+            ) : undefined
+          }
         />
       )}
 
       {tempPassword && (
-        <ModalPortal>
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setTempPassword(null)}>
-          <div className="modal" style={{ maxWidth: 400 }}>
-            <h2 style={{ fontSize: 19 }}>Contraseña temporal</h2>
-            <p style={{ color: "var(--ink-500)", fontSize: 14 }}>
-              Para <b>{tempPassword.username}</b>. Comunícasela tú mismo — no se envió por ningún medio automático.
-              Pídele que la cambie en cuanto entre (sidebar → "Cambiar contraseña").
-            </p>
-            <div className="mono" style={{ background: "var(--paper-0)", padding: "12px 16px", borderRadius: 8, fontSize: 18, textAlign: "center", letterSpacing: 1 }}>
-              {tempPassword.password_temporal}
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-primary" onClick={() => setTempPassword(null)}>Listo</button>
-            </div>
+        <MensajeModal
+          icono="🔐"
+          titulo="Contraseña temporal"
+          onCerrar={() => setTempPassword(null)}
+          primario={{ texto: "Listo", onClick: () => setTempPassword(null) }}
+        >
+          <p>
+            Para <b>{tempPassword.username}</b>. Comunícasela tú mismo — no se envió por ningún medio automático.
+            Pídele que la cambie en cuanto entre (sidebar → "Cambiar contraseña").
+          </p>
+          <div className="mono" style={{ background: "var(--paper-0)", padding: "12px 16px", borderRadius: 8, fontSize: 18, textAlign: "center", letterSpacing: 1 }}>
+            {tempPassword.password_temporal}
           </div>
-        </div>
-        </ModalPortal>
+        </MensajeModal>
       )}
 
       {accesoCliente && (
-        <ModalPortal>
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setAccesoCliente(null)}>
-          <div className="modal" style={{ maxWidth: 400 }}>
-            <h2 style={{ fontSize: 19 }}>Acceso listo</h2>
-            <p style={{ color: "var(--ink-500)", fontSize: 14 }}>
-              Para <b>{accesoCliente.nombre}</b>. Compártesela tú mismo — no se envió por ningún medio automático.
-              Puede cambiarla luego desde su app.
-            </p>
-            <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
-              <div style={{ fontSize: 12, color: "var(--ink-500)" }}>Usuario</div>
-              <div className="mono" style={{ background: "var(--paper-0)", padding: "10px 14px", borderRadius: 8, fontSize: 15 }}>{accesoCliente.identificador}</div>
-              <div style={{ fontSize: 12, color: "var(--ink-500)", marginTop: 6 }}>Contraseña temporal</div>
-              <div className="mono" style={{ background: "var(--paper-0)", padding: "12px 16px", borderRadius: 8, fontSize: 18, textAlign: "center", letterSpacing: 1 }}>
-                {accesoCliente.password_temporal}
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-primary" onClick={() => setAccesoCliente(null)}>Listo</button>
+        <MensajeModal
+          icono="🔑"
+          titulo="Acceso listo"
+          onCerrar={() => setAccesoCliente(null)}
+          primario={{ texto: "Listo", onClick: () => setAccesoCliente(null) }}
+        >
+          <p>
+            Para <b>{accesoCliente.nombre}</b>. Compártesela tú mismo — no se envió por ningún medio automático.
+            Puede cambiarla luego desde su app.
+          </p>
+          <div style={{ display: "grid", gap: 6, marginTop: 4, textAlign: "left" }}>
+            <div style={{ fontSize: 12 }}>Usuario</div>
+            <div className="mono" style={{ background: "var(--paper-0)", padding: "10px 14px", borderRadius: 8, fontSize: 15 }}>{accesoCliente.identificador}</div>
+            <div style={{ fontSize: 12, marginTop: 6 }}>Contraseña temporal</div>
+            <div className="mono" style={{ background: "var(--paper-0)", padding: "12px 16px", borderRadius: 8, fontSize: 18, textAlign: "center", letterSpacing: 1 }}>
+              {accesoCliente.password_temporal}
             </div>
           </div>
-        </div>
-        </ModalPortal>
+        </MensajeModal>
       )}
     </>
   );

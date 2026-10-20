@@ -24,10 +24,10 @@ export const CAMPOS_TALLER = [
   { name: "nombre_comercial", label: "Nombre comercial", required: true, grupo: "taller" },
   { name: "razon_social", label: "Razón social", grupo: "taller" },
   { name: "tipo_negocio", label: "Tipo de negocio", type: "select", options: TIPOS_NEGOCIO, noOrdenar: true, grupo: "taller" },
-  { name: "codigo", label: "Código del taller (para su QR)", grupo: "taller", hint: "Letras y números. Vacío = se genera del nombre." },
+  { name: "codigo", label: "Código del taller (para su QR)", grupo: "taller", hint: "Letras y números. Normalmente lo captura el dueño al entrar la primera vez." },
   { name: "contacto_nombre", label: "Persona de contacto", grupo: "contacto" },
   { name: "telefono", label: "Teléfono", grupo: "contacto" },
-  { name: "correo", label: "Correo", type: "email", grupo: "contacto" },
+  { name: "correo", label: "Correo", type: "email", grupo: "contacto", hint: "Ahí se manda el enlace para dar de alta al administrador." },
   { name: "ciudad", label: "Ciudad", grupo: "contacto" },
   { name: "estado_mx", label: "Estado", grupo: "contacto" },
   { name: "notas", label: "Notas", type: "textarea", full: true, grupo: "contacto" },
@@ -64,13 +64,13 @@ export default function Talleres() {
   async function crear(v) {
     const creado = await api.post("/superadmin/talleres", {
       nombre_comercial: v.nombre_comercial, razon_social: v.razon_social || null, tipo_negocio: v.tipo_negocio || "taller",
-      codigo: v.codigo || null, contacto_nombre: v.contacto_nombre || null, telefono: v.telefono || null, correo: v.correo || null,
+      codigo: v.codigo || null, contacto_nombre: v.contacto_nombre || null, telefono: v.telefono || null, correo: v.correo,
       ciudad: v.ciudad || null, estado_mx: v.estado_mx || null, notas: v.notas || null,
       id_paquete: v.id_paquete ? Number(v.id_paquete) : null, id_tipo_cobro: v.id_tipo_cobro ? Number(v.id_tipo_cobro) : null,
       en_prueba: !!v.en_prueba,
     });
     setNuevo(null);
-    notify("Taller dado de alta. Comparte al dueño su código de activación.", "success");
+    notify(`Taller dado de alta. Se mandó un enlace a ${v.correo} para que registre a su administrador.`, "success");
     navigate(`/superadmin/talleres/${creado.id_taller}`);
   }
 
@@ -121,12 +121,12 @@ export default function Talleres() {
       {nuevo && (
         <FormModal
           title="Nuevo taller"
-          subtitulo="Se crea con su código QR y sus roles base. El dueño registra su usuario administrador la primera vez que entra."
+          subtitulo="Se crea con sus roles base y se manda un enlace al correo para que el dueño registre su usuario y contraseña de administrador."
           icono="🏢"
           grupos={GRUPOS_TALLER}
           initialValues={nuevo.iniciales}
           fields={[
-            ...CAMPOS_TALLER,
+            ...CAMPOS_TALLER.filter((c) => c.name !== "codigo").map((c) => (c.name === "correo" ? { ...c, required: true } : c)),
             { name: "id_paquete", label: "Paquete", type: "select", required: true, grupo: "plan",
               options: nuevo.paquetes.filter((p) => p.activo).map((p) => ({ value: p.id_paquete, label: `${p.nombre} · ${fmt(p.precio_mensual)}/mes` })) },
             { name: "id_tipo_cobro", label: "Tipo de cobro", type: "select", grupo: "plan", noOrdenar: true,

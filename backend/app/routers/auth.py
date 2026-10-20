@@ -1,11 +1,12 @@
 import os
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from .. import models, schemas
+from .. import models, schemas, password_tokens
 from ..database import get_db, get_db_global
-from ..notifications import notificar_admin_recuperacion
+from ..notifications import notificar_admin_recuperacion, enviar_correo_restablecer, enviar_correo_password_cambiada
 from ..security import (
     authenticate_user, get_current_user, get_current_user_sin_taller, require_permission, token_usuario,
     hash_password, verify_password, generar_password_temporal, invalidar_tokens,
@@ -14,7 +15,10 @@ from ..suscripciones import contenido_qr, estado_taller, permiso_en_modulos
 from ..tenancy import MODO_SUPERADMIN, MODO_TALLER, fijar_tenant, taller_actual
 from ..rate_limit import limiter
 from ..sesion_taller import MENSAJE_SIN_APP_TALLER, es_app_taller
-from .usuarios import listar as _listar_usuarios, crear as _crear_usuario, actualizar as _actualizar_usuario, usuarios_del_taller, es_compartido
+from .usuarios import (
+    listar as _listar_usuarios, crear as _crear_usuario, actualizar as _actualizar_usuario,
+    restablecer_enlace as _restablecer_enlace, usuarios_del_taller, es_compartido,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -156,6 +160,8 @@ def activar_taller(request: Request, payload: schemas.ActivarTallerIn, db: Sessi
         raise HTTPException(status_code=400, detail="Escribe tu nombre completo.")
     if db.query(models.Usuario).filter(models.Usuario.username.ilike(username)).first():
         raise HTTPException(status_code=400, detail="Ese nombre de usuario ya está ocupado; elige otro.")
+    if db.query(models.Usuario).filter(models.Usuario.correo.ilike(payload.correo)).first():
+        raise HTTPException(status_code=400, detail="Ya hay una cuenta con ese correo.")
     rol_admin = rol_admin_de(db, taller.id_taller)
     usuario = models.Usuario(
         username=username, hashed_password=hash_password(payload.password), nombre_completo=payload.nombre_completo.strip(),
@@ -274,6 +280,11 @@ def actualizar_usuario(usuario_id: int, payload: schemas.UsuarioUpdate, db: Sess
     return _actualizar_usuario(usuario_id=usuario_id, payload=payload, db=db, user=user)
 
 
+@router.post("/usuarios/{usuario_id}/restablecer-enlace")
+def restablecer_enlace_usuario(usuario_id: int, db: Session = Depends(get_db), user=Depends(require_permission("usuarios.editar"))):
+    return _restablecer_enlace(usuario_id=usuario_id, db=db, user=user)
+
+
 @router.put("/usuarios/{usuario_id}/desactivar", response_model=schemas.UsuarioOut)
 def desactivar_usuario(usuario_id: int, db: Session = Depends(get_db), user=Depends(require_permission("usuarios.eliminar"))):
     objetivo = usuarios_del_taller(db).filter(models.Usuario.id_usuario == usuario_id).first()
@@ -284,6 +295,20 @@ def desactivar_usuario(usuario_id: int, db: Session = Depends(get_db), user=Depe
     objetivo.membresia().activo = False
     if not es_compartido(objetivo, taller_actual(db)):
         objetivo.activo = False
+    db.commit()
+    db.refresh(objetivo)
+    return objetivo
+
+
+@router.put("/usuarios/{usuario_id}/activar", response_model=schemas.UsuarioOut)
+def activar_usuario(usuario_id: int, db: Session = Depends(get_db), user=Depends(require_permission("usuarios.editar"))):
+    objetivo = usuarios_del_taller(db).filter(models.Usuario.id_usuario == usuario_id).first()
+    if not objetivo:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    membresia = objetivo.membresia(taller_actual(db))
+    if membresia is not None:
+        membresia.activo = True
+    objetivo.activo = True
     db.commit()
     db.refresh(objetivo)
     return objetivo
@@ -443,3 +468,82 @@ def resolver_solicitud_recuperacion(solicitud_id: int, db: Session = Depends(get
 
     db.commit()
     return schemas.TempPasswordOut(username=objetivo.username, password_temporal=password_temporal)
+
+
+# --- Acceso por correo: crear/restablecer contraseña con enlace -------------
+# El alta de un usuario (routers/usuarios.py) y "olvidé mi contraseña" aquí
+# abajo mandan un enlace de un solo uso al correo del propio usuario — ya no
+# hace falta que el admin le dicte una contraseña temporal por teléfono.
+# Requiere SMTP configurado en el .env; si no, el enlace nunca sale pero la
+# API no truena (ver notifications.py).
+@router.post("/password/solicitar")
+@limiter.limit("5/minute")
+def solicitar_acceso_por_correo(request: Request, payload: schemas.SolicitarAccesoIn, db: Session = Depends(get_db)):
+    fijar_tenant(db, MODO_SUPERADMIN)  # usuarios y membresías son globales
+    correo = (payload.correo or "").strip()
+    respuesta = {"detail": "Si el correo coincide con una cuenta, te mandamos un enlace para restablecer tu contraseña."}
+    usuario = db.query(models.Usuario).filter(models.Usuario.correo.ilike(correo)).first() if correo else None
+    if not usuario or not usuario.activo:
+        return respuesta
+    token = password_tokens.generar_token(usuario, password_tokens.TIPO_RESET)
+    enviar_correo_restablecer(usuario.correo, usuario.nombre_completo, token)
+    return respuesta
+
+
+@router.get("/password/validar", response_model=schemas.ValidarTokenOut)
+def validar_token_password(token: str, db: Session = Depends(get_db_global)):
+    usuario, tipo = password_tokens.leer_token(db, token)
+    if not usuario:
+        return schemas.ValidarTokenOut(valido=False)
+    return schemas.ValidarTokenOut(valido=True, tipo=tipo, nombre_completo=usuario.nombre_completo, username=usuario.username)
+
+
+def _username_valido(username: str) -> str:
+    limpio = (username or "").strip()
+    if len(limpio) < 3 or " " in limpio:
+        raise HTTPException(status_code=400, detail="El nombre de usuario debe tener al menos 3 caracteres y sin espacios.")
+    return limpio
+
+
+@router.get("/username-disponible")
+@limiter.limit("30/minute")
+def username_disponible(request: Request, username: str, excluir_id: int | None = None, db: Session = Depends(get_db_global)):
+    """Se usa mientras se escribe, para avisar al momento si ese nombre de
+    usuario ya está ocupado (sin esperar a enviar el formulario)."""
+    limpio = (username or "").strip()
+    if len(limpio) < 3 or " " in limpio:
+        return {"disponible": False}
+    query = db.query(models.Usuario).filter(func.lower(models.Usuario.username) == limpio.lower())
+    if excluir_id:
+        query = query.filter(models.Usuario.id_usuario != excluir_id)
+    return {"disponible": query.first() is None}
+
+
+@router.post("/password/establecer", response_model=schemas.Token)
+@limiter.limit("10/minute")
+def establecer_password(request: Request, payload: schemas.EstablecerPasswordIn, db: Session = Depends(get_db_global)):
+    usuario, tipo = password_tokens.leer_token(db, payload.token)
+    if not usuario:
+        raise HTTPException(status_code=400, detail="El enlace ya no es válido. Pide uno nuevo.")
+    if len(payload.password_nueva) < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres.")
+    if usuario.es_superadmin and (len(payload.password_nueva) < 8 or payload.password_nueva.isalpha() or payload.password_nueva.isdigit()):
+        raise HTTPException(status_code=400, detail="La contraseña del súper administrador debe tener al menos 8 caracteres, con letras y números.")
+    if tipo == password_tokens.TIPO_SETUP:
+        username = _username_valido(payload.username)
+        if db.query(models.Usuario).filter(
+            func.lower(models.Usuario.username) == username.lower(), models.Usuario.id_usuario != usuario.id_usuario
+        ).first():
+            raise HTTPException(status_code=400, detail="Ese nombre de usuario ya está ocupado; elige otro.")
+        usuario.username = username
+    usuario.hashed_password = hash_password(payload.password_nueva)
+    invalidar_tokens(usuario)
+    # Si venía de la invitación para dar de alta un taller nuevo, ya creó
+    # su contraseña: el taller deja de estar pendiente de activar.
+    for m in usuario.membresias:
+        if m.taller and m.taller.pendiente_activacion:
+            m.taller.pendiente_activacion = False
+    db.commit()
+    enviar_correo_password_cambiada(usuario.correo, usuario.nombre_completo)
+    id_taller = _elegir_taller(db, usuario, None)
+    return _sesion_para(db, usuario, id_taller)

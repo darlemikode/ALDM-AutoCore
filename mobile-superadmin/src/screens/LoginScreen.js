@@ -37,10 +37,10 @@ export default function LoginScreen() {
           <Text style={styles.brand}>ALDM <Text style={{ color: colors.petrol500 }}>Súper Admin</Text></Text>
           <Text style={styles.tagline}>Talleres, suscripciones y cobranza</Text>
 
-          <Text style={styles.label}>Usuario</Text>
+          <Text style={styles.label}>Correo electrónico</Text>
           <View style={styles.campo}>
             <Ionicons name="person-outline" size={18} color={colors.ink500} />
-            <TextInput style={styles.input} value={usuario} onChangeText={setUsuario} autoCapitalize="none" autoCorrect={false} placeholderTextColor={colors.ink500} placeholder="Tu usuario" />
+            <TextInput style={styles.input} value={usuario} onChangeText={setUsuario} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" placeholderTextColor={colors.ink500} placeholder="Tu correo" />
           </View>
           <Text style={styles.label}>Contraseña</Text>
           <View style={styles.campo}>

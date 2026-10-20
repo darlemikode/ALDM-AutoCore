@@ -165,7 +165,7 @@ export default function Inventario() {
   async function eliminar(r) {
     const ok = await confirmDialog(
       `¿Eliminar el registro de inventario de "${r.refaccion?.nombre_refaccion}"?`,
-      { danger: true }
+      { danger: true, confirmar: "Sí, eliminar" }
     );
     if (!ok) return;
     try {

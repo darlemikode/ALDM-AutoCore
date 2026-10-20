@@ -132,7 +132,7 @@ export default function Roles() {
   async function eliminar() {
     const rol = roles.find((r) => r.id_rol === seleccionado);
     if (!rol) return;
-    const ok = await confirmDialog(`¿Eliminar el rol "${rol.nombre}"? Esto no se puede deshacer.`, { danger: true });
+    const ok = await confirmDialog(`¿Eliminar el rol "${rol.nombre}"? Esto no se puede deshacer.`, { danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try {
       await api.del(`/auth/roles/${seleccionado}`);
