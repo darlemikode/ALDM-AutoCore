@@ -32,8 +32,14 @@ async function request(path, { method = "GET", body, isForm = false } = {}) {
 
   if (!res.ok) {
     if (res.status === 401) {
-      setToken(null);
-      window.location.href = "/login";
+      // Si el token ya cambió desde que salió esta petición (p. ej. se
+      // acaba de cambiar la contraseña y esta era una petición vieja que
+      // seguía en vuelo), este 401 es de esa petición vieja: no hay que
+      // cerrar la sesión nueva por ella.
+      if (getToken() === token) {
+        setToken(null);
+        window.location.href = "/login";
+      }
     }
     const message = data?.detail || "Ocurrió un error inesperado";
     const error = new Error(typeof message === "string" ? message : JSON.stringify(message));
@@ -56,8 +62,15 @@ export async function login(username, password) {
   form.set("username", username);
   form.set("password", password);
   const res = await fetch("/api/auth/login", { method: "POST", body: form });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.detail || "No se pudo iniciar sesión");
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    // sin cuerpo de respuesta (ej. el servidor se reinició a medio camino)
+  }
+  if (!res.ok || !data?.access_token) {
+    throw new Error(data?.detail || "No se pudo iniciar sesión. Intenta de nuevo.");
+  }
   setToken(data.access_token);
   return data;
 }

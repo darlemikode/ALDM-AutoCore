@@ -1,47 +1,49 @@
-# Python
-backend/venv/
-backend/__pycache__/
-**/__pycache__/
-*.pyc
-*.db
-*.db-journal
-
-# Node
+# --- Dependencias ---
 node_modules/
-.expo/
-dist/
-web-admin/dist/
+__pycache__/
+*.pyc
+.venv/
+venv/
 
-# Entornos y secretos
+# --- Variables de entorno y secretos ---
 .env
-.env.local
-backend/.env
+.env.*
+!.env.example
 
-# Datos y respaldos
-_respaldo_antes_multitaller/
+# --- Builds / artefactos ---
+dist/
+build/
+*.apk
+*.aab
+.expo/
+
+# --- Bases de datos locales y temporales ---
+*.db
+*.sqlite
+*.sqlite3
 _qa_tmp/
-*.log
 
-# Playwright
-e2e/node_modules/
+# --- Reportes y resultados de pruebas ---
+e2e/reporte/
 e2e/test-results/
-e2e/playwright-report/
-e2e/.auth/
+mobile/qa/ultimo-reporte.txt
+backend/tests/reporte_pruebas_integrales.json
 
-# Editor / OS
+# --- Respaldos y empaques manuales (no deben ir al repo) ---
+_respaldo_antes_multitaller/
+*.tgz
+repo_sync.tgz
+_sync_claude.tgz
+
+# --- Capturas/temporales sueltos en la raíz ---
+.prev*.png
+.dev.md5
+
+# --- Editor / SO ---
 .vscode/
-.idea/
 .DS_Store
 Thumbs.db
-backend/nul
 
-# Cualquier variante de .env o respaldo de credenciales, en cualquier carpeta
-*.env
-*.env.*
-!**/.env.example
-*.bak
-*secrets*
-
-# Web compilada (se genera con npm run build en web-admin)
-backend/app/web/
-backend/app/sitio/
+# --- Logs ---
+*.log
+npm-debug.log*

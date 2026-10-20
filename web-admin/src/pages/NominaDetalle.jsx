@@ -54,13 +54,13 @@ export default function NominaDetalle() {
   }
 
   async function recalcular() {
-    const ok = await confirmDialog("¿Recalcular los recibos pendientes? Se actualizan sueldos vigentes y comisiones de órdenes cerradas; lo capturado a mano se conserva.");
+    const ok = await confirmDialog("¿Recalcular los recibos pendientes? Se actualizan sueldos vigentes y comisiones de órdenes cerradas; lo capturado a mano se conserva.", { title: "Recalcular recibos", confirmar: "Sí, recalcular" });
     if (!ok) return;
     try { setPeriodo(await api.post(`/nomina/periodos/${id}/recalcular`, {})); notify("Recibos recalculados.", "success"); } catch (err) { notify(err.message, "error"); }
   }
 
   async function pagarTodos() {
-    const ok = await confirmDialog(`¿Marcar como pagados todos los recibos pendientes por ${dinero(pendienteTotal)}?`);
+    const ok = await confirmDialog(`¿Marcar como pagados todos los recibos pendientes por ${dinero(pendienteTotal)}?`, { title: "Pagar recibos", confirmar: "Sí, pagar" });
     if (!ok) return;
     try { setPeriodo(await api.post(`/nomina/periodos/${id}/pagar`, {})); notify("Periodo pagado.", "success"); } catch (err) { notify(err.message, "error"); }
   }
@@ -78,7 +78,7 @@ export default function NominaDetalle() {
 
   async function pagar(r) {
     const nombre = r.empleado ? `${r.empleado.nombre} ${r.empleado.paterno || ""}`.trim() : `empleado #${r.id_empleado}`;
-    const ok = await confirmDialog(`¿Marcar como pagado el recibo de ${nombre} por ${dinero(r.total_pagar)}?`);
+    const ok = await confirmDialog(`¿Marcar como pagado el recibo de ${nombre} por ${dinero(r.total_pagar)}?`, { title: "Pagar recibo", confirmar: "Sí, pagar" });
     if (!ok) return;
     try {
       await api.post(`/nomina/recibos/${r.id_recibo}/pagar`, {});
@@ -90,7 +90,7 @@ export default function NominaDetalle() {
   }
 
   async function reabrir(r) {
-    const ok = await confirmDialog("Este recibo está marcado como pagado. ¿Regresarlo a pendiente?");
+    const ok = await confirmDialog("Este recibo está marcado como pagado. ¿Regresarlo a pendiente?", { title: "Reabrir recibo", confirmar: "Sí, reabrir" });
     if (!ok) return;
     try {
       await api.post(`/nomina/recibos/${r.id_recibo}/reabrir`, {});

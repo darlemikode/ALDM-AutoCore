@@ -66,8 +66,8 @@ class ActivarTallerIn(VerificarActivacionIn):
     nombre_completo: str
     username: str
     password: str
+    correo: EmailStr  # por aquí entra de ahora en adelante
     telefono: Optional[str] = None
-    correo: Optional[str] = None
 
 
 class TallerPublicoOut(BaseModel):
@@ -171,14 +171,15 @@ class TutorialVistoIn(BaseModel):
 
 class UsuarioCreate(BaseModel):
     username: str
-    password: str
+    correo: EmailStr  # por aquí entra el usuario; obligatorio desde que el acceso es por correo
     nombre_completo: str
     id_rol: int
     telefono: Optional[str] = None
-    correo: Optional[str] = None
+    password: Optional[str] = None  # si no se manda, se genera una y se le envía un enlace para crearla
 
 
 class UsuarioUpdate(BaseModel):
+    username: Optional[str] = None
     nombre_completo: Optional[str] = None
     id_rol: Optional[int] = None
     telefono: Optional[str] = None
@@ -209,6 +210,24 @@ class SolicitudRecuperacionOut(ORMBase):
 class TempPasswordOut(BaseModel):
     username: str
     password_temporal: str
+
+
+class SolicitarAccesoIn(BaseModel):
+    """Self-service: el usuario pide su enlace de restablecimiento con su correo."""
+    correo: str
+
+
+class ValidarTokenOut(BaseModel):
+    valido: bool
+    tipo: Optional[str] = None  # "setup" (alta) o "reset" (olvidé mi contraseña)
+    nombre_completo: Optional[str] = None
+    username: Optional[str] = None
+
+
+class EstablecerPasswordIn(BaseModel):
+    token: str
+    password_nueva: str
+    username: Optional[str] = None  # solo en el alta (tipo "setup"): quien entra elige su nombre de usuario
 
 
 # ---------------------------------------------------------------------------
@@ -405,6 +424,16 @@ class VehiculoOut(VehiculoIn, ORMBase):
     marca: Optional[VehiculoMarcaOut] = None
     modelo: Optional[VehiculoModeloOut] = None
     color: Optional[ColorVehiculoOut] = None
+    # Última orden que se le hizo — para ordenar/mostrar "a quién le
+    # hicieron servicio más recientemente" (ver routers/vehiculos.py).
+    fecha_ultimo_servicio: Optional[datetime] = None
+    etapa_ultimo_servicio: Optional[str] = None
+    status_ultimo_servicio: Optional[str] = None
+    total_servicios: int = 0
+    # URL de la foto más reciente del vehículo (o None si no tiene ninguna) —
+    # se arma en el backend para no obligar al front a pedir /fotos/ por
+    # cada tarjeta. Ver _adjuntar_foto_vehiculo en routers/servicios.py.
+    foto_principal: Optional[str] = None
 
 
 class VehiculoConClienteOut(VehiculoOut):
@@ -589,6 +618,7 @@ class ServicioDetalleUpdate(BaseModel):
     costo_mano_obra: Optional[float] = None
     costo_refaccion: Optional[float] = None
     costo_extra: Optional[float] = None
+    orden: Optional[int] = None
 
 
 class ServicioDetalleOut(ServicioDetalleIn, ORMBase):
@@ -596,6 +626,7 @@ class ServicioDetalleOut(ServicioDetalleIn, ORMBase):
     id_servicio: int
     id_inventario_refaccion: Optional[int] = None
     fecha_detalle: datetime
+    orden: int = 0
 
 
 class CotizacionDetalleIn(BaseModel):
@@ -725,7 +756,7 @@ class ServicioOut(ORMBase):
     fecha_entrada_servicio: datetime
     fecha_salida_servicio: Optional[datetime] = None
     status: str
-    etapa: str = "recibido"
+    etapa: str = "en_proceso"
     pagado: bool
     iva_porcentaje: float
     diagnostico: Optional[str] = None
@@ -1103,6 +1134,9 @@ class ConfiguracionTallerIn(BaseModel):
     numero_taller: Optional[str] = None
     id_estado: Optional[int] = None
     id_ciudad: Optional[int] = None
+    # Código público del taller (va en su QR). Solo se puede mandar mientras
+    # el taller no tenga uno ya fijado — ver routers/configuracion_taller.py.
+    codigo_taller: Optional[str] = None
 
 
 class ConfiguracionTallerOut(ConfiguracionTallerIn, ORMBase):
@@ -1279,21 +1313,13 @@ class TallerOut(ORMBase):
     precio_periodo: Optional[float] = None
 
 
-class AdminTallerIn(BaseModel):
-    nombre_completo: str
-    username: str
-    password: Optional[str] = None  # si el usuario ya existe, se liga sin cambiarle la contraseña
-    correo: Optional[str] = None
-    telefono: Optional[str] = None
-
-
 class TallerCreate(BaseModel):
     nombre_comercial: str
-    codigo: Optional[str] = None
+    codigo: Optional[str] = None  # normalmente vacío: el dueño lo captura él mismo al entrar la primera vez
     razon_social: Optional[str] = None
     tipo_negocio: str = "taller"
     contacto_nombre: Optional[str] = None
-    correo: Optional[str] = None
+    correo: str  # obligatorio: ahí se manda el enlace para dar de alta al administrador
     telefono: Optional[str] = None
     ciudad: Optional[str] = None
     estado_mx: Optional[str] = None
@@ -1301,7 +1327,6 @@ class TallerCreate(BaseModel):
     id_paquete: Optional[int] = None
     id_tipo_cobro: Optional[int] = None
     en_prueba: bool = True
-    admin: Optional[AdminTallerIn] = None  # vacío = el dueño lo registra al entrar la primera vez
 
 
 class TallerUpdate(BaseModel):

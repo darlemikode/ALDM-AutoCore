@@ -7,14 +7,17 @@ import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { mostrarDialogo, alerta } from "../ui/Dialogo";
 
+// Catálogo unificado de estatus — mismo catálogo que ETAPAS_SERVICIO en el backend
 const ETIQUETAS_ETAPA = {
-  recibido: "Recibido",
-  diagnostico: "En diagnóstico",
-  esperando_autorizacion: "Esperando autorización del cliente",
+  en_proceso: "Recibido",
+  abierto: "En piso",
+  pendiente: "Confirmación del cliente",
+  espera_refacciones: "Espera refacciones",
   en_reparacion: "En reparación",
-  esperando_refacciones: "Esperando refacciones",
-  control_calidad: "Control de calidad",
   listo_entrega: "Listo para entrega",
+  cerrado: "Órdenes finalizadas",
+  garantia: "Garantía",
+  cancelado: "Cancelado",
 };
 
 /** Panel para actualizar en qué etapa va un servicio abierto, con bitácora. */
@@ -22,7 +25,7 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
   const [etapas, setEtapas] = useState([]);
   const ORDEN = Object.keys(ETIQUETAS_ETAPA);
   // Se propone la siguiente etapa (no la actual) para evitar registrar la misma dos veces
-  const siguiente = (actual) => ORDEN[Math.min(ORDEN.indexOf(actual || "recibido") + 1, ORDEN.length - 1)] || "recibido";
+  const siguiente = (actual) => ORDEN[Math.min(ORDEN.indexOf(actual || "en_proceso") + 1, ORDEN.length - 1)] || "en_proceso";
   const [nuevaEtapa, setNuevaEtapa] = useState(siguiente(servicio.etapa));
   useEffect(() => { setNuevaEtapa(siguiente(servicio.etapa)); }, [servicio.etapa]); // eslint-disable-line react-hooks/exhaustive-deps
   const [comentario, setComentario] = useState("");

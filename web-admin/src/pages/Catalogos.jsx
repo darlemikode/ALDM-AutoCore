@@ -153,28 +153,38 @@ export default function Catalogos() {
     });
   }, []);
 
-  async function load() {
+  // Si se cambia de catálogo antes de que termine de llegar la respuesta
+  // anterior, esa respuesta vieja puede llegar después y pisar los datos
+  // nuevos con un "nombreField" que ya no corresponde (texto en blanco).
+  // sigueVigente() evita aplicar una respuesta de un catálogo que ya no es
+  // el que está en pantalla.
+  async function load(sigueVigente = () => true) {
+    setLoading(true);
     try {
       const depData = {};
       for (const name of config.deps || []) {
         depData[name] = await api.get(CATALOGS[name].endpoint + "/");
       }
+      if (!sigueVigente()) return;
       setDeps(depData);
       const datos = await api.get(config.endpoint + "/");
+      if (!sigueVigente()) return;
       setRows(datos);
       setConteos((c) => ({ ...c, [tab]: datos.length }));
     } catch (err) {
-      notify(err.message, "error");
+      if (sigueVigente()) notify(err.message, "error");
     } finally {
-      setLoading(false);
+      if (sigueVigente()) setLoading(false);
     }
   }
 
   useEffect(() => {
+    let vigente = true;
     setBusqueda("");
     setFiltroPadre("");
     setNuevoNombre("");
-    load();
+    load(() => vigente);
+    return () => { vigente = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -233,7 +243,7 @@ export default function Catalogos() {
   }
 
   async function handleDelete(row) {
-    const ok = await confirmDialog(`¿Eliminar "${row[config.nombreField]}" de ${config.label}?`, { danger: true });
+    const ok = await confirmDialog(`¿Eliminar "${row[config.nombreField]}" de ${config.label}?`, { danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try {
       await api.del(`${config.endpoint}/${row[config.idField]}`);

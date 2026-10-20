@@ -5,17 +5,19 @@ nota de remisión, ticket). Cualquiera puede leerla (para que los PDFs se
 generen bien sin importar quién los pida); solo el Dueño la edita.
 """
 import os
+import re
 import shutil
 import uuid
 
 from .. import almacenamiento
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
 from ..security import get_current_user, require_permission
 from ..subida_archivos import leer_y_validar_imagen, nombre_unico, guardar
+from ..tenancy import taller_actual
 
 router = APIRouter(prefix="/api/configuracion-taller", tags=["configuracion-taller"])
 
@@ -32,20 +34,47 @@ def _obtener_o_crear(db: Session) -> models.ConfiguracionTaller:
     return config
 
 
+def _taller_de_sesion(db: Session) -> models.Taller | None:
+    id_taller = taller_actual(db)
+    return db.query(models.Taller).filter(models.Taller.id_taller == id_taller).first() if id_taller else None
+
+
+def _con_codigo(db: Session, config: models.ConfiguracionTaller) -> schemas.ConfiguracionTallerOut:
+    salida = schemas.ConfiguracionTallerOut.model_validate(config)
+    taller = _taller_de_sesion(db)
+    salida.codigo_taller = taller.codigo if taller else None
+    return salida
+
+
 @router.get("/", response_model=schemas.ConfiguracionTallerOut)
 def obtener(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    return _obtener_o_crear(db)
+    return _con_codigo(db, _obtener_o_crear(db))
 
 
 @router.put("/", response_model=schemas.ConfiguracionTallerOut)
 def actualizar(payload: schemas.ConfiguracionTallerIn, db: Session = Depends(get_db), user=Depends(require_permission("configuracion.editar"))):
     config = _obtener_o_crear(db)
+    datos = payload.model_dump(exclude_unset=True)
+    codigo_nuevo = datos.pop("codigo_taller", None)
     # Solo los campos que llegaron: una app vieja que no manda teléfono 2/3 o correo 2 no los borra
-    for key, value in payload.model_dump(exclude_unset=True).items():
+    for key, value in datos.items():
         setattr(config, key, value)
+    if codigo_nuevo is not None:
+        taller = _taller_de_sesion(db)
+        if taller:
+            limpio = re.sub(r"[^A-Z0-9]", "", codigo_nuevo.strip().upper())
+            if taller.codigo:
+                if limpio != taller.codigo:
+                    raise HTTPException(status_code=400, detail="El código del taller ya quedó fijo y no se puede cambiar.")
+            elif len(limpio) >= 3:
+                # Menos de 3 caracteres: todavía está escribiendo, no se
+                # guarda nada (ni error) hasta que complete un código válido.
+                if db.query(models.Taller).filter(models.Taller.codigo == limpio).first():
+                    raise HTTPException(status_code=400, detail="Ese código ya lo usa otro taller; elige otro.")
+                taller.codigo = limpio
     db.commit()
     db.refresh(config)
-    return config
+    return _con_codigo(db, config)
 
 
 @router.post("/logo", response_model=schemas.ConfiguracionTallerOut)

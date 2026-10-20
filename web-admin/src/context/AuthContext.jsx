@@ -93,6 +93,13 @@ export function AuthProvider({ children }) {
     setEligiendoTaller(false);
   }
 
+  // Para cuando algo cambió del lado del servidor y hay que traer el
+  // perfil de nuevo sin recargar toda la página (p. ej. al fijar el
+  // código del taller en Configuración).
+  async function refrescarPerfil() {
+    try { aplicarPerfil(await api.get("/auth/me")); } catch { /* sesión ya no válida: el resto de la app lo maneja */ }
+  }
+
   function logout() {
     setToken(null);
     setUser(null);
@@ -116,7 +123,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user, loading, login, logout, permisos, hasPermission,
-        talleres, estadoSuscripcion, seleccionarTaller, eligiendoTaller, continuarEnTallerActual, entrarConToken,
+        talleres, estadoSuscripcion, seleccionarTaller, eligiendoTaller, continuarEnTallerActual, entrarConToken, refrescarPerfil,
       }}
     >
       {children}

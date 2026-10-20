@@ -1,5 +1,3 @@
-from ..busqueda import coincide
-import os
 import uuid
 from typing import Optional
 
@@ -9,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
-from ..security import get_current_user, require_permission, generar_codigo_invitacion, verify_password, hash_password, generar_password_temporal
+from ..security import get_current_user, require_permission, generar_codigo_invitacion
 from datetime import datetime
 
 router = APIRouter(prefix="/api/clientes", tags=["clientes"])
@@ -25,12 +23,20 @@ def listar(
     query = db.query(models.Cliente)
     if solo_activos:
         query = query.filter(models.Cliente.status_cliente == 1)
-    lista = query.order_by(models.Cliente.nombre_cliente).all()
     if q:
-        lista = [c for c in lista if coincide(q, c.nombre_cliente, c.paterno_cliente, c.materno_cliente, c.empresa_cliente,
-                                              c.telefono1, c.correo_cliente, c.numero_cuenta,
-                                              f"{c.nombre_cliente or ''} {c.paterno_cliente or ''} {c.materno_cliente or ''}")]
-    return lista
+        like = f"%{q}%"
+        query = query.filter(
+            or_(
+                models.Cliente.nombre_cliente.ilike(like),
+                models.Cliente.paterno_cliente.ilike(like),
+                models.Cliente.materno_cliente.ilike(like),
+                models.Cliente.empresa_cliente.ilike(like),
+                models.Cliente.telefono1.ilike(like),
+                models.Cliente.correo_cliente.ilike(like),
+                models.Cliente.numero_cuenta.ilike(like),
+            )
+        )
+    return query.order_by(models.Cliente.nombre_cliente).all()
 
 
 @router.get("/{cliente_id}", response_model=schemas.ClienteOut)
@@ -46,23 +52,26 @@ def vehiculos_del_cliente(cliente_id: int, db: Session = Depends(get_db), user=D
     return db.query(models.Vehiculo).filter(models.Vehiculo.id_cliente == cliente_id).all()
 
 
-def _verificar_password_admin_cambiada(db: Session):
-    """Bloquea el alta de clientes mientras el admin siga con la contraseña
-    por defecto (la que trae la instalación recién sembrada) — evita que el
-    taller opere con datos de clientes reales sobre una cuenta admin insegura."""
-    admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password_defecto = os.getenv("ADMIN_PASSWORD", "admin1234")
-    admin = db.query(models.Usuario).filter(models.Usuario.username == admin_username).first()
-    if admin and verify_password(admin_password_defecto, admin.hashed_password):
-        raise HTTPException(
-            status_code=403,
-            detail="Antes de agregar clientes, cambia la contraseña del usuario admin (sigue siendo la de fábrica).",
-        )
+def _validar_cliente_no_duplicado(db: Session, nombre_cliente: str, telefono1: Optional[str], excluir_id: Optional[int] = None):
+    """La llave de un cliente es nombre + teléfono: evita dar de alta el
+    mismo cliente dos veces (p.ej. por error de captura) si ya existe uno
+    activo con ese mismo nombre y teléfono."""
+    if not telefono1:
+        return
+    query = db.query(models.Cliente).filter(
+        models.Cliente.nombre_cliente.ilike(nombre_cliente.strip()),
+        models.Cliente.telefono1 == telefono1.strip(),
+        models.Cliente.status_cliente == 1,
+    )
+    if excluir_id:
+        query = query.filter(models.Cliente.id_cliente != excluir_id)
+    if query.first():
+        raise HTTPException(status_code=400, detail="Ya existe un cliente con ese nombre y teléfono.")
 
 
 @router.post("/", response_model=schemas.ClienteOut, status_code=201)
 def crear(payload: schemas.ClienteIn, db: Session = Depends(get_db), user=Depends(require_permission("clientes.crear"))):
-    _verificar_password_admin_cambiada(db)
+    _validar_cliente_no_duplicado(db, payload.nombre_cliente, payload.telefono1)
     # La cuenta única se arma a partir del id definitivo del cliente (CTE-000001),
     # así que se inserta primero con un valor temporal único y se corrige
     # dentro de la misma transacción antes de confirmar.
@@ -80,6 +89,7 @@ def actualizar(cliente_id: int, payload: schemas.ClienteIn, db: Session = Depend
     cliente = db.query(models.Cliente).filter(models.Cliente.id_cliente == cliente_id).first()
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    _validar_cliente_no_duplicado(db, payload.nombre_cliente, payload.telefono1, excluir_id=cliente_id)
     for key, value in payload.model_dump().items():
         setattr(cliente, key, value)
     db.commit()
@@ -116,24 +126,3 @@ def invitar_a_app(cliente_id: int, db: Session = Depends(get_db), user=Depends(r
     cliente.cuenta_activada = False  # si ya tenía cuenta, un nuevo código la reinicia
     db.commit()
     return schemas.InvitacionOut(codigo_invitacion=cliente.codigo_invitacion, telefono1=cliente.telefono1, correo_cliente=cliente.correo_cliente)
-
-
-@router.post("/{cliente_id}/generar-acceso", response_model=schemas.AccesoClienteOut)
-def generar_acceso_directo(cliente_id: int, db: Session = Depends(get_db), user=Depends(require_permission("clientes.editar"))):
-    """Alternativa a la invitación por código: el taller le da al cliente un
-    usuario (su teléfono o correo, como está registrado) y una contraseña
-    temporal, y el cliente ya puede entrar de una vez a la app — conviene
-    cuando el taller mismo lo está dando de alta en persona."""
-    cliente = db.query(models.Cliente).filter(models.Cliente.id_cliente == cliente_id).first()
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    identificador = cliente.telefono1 or cliente.correo_cliente
-    if not identificador:
-        raise HTTPException(status_code=400, detail="El cliente necesita al menos un teléfono o correo registrado para poder entrar a la app.")
-
-    password_temporal = generar_password_temporal()
-    cliente.hashed_password = hash_password(password_temporal)
-    cliente.cuenta_activada = True
-    cliente.codigo_invitacion = None
-    db.commit()
-    return schemas.AccesoClienteOut(identificador=identificador, password_temporal=password_temporal)

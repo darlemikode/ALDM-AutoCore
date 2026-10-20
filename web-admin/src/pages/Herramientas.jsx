@@ -66,7 +66,7 @@ export default function Herramientas() {
   }
 
   async function handleDelete(h) {
-    const ok = await confirmDialog(`¿Eliminar "${h.nombre_herramienta}" del inventario?`, { danger: true });
+    const ok = await confirmDialog(`¿Eliminar "${h.nombre_herramienta}" del inventario?`, { danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try {
       await api.del(`/herramientas/${h.id_herramienta}`);

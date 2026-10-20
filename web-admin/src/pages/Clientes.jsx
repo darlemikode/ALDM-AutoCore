@@ -1,9 +1,8 @@
-import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import ClienteFormModal from "../components/ClienteFormModal";
-import ModalPortal from "../components/ModalPortal";
+import MensajeModal from "../components/MensajeModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
@@ -81,7 +80,7 @@ export default function Clientes() {
   }
 
   async function handleDelete(cliente) {
-    const ok = await confirmDialog(`¿Dar de baja a ${cliente.nombre_cliente}? Su historial de servicios se conserva.`, { danger: true });
+    const ok = await confirmDialog(`¿Dar de baja a ${cliente.nombre_cliente}? Su historial de servicios se conserva.`, { danger: true, confirmar: "Sí, dar de baja" });
     if (!ok) return;
     try {
       await api.del(`/clientes/${cliente.id_cliente}`);
@@ -202,48 +201,38 @@ export default function Clientes() {
       )}
 
       {invitacion && (
-        <ModalPortal>
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setInvitacion(null)}>
-          <div className="modal" style={{ maxWidth: 400 }}>
-            <h2 style={{ fontSize: 18 }}>Invitación para {invitacion.cliente.nombre_cliente}</h2>
-            <p style={{ color: "var(--ink-500)", fontSize: 13 }}>
-              Comunícale este código tú mismo (llamada, WhatsApp) junto con el teléfono o correo con el que está
-              registrado — lo va a necesitar para activar su cuenta en la app.
-            </p>
-            <div className="mono" style={{ background: "var(--paper-0)", padding: "12px 16px", borderRadius: 8, fontSize: 22, textAlign: "center", letterSpacing: 3, fontWeight: 700 }}>
-              {invitacion.codigo_invitacion}
-            </div>
-            <div style={{ fontSize: 12, color: "var(--ink-500)", marginTop: 8 }}>
-              Identificador para activar: <b>{invitacion.telefono1 || invitacion.correo_cliente}</b>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-primary" onClick={() => setInvitacion(null)}>Listo</button>
-            </div>
+        <MensajeModal
+          icono="🔑"
+          titulo={`Invitación para ${invitacion.cliente.nombre_cliente}`}
+          onCerrar={() => setInvitacion(null)}
+          primario={{ texto: "Listo", onClick: () => setInvitacion(null) }}
+        >
+          <p>
+            Comunícale este código tú mismo (llamada, WhatsApp) junto con el teléfono o correo con el que está
+            registrado — lo va a necesitar para activar su cuenta en la app.
+          </p>
+          <div className="mono" style={{ background: "var(--paper-0)", padding: "12px 16px", borderRadius: 8, fontSize: 22, textAlign: "center", letterSpacing: 3, fontWeight: 700 }}>
+            {invitacion.codigo_invitacion}
           </div>
-        </div>
-        </ModalPortal>
+          <div style={{ fontSize: 12, marginTop: 8 }}>
+            Identificador para activar: <b>{invitacion.telefono1 || invitacion.correo_cliente}</b>
+          </div>
+        </MensajeModal>
       )}
 
       {ofrecerVehiculo && (
-        <ModalPortal>
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setOfrecerVehiculo(null)}>
-          <div className="modal" style={{ maxWidth: 400 }}>
-            <h2 style={{ fontSize: 18 }}>Cliente creado </h2>
-            <p style={{ color: "var(--ink-500)", fontSize: 13.5, lineHeight: 1.5 }}>
-              {ofrecerVehiculo.nombre_cliente} {ofrecerVehiculo.paterno_cliente} ya está registrado. ¿Quieres darle de alta su vehículo ahora mismo?
-            </p>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setOfrecerVehiculo(null)}>Ahora no</button>
-              <button
-                className="btn btn-primary"
-                onClick={() => navigate(`/vehiculos?id_cliente=${ofrecerVehiculo.id_cliente}&abrir_nuevo=1`)}
-              >
-                <IconoAuto valor="🚗" size={18} /> Sí, agregar vehículo
-              </button>
-            </div>
-          </div>
-        </div>
-        </ModalPortal>
+        <MensajeModal
+          icono="🚗"
+          titulo="Cliente creado"
+          onCerrar={() => setOfrecerVehiculo(null)}
+          primario={{
+            texto: "Sí, agregar vehículo",
+            onClick: () => navigate(`/vehiculos?id_cliente=${ofrecerVehiculo.id_cliente}&abrir_nuevo=1`),
+          }}
+          secundario={{ texto: "Ahora no", onClick: () => setOfrecerVehiculo(null) }}
+        >
+          <p>{ofrecerVehiculo.nombre_cliente} {ofrecerVehiculo.paterno_cliente} quedó registrado en tu taller. ¿Quieres dar de alta su vehículo ahora?</p>
+        </MensajeModal>
       )}
     </>
   );

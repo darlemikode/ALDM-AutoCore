@@ -35,7 +35,7 @@ export default function Integraciones() {
   }
 
   async function revocar(l) {
-    const ok = await confirmDialog(`¿Revocar la llave «${l.nombre}»? Lo que esté conectado con ella (n8n) dejará de funcionar al instante.`, { danger: true, title: "Revocar llave" });
+    const ok = await confirmDialog(`¿Revocar la llave «${l.nombre}»? Lo que esté conectado con ella (n8n) dejará de funcionar al instante.`, { danger: true, title: "Revocar llave", confirmar: "Sí, revocar" });
     if (!ok) return;
     try {
       await api.del(`/integracion/llaves/${l.id_llave}`);

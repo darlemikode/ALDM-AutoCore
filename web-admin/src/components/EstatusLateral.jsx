@@ -3,15 +3,17 @@ import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import { IconoAuto } from "./Icono";
 
-// Etapas del servicio con su ícono — mismo catálogo que el backend
+// Catálogo de estatus — mismo catálogo unificado que el backend (ETAPAS_SERVICIO)
 const ETAPAS = [
-  { clave: "recibido", etiqueta: "Recibido", icono: "📥" },
-  { clave: "diagnostico", etiqueta: "En diagnóstico", icono: "🔎" },
-  { clave: "esperando_autorizacion", etiqueta: "Esperando autorización", icono: "⏳" },
-  { clave: "en_reparacion", etiqueta: "En reparación", icono: "🔧" },
-  { clave: "esperando_refacciones", etiqueta: "Esperando refacciones", icono: "📦" },
-  { clave: "control_calidad", etiqueta: "Control de calidad", icono: "✅" },
+  { clave: "en_proceso", etiqueta: "Recibido", icono: "🔧" },
+  { clave: "abierto", etiqueta: "En piso", icono: "📥" },
+  { clave: "pendiente", etiqueta: "Confirmación del cliente", icono: "⏳" },
+  { clave: "espera_refacciones", etiqueta: "Espera refacciones", icono: "📦" },
+  { clave: "en_reparacion", etiqueta: "En reparación", icono: "🔩" },
   { clave: "listo_entrega", etiqueta: "Listo para entrega", icono: "🚗" },
+  { clave: "cerrado", etiqueta: "Órdenes finalizadas", icono: "✅" },
+  { clave: "garantia", etiqueta: "Garantía", icono: "🛡️" },
+  { clave: "cancelado", etiqueta: "Cancelado", icono: "🚫" },
 ];
 
 /**
@@ -61,13 +63,17 @@ export default function EstatusLateral({ servicio, puedeEditar, onActualizado })
         <ol className="estatus-pasos">
           {ETAPAS.map((e, i) => {
             const estado = i < indiceActual ? "hecho" : i === indiceActual ? "actual" : "pendiente";
+            // Cerrado/Cancelado solo quedan como etiqueta informativa aquí — la orden
+            // se cierra o cancela de verdad con los botones de abajo (cambian el
+            // status real, no solo esta etapa).
+            const soloInformativo = e.clave === "cerrado" || e.clave === "cancelado";
             return (
               <li key={e.clave} className={`estatus-paso ${estado} ${eligiendo === e.clave ? "eligiendo" : ""}`}>
                 <button
                   type="button"
-                  disabled={!editable || estado === "actual"}
+                  disabled={!editable || estado === "actual" || soloInformativo}
                   onClick={() => { setEligiendo(eligiendo === e.clave ? null : e.clave); setComentario(""); }}
-                  title={estado === "actual" ? "Etapa actual" : editable ? `Cambiar a "${e.etiqueta}"` : e.etiqueta}
+                  title={estado === "actual" ? "Etapa actual" : soloInformativo ? "Para cerrar o cancelar la orden usa los botones de abajo" : editable ? `Cambiar a "${e.etiqueta}"` : e.etiqueta}
                 >
                   <span className="estatus-paso-icono"><IconoAuto valor={estado === "hecho" ? "✓" : e.icono} size={18} /></span>
                   <span className="estatus-paso-texto">

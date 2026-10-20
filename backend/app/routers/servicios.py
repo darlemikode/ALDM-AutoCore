@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas
@@ -18,14 +19,19 @@ router = APIRouter(prefix="/api/servicios", tags=["servicios"])
 # el vehículo. `status` (abierto/cerrado/cancelado) sigue mandando si la
 # orden se puede editar; `etapa` es informativa y es la base del
 # seguimiento que verá el cliente más adelante.
+# Catálogo unificado con los estatus del panel (oct-2026): ya no son solo
+# los pasos de trabajo — también incluye Abierto/Cerrado/Cancelado/Garantía,
+# para que exista un solo catálogo de estatus en todo el sistema.
 ETAPAS_SERVICIO = [
-    ("recibido", "Recibido"),
-    ("diagnostico", "En diagnóstico"),
-    ("esperando_autorizacion", "Esperando autorización del cliente"),
+    ("en_proceso", "Recibido"),
+    ("abierto", "En piso"),
+    ("pendiente", "Confirmación del cliente"),
+    ("espera_refacciones", "Espera refacciones"),
     ("en_reparacion", "En reparación"),
-    ("esperando_refacciones", "Esperando refacciones"),
-    ("control_calidad", "Control de calidad"),
     ("listo_entrega", "Listo para entrega"),
+    ("cerrado", "Órdenes finalizadas"),
+    ("garantia", "Garantía"),
+    ("cancelado", "Cancelado"),
 ]
 CLAVES_ETAPAS_VALIDAS = {clave for clave, _ in ETAPAS_SERVICIO}
 
@@ -60,6 +66,27 @@ def _con_costos(servicio: models.Servicio) -> schemas.ServicioCompletoOut:
     out = schemas.ServicioCompletoOut.model_validate(servicio)
     out.costos = _calcular_costos(servicio)
     return out
+
+
+def _adjuntar_foto_vehiculo(db: Session, servicios: list[models.Servicio]):
+    """Deja en servicio.vehiculo.foto_principal la ruta de la foto más
+    reciente de cada vehículo (o None) — una sola consulta para toda la
+    lista, en vez de que el front pida /fotos/ por cada tarjeta."""
+    ids_vehiculo = {s.id_vehiculo for s in servicios if s.vehiculo}
+    if not ids_vehiculo:
+        return
+    fotos = (
+        db.query(models.Foto)
+        .filter(models.Foto.entidad_tipo == "vehiculo", models.Foto.entidad_id.in_(ids_vehiculo))
+        .order_by(models.Foto.fecha.desc())
+        .all()
+    )
+    mas_reciente = {}
+    for foto in fotos:
+        mas_reciente.setdefault(foto.entidad_id, foto.ruta_archivo)
+    for s in servicios:
+        if s.vehiculo:
+            s.vehiculo.foto_principal = f"/uploads/{mas_reciente[s.id_vehiculo]}" if s.id_vehiculo in mas_reciente else None
 
 
 def _para(user, out: schemas.ServicioCompletoOut) -> schemas.ServicioCompletoOut:
@@ -167,12 +194,14 @@ def listar(
     if solo_sin_pagar:
         query = query.filter(models.Servicio.pagado == False)
     servicios = query.order_by(models.Servicio.fecha_entrada_servicio.desc()).all()
+    _adjuntar_foto_vehiculo(db, servicios)
     return [_para(user, _con_costos(s)) for s in servicios]
 
 
 @router.get("/{servicio_id}", response_model=schemas.ServicioCompletoOut)
 def obtener(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
     servicio = _get_servicio_o_404(db, servicio_id)
+    _adjuntar_foto_vehiculo(db, [servicio])
     return _para(user, _con_costos(servicio))
 
 
@@ -220,7 +249,7 @@ def crear(payload: schemas.ServicioIn, db: Session = Depends(get_db), user=Depen
     if tipos_ids:
         tipos_validos = db.query(models.TipoServicio).filter(models.TipoServicio.id_tipo_servicio.in_(tipos_ids)).all()
         servicio.tipos_mantenimiento = tipos_validos
-    etapa_inicial = "diagnostico" if payload.es_garantia else "recibido"
+    etapa_inicial = "garantia" if payload.es_garantia else "en_proceso"
     servicio.etapa = etapa_inicial
     db.add(models.ServicioEtapaHistorial(id_servicio=servicio.id_servicio, etapa=etapa_inicial, actualizado_por=user.username))
     db.commit()
@@ -355,9 +384,11 @@ def agregar_detalle(servicio_id: int, payload: schemas.ServicioDetalleIn, db: Se
             # (comportamiento de respaldo, nunca deja el inventario negativo).
             refaccion.cantidad_refaccion = max(refaccion.cantidad_refaccion - cantidad, 0)
 
+    orden_maximo = db.query(func.max(models.ServicioDetalle.orden)).filter(models.ServicioDetalle.id_servicio == servicio_id).scalar() or 0
     data = payload.model_dump()
     data["cantidad"] = cantidad
     data["id_inventario_refaccion"] = id_inventario_encontrado
+    data["orden"] = orden_maximo + 1
     detalle = models.ServicioDetalle(id_servicio=servicio_id, **data)
     db.add(detalle)
     db.flush()

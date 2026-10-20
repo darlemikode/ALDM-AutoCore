@@ -11,6 +11,55 @@ from ..security import get_current_user, require_permission
 router = APIRouter(prefix="/api/vehiculos", tags=["vehículos"])
 
 
+def _con_ultimo_servicio(db: Session, vehiculos: list[models.Vehiculo]) -> list[models.Vehiculo]:
+    """Le pega a cada vehículo los datos de su orden más reciente — lo usa
+    la vista "Por cliente" para ordenar por a quién le hicieron servicio
+    hace menos tiempo."""
+    ids = [v.id_vehiculo for v in vehiculos]
+    if not ids:
+        return vehiculos
+    servicios = (
+        db.query(models.Servicio)
+        .filter(models.Servicio.id_vehiculo.in_(ids))
+        .order_by(models.Servicio.id_vehiculo, models.Servicio.fecha_entrada_servicio.desc())
+        .all()
+    )
+    ultimos: dict[int, models.Servicio] = {}
+    conteos: dict[int, int] = {}
+    for s in servicios:
+        conteos[s.id_vehiculo] = conteos.get(s.id_vehiculo, 0) + 1
+        if s.id_vehiculo not in ultimos:
+            ultimos[s.id_vehiculo] = s
+    for v in vehiculos:
+        s = ultimos.get(v.id_vehiculo)
+        v.fecha_ultimo_servicio = s.fecha_entrada_servicio if s else None
+        v.etapa_ultimo_servicio = s.etapa if s else None
+        v.status_ultimo_servicio = s.status if s else None
+        v.total_servicios = conteos.get(v.id_vehiculo, 0)
+    return vehiculos
+
+
+def _con_foto_principal(db: Session, vehiculos: list[models.Vehiculo]) -> list[models.Vehiculo]:
+    """Deja en vehiculo.foto_principal la ruta de su foto más reciente (o
+    None) — una sola consulta para toda la lista, para que la vista en
+    cuadros pueda mostrarla sin pedir /fotos/ por cada tarjeta."""
+    ids = [v.id_vehiculo for v in vehiculos]
+    if not ids:
+        return vehiculos
+    fotos = (
+        db.query(models.Foto)
+        .filter(models.Foto.entidad_tipo == "vehiculo", models.Foto.entidad_id.in_(ids))
+        .order_by(models.Foto.fecha.desc())
+        .all()
+    )
+    mas_reciente: dict[int, str] = {}
+    for foto in fotos:
+        mas_reciente.setdefault(foto.entidad_id, foto.ruta_archivo)
+    for v in vehiculos:
+        v.foto_principal = f"/uploads/{mas_reciente[v.id_vehiculo]}" if v.id_vehiculo in mas_reciente else None
+    return vehiculos
+
+
 @router.get("/", response_model=list[schemas.VehiculoConClienteOut])
 def listar(
     id_cliente: Optional[int] = None,
@@ -23,7 +72,9 @@ def listar(
         query = query.filter(models.Vehiculo.id_cliente == id_cliente)
     if q:
         query = query.filter(models.Vehiculo.placas_vehiculo.ilike(f"%{q}%"))
-    return query.order_by(models.Vehiculo.id_vehiculo.desc()).all()
+    vehiculos = query.order_by(models.Vehiculo.id_vehiculo.desc()).all()
+    vehiculos = _con_ultimo_servicio(db, vehiculos)
+    return _con_foto_principal(db, vehiculos)
 
 
 @router.get("/{vehiculo_id}", response_model=schemas.VehiculoConClienteOut)
@@ -36,6 +87,7 @@ def obtener(vehiculo_id: int, db: Session = Depends(get_db), user=Depends(requir
     )
     if not vehiculo:
         raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    _con_foto_principal(db, [vehiculo])
     return vehiculo
 
 

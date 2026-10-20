@@ -3,14 +3,17 @@ import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import { IconoAuto } from "./Icono";
 
+// Catálogo unificado de estatus — mismo catálogo que ETAPAS_SERVICIO en el backend
 const ETIQUETAS_ETAPA = {
-  recibido: "Recibido",
-  diagnostico: "En diagnóstico",
-  esperando_autorizacion: "Esperando autorización del cliente",
+  en_proceso: "Recibido",
+  abierto: "En piso",
+  pendiente: "Confirmación del cliente",
+  espera_refacciones: "Espera refacciones",
   en_reparacion: "En reparación",
-  esperando_refacciones: "Esperando refacciones",
-  control_calidad: "Control de calidad",
   listo_entrega: "Listo para entrega",
+  cerrado: "Órdenes finalizadas",
+  garantia: "Garantía",
+  cancelado: "Cancelado",
 };
 
 /**

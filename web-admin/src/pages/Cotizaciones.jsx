@@ -24,14 +24,14 @@ export default function Cotizaciones() {
   useEffect(() => { load(); }, []);
 
   async function handleCreate(values) {
-    const nueva = await api.post("/cotizaciones/", { ...values, iva_porcentaje: values.iva_porcentaje ? 16 : 0 });
+    const nueva = await api.post("/cotizaciones/", { ...values, iva_porcentaje: 16 });
     setCreating(false);
     notify(`Cotización creada — #${nueva.id_cotizacion}.`, "success");
     navigate(`/cotizaciones/${nueva.id_cotizacion}`);
   }
 
   async function handleDelete(c) {
-    const ok = await confirmDialog(`¿Eliminar la cotización "${c.titulo}"?`, { danger: true });
+    const ok = await confirmDialog(`¿Eliminar la cotización "${c.titulo}"?`, { danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try {
       await api.del(`/cotizaciones/${c.id_cotizacion}`);
@@ -80,12 +80,11 @@ export default function Cotizaciones() {
           title="Nueva cotización"
           icono="🧾"
           subtitulo="Presupuesto sin cliente ni vehículo ligado."
+          compacto
           fields={[
             { name: "titulo", label: "Título (ej. Afinación mayor Nissan Versa)", required: true, full: true },
             { name: "vigente_hasta", label: "Vigente hasta (opcional)", type: "date" },
-            { name: "iva_porcentaje", label: "Aplicar IVA (16%)", type: "checkbox" },
           ]}
-          initialValues={{ iva_porcentaje: true }}
           onSubmit={handleCreate}
           onClose={() => setCreating(false)}
         />

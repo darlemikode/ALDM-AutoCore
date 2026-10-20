@@ -27,10 +27,20 @@ export function UIProvider({ children }) {
     setConfirmState(null);
   }
 
+  // Tope de avisos apilados: si el usuario da clic varias veces seguidas
+  // (p.ej. un botón deshabilitado que igual se alcanza a pulsar de más),
+  // no se amontonan decenas de avisos idénticos tapando la pantalla.
+  const MAX_TOASTS = 3;
   const notify = useCallback((message, type = "info") => {
-    const id = ++toastId.current;
-    setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5200);
+    setToasts((t) => {
+      // Mismo mensaje y tipo ya mostrado: se reemplaza en vez de duplicarse.
+      const repetido = t.find((x) => x.message === message && x.type === type);
+      if (repetido) return t;
+      const id = ++toastId.current;
+      const siguiente = [...t, { id, message, type }];
+      setTimeout(() => setToasts((t2) => t2.filter((x) => x.id !== id)), 5200);
+      return siguiente.length > MAX_TOASTS ? siguiente.slice(siguiente.length - MAX_TOASTS) : siguiente;
+    });
   }, []);
 
   return (
@@ -41,13 +51,13 @@ export function UIProvider({ children }) {
         <ModalPortal>
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && resolveConfirm(false)}>
           <div className={`modal dialogo-confirmar ${confirmState.danger ? "peligro" : ""}`} role="alertdialog" aria-modal="true">
-            <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={() => resolveConfirm(false)}>✕</button>
+            <div className="dialogo-franja" aria-hidden="true" />
             <div className="dialogo-cuerpo">
-              <span className="dialogo-icono" aria-hidden="true">{confirmState.danger ? "!" : "?"}</span>
-              <div>
-                <h2 className="dialogo-titulo">{confirmState.title}</h2>
-                <p className="dialogo-mensaje">{confirmState.message}</p>
-              </div>
+              <span className="dialogo-icono-zona" aria-hidden="true">
+                <span className="dialogo-icono">{confirmState.danger ? "!" : "?"}</span>
+              </span>
+              <h2 className="dialogo-titulo">{confirmState.title}</h2>
+              {confirmState.message && <p className="dialogo-mensaje">{confirmState.message}</p>}
             </div>
             {confirmState.recordar && (
               <label className="no-preguntar">
@@ -55,8 +65,7 @@ export function UIProvider({ children }) {
                 No volver a preguntar
               </label>
             )}
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => resolveConfirm(false)}>Cancelar</button>
+            <div className="modal-actions dialogo-acciones">
               <button
                 className={confirmState.danger ? "btn btn-danger" : "btn btn-primary"}
                 onClick={() => resolveConfirm(true)}
@@ -64,6 +73,7 @@ export function UIProvider({ children }) {
               >
                 {confirmState.confirmar || (confirmState.danger ? "Sí, continuar" : "Confirmar")}
               </button>
+              <button className="btn btn-secondary" onClick={() => resolveConfirm(false)}>Cancelar</button>
             </div>
           </div>
         </div>

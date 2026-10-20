@@ -79,6 +79,22 @@ export default function ServicioDetalle() {
     }
   }
 
+  // Antes de generar la nota, finalizar, enviar por WhatsApp o abrir la
+  // vista previa: si alguna refacción quedó con precio en $0, no se deja
+  // continuar — se posiciona el cursor en esa celda para capturarlo primero.
+  function bloquearPorRefaccionSinPrecio() {
+    const sinPrecio = (servicio.detalles || []).find((d) => !((d.costo_refaccion || 0) > 0));
+    if (!sinPrecio) return false;
+    notify(`«${sinPrecio.descripcion || "Una refacción"}» no tiene precio capturado. Captúralo para continuar.`, "error");
+    const el = document.querySelector(`.tabla-refacciones input[data-det="${sinPrecio.id_servicio_detalle}"][data-campo="u"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.focus();
+      el.select?.();
+    }
+    return true;
+  }
+
   // Tras guardar, la tabla se vuelve a dibujar: se devuelve el cursor al campo al que se saltó
   useEffect(() => {
     const f = focoPendiente.current;
@@ -89,6 +105,7 @@ export default function ServicioDetalle() {
   }, [servicio]);
 
   const [addingDetalle, setAddingDetalle] = useState(false);
+  const [creandoRefaccion, setCreandoRefaccion] = useState(null); // {} para abrir el form de "Nueva refacción" (acceso rápido desde Agregar refacciones)
   const [modoMultiple, setModoMultiple] = useState(false);
   const [seleccionMultiple, setSeleccionMultiple] = useState({});
   const [filtroCategoriaMulti, setFiltroCategoriaMulti] = useState([]);
@@ -107,6 +124,38 @@ export default function ServicioDetalle() {
   const [pdfTipo, setPdfTipo] = useState("recibo");
   const [searchParams, setSearchParams] = useSearchParams();
   const [eligiendoCV, setEligiendoCV] = useState(false);
+  const [editandoNombre, setEditandoNombre] = useState(false);
+  const [nombreTemp, setNombreTemp] = useState("");
+  const [subiendoFotoVeh, setSubiendoFotoVeh] = useState(false);
+  const [verFotoVeh, setVerFotoVeh] = useState(false); // visualizador interno de la foto del vehículo
+  const [detalleCostosAbierto, setDetalleCostosAbierto] = useState(false); // la barra de saldo se expande al llegar al final de la orden
+  const finOrdenRef = useRef(null);
+  const inputFotoVehRef = useRef(null);
+  // Arrastrar y soltar una fila de la tabla de refacciones para cambiar su
+  // posición — se mantiene presionado el clic sobre la fila y se suelta
+  // sobre el lugar deseado.
+  const dragDetalleRef = useRef(null);
+  const [sobreDetalleIdx, setSobreDetalleIdx] = useState(null);
+
+  async function cambiarFotoVehiculo(e) {
+    const archivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!archivo || !servicio?.id_vehiculo) return;
+    const formData = new FormData();
+    formData.append("entidad_tipo", "vehiculo");
+    formData.append("entidad_id", servicio.id_vehiculo);
+    formData.append("archivo", archivo);
+    setSubiendoFotoVeh(true);
+    try {
+      const nueva = await api.postForm("/fotos/", formData);
+      setFotoVehiculo(nueva);
+      notify("Foto del vehículo actualizada.", "success");
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setSubiendoFotoVeh(false);
+    }
+  }
 
   // Orden recién abierta (sin cliente o sin vehículo): se pide de inmediato
   useEffect(() => {
@@ -151,6 +200,17 @@ export default function ServicioDetalle() {
       setSearchParams(p, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servicio?.id_servicio]);
+
+  // La barra de saldo pendiente se expande con el detalle completo
+  // (subtotal/IVA/total/saldo) solo cuando se llega al final de la orden;
+  // mientras tanto queda atenuada, nada más mostrando el saldo.
+  useEffect(() => {
+    const el = finOrdenRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(([entry]) => setDetalleCostosAbierto(entry.isIntersecting), { threshold: 0.01 });
+    obs.observe(el);
+    return () => obs.disconnect();
   }, [servicio?.id_servicio]);
 
   // Catálogos para capturar los datos del vehículo directo en la orden
@@ -309,12 +369,12 @@ export default function ServicioDetalle() {
     setSeleccionMultiple((prev) => ({ ...prev, [idRefaccion]: { cantidad: Math.max(1, Number(cantidad) || 1) } }));
   }
 
-  async function guardarSeleccionMultiple() {
-    const idsSeleccionados = Object.keys(seleccionMultiple);
-    if (idsSeleccionados.length === 0) {
-      notify("Elige al menos una refacción para agregar.", "error");
-      return;
-    }
+  // Núcleo compartido: valida inventario y guarda un conjunto de
+  // refacciones { idStr: { cantidad } }. Lo usan tanto el guardado por
+  // lotes (checkbox + botón) como el acceso rápido (un clic en "+").
+  async function guardarRefacciones(seleccion) {
+    const idsSeleccionados = Object.keys(seleccion);
+    if (idsSeleccionados.length === 0) return false;
     // El descuento de inventario SOLO aplica cuando hay una fila de
     // InventarioRefaccion que coincide exacto con la marca+modelo de este
     // vehículo — si no coincide, no se descuenta nada de ningún lado
@@ -325,11 +385,11 @@ export default function ServicioDetalle() {
     for (const idStr of idsSeleccionados) {
       const refaccion = refacciones.find((r) => r.id_refaccion === Number(idStr));
       const inv = inventarioVehiculo.find((i) => i.id_refaccion === Number(idStr));
-      const cantidadPedida = seleccionMultiple[idStr].cantidad;
+      const cantidadPedida = seleccion[idStr].cantidad;
       if (inv) {
         if (inv.cantidad < cantidadPedida) {
           notify(`Sin stock suficiente de "${refaccion?.nombre_refaccion}" (disponible: ${inv.cantidad}, pedido: ${cantidadPedida}).`, "error");
-          return;
+          return false;
         }
       } else {
         sinInventario.push(refaccion?.nombre_refaccion || "una refacción");
@@ -338,11 +398,10 @@ export default function ServicioDetalle() {
     if (sinInventario.length > 0) {
       const ok = await confirmDialog(
         `${sinInventario.join(", ")} no ${sinInventario.length > 1 ? "tienen" : "tiene"} inventario registrado para ${servicio.vehiculo?.marca?.nombre_marca} ${servicio.vehiculo?.modelo?.nombre_modelo} — se agregará a la orden, pero no se descontará de ningún inventario. ¿Continuar?`,
-        { title: "Refacción sin inventario", recordar: "sin_inventario_orden" }
+        { title: "Refacción sin inventario", recordar: "sin_inventario_orden", confirmar: "Sí, agregar" }
       );
-      if (!ok) return;
+      if (!ok) return false;
     }
-    setGuardandoMultiple(true);
     try {
       // Una tras otra (no en paralelo) para que el descuento de inventario
       // de cada una quede reflejado antes de validar/aplicar la siguiente.
@@ -353,21 +412,90 @@ export default function ServicioDetalle() {
         await api.post(`/servicios/${id}/detalles`, {
           id_refaccion: Number(idStr),
           descripcion: refaccion?.nombre_refaccion || null,
-          cantidad: seleccionMultiple[idStr].cantidad,
-          costo_refaccion: (precio ?? 0) * seleccionMultiple[idStr].cantidad,
+          cantidad: seleccion[idStr].cantidad,
+          costo_refaccion: (precio ?? 0) * seleccion[idStr].cantidad,
           costo_extra: 0,
         });
       }
       notify(`${idsSeleccionados.length} refacción(es) agregadas a la orden.`, "success");
-      setAddingDetalle(false);
-      setModoMultiple(false);
-      setSeleccionMultiple({});
-      load();
+      return true;
     } catch (err) {
       notify(err.message, "error");
+      return false;
+    }
+  }
+
+  async function guardarSeleccionMultiple() {
+    const idsSeleccionados = Object.keys(seleccionMultiple);
+    if (idsSeleccionados.length === 0) {
+      notify("Elige al menos una refacción para agregar.", "error");
+      return;
+    }
+    setGuardandoMultiple(true);
+    try {
+      const ok = await guardarRefacciones(seleccionMultiple);
+      if (ok) {
+        setAddingDetalle(false);
+        setSeleccionMultiple({});
+        setBusquedaMulti("");
+        setFiltroCategoriaMulti([]);
+        await load();
+      }
     } finally {
       setGuardandoMultiple(false);
     }
+  }
+
+  // Acceso rápido: un clic en "+" agrega esa única refacción (cantidad 1)
+  // y cierra el modal de inmediato, sin pasar por el flujo de selección
+  // múltiple ni por el botón de abajo.
+  async function agregarRapido(r) {
+    setGuardandoMultiple(true);
+    try {
+      const ok = await guardarRefacciones({ [r.id_refaccion]: { cantidad: 1 } });
+      if (ok) {
+        setAddingDetalle(false);
+        setSeleccionMultiple({});
+        setBusquedaMulti("");
+        setFiltroCategoriaMulti([]);
+        await load();
+      }
+    } finally {
+      setGuardandoMultiple(false);
+    }
+  }
+
+  // Campos del form de "Nueva refacción" (acceso rápido desde Agregar refacciones):
+  // mismo patrón que la página de Refacciones — nombre + categoría (con opción de crearla al vuelo).
+  function fieldsNuevaRefaccion() {
+    return [
+      { name: "nombre_refaccion", label: "Nombre", required: true, full: true, grupo: "general" },
+      {
+        name: "__id_categoria", label: "Categoría", type: "select", required: true, grupo: "general", full: true, grande: true,
+        options: categoriasRefaccion.map((c) => ({ value: c.id_categoria_refaccion, label: c.nombre_categoria })),
+        creatable: hasPermission("catalogos.crear")
+          ? {
+              endpoint: "/refacciones-categorias/", createField: "nombre_categoria", idField: "id_categoria_refaccion", label: "categoría",
+              onCreated: (nueva) => setCategoriasRefaccion((prev) => [...prev, nueva]),
+            }
+          : null,
+      },
+    ];
+  }
+
+  // Crea la refacción en el catálogo y, en vez de cerrar todo, la deja
+  // autoseleccionada en el modal de "Agregar refacciones" para poder
+  // seguir eligiendo más sin perder el progreso.
+  async function handleCrearRefaccion(values) {
+    const norm = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+    const nombreCat = values.__id_categoria ? categoriasRefaccion.find((c) => c.id_categoria_refaccion === Number(values.__id_categoria))?.nombre_categoria || null : null;
+    const yaExiste = refacciones.some((r) => norm(r.categoria) === norm(nombreCat) && norm(r.nombre_refaccion) === norm(values.nombre_refaccion));
+    if (yaExiste) throw new Error(`"${values.nombre_refaccion}" ya existe${nombreCat ? ` en ${nombreCat}` : ""}.`);
+    const nueva = await api.post("/refacciones/", { nombre_refaccion: values.nombre_refaccion, categoria: nombreCat });
+    setRefacciones((prev) => [...prev, nueva]);
+    setSeleccionMultiple((prev) => ({ ...prev, [nueva.id_refaccion]: { cantidad: 1 } }));
+    setCreandoRefaccion(null);
+    notify(`"${nueva.nombre_refaccion}" se creó y quedó seleccionada — ajusta cantidad y precio o sigue agregando.`, "success");
   }
 
   async function handleUpdateDetalle(detalleId, cambios) {
@@ -380,9 +508,23 @@ export default function ServicioDetalle() {
     }
   }
 
+  async function reordenarDetalles(idxDesde, idxHasta) {
+    if (idxDesde === idxHasta) return;
+    const lista = [...servicio.detalles];
+    const [movido] = lista.splice(idxDesde, 1);
+    lista.splice(idxHasta, 0, movido);
+    setServicio((s) => ({ ...s, detalles: lista }));
+    try {
+      await Promise.all(lista.map((d, i) => api.put(`/servicios/${id}/detalles/${d.id_servicio_detalle}`, { orden: i })));
+    } catch (err) {
+      notify(err.message, "error");
+      load();
+    }
+  }
+
   async function borrarTodasRefacciones() {
     const n = servicio.detalles.length;
-    const ok = await confirmDialog(`¿Borrar ${n === 1 ? "la refacción" : `las ${n} refacciones`} de esta orden? Las piezas que se descontaron regresan al inventario. Esta acción no se puede deshacer.`, { danger: true });
+    const ok = await confirmDialog(`¿Borrar ${n === 1 ? "la refacción" : `las ${n} refacciones`} de esta orden? Las piezas que se descontaron regresan al inventario. Esta acción no se puede deshacer.`, { danger: true, confirmar: "Sí, borrar" });
     if (!ok) return;
     try {
       await api.del(`/servicios/${id}/detalles`);
@@ -394,7 +536,7 @@ export default function ServicioDetalle() {
   }
 
   async function handleDeleteAbono(abonoId) {
-    const ok = await confirmDialog("¿Borrar este abono? El saldo pendiente de la orden se volverá a calcular.", { danger: true });
+    const ok = await confirmDialog("¿Borrar este abono? El saldo pendiente de la orden se volverá a calcular.", { danger: true, confirmar: "Sí, borrar" });
     if (!ok) return;
     try {
       const actualizado = await api.del(`/servicios/${id}/abonos/${abonoId}`);
@@ -406,7 +548,7 @@ export default function ServicioDetalle() {
   }
 
   async function handleDeleteDetalle(detalleId) {
-    const ok = await confirmDialog("¿Quitar esta refacción de la orden? Si estaba ligada al inventario, la pieza regresa al stock.", { danger: true });
+    const ok = await confirmDialog("¿Quitar esta refacción de la orden? Si estaba ligada al inventario, la pieza regresa al stock.", { danger: true, confirmar: "Sí, quitar" });
     if (!ok) return;
     try {
       await api.del(`/servicios/${id}/detalles/${detalleId}`);
@@ -439,7 +581,7 @@ export default function ServicioDetalle() {
 
   async function cambiarStatus(nuevo) {
     if (nuevo === "cancelado") {
-      const ok = await confirmDialog("¿Cancelar esta orden de servicio? Si fue un error, podrás reabrirla más adelante.", { danger: true });
+      const ok = await confirmDialog("¿Cancelar esta orden de servicio? Si fue un error, podrás reabrirla más adelante.", { danger: true, confirmar: "Sí, cancelar" });
       if (!ok) return;
     }
     try {
@@ -457,6 +599,20 @@ export default function ServicioDetalle() {
       }
     } catch (err) {
       notify(err.message, "error");
+    }
+  }
+
+  async function guardarNombreServicio(nuevo) {
+    const limpio = (nuevo || "").trim();
+    if (!limpio || limpio === servicio.nombre_servicio) { setEditandoNombre(false); return; }
+    try {
+      const actualizado = await api.put(`/servicios/${id}`, { nombre_servicio: limpio });
+      setServicio(actualizado);
+      notify("Se cambió el título de la orden.", "success");
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setEditandoNombre(false);
     }
   }
 
@@ -643,16 +799,37 @@ export default function ServicioDetalle() {
       <div className="orden-main">
       <div className="orden-hero">
         <div className="orden-hero-top">
-          <h1 className="orden-hero-titulo">
-            <IconoModulo ruta="/servicios" /> Orden #{servicio.id_servicio}
-            <span className={`badge badge-${servicio.status === "abierto" ? "petrol" : servicio.status === "cerrado" ? "teal" : "red"}`}>
-              {servicio.status === "cerrado" ? "finalizada" : servicio.status}
-            </span>
-            {servicio.pagado && <span className="badge badge-teal">pagada</span>}
-          </h1>
+          <div>
+            <h1 className="orden-hero-titulo">
+              <IconoModulo ruta="/servicios" /> Orden #{servicio.id_servicio}
+              <span className={`badge badge-${servicio.status === "abierto" ? "petrol" : servicio.status === "cerrado" ? "teal" : "red"}`}>
+                {servicio.status === "cerrado" ? "finalizada" : servicio.status}
+              </span>
+              {servicio.pagado && <span className="badge badge-teal">pagada</span>}
+            </h1>
+            {editandoNombre ? (
+              <input
+                className="orden-hero-nombre-input"
+                autoFocus
+                value={nombreTemp}
+                onChange={(e) => setNombreTemp(e.target.value)}
+                onBlur={() => guardarNombreServicio(nombreTemp)}
+                onKeyDown={(e) => { if (e.key === "Enter") guardarNombreServicio(nombreTemp); if (e.key === "Escape") setEditandoNombre(false); }}
+              />
+            ) : (
+              <div
+                className={`orden-hero-nombre${puedeEditarOrden ? " orden-hero-nombre-editable" : ""}`}
+                title={puedeEditarOrden ? "Clic para cambiar el título de la orden" : undefined}
+                onClick={() => { if (!puedeEditarOrden) return; setNombreTemp(servicio.nombre_servicio); setEditandoNombre(true); }}
+              >
+                {servicio.nombre_servicio}
+                {puedeEditarOrden && <IconoAuto valor="✏️" size={13} />}
+              </div>
+            )}
+          </div>
           <div className="orden-hero-herramientas">
             <span className="tip-envoltura" title={servicio.detalles.length > 0 ? "Vista previa de la nota (incluye la inspección, si ya se hizo)" : "La vista previa se activa cuando ya se agregó al menos una refacción"}>
-              <button className="icon-btn" onClick={() => descargarPdf("recibo", "preview")} disabled={descargando || servicio.detalles.length === 0}><IconoAuto valor="🔍" size={18} /></button>
+              <button className="icon-btn" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; descargarPdf("recibo", "preview"); }} disabled={descargando || servicio.detalles.length === 0}><IconoAuto valor="🔍" size={18} /></button>
             </span>
             {servicio.status === "cerrado" && (
             <span className="tip-envoltura" title="Descargar el recibo en PDF">
@@ -774,12 +951,71 @@ export default function ServicioDetalle() {
                 </dl>
               );
             })()}
-            {fotoVehiculo && (
-              <img
-                src={`/uploads/${fotoVehiculo.ruta_archivo}`}
-                alt="Vehículo del cliente"
-                className="orden-foto-vehiculo"
-              />
+            {(() => { var puedeEditarFotoVeh = hasPermission("vehiculos.editar") && !!servicio?.id_vehiculo; return (
+            <div className="orden-foto-vehiculo-bloque">
+              <div
+                className={`orden-foto-vehiculo-miniatura ${fotoVehiculo || puedeEditarFotoVeh ? "orden-foto-vehiculo-click" : ""}`}
+                onClick={() => {
+                  if (fotoVehiculo) { setVerFotoVeh(true); return; }
+                  if (puedeEditarFotoVeh && !subiendoFotoVeh) inputFotoVehRef.current?.click();
+                }}
+                title={fotoVehiculo ? "Clic para ver la foto en grande" : puedeEditarFotoVeh ? "Clic para agregar una foto" : undefined}
+              >
+                {fotoVehiculo ? (
+                  <img
+                    src={`/uploads/${fotoVehiculo.ruta_archivo}`}
+                    alt="Vehículo del cliente"
+                    className="orden-foto-vehiculo"
+                  />
+                ) : (
+                  <div className="orden-foto-vehiculo orden-foto-vehiculo-vacia">
+                    <Icono nombre="camera" size={22} />
+                  </div>
+                )}
+                {fotoVehiculo && (
+                  <span className="orden-foto-vehiculo-overlay"><Icono nombre="search" size={14} /></span>
+                )}
+              </div>
+              {puedeEditarFotoVeh && (
+                <>
+                  <input ref={inputFotoVehRef} type="file" accept="image/*" style={{ display: "none" }} onChange={cambiarFotoVehiculo} />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-foto-vehiculo"
+                    onClick={() => inputFotoVehRef.current?.click()}
+                    disabled={subiendoFotoVeh}
+                  >
+                    <Icono nombre="camera" size={14} />
+                    {subiendoFotoVeh ? "Subiendo…" : fotoVehiculo ? "Cambiar foto" : "Agregar foto"}
+                  </button>
+                </>
+              )}
+            </div>
+            ); })()}
+
+            {verFotoVeh && fotoVehiculo && (
+              <ModalPortal>
+                <div className="modal-backdrop" style={{ background: "rgba(10,12,14,0.82)" }} onClick={(e) => e.target === e.currentTarget && setVerFotoVeh(false)}>
+                  <div style={{ position: "relative", maxWidth: "min(90vw, 640px)", maxHeight: "85vh" }}>
+                    <button
+                      onClick={() => setVerFotoVeh(false)}
+                      title="Cerrar" aria-label="Cerrar"
+                      style={{
+                        position: "absolute", top: -14, right: -14, background: "#fff", color: "var(--ink-900)",
+                        border: "1px solid var(--ink-300)", borderRadius: 100, width: 32, height: 32, cursor: "pointer",
+                        display: "grid", placeItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,.25)",
+                      }}
+                    >
+                      <IconoAuto valor="✕" size={18} />
+                    </button>
+                    <img
+                      src={`/uploads/${fotoVehiculo.ruta_archivo}`}
+                      alt="Vehículo del cliente"
+                      style={{ display: "block", maxWidth: "100%", maxHeight: "85vh", borderRadius: 12, boxShadow: "0 12px 40px rgba(0,0,0,.4)" }}
+                    />
+                  </div>
+                </div>
+              </ModalPortal>
             )}
           </div>
         </div>
@@ -842,47 +1078,6 @@ export default function ServicioDetalle() {
       )}
 
       <BloqueNota
-        icono="💰"
-        titulo="Resumen de costos"
-        accion={
-          hasPermission("servicios.editar") && !servicio.pagado && (
-            <button className="btn btn-agregar" onClick={() => setAddingAbono(true)} disabled={!abierta}>
-              <Icono nombre="cash" size={18} /> Registrar abono
-            </button>
-          )
-        }
-      >
-        <div className="kpi-grid" style={{ marginBottom: 12 }}>
-          <div className="kpi-card">
-            <div className="kpi-label">Subtotal</div>
-            <div className="kpi-value mono">{fmt(servicio.costos.subtotal)}</div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-label">IVA ({servicio.iva_porcentaje}%)</div>
-            <div className="kpi-value mono">{fmt(servicio.costos.iva)}</div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-label">Total</div>
-            <div className="kpi-value mono">{fmt(servicio.costos.total)}</div>
-          </div>
-          <div className={`kpi-card ${servicio.costos.saldo_pendiente > 0 ? "alert" : "ok"}`}>
-            <div className="kpi-label">Saldo pendiente</div>
-            <div className="kpi-value mono">{fmt(servicio.costos.saldo_pendiente)}</div>
-          </div>
-        </div>
-        {hasPermission("servicios.editar") && abierta && (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink-700)", cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={servicio.iva_porcentaje > 0}
-              onChange={(e) => cambiarIva(e.target.checked)}
-            />
-            Aplicar IVA (16%)
-          </label>
-        )}
-      </BloqueNota>
-
-      <BloqueNota
         icono="🔧"
         titulo="Refacciones"
         accion={
@@ -906,6 +1101,7 @@ export default function ServicioDetalle() {
           <table className="tabla-refacciones">
             <thead>
               <tr>
+                <th aria-label="Mover"></th>
                 <th>Descripción</th>
                 <th>Categoría</th>
                 <th>Cantidad</th>
@@ -915,106 +1111,180 @@ export default function ServicioDetalle() {
               </tr>
             </thead>
             <tbody>
-              {(() => {
-                // Se agrupan por categoría/subcategoría de la refacción
-                // ligada (si tiene) — así salen agrupados sin importar el
-                // orden en que se fueron agregando a la orden.
-                const grupos = {};
-                servicio.detalles.forEach((d) => {
-                  const ref = refacciones.find((r) => r.id_refaccion === d.id_refaccion);
-                  const clave = ref?.categoria ? `${ref.categoria}${ref.subcategoria ? " / " + ref.subcategoria : ""}` : "Sin categoría";
-                  if (!grupos[clave]) grupos[clave] = [];
-                  grupos[clave].push({ d, ref });
-                });
-                const clavesOrdenadas = Object.keys(grupos).sort((a, b) => (a === "Sin categoría" ? 1 : b === "Sin categoría" ? -1 : a.localeCompare(b)));
-                return clavesOrdenadas.map((clave) => (
-                  <>
-                    {grupos[clave].map(({ d, ref }) => (
-                      <tr key={d.id_servicio_detalle}>
-                        <td>{d.descripcion || "—"}</td>
-                        <td className="celda-categoria"><span className="chip-cat-ref">{clave}</span></td>
-                        <td>
-                          <input
-                            key={`c-${d.id_servicio_detalle}-${d.cantidad}`} data-det={d.id_servicio_detalle} data-campo="c" onKeyDown={(e) => irSiguienteRefaccion(e, "c")} type="number" defaultValue={d.cantidad || 1} disabled={!abierta || !puedeEditarOrden}
-                            onBlur={(e) => { const v = Number(e.target.value) || 1; if (v !== d.cantidad) handleUpdateDetalle(d.id_servicio_detalle, { cantidad: v }); }}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            key={`u-${d.id_servicio_detalle}-${d.costo_refaccion}-${d.cantidad}`} data-det={d.id_servicio_detalle} data-campo="u" onKeyDown={(e) => irSiguienteRefaccion(e, "u")} type="number" step="0.01"
-                            defaultValue={Math.round(((d.costo_refaccion || 0) / (d.cantidad || 1)) * 100) / 100} disabled={!abierta || !puedeEditarOrden}
-                            onBlur={(e) => {
-                              const v = Number(e.target.value) || 0;
-                              const cant = d.cantidad || 1;
-                              if (v === 0) { handleUpdateDetalle(d.id_servicio_detalle, { costo_refaccion: 0, cantidad: 1 }); return; }
-                              const total = Math.round(v * cant * 100) / 100;
-                              if (total !== d.costo_refaccion) handleUpdateDetalle(d.id_servicio_detalle, { costo_refaccion: total, cantidad: cant });
-                            }}
-                          />
-                        </td>
-                        <td className="celda-total">{fmt(d.costo_refaccion || 0)}</td>
-                        <td>
-                          {puedeEditarOrden && <button className="btn btn-danger btn-sm" title="Quitar" aria-label="Quitar" onClick={() => handleDeleteDetalle(d.id_servicio_detalle)} disabled={!abierta}><Icono nombre="trash" size={18} /></button>}
-                        </td>
-                      </tr>
-                    ))}
-                  </>
-                ));
-              })()}
+              {servicio.detalles.map((d, idx) => {
+                const ref = refacciones.find((r) => r.id_refaccion === d.id_refaccion);
+                const clave = ref?.categoria ? `${ref.categoria}${ref.subcategoria ? " / " + ref.subcategoria : ""}` : "Sin categoría";
+                const puedeArrastrar = puedeEditarOrden && abierta;
+                return (
+                  <tr
+                    key={d.id_servicio_detalle}
+                    className={`fila-arrastrable ${sobreDetalleIdx === idx ? "fila-sobre" : ""}`}
+                    draggable={puedeArrastrar}
+                    onDragStart={() => { dragDetalleRef.current = idx; }}
+                    onDragOver={(e) => { if (!puedeArrastrar) return; e.preventDefault(); setSobreDetalleIdx(idx); }}
+                    onDragLeave={() => setSobreDetalleIdx((v) => (v === idx ? null : v))}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setSobreDetalleIdx(null);
+                      if (dragDetalleRef.current == null) return;
+                      reordenarDetalles(dragDetalleRef.current, idx);
+                      dragDetalleRef.current = null;
+                    }}
+                    onDragEnd={() => { dragDetalleRef.current = null; setSobreDetalleIdx(null); }}
+                  >
+                    <td className="celda-arrastre">
+                      {puedeArrastrar && <span className="asa-arrastre" title="Arrastra para reordenar"><Icono nombre="list" size={16} /></span>}
+                    </td>
+                    <td>{d.descripcion || "—"}</td>
+                    <td className="celda-categoria"><span className="chip-cat-ref">{clave}</span></td>
+                    <td>
+                      <input
+                        key={`c-${d.id_servicio_detalle}-${d.cantidad}`} data-det={d.id_servicio_detalle} data-campo="c" onKeyDown={(e) => irSiguienteRefaccion(e, "c")} type="number" defaultValue={d.cantidad || 1} disabled={!abierta || !puedeEditarOrden}
+                        onBlur={(e) => { const v = Number(e.target.value) || 1; if (v !== d.cantidad) handleUpdateDetalle(d.id_servicio_detalle, { cantidad: v }); }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        key={`u-${d.id_servicio_detalle}-${d.costo_refaccion}-${d.cantidad}`} data-det={d.id_servicio_detalle} data-campo="u" onKeyDown={(e) => irSiguienteRefaccion(e, "u")} type="number" step="0.01"
+                        defaultValue={Math.round(((d.costo_refaccion || 0) / (d.cantidad || 1)) * 100) / 100} disabled={!abierta || !puedeEditarOrden}
+                        onBlur={(e) => {
+                          const v = Number(e.target.value) || 0;
+                          const cant = d.cantidad || 1;
+                          if (v === 0) { handleUpdateDetalle(d.id_servicio_detalle, { costo_refaccion: 0, cantidad: 1 }); return; }
+                          const total = Math.round(v * cant * 100) / 100;
+                          if (total !== d.costo_refaccion) handleUpdateDetalle(d.id_servicio_detalle, { costo_refaccion: total, cantidad: cant });
+                        }}
+                      />
+                    </td>
+                    <td className="celda-total">{fmt(d.costo_refaccion || 0)}</td>
+                    <td>
+                      {puedeEditarOrden && <button className="btn btn-danger btn-sm" title="Quitar" aria-label="Quitar" onClick={() => handleDeleteDetalle(d.id_servicio_detalle)} disabled={!abierta}><Icono nombre="trash" size={18} /></button>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
 
-        {servicio.abonos.length > 0 && (
-          <>
-            <h3 className="titulo-abonos">Abonos registrados</h3>
-            <table className="tabla-abonos">
-              <thead>
-                <tr><th>#</th><th>Fecha</th><th>Tipo de pago</th><th>Monto</th><th>Cambio</th><th>Comentario</th><th aria-label="Acciones"></th></tr>
-              </thead>
-              <tbody>
-                {servicio.abonos.map((a) => {
-                  const comision = comisiones.find((c) => c.tipo_pago === a.tipo_pago);
-                  return (
-                    <tr key={a.id_abono}>
-                      <td>{a.numero_abono}</td>
-                      <td>{new Date(a.fecha_pago).toLocaleDateString("es-MX")}</td>
-                      <td>
-                        {a.tipo_pago === "tarjeta" ? "Tarjeta" : a.tipo_pago === "mixto" ? "Mixto" : "Efectivo"}
-                        {comision?.porcentaje > 0 && <div style={{ fontSize: 11, color: "var(--ink-500)" }}>Comisión: {comision.porcentaje}%</div>}
-                        {a.tipo_pago === "mixto" && (
-                          <div style={{ fontSize: 11, color: "var(--ink-500)" }}>Efvo: {fmt(a.desglose_mixto_efectivo)} · Tarj: {fmt(a.desglose_mixto_tarjeta)}</div>
-                        )}
-                      </td>
-                      <td className="mono">{fmt(a.monto_abono)}</td>
-                      <td className="mono">{a.cambio > 0 ? fmt(a.cambio) : "—"}</td>
-                      <td>{a.comentario || "—"}</td>
-                      <td>
-                        {hasPermission("servicios.editar") && (
-                          <button className="btn btn-danger btn-sm" title="Borrar abono" aria-label="Borrar abono" onClick={() => handleDeleteAbono(a.id_abono)} disabled={!abierta || servicio.pagado}><Icono nombre="trash" size={18} /></button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </>
-        )}
       </BloqueNota>
 
-      <BloqueNota icono="📝" titulo="Comentarios finales">
-        <div className="field full">
-          <label>Aparecen en el recibo y la nota de remisión</label>
-          <textarea
-            value={comentariosFinales}
-            readOnly={!puedeEditarOrden}
-            onChange={(e) => puedeEditarOrden && setComentariosFinales(e.target.value)}
-            placeholder="Ej. Se recomienda revisar las balatas traseras en el próximo servicio."
-          />
-        </div>
-        <div className="autoguardado">
-          {guardandoComentarios || comentariosFinales !== comentariosGuardados ? "Guardando…" : comentariosFinales ? "✓ Guardado automáticamente" : ""}
+      <div ref={finOrdenRef} className="fin-orden-sentinela" aria-hidden="true" />
+
+      {(() => {
+        const detalleVisible = detalleCostosAbierto && servicio.costos.saldo_pendiente > 0;
+        return (
+      <div className={`saldo-flotante ${detalleVisible ? "saldo-flotante-abierta" : "atenuada"}`} key={servicio.costos.saldo_pendiente} title="Desliza hasta el final de las refacciones para ver el detalle de costos">
+        {!detalleVisible && (
+          <div className="saldo-flotante-resumen">
+            <span className="saldo-flotante-monto mono">{fmt(servicio.costos.saldo_pendiente)}</span>
+          </div>
+        )}
+        {!detalleVisible && servicio.costos.saldo_pendiente > 0 && <div className="saldo-flotante-hint">Desliza hasta el final para ver el detalle ↓</div>}
+        {detalleVisible && (
+          <div className="saldo-flotante-fila">
+            <div className="saldo-flotante-detalle">
+              <div className="saldo-flotante-detalle-item">
+                <span className="saldo-flotante-detalle-etq">Subtotal</span>
+                <span className="saldo-flotante-detalle-val mono">{fmt(servicio.costos.subtotal)}</span>
+              </div>
+              <div className="saldo-flotante-detalle-item">
+                <span className="saldo-flotante-detalle-etq">IVA ({servicio.iva_porcentaje}%)</span>
+                <span className="saldo-flotante-detalle-val mono">{fmt(servicio.costos.iva)}</span>
+              </div>
+              <div className="saldo-flotante-detalle-item">
+                <span className="saldo-flotante-detalle-etq">Total</span>
+                <span className="saldo-flotante-detalle-val mono">{fmt(servicio.costos.total)}</span>
+              </div>
+            </div>
+            <div className="saldo-flotante-iva-zona">
+              {hasPermission("servicios.editar") && abierta && (
+                <label className="saldo-flotante-iva">
+                  <span className="switch-moderno">
+                    <input
+                      type="checkbox"
+                      checked={servicio.iva_porcentaje > 0}
+                      onChange={(e) => cambiarIva(e.target.checked)}
+                    />
+                    <span className="switch-moderno-track" />
+                    <span className="switch-moderno-thumb" />
+                  </span>
+                  <span>Aplicar IVA (16%)</span>
+                </label>
+              )}
+            </div>
+            <span className="saldo-flotante-monto mono">{fmt(servicio.costos.saldo_pendiente)}</span>
+          </div>
+        )}
+      </div>
+        );
+      })()}
+
+      <BloqueNota
+        icono="📝"
+        titulo="Comentarios y abonos"
+        accion={
+          hasPermission("servicios.editar") && !servicio.pagado && (
+            <button className="btn btn-agregar" onClick={() => setAddingAbono(true)} disabled={!abierta}>
+              <Icono nombre="cash" size={18} /> Registrar abono
+            </button>
+          )
+        }
+      >
+        <div className="comentarios-abonos-split">
+          <div className="comentarios-abonos-col">
+            <div className="subbloque-titulo">Comentarios finales</div>
+            <div className="field full">
+              <label>Aparecen en el recibo y la nota de remisión</label>
+              <textarea
+                value={comentariosFinales}
+                readOnly={!puedeEditarOrden}
+                onChange={(e) => puedeEditarOrden && setComentariosFinales(e.target.value)}
+                placeholder="Ej. Se recomienda revisar las balatas traseras en el próximo servicio."
+              />
+            </div>
+          </div>
+
+          <div className="comentarios-abonos-col">
+            <div className="subbloque-titulo">Abonos registrados</div>
+            {servicio.abonos.length === 0 ? (
+              <div className="empty-state">Todavía no se han registrado abonos.</div>
+            ) : (
+              <div className="tabla-abonos-wrap">
+              <table className="tabla-abonos">
+                <thead>
+                  <tr><th>#</th><th>Fecha</th><th>Tipo de pago</th><th>Monto</th><th>Cambio</th><th>Comentario</th><th aria-label="Acciones"></th></tr>
+                </thead>
+                <tbody>
+                  {servicio.abonos.map((a) => {
+                    const comision = comisiones.find((c) => c.tipo_pago === a.tipo_pago);
+                    return (
+                      <tr key={a.id_abono}>
+                        <td>{a.numero_abono}</td>
+                        <td>{new Date(a.fecha_pago).toLocaleDateString("es-MX")}</td>
+                        <td>
+                          {a.tipo_pago === "tarjeta" ? "Tarjeta" : a.tipo_pago === "mixto" ? "Mixto" : "Efectivo"}
+                          {comision?.porcentaje > 0 && <div style={{ fontSize: 11, color: "var(--ink-500)" }}>Comisión: {comision.porcentaje}%</div>}
+                          {a.tipo_pago === "mixto" && (
+                            <div style={{ fontSize: 11, color: "var(--ink-500)" }}>Efvo: {fmt(a.desglose_mixto_efectivo)} · Tarj: {fmt(a.desglose_mixto_tarjeta)}</div>
+                          )}
+                        </td>
+                        <td className="mono">{fmt(a.monto_abono)}</td>
+                        <td className="mono">{a.cambio > 0 ? fmt(a.cambio) : "—"}</td>
+                        <td>{a.comentario || "—"}</td>
+                        <td>
+                          {hasPermission("servicios.editar") && (
+                            <button className="btn btn-danger btn-sm" title="Borrar abono" aria-label="Borrar abono" onClick={() => handleDeleteAbono(a.id_abono)} disabled={!abierta || servicio.pagado}><Icono nombre="trash" size={18} /></button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              </div>
+            )}
+          </div>
         </div>
       </BloqueNota>
 
@@ -1033,16 +1303,16 @@ export default function ServicioDetalle() {
           <div className="nota-bloque-body">
             <div className="lateral-acciones">
               {abierta && puedeEditarOrden && (
-                <button className="btn btn-primary" onClick={() => setModalCierre(true)} title="Cobrar, cerrar la orden, generar la nota y avisar al cliente">
+                <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; setModalCierre(true); }} title="Cobrar, cerrar la orden, generar la nota y avisar al cliente">
                   <IconoAuto valor="🧾" size={18} /> Finalizar y generar nota
                 </button>
               )}
               {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
-                <button className="btn btn-primary" onClick={() => imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo")} disabled={descargando} title="Imprimir la nota ahora">
+                <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo"); }} disabled={descargando} title="Imprimir la nota ahora">
                   <IconoAuto valor="🖨️" size={18} /> Imprimir nota
                 </button>
               )}
-              <button className="btn btn-secondary" onClick={enviarWhatsApp} title="Abrir WhatsApp con el resumen de la orden para el cliente">
+              <button className="btn btn-secondary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; enviarWhatsApp(); }} title="Abrir WhatsApp con el resumen de la orden para el cliente">
                 <IconoAuto valor="💬" size={18} /> Enviar por WhatsApp
               </button>
               {servicio.status === "cerrado" && hasPermission("servicios.ver_precios") && (
@@ -1149,6 +1419,10 @@ export default function ServicioDetalle() {
         function inventarioDe(idRefaccion) {
           return inventarioVehiculo.find((inv) => inv.id_refaccion === idRefaccion);
         }
+        // Refacciones que ya quedaron guardadas en la orden (de esta sesión del
+        // modal o de antes) — se muestran fijas con una marca, para no agregarlas
+        // de nuevo por accidente y para ver de un vistazo qué ya se guardó.
+        const idsEnOrden = new Set((servicio.detalles || []).map((d) => d.id_refaccion));
         const conteoCat = {};
         refacciones.forEach((r) => { const k = r.categoria || "Sin categoría"; conteoCat[k] = (conteoCat[k] || 0) + 1; });
         const grupos = {};
@@ -1168,6 +1442,11 @@ export default function ServicioDetalle() {
               <div className="add-ref-cab">
                 <h2>Agregar refacciones</h2>
                 <input className="add-ref-buscar" placeholder="Buscar refacción…" value={busquedaMulti} onChange={(e) => setBusquedaMulti(e.target.value)} />
+                {hasPermission("refacciones.crear") && (
+                  <button type="button" className="btn btn-secondary btn-sm add-ref-nueva" onClick={() => setCreandoRefaccion({})}>
+                    <Icono nombre="add" size={16} /> Nueva refacción
+                  </button>
+                )}
               </div>
               <FiltroChips multiple items={conteoCat} valor={filtroCategoriaMulti} onChange={setFiltroCategoriaMulti} total={refacciones.length} />
 
@@ -1181,13 +1460,40 @@ export default function ServicioDetalle() {
                       <div className="add-ref-tarjetas">
                         {grupos[clave].map((r) => {
                           const inv = inventarioDe(r.id_refaccion);
+                          const enOrden = idsEnOrden.has(r.id_refaccion);
                           const marcada = !!seleccionMultiple[r.id_refaccion];
                           const stock = inv ? inv.cantidad : (r.cantidad_refaccion ?? 0);
                           const precio = (inv ? inv.preciocliente : r.preciocliente_refaccion) || (inv ? inv.preciopropio : r.preciopropio_refaccion) || 0;
                           const cant = seleccionMultiple[r.id_refaccion]?.cantidad || 1;
+                          if (enOrden) {
+                            return (
+                              <div key={r.id_refaccion} className="add-ref-tarjeta agregada" title="Ya está en esta orden">
+                                <span className="add-ref-check agregada">✓</span>
+                                <div className="add-ref-nombre">{r.nombre_refaccion}</div>
+                                <div className="add-ref-meta">
+                                  <span className="add-ref-aviso agregada">Ya en la orden</span>
+                                </div>
+                              </div>
+                            );
+                          }
                           return (
                             <div key={r.id_refaccion} className={`add-ref-tarjeta ${marcada ? "on" : ""}`} onClick={() => alternarSeleccionMultiple(r.id_refaccion, !marcada)}>
-                              <span className="add-ref-check">{marcada ? "✓" : "+"}</span>
+                              {marcada ? (
+                                <span className="add-ref-check">✓</span>
+                              ) : stock > 0 ? (
+                                <button
+                                  type="button"
+                                  className="add-ref-check add-ref-check-rapido"
+                                  title="Agregar esta refacción de inmediato"
+                                  aria-label="Agregar rápido"
+                                  disabled={guardandoMultiple}
+                                  onClick={(e) => { e.stopPropagation(); agregarRapido(r); }}
+                                >
+                                  +
+                                </button>
+                              ) : (
+                                <span className="add-ref-check" title="Sin stock — captura la cantidad para agregarla de todos modos">+</span>
+                              )}
                               <div className="add-ref-nombre">{r.nombre_refaccion}</div>
                               <div className="add-ref-meta">
                                 <span className={`add-ref-stock ${stock <= 0 ? "cero" : ""}`}>Stock {stock}</span>
@@ -1211,7 +1517,7 @@ export default function ServicioDetalle() {
               </div>
 
               <div className="modal-actions">
-                <button className="btn btn-secondary" onClick={cerrar}>Cancelar</button>
+                <button className="btn btn-secondary" onClick={cerrar}>{totalMarcadas > 0 ? "Cancelar" : "Cerrar"}</button>
                 <button className="btn btn-primary" onClick={guardarSeleccionMultiple} disabled={guardandoMultiple || totalMarcadas === 0}>
                   {guardandoMultiple ? "Agregando…" : totalMarcadas ? `Agregar ${totalMarcadas} a la orden` : "Elige refacciones"}
                 </button>
@@ -1221,6 +1527,20 @@ export default function ServicioDetalle() {
           </ModalPortal>
         );
       })()}
+
+      {creandoRefaccion && (
+        <FormModal
+          title="Nueva refacción"
+          icono="⚙️"
+          subtitulo="Se agrega al catálogo y queda seleccionada para esta orden."
+          compacto
+          fields={fieldsNuevaRefaccion}
+          grupos={{ general: { icono: "⚙️", titulo: "Datos generales" } }}
+          initialValues={creandoRefaccion}
+          onSubmit={handleCrearRefaccion}
+          onClose={() => setCreandoRefaccion(null)}
+        />
+      )}
 
       {addingAbono && (
         <FormModal

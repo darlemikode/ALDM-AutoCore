@@ -43,7 +43,7 @@ export default function UsuarioDetalle() {
     } catch (err) { notify(err.message, "error"); }
   }
   async function quitar(m) {
-    const ok = await confirmDialog(`${u.username} ya no podrá entrar a ${m.taller?.nombre_comercial}.`, { title: "Quitar acceso", danger: true });
+    const ok = await confirmDialog(`${u.username} ya no podrá entrar a ${m.taller?.nombre_comercial}.`, { title: "Quitar acceso", danger: true, confirmar: "Sí, quitar acceso" });
     if (ok) guardarMembresias(u.membresias.filter((x) => x.id_taller !== m.id_taller));
   }
 

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
+import EstablecerPassword from "./pages/EstablecerPassword";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Vehiculos = lazy(() => import("./pages/Vehiculos"));
@@ -63,6 +64,7 @@ export default function App() {
       <Suspense fallback={<div className="loading-text">Cargando…</div>}>
       <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/establecer-password" element={<EstablecerPassword />} />
       <Route
         path="/"
         element={
