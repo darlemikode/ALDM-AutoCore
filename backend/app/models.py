@@ -24,6 +24,7 @@ from sqlalchemy.orm import relationship, object_session
 
 from .database import Base
 from .tenancy import TenantMixin, CatalogoCompartidoMixin
+from .cifrado import TextoCifrado
 
 
 # ---------------------------------------------------------------------------
@@ -944,9 +945,12 @@ class Empleado(TenantMixin, Base):
     esquema_pago = Column(String(20), default="fijo")  # fijo | comision | mixto | destajo
     porcentaje_comision = Column(Float, default=0)  # % sobre la mano de obra de las órdenes cerradas que atendió
     aplicar_impuestos = Column(Boolean, default=False)  # retener ISR e IMSS (estimado)
-    curp = Column(String(18), nullable=True)
-    rfc_empleado = Column(String(13), nullable=True)
-    nss = Column(String(11), nullable=True)
+    # Cifrados en reposo (dato personal sensible, no se usa para facturar
+    # ni se busca por este valor — ver app/cifrado.py). Columna más ancha
+    # porque el texto cifrado pesa más que el original.
+    curp = Column(TextoCifrado(255), nullable=True)
+    rfc_empleado = Column(TextoCifrado(255), nullable=True)
+    nss = Column(TextoCifrado(255), nullable=True)
 
     usuario = relationship("Usuario")
     servicios_responsable = relationship("Servicio", back_populates="empleado_responsable")

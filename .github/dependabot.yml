@@ -1,0 +1,49 @@
+version: 2
+updates:
+  # --- Backend (Python / pip) ---
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencias", "backend"]
+
+  # --- Panel web (npm) ---
+  - package-ecosystem: "npm"
+    directory: "/web-admin"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencias", "web-admin"]
+
+  # --- App móvil taller (npm) ---
+  - package-ecosystem: "npm"
+    directory: "/mobile"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencias", "mobile"]
+
+  # --- App móvil clientes (npm) ---
+  - package-ecosystem: "npm"
+    directory: "/mobile-cliente"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencias", "mobile-cliente"]
+
+  # --- App móvil súper admin (npm) ---
+  - package-ecosystem: "npm"
+    directory: "/mobile-superadmin"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencias", "mobile-superadmin"]
+
+  # --- GitHub Actions ---
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencias", "ci"]

@@ -92,6 +92,15 @@ async def cabeceras_seguridad(request: Request, call_next):
     response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=()")
     if os.getenv("WEBSITE_SITE_NAME"):  # Azure (siempre con HTTPS)
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    # CSP solo en /api (respuestas JSON): nunca deben ejecutar ni cargar
+    # nada. No se aplica a las rutas que sirven el panel web/sitio porque
+    # ese HTML sí necesita sus propios scripts/estilos — ponerle una CSP a
+    # ciegas ahí podría romper la página sin poder probarlo primero.
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'",
+        )
     return response
 
 
