@@ -6,6 +6,7 @@ import FormModal from "../components/FormModal";
 import ClienteFormModal from "../components/ClienteFormModal";
 import FiltroChips from "../components/FiltroChips";
 import BuscadorSelect from "../components/BuscadorSelect";
+import Combo from "../components/Combo";
 import ModalPortal from "../components/ModalPortal";
 import { useAuth } from "../context/AuthContext";
 import { useUI } from "../context/UIContext";
@@ -36,12 +37,14 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, ve
   const [modelos, setModelos] = useState([]);
   const [idCliente, setIdCliente] = useState(cli0 || "");
   const [idVehiculo, setIdVehiculo] = useState(veh0 || "");
-  // Vehículo escrito a mano: vive solo en la cotización, no en el catálogo
-  const [vehTexto, setVehTexto] = useState(txt0 || "");
+  // Vehículo capturado a mano: vive solo en la cotización, no en el catálogo.
+  // Marca y modelo salen de los catálogos, pero solo para armar el texto.
+  const [marcaSel, setMarcaSel] = useState("");
+  const [modeloSel, setModeloSel] = useState("");
+  const [vehTextoLibre, setVehTextoLibre] = useState(txt0 || "");
   const [vehPlacas, setVehPlacas] = useState(pla0 || "");
   const [vehKm, setVehKm] = useState(km0 || "");
   const [nuevoCliente, setNuevoCliente] = useState(false);
-  const [nuevoVehiculo, setNuevoVehiculo] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   async function cargar() {
@@ -53,10 +56,22 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, ve
   }
   useEffect(() => { cargar(); }, []);
   useEffect(() => {
-    const esc = (e) => { if (e.key === "Escape" && !nuevoCliente && !nuevoVehiculo) onCerrar(); };
+    const esc = (e) => { if (e.key === "Escape" && !nuevoCliente) onCerrar(); };
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
-  }, [nuevoCliente, nuevoVehiculo, onCerrar]);
+  }, [nuevoCliente, onCerrar]);
+
+  // Si la cotización ya traía un vehículo escrito, se intenta reconocer su
+  // marca y modelo en los catálogos para dejar los selects ya puestos.
+  useEffect(() => {
+    if (!txt0 || !marcas.length || !modelos.length || marcaSel || modeloSel) return;
+    const t = txt0.toLowerCase();
+    const m = marcas.find((x) => t.startsWith((x.nombre_marca || "").toLowerCase()));
+    if (!m) return;
+    setMarcaSel(m.id_marca_vehiculo);
+    const mo = modelos.find((y) => y.id_marca_vehiculo === m.id_marca_vehiculo && t.includes((y.nombre_modelo || "").toLowerCase()));
+    if (mo) setModeloSel(mo.id_modelo_vehiculo);
+  }, [marcas, modelos, txt0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const nombreVeh = (v) => `${v.marca?.nombre_marca || ""} ${v.modelo?.nombre_modelo || ""}`.trim() || v.numero_cuenta;
   const cliente = clientes.find((c) => c.id_cliente === Number(idCliente));
@@ -78,10 +93,36 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, ve
   }
   function elegirVehiculo(id) {
     setIdVehiculo(id);
-    if (id) quitarVehiculoEscrito();  // manda el del listado, no el escrito
+    if (id) quitarVehiculoEscrito();  // manda el del listado, no el capturado
     if (!id || idCliente) return;
     const v = vehiculos.find((x) => x.id_vehiculo === Number(id));
     if (v) setIdCliente(v.id_cliente); // autocompleta el dueño, sin forzarlo
+  }
+
+  // --- Vehículo capturado a mano (no se da de alta) ---
+  const nombreMarcaSel = marcas.find((m) => m.id_marca_vehiculo === Number(marcaSel))?.nombre_marca || "";
+  const nombreModeloSel = modelos.find((m) => m.id_modelo_vehiculo === Number(modeloSel))?.nombre_modelo || "";
+  // Lo capturado manda sobre el texto que ya traía la cotización
+  const vehTexto = `${nombreMarcaSel} ${nombreModeloSel}`.trim() || (marcaSel || modeloSel ? "" : vehTextoLibre);
+
+  function elegirMarca(id) {
+    const v = id ?? "";  // Combo manda null al limpiar
+    setMarcaSel(v);
+    const mo = modelos.find((m) => m.id_modelo_vehiculo === Number(modeloSel));
+    if (mo && mo.id_marca_vehiculo !== Number(v)) setModeloSel("");  // el modelo ya no es de esa marca
+    if (v) setIdVehiculo("");
+    setVehTextoLibre("");
+  }
+  function elegirModelo(id) {
+    const v = id ?? "";
+    setModeloSel(v);
+    const mo = modelos.find((m) => m.id_modelo_vehiculo === Number(v));
+    if (mo) setMarcaSel(mo.id_marca_vehiculo);  // el modelo define la marca
+    if (v) setIdVehiculo("");
+    setVehTextoLibre("");
+  }
+  function quitarVehiculoEscrito() {
+    setMarcaSel(""); setModeloSel(""); setVehTextoLibre(""); setVehPlacas(""); setVehKm("");
   }
 
   async function guardarCliente(values) {
@@ -89,39 +130,6 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, ve
     setNuevoCliente(false);
     await cargar();
     setIdCliente(creado.id_cliente);
-  }
-
-  function camposVehiculo(values) {
-    return [
-      { name: "id_marca_vehiculo", label: "Marca", type: "select", required: true,
-        onElegir: (idMarca, v) => (v.id_modelo_vehiculo && modelos.find((m) => m.id_modelo_vehiculo === v.id_modelo_vehiculo)?.id_marca_vehiculo !== idMarca ? { id_modelo_vehiculo: null } : {}),
-        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca })),
-        creatable: { endpoint: "/vehiculos-marcas/", createField: "nombre_marca", idField: "id_marca_vehiculo", label: "marca", onCreated: (n) => setMarcas((p) => [...p, n]) } },
-      { name: "id_modelo_vehiculo", label: "Modelo", type: "select", required: true,
-        onElegir: (idModelo) => {
-          const m = modelos.find((x) => x.id_modelo_vehiculo === idModelo);
-          return m ? { id_marca_vehiculo: m.id_marca_vehiculo } : {};
-        },
-        options: modelos.filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo).map((m) => ({ value: m.id_modelo_vehiculo, label: values.id_marca_vehiculo ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim() })),
-        creatable: values.id_marca_vehiculo ? { endpoint: "/vehiculos-modelos/", createField: "nombre_modelo", idField: "id_modelo_vehiculo", label: "modelo",
-          extraFields: (v) => ({ id_marca_vehiculo: v.id_marca_vehiculo }), onCreated: (n) => setModelos((p) => [...p, n]) } : null },
-      { name: "km_vehiculo", label: "Kilometraje", type: "number" },
-      { name: "placas_vehiculo", label: "Placas" },
-    ];
-  }
-  function guardarVehiculo(values) {
-    // No se da de alta en el catálogo: solo se toma el texto para la cotización.
-    const marca = marcas.find((m) => m.id_marca_vehiculo === values.id_marca_vehiculo)?.nombre_marca || "";
-    const modelo = modelos.find((m) => m.id_modelo_vehiculo === values.id_modelo_vehiculo)?.nombre_modelo || "";
-    setVehTexto(`${marca} ${modelo}`.trim());
-    setVehPlacas(values.placas_vehiculo || "");
-    setVehKm(values.km_vehiculo ? String(values.km_vehiculo) : "");
-    setIdVehiculo("");  // es un vehículo escrito, no uno del listado
-    setNuevoVehiculo(false);
-  }
-
-  function quitarVehiculoEscrito() {
-    setVehTexto(""); setVehPlacas(""); setVehKm("");
   }
 
   async function confirmar() {
@@ -147,7 +155,7 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, ve
           <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={onCerrar}><Icono nombre="close" size={20} /></button>
           <div className="ecv-cabecera">
             <span className="ecv-icono"><Icono nombre="construct" size={22} /></span>
-            <div><h2 className="ecv-titulo">Cliente y vehículo</h2><div className="subtitle">Elige o agrega a quién se le hace el servicio (ambos son opcionales)</div></div>
+            <div><h2 className="ecv-titulo">Cliente y vehículo</h2><div className="subtitle">Ambos son opcionales. El vehículo capturado aquí no se agrega al listado de vehículos.</div></div>
           </div>
           <div className="ecv-pasos">
             <span className={"ecv-paso" + (idCliente ? " listo" : " activo")}>1 · Cliente{idCliente ? " ✓" : ""}</span>
@@ -158,16 +166,47 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, ve
             <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoCliente(true)}><Icono nombre="add" size={18} /> Agregar cliente nuevo</button>
           )}
           <BuscadorSelect label="Vehículo" opciones={opcionesVehiculo} value={idVehiculo} onChange={elegirVehiculo} placeholder="Buscar por marca, modelo o placas…" vacio={idCliente ? "Este cliente no tiene vehículos" : "Sin vehículos"} />
-          {vehTexto ? (
-            <div className="ecv-agregar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: 11 }}>
-              <span>{[vehTexto, vehPlacas && `Placas ${vehPlacas}`, vehKm && `${vehKm} km`].filter(Boolean).join(" · ")}</span>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={quitarVehiculoEscrito} title="Quitar">
+          {/* Si ya tomó uno del listado, capturar a mano solo estorba */}
+          {!idVehiculo && (<>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 10px", opacity: 0.75, fontSize: 12 }}>
+            <span style={{ flex: 1, height: 1, background: "currentColor", opacity: 0.25 }} />
+            <span>o captúralo solo para esta cotización</span>
+            <span style={{ flex: 1, height: 1, background: "currentColor", opacity: 0.25 }} />
+          </div>
+          <div className="form-grid">
+            <div className="field">
+              <label>Marca</label>
+              <Combo value={marcaSel} onChange={elegirMarca} placeholder="Sin capturar"
+                opciones={marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca }))} />
+            </div>
+            <div className="field">
+              <label>Modelo</label>
+              <Combo value={modeloSel} onChange={elegirModelo} placeholder="Sin capturar"
+                opciones={modelos.filter((m) => !marcaSel || m.id_marca_vehiculo === Number(marcaSel)).map((m) => ({
+                  value: m.id_modelo_vehiculo,
+                  label: marcaSel ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim(),
+                }))} />
+            </div>
+            <div className="field">
+              <label>Placas</label>
+              <input value={vehPlacas} onChange={(e) => { setVehPlacas(e.target.value); if (e.target.value) setIdVehiculo(""); }} placeholder="Opcional" />
+            </div>
+            <div className="field">
+              <label>Kilometraje</label>
+              <input value={vehKm} onChange={(e) => { setVehKm(e.target.value); if (e.target.value) setIdVehiculo(""); }} placeholder="Opcional" inputMode="numeric" />
+            </div>
+          </div>
+          {(vehTexto || vehPlacas || vehKm) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
+              <span className="badge badge-teal" style={{ flex: 1, textAlign: "left" }}>
+                Se guardará: {[vehTexto || "(sin marca ni modelo)", vehPlacas && `Placas ${vehPlacas}`, vehKm && `${vehKm} km`].filter(Boolean).join(" · ")}
+              </span>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={quitarVehiculoEscrito} title="Quitar lo capturado">
                 <Icono nombre="close" size={16} />
               </button>
             </div>
-          ) : (
-            <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoVehiculo(true)}><Icono nombre="add" size={18} /> Capturar vehículo (solo para esta cotización)</button>
           )}
+          </>)}
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={onCerrar}>Cancelar</button>
             <button className="btn btn-primary" onClick={confirmar} disabled={guardando}>{guardando ? "Guardando…" : "Aceptar y continuar"}</button>
@@ -175,7 +214,6 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, ve
         </div>
       </div>
       {nuevoCliente && <ClienteFormModal title="Nuevo cliente" initialValues={{}} onSubmit={guardarCliente} onClose={() => setNuevoCliente(false)} />}
-      {nuevoVehiculo && <FormModal title="Vehículo de la cotización" subtitulo="Solo se guarda en esta cotización; no se agrega al listado de vehículos." icono="🚗" fields={camposVehiculo} initialValues={{}} onSubmit={guardarVehiculo} onClose={() => setNuevoVehiculo(false)} />}
     </ModalPortal>
   );
 }
