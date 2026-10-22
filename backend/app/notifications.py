@@ -17,6 +17,7 @@ truenan, solo se omite el envío (el enlace nunca llega).
 import logging
 import os
 import smtplib
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -205,7 +206,45 @@ def enviar_correo_password_cambiada(correo: str, nombre: str) -> None:
         logger.exception("No se pudo enviar el aviso de cambio de contraseña a %s", correo)
 
 
-def _enviar_correo(destinatario: str, asunto: str, cuerpo: str, html: str | None = None) -> None:
+def enviar_nota_al_cliente(correo: str, nombre: str, nombre_taller: str, servicio_id: int,
+                           total: float, pdf: bytes) -> bool:
+    """Al finalizar una orden, le manda al cliente su nota de remisión en PDF.
+    Regresa True solo si el correo salió de verdad: lo que se envió se le
+    informa al taller en la pantalla de finalizar, así que no puede mentir."""
+    if not _smtp_configurado() or not correo:
+        return False
+    total_txt = f"${total:,.2f}"
+    texto = (
+        f"Hola {nombre}:\n\n"
+        f"Tu servicio en {nombre_taller} quedó listo. Adjuntamos la nota de "
+        f"remisión de tu orden #{servicio_id}, por un total de {total_txt}.\n\n"
+        f"¡Gracias por tu preferencia!"
+    )
+    html = _plantilla_html(
+        nombre, "Tu servicio está listo",
+        [
+            f"Tu servicio en <b>{nombre_taller}</b> quedó listo.",
+            f"Adjuntamos la nota de remisión de tu orden <b>#{servicio_id}</b>, por un total de <b>{total_txt}</b>.",
+            "¡Gracias por tu preferencia!",
+        ],
+        nota="La nota de remisión va adjunta a este correo en formato PDF.",
+    )
+    try:
+        _enviar_correo(
+            destinatario=correo,
+            asunto=f"Nota de remisión — Orden #{servicio_id} · {nombre_taller}",
+            cuerpo=texto, html=html,
+            adjunto=(f"nota-remision-{servicio_id}.pdf", pdf),
+        )
+        return True
+    except Exception:
+        logger.exception("No se pudo enviar la nota de remisión de la orden %s a %s", servicio_id, correo)
+        return False
+
+
+def _enviar_correo(destinatario: str, asunto: str, cuerpo: str, html: str | None = None,
+                   adjunto: tuple[str, bytes] | None = None) -> None:
+    """adjunto: (nombre_del_archivo, contenido_en_bytes) — se manda como PDF."""
     host = os.getenv("SMTP_HOST")
     port = int(os.getenv("SMTP_PORT", "587"))
     user = os.getenv("SMTP_USER")
@@ -213,11 +252,23 @@ def _enviar_correo(destinatario: str, asunto: str, cuerpo: str, html: str | None
     remitente = os.getenv("SMTP_FROM")
 
     if html:
-        msg = MIMEMultipart("alternative")
-        msg.attach(MIMEText(cuerpo, "plain"))
-        msg.attach(MIMEText(html, "html"))
+        contenido = MIMEMultipart("alternative")
+        contenido.attach(MIMEText(cuerpo, "plain"))
+        contenido.attach(MIMEText(html, "html"))
     else:
-        msg = MIMEText(cuerpo)
+        contenido = MIMEText(cuerpo)
+
+    if adjunto:
+        # Con archivo adjunto el mensaje va en "mixed": el cuerpo por dentro y
+        # el PDF como parte aparte.
+        nombre_archivo, datos = adjunto
+        msg = MIMEMultipart("mixed")
+        msg.attach(contenido)
+        parte = MIMEApplication(datos, _subtype="pdf")
+        parte.add_header("Content-Disposition", "attachment", filename=nombre_archivo)
+        msg.attach(parte)
+    else:
+        msg = contenido
     msg["Subject"] = asunto
     msg["From"] = remitente
     msg["To"] = destinatario
