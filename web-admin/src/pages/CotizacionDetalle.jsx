@@ -28,7 +28,7 @@ function BloqueNota({ icono, titulo, acento, accion, children }) {
 /* Elegir cliente y vehículo para una cotización — a diferencia de la orden
    de servicio, los dos son opcionales: se puede dejar solo el vehículo (sin
    dueño capturado) o ninguno de los dos. */
-function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, onConfirmar, onCerrar }) {
+function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, vehiculoTexto: txt0, vehiculoPlacas: pla0, vehiculoKm: km0, onConfirmar, onCerrar }) {
   const { hasPermission } = useAuth();
   const [clientes, setClientes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
@@ -36,6 +36,10 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, on
   const [modelos, setModelos] = useState([]);
   const [idCliente, setIdCliente] = useState(cli0 || "");
   const [idVehiculo, setIdVehiculo] = useState(veh0 || "");
+  // Vehículo escrito a mano: vive solo en la cotización, no en el catálogo
+  const [vehTexto, setVehTexto] = useState(txt0 || "");
+  const [vehPlacas, setVehPlacas] = useState(pla0 || "");
+  const [vehKm, setVehKm] = useState(km0 || "");
   const [nuevoCliente, setNuevoCliente] = useState(false);
   const [nuevoVehiculo, setNuevoVehiculo] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -74,6 +78,7 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, on
   }
   function elegirVehiculo(id) {
     setIdVehiculo(id);
+    if (id) quitarVehiculoEscrito();  // manda el del listado, no el escrito
     if (!id || idCliente) return;
     const v = vehiculos.find((x) => x.id_vehiculo === Number(id));
     if (v) setIdCliente(v.id_cliente); // autocompleta el dueño, sin forzarlo
@@ -104,18 +109,32 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, on
       { name: "placas_vehiculo", label: "Placas" },
     ];
   }
-  async function guardarVehiculo(values) {
-    const creado = await api.post("/vehiculos/", { ...values, id_cliente: idCliente ? Number(idCliente) : null });
+  function guardarVehiculo(values) {
+    // No se da de alta en el catálogo: solo se toma el texto para la cotización.
+    const marca = marcas.find((m) => m.id_marca_vehiculo === values.id_marca_vehiculo)?.nombre_marca || "";
+    const modelo = modelos.find((m) => m.id_modelo_vehiculo === values.id_modelo_vehiculo)?.nombre_modelo || "";
+    setVehTexto(`${marca} ${modelo}`.trim());
+    setVehPlacas(values.placas_vehiculo || "");
+    setVehKm(values.km_vehiculo ? String(values.km_vehiculo) : "");
+    setIdVehiculo("");  // es un vehículo escrito, no uno del listado
     setNuevoVehiculo(false);
-    await cargar();
-    setIdVehiculo(creado.id_vehiculo);
-    if (!idCliente && creado.id_cliente) setIdCliente(creado.id_cliente);
+  }
+
+  function quitarVehiculoEscrito() {
+    setVehTexto(""); setVehPlacas(""); setVehKm("");
   }
 
   async function confirmar() {
     setGuardando(true);
     try {
-      await onConfirmar({ id_cliente: idCliente ? Number(idCliente) : null, id_vehiculo: idVehiculo ? Number(idVehiculo) : null });
+      await onConfirmar({
+        id_cliente: idCliente ? Number(idCliente) : null,
+        id_vehiculo: idVehiculo ? Number(idVehiculo) : null,
+        // Si se eligió uno del listado, el texto capturado se descarta
+        vehiculo_texto: idVehiculo ? null : (vehTexto || null),
+        vehiculo_placas: idVehiculo ? null : (vehPlacas || null),
+        vehiculo_km: idVehiculo ? null : (vehKm || null),
+      });
     } finally {
       setGuardando(false);
     }
@@ -132,15 +151,22 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, on
           </div>
           <div className="ecv-pasos">
             <span className={"ecv-paso" + (idCliente ? " listo" : " activo")}>1 · Cliente{idCliente ? " ✓" : ""}</span>
-            <span className={"ecv-paso" + (idVehiculo ? " listo" : idCliente ? " activo" : "")}>2 · Vehículo{idVehiculo ? " ✓" : ""}</span>
+            <span className={"ecv-paso" + (idVehiculo || vehTexto ? " listo" : idCliente ? " activo" : "")}>2 · Vehículo{idVehiculo || vehTexto ? " ✓" : ""}</span>
           </div>
           <BuscadorSelect label="Cliente" opciones={opcionesCliente} value={idCliente} onChange={elegirCliente} placeholder="Buscar por nombre, cuenta o teléfono…" />
           {hasPermission("clientes.crear") && (
             <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoCliente(true)}><Icono nombre="add" size={18} /> Agregar cliente nuevo</button>
           )}
           <BuscadorSelect label="Vehículo" opciones={opcionesVehiculo} value={idVehiculo} onChange={elegirVehiculo} placeholder="Buscar por marca, modelo o placas…" vacio={idCliente ? "Este cliente no tiene vehículos" : "Sin vehículos"} />
-          {hasPermission("vehiculos.crear") && (
-            <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoVehiculo(true)}><Icono nombre="add" size={18} /> Agregar vehículo nuevo</button>
+          {vehTexto ? (
+            <div className="ecv-agregar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: 11 }}>
+              <span>{[vehTexto, vehPlacas && `Placas ${vehPlacas}`, vehKm && `${vehKm} km`].filter(Boolean).join(" · ")}</span>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={quitarVehiculoEscrito} title="Quitar">
+                <Icono nombre="close" size={16} />
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="btn btn-secondary ecv-agregar" onClick={() => setNuevoVehiculo(true)}><Icono nombre="add" size={18} /> Capturar vehículo (solo para esta cotización)</button>
           )}
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={onCerrar}>Cancelar</button>
@@ -149,7 +175,7 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, on
         </div>
       </div>
       {nuevoCliente && <ClienteFormModal title="Nuevo cliente" initialValues={{}} onSubmit={guardarCliente} onClose={() => setNuevoCliente(false)} />}
-      {nuevoVehiculo && <FormModal title={`Nuevo vehículo${cliente ? ` — ${cliente.nombre_cliente}` : ""}`} icono="🚗" fields={camposVehiculo} initialValues={{}} onSubmit={guardarVehiculo} onClose={() => setNuevoVehiculo(false)} />}
+      {nuevoVehiculo && <FormModal title="Vehículo de la cotización" subtitulo="Solo se guarda en esta cotización; no se agrega al listado de vehículos." icono="🚗" fields={camposVehiculo} initialValues={{}} onSubmit={guardarVehiculo} onClose={() => setNuevoVehiculo(false)} />}
     </ModalPortal>
   );
 }
@@ -477,9 +503,13 @@ export default function CotizacionDetalle() {
             <div>
               <div className="orden-hero-etiqueta">Vehículo</div>
               <div className="orden-hero-valor">
-                {[cotizacion.vehiculo?.marca?.nombre_marca, cotizacion.vehiculo?.modelo?.nombre_modelo].filter(Boolean).join(" ") || "Sin vehículo (opcional)"}
+                {[cotizacion.vehiculo?.marca?.nombre_marca, cotizacion.vehiculo?.modelo?.nombre_modelo].filter(Boolean).join(" ") || cotizacion.vehiculo_texto || "Sin vehículo (opcional)"}
               </div>
-              <div className="orden-hero-meta">{cotizacion.vehiculo?.numero_cuenta}{cotizacion.vehiculo?.placas_vehiculo ? ` · Placas ${cotizacion.vehiculo.placas_vehiculo}` : ""}</div>
+              <div className="orden-hero-meta">
+                {cotizacion.vehiculo
+                  ? `${cotizacion.vehiculo.numero_cuenta}${cotizacion.vehiculo.placas_vehiculo ? ` · Placas ${cotizacion.vehiculo.placas_vehiculo}` : ""}`
+                  : [cotizacion.vehiculo_placas && `Placas ${cotizacion.vehiculo_placas}`, cotizacion.vehiculo_km && `${cotizacion.vehiculo_km} km`].filter(Boolean).join(" · ")}
+              </div>
             </div>
           </div>
         </div>
@@ -662,6 +692,9 @@ export default function CotizacionDetalle() {
         <ElegirClienteVehiculoCotizacion
           idCliente={cotizacion.id_cliente}
           idVehiculo={cotizacion.id_vehiculo}
+          vehiculoTexto={cotizacion.vehiculo_texto}
+          vehiculoPlacas={cotizacion.vehiculo_placas}
+          vehiculoKm={cotizacion.vehiculo_km}
           onConfirmar={guardarClienteVehiculo}
           onCerrar={() => setEligiendoCV(false)}
         />
