@@ -238,21 +238,6 @@ export default function Vehiculos() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [porMarca, q]);
 
-  // Vista "Por cliente": agrupa los vehículos visibles por su dueño y
-  // ordena primero a los clientes a los que más recientemente se les hizo
-  // un servicio (dentro de cada cliente, igual: el vehículo más reciente primero).
-  const porCliente = useMemo(() => {
-    const grupos = new Map();
-    for (const v of visibles) {
-      if (!grupos.has(v.id_cliente)) grupos.set(v.id_cliente, { cliente: v.cliente, vehiculos: [] });
-      grupos.get(v.id_cliente).vehiculos.push(v);
-    }
-    const ts = (v) => (v.fecha_ultimo_servicio ? new Date(v.fecha_ultimo_servicio).getTime() : 0);
-    return [...grupos.values()]
-      .map((g) => ({ ...g, vehiculos: [...g.vehiculos].sort((a, b) => ts(b) - ts(a)) }))
-      .sort((a, b) => ts(b.vehiculos[0]) - ts(a.vehiculos[0]));
-  }, [visibles]);
-
   return (
     <>
       <div className="page-header">
@@ -263,9 +248,13 @@ export default function Vehiculos() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <div className="chips-select">
-            <button type="button" className={`chip-toggle ${vista === "lista" ? "chip-toggle-on" : ""}`} onClick={() => setVista("lista")}>Lista</button>
-            <button type="button" className={`chip-toggle ${vista === "clientes" ? "chip-toggle-on" : ""}`} onClick={() => setVista("clientes")}>Por cliente</button>
+          <div className="vista-toggle vista-toggle-iconos">
+            <button type="button" className={`vista-toggle-btn ${vista === "clientes" ? "activo" : ""}`} title="Agrupar por cliente" aria-label="Agrupar por cliente" onClick={() => setVista("clientes")}>
+              <Icono nombre="list" size={19} />
+            </button>
+            <button type="button" className={`vista-toggle-btn ${vista === "lista" ? "activo" : ""}`} title="Vista de lista" aria-label="Vista de lista" onClick={() => setVista("lista")}>
+              <Icono nombre="grid" size={19} />
+            </button>
           </div>
           {idCliente && (
             <button className="btn btn-secondary" onClick={() => setParams({})}>
@@ -292,37 +281,43 @@ export default function Vehiculos() {
         {loading ? (
           <div className="loading-text">Cargando…</div>
         ) : vista === "clientes" ? (
-          <div className="veh-clientes">
-            {porCliente.length === 0 && <div className="empty-state">No hay vehículos registrados todavía.</div>}
-            {porCliente.map((g) => (
-              <div key={g.cliente?.id_cliente || "sin-cliente"} className="veh-cliente-grupo">
-                <div className="veh-cliente-header">
-                  <span className="veh-cliente-nombre" onClick={() => navigate(`/clientes?buscar=${encodeURIComponent(g.cliente?.nombre_cliente || "")}`)}>
-                    <Icono nombre="user" size={16} />
-                    {g.cliente ? `${g.cliente.nombre_cliente} ${g.cliente.paterno_cliente || ""}`.trim() : "Sin cliente"}
-                  </span>
-                  <span className="veh-cliente-ultima">Último servicio: {hace(g.vehiculos[0]?.fecha_ultimo_servicio)}</span>
+          <div className="ordenes-lista">
+            {visibles.length === 0 && <div className="empty-state">No hay vehículos registrados todavía.</div>}
+            {visibles.map((v) => (
+              <div
+                key={v.id_vehiculo}
+                className={`orden-fila fila-acciones ${v.status_ultimo_servicio === "cancelado" ? "est-cancelado" : v.status_ultimo_servicio === "cerrado" ? "est-cerrado" : ""}`}
+                style={{ "--acc": colorGrupo(nomMarcaV(v)) }}
+                onClick={() => hasPermission("vehiculos.editar") && setEditing(v)}
+              >
+                <div className="cliente-avatar"><Icono nombre="car" size={22} /></div>
+                <div className="orden-main">
+                  <div className="orden-titulo">
+                    {nombreMarca(v.id_marca_vehiculo)} {nombreModelo(v.id_modelo_vehiculo)} {v.id_year_vehiculo || ""} <span className="cliente-cuenta">{v.placas_vehiculo || "Sin placas"}</span>
+                  </div>
+                  <div className="orden-meta">
+                    <span><Icono nombre="user" size={15} /> {v.cliente ? `${v.cliente.nombre_cliente} ${v.cliente.paterno_cliente || ""}`.trim() : "Sin cliente"}</span>
+                    <span><Icono nombre="phone" size={15} /> {v.cliente?.telefono1 || "Sin teléfono"}</span>
+                    <span><Icono nombre="chart" size={15} /> {v.km_vehiculo ? `${Number(v.km_vehiculo).toLocaleString("es-MX")} km` : "— km"}</span>
+                  </div>
                 </div>
-                <div className="veh-grid">
-                  {g.vehiculos.map((v) => (
-                    <div key={v.id_vehiculo} className="veh-card" style={{ "--acc": colorGrupo(nomMarcaV(v)) }} onClick={() => hasPermission("vehiculos.editar") && setEditing(v)}>
-                      <div className="veh-card-top">
-                        <span className="veh-card-icono"><Icono nombre="car" size={18} /></span>
-                        {v.status_ultimo_servicio && (
-                          <span className={`badge ${STATUS_BADGE[v.status_ultimo_servicio] || "badge-petrol"} veh-card-etapa`}>
-                            {v.status_ultimo_servicio === "abierto" ? (ETIQUETAS_ETAPA[v.etapa_ultimo_servicio] || "Abierto") : v.status_ultimo_servicio === "cerrado" ? "Cerrado" : "Cancelado"}
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <div className="veh-card-titulo">{nombreMarca(v.id_marca_vehiculo)} {nombreModelo(v.id_modelo_vehiculo)} {v.id_year_vehiculo || ""}</div>
-                        <div className="veh-card-placa">{v.placas_vehiculo || "Sin placas"}</div>
-                      </div>
-                      <div className={`veh-card-ultima ${v.fecha_ultimo_servicio ? "" : "veh-card-nunca"}`}>
-                        <Icono nombre="clock" size={13} /> {hace(v.fecha_ultimo_servicio)}{v.total_servicios > 0 ? ` · ${v.total_servicios} orden${v.total_servicios === 1 ? "" : "es"}` : ""}
-                      </div>
-                    </div>
-                  ))}
+                <div className="orden-estado">
+                  {v.status_ultimo_servicio ? (
+                    <span className={`badge ${STATUS_BADGE[v.status_ultimo_servicio] || "badge-petrol"}`}>
+                      {v.status_ultimo_servicio === "abierto" ? (ETIQUETAS_ETAPA[v.etapa_ultimo_servicio] || "Abierto") : v.status_ultimo_servicio === "cerrado" ? "Cerrado" : "Cancelado"}
+                    </span>
+                  ) : <span className="badge badge-grey">Sin servicios</span>}
+                </div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <div className="row-actions">
+                    <button type="button" className="btn-icono" title="Fotos" aria-label="Fotos" onClick={() => setFotosDe(v)}><Icono nombre="camera" size={18} /></button>
+                    {hasPermission("vehiculos.editar") && (
+                      <button type="button" className="btn-icono" title="Editar" aria-label="Editar" onClick={() => setEditing(v)}><Icono nombre="pencil" size={18} /></button>
+                    )}
+                    {hasPermission("vehiculos.eliminar") && (
+                      <button type="button" className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => handleDelete(v)}><Icono nombre="trash" size={18} /></button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

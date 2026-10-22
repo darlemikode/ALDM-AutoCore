@@ -20,6 +20,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ver, setVer] = useState({ login: false, act: false, actConfirmar: false });
 
   const [recovering, setRecovering] = useState(false);
   const [identificador, setIdentificador] = useState("");
@@ -165,7 +166,12 @@ export default function Login() {
                     </div>
                     <div className="field">
                       <label>Contraseña</label>
-                      <input type="password" value={act.password} onChange={campoAct("password")} required minLength={6} placeholder="Mínimo 6 caracteres" />
+                      <div className="pass-caja">
+                        <input type={ver.act ? "text" : "password"} value={act.password} onChange={campoAct("password")} required minLength={6} placeholder="Mínimo 6 caracteres" />
+                        <button type="button" className={"pass-ojo" + (ver.act ? " activo" : "")} aria-pressed={ver.act} aria-label={ver.act ? "Ocultar contraseña" : "Ver contraseña"} onMouseDown={(e) => e.preventDefault()} onClick={() => setVer((v) => ({ ...v, act: !v.act }))}>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" /><circle cx="12" cy="12" r="3" />{!ver.act && <path d="M3 3l18 18" />}</svg>
+                        </button>
+                      </div>
                       {act.password && (
                         <ul className="password-checklist">
                           {validarPassword(act.password, [act.username, act.correo, act.nombre_completo]).map((r) => (
@@ -179,7 +185,12 @@ export default function Login() {
                     </div>
                     <div className="field">
                       <label>Confirmar contraseña</label>
-                      <input type="password" value={act.confirmar} onChange={campoAct("confirmar")} required />
+                      <div className="pass-caja">
+                        <input type={ver.actConfirmar ? "text" : "password"} value={act.confirmar} onChange={campoAct("confirmar")} required />
+                        <button type="button" className={"pass-ojo" + (ver.actConfirmar ? " activo" : "")} aria-pressed={ver.actConfirmar} aria-label={ver.actConfirmar ? "Ocultar contraseña" : "Ver contraseña"} onMouseDown={(e) => e.preventDefault()} onClick={() => setVer((v) => ({ ...v, actConfirmar: !v.actConfirmar }))}>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" /><circle cx="12" cy="12" r="3" />{!ver.actConfirmar && <path d="M3 3l18 18" />}</svg>
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}
@@ -203,11 +214,16 @@ export default function Login() {
               <div className="field-stack">
                 <div className="field">
                   <label>Correo electrónico</label>
-                  <input type="text" inputMode="email" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus autoCapitalize="none" placeholder="Usuarios antiguos: también puede ser tu usuario" />
+                  <input type="text" inputMode="email" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus autoCapitalize="none" placeholder="nombre@correo.com" />
                 </div>
                 <div className="field">
                   <label>Contraseña</label>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <div className="pass-caja">
+                    <input type={ver.login ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="********" />
+                    <button type="button" className={"pass-ojo" + (ver.login ? " activo" : "")} aria-pressed={ver.login} aria-label={ver.login ? "Ocultar contraseña" : "Ver contraseña"} onMouseDown={(e) => e.preventDefault()} onClick={() => setVer((v) => ({ ...v, login: !v.login }))}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" /><circle cx="12" cy="12" r="3" />{!ver.login && <path d="M3 3l18 18" />}</svg>
+                    </button>
+                  </div>
                 </div>
               </div>
               {error && <div className="error-text">{error}</div>}
