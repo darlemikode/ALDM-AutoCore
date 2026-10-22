@@ -1,6 +1,6 @@
 import { contiene } from "../lib/texto";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { api, getToken } from "../api";
 import FormModal from "../components/FormModal";
 import ClienteFormModal from "../components/ClienteFormModal";
@@ -182,7 +182,6 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, ve
 
 export default function CotizacionDetalle() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const { notify, confirmDialog } = useUI();
   const [cotizacion, setCotizacion] = useState(null);
@@ -484,7 +483,6 @@ export default function CotizacionDetalle() {
               {cotizacion.vigente_hasta && ` · Vigente hasta ${new Date(cotizacion.vigente_hasta).toLocaleDateString("es-MX")}`}
             </div>
           </div>
-          <button className="btn btn-secondary" onClick={() => navigate("/cotizaciones")}>← Volver</button>
         </div>
 
         <div className="orden-hero-grid">
