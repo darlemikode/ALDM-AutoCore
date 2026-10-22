@@ -4025,3 +4025,36 @@ select option:disabled { color: #8d8d8f; }
 :root:not([data-theme="dark"]) .add-ref .cat-chip { background: #ffffff; color: #1d1d22; }
 :root:not([data-theme="dark"]) .add-ref .cat-chip span:last-child { color: #26262c; }
 :root:not([data-theme="dark"]) .add-ref-buscar { background: #ffffff !important; color: #141418 !important; border-color: #b9b9c0 !important; }
+
+/* --- Botón COBRAR (lateral de la orden) ------------------------------------
+   Es la acción más importante de la pantalla: va en verde dinero, más grande
+   que el resto y con un brillo suave que respira para que salte a la vista.
+   Deshabilitado (sin saldo) se apaga por completo y deja de animarse. */
+.btn.btn-cobrar {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 15px 18px;
+  font-size: 16px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase;
+  color: #06231a !important;
+  background: linear-gradient(135deg, var(--teal-600), color-mix(in srgb, var(--teal-600) 65%, #9af7c8)) !important;
+  border: 2px solid color-mix(in srgb, var(--teal-600) 70%, #ffffff) !important;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--teal-600) 40%, transparent);
+  animation: cobrar-respira 2.4s ease-in-out infinite;
+}
+.btn.btn-cobrar:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--teal-600) 55%, transparent);
+}
+.btn.btn-cobrar:active:not(:disabled) { transform: translateY(1px); }
+.btn.btn-cobrar:disabled {
+  color: var(--ink-500) !important;
+  background: color-mix(in srgb, var(--ink-500) 16%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ink-500) 28%, transparent) !important;
+  box-shadow: none; animation: none; cursor: not-allowed; opacity: .7;
+}
+@keyframes cobrar-respira {
+  0%, 100% { box-shadow: 0 6px 18px color-mix(in srgb, var(--teal-600) 35%, transparent); }
+  50%      { box-shadow: 0 6px 24px color-mix(in srgb, var(--teal-600) 65%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .btn.btn-cobrar { animation: none; } }
