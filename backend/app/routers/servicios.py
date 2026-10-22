@@ -632,11 +632,11 @@ async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn
         servicio.comentarios_finales = payload.comentarios_finales.strip() or None
     servicio.status = "cerrado"
     servicio.pagado = True
-    servicio.etapa = "listo_entrega"
+    servicio.etapa = "cerrado"  # pasa a la columna "Órdenes finalizadas" del kanban
     if not servicio.fecha_salida_servicio:
         servicio.fecha_salida_servicio = datetime.utcnow()
     db.add(models.ServicioEtapaHistorial(
-        id_servicio=servicio_id, etapa="listo_entrega",
+        id_servicio=servicio_id, etapa="cerrado",
         comentario="Orden finalizada — nota de remisión generada", actualizado_por=user.username,
     ))
     db.commit()
@@ -681,7 +681,7 @@ async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn
             "tipo": "chat", "id_mensaje": mensaje.id_mensaje, "autor_tipo": "taller", "autor_nombre": mensaje.autor_nombre,
             "mensaje_tipo": mensaje.tipo, "texto": mensaje.texto, "fecha": mensaje.fecha.isoformat(),
         })
-        await manager.difundir(servicio_id, {"tipo": "etapa", "etapa": "listo_entrega", "comentario": "Orden finalizada", "actualizado_por": user.username})
+        await manager.difundir(servicio_id, {"tipo": "etapa", "etapa": "cerrado", "comentario": "Orden finalizada", "actualizado_por": user.username})
 
         if cliente.push_token:
             await enviar_push(
