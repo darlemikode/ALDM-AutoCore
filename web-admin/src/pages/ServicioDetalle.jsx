@@ -1172,15 +1172,19 @@ export default function ServicioDetalle() {
       <div ref={finOrdenRef} className="fin-orden-sentinela" aria-hidden="true" />
 
       {(() => {
-        const detalleVisible = detalleCostosAbierto && servicio.costos.saldo_pendiente > 0;
+        // Ya cobrada: no queda saldo que mostrar, así que la barra muestra el total
+        const cobrada = servicio.costos.saldo_pendiente <= 0 && servicio.costos.total > 0;
+        const detalleVisible = detalleCostosAbierto && servicio.costos.total > 0;
         return (
       <div className={`saldo-flotante ${detalleVisible ? "saldo-flotante-abierta" : "atenuada"}`} key={servicio.costos.saldo_pendiente} title="Desliza hasta el final de las refacciones para ver el detalle de costos">
         {!detalleVisible && (
           <div className="saldo-flotante-resumen">
-            <span className="saldo-flotante-monto mono">{fmt(servicio.costos.saldo_pendiente)}</span>
+            <span className="saldo-flotante-monto mono">{fmt(cobrada ? servicio.costos.total : servicio.costos.saldo_pendiente)}</span>
           </div>
         )}
-        {!detalleVisible && servicio.costos.saldo_pendiente > 0 && <div className="saldo-flotante-hint">Desliza hasta el final para ver el detalle ↓</div>}
+        {!detalleVisible && servicio.costos.total > 0 && (
+          <div className="saldo-flotante-hint">{cobrada ? "Orden cobrada · total" : "Desliza hasta el final para ver el detalle ↓"}</div>
+        )}
         {detalleVisible && (
           <div className="saldo-flotante-fila">
             <div className="saldo-flotante-detalle">
