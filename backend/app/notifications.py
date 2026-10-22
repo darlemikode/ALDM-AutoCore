@@ -32,9 +32,15 @@ def _smtp_configurado() -> bool:
 
 def _url_frontend() -> str:
     """Dónde vive el panel web (web-admin) al que apuntan los enlaces de
-    correo. Configúralo en .env como FRONTEND_URL; por defecto apunta al
-    servidor de desarrollo local."""
-    return (os.getenv("FRONTEND_URL") or "http://localhost:5173").rstrip("/")
+    correo. Se configura con FRONTEND_URL; si no está, se usa URL_PUBLICA
+    (la misma dirección del sistema desplegado, que ya se usa para los QR)
+    antes de caer al servidor de desarrollo local. Sin ese respaldo, un
+    despliegue sin FRONTEND_URL manda correos con enlaces a localhost."""
+    for var in ("FRONTEND_URL", "URL_PUBLICA"):
+        valor = (os.getenv(var) or "").strip()
+        if valor:
+            return valor.rstrip("/")
+    return "http://localhost:5173"
 
 
 def _enlace_password(token: str) -> str:
