@@ -1311,13 +1311,25 @@ export default function ServicioDetalle() {
           <div className="nota-bloque-body">
             <div className="lateral-acciones">
               {abierta && puedeEditarOrden && (() => {
-                // Ya pagada: lo que falta no es cobrar, es cerrarla
-                const soloCerrar = servicio.costos.saldo_pendiente <= 0 && servicio.costos.total > 0;
-                return (
-                  <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; setModalCierre(true); }}
-                    title={soloCerrar ? "Cerrar la orden, generar la nota y avisar al cliente" : "Cobrar, cerrar la orden, generar la nota y avisar al cliente"}>
-                    <IconoAuto valor="🧾" size={18} /> {soloCerrar ? "Cerrar orden y generar nota" : "Finalizar y generar nota"}
+                // Cobrar solo se activa si queda saldo; ya pagada, lo que falta es cerrarla
+                const haySaldo = servicio.costos.saldo_pendiente > 0;
+                const abrir = () => { if (bloquearPorRefaccionSinPrecio()) return; setModalCierre(true); };
+                return haySaldo ? (
+                  <button className="btn btn-cobrar" onClick={abrir}
+                    title="Cobrar el saldo, cerrar la orden, generar la nota y avisar al cliente">
+                    <IconoAuto valor="💵" size={20} /> Cobrar {fmt(servicio.costos.saldo_pendiente)}
                   </button>
+                ) : (
+                  <>
+                    <button className="btn btn-cobrar" disabled title="Esta orden no tiene saldo por cobrar">
+                      <IconoAuto valor="💵" size={20} /> Cobrar
+                    </button>
+                    {servicio.costos.total > 0 && (
+                      <button className="btn btn-primary" onClick={abrir} title="Cerrar la orden, generar la nota y avisar al cliente">
+                        <IconoAuto valor="🧾" size={18} /> Cerrar orden y generar nota
+                      </button>
+                    )}
+                  </>
                 );
               })()}
               {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
