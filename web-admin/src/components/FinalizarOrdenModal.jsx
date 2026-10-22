@@ -87,8 +87,12 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
           <div className="modal-header-icono">
             <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}><IconoAuto valor="🧾" size={24} /></div>
             <div>
-              <h2>Finalizar orden #{servicio.id_servicio}</h2>
-              <div className="modal-subtitulo">Cobro, cierre de la orden, nota de remisión y aviso al cliente.</div>
+              <h2>{conSaldo ? "Finalizar" : "Cerrar"} orden #{servicio.id_servicio}</h2>
+              <div className="modal-subtitulo">
+                {conSaldo
+                  ? "Cobro, cierre de la orden, nota de remisión y aviso al cliente."
+                  : "Ya está pagada: solo falta cerrarla, generar la nota de remisión y avisar al cliente."}
+              </div>
             </div>
           </div>
 
@@ -173,7 +177,7 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={onClose} disabled={enviando}>Cancelar</button>
             <button className="btn btn-primary" onClick={finalizar} disabled={!listo || enviando}>
-              {enviando ? "Finalizando…" : conSaldo ? `Cobrar ${fmt(saldo)} y generar nota` : "Finalizar y generar nota"}
+              {enviando ? "Guardando…" : conSaldo ? `Cobrar ${fmt(saldo)} y generar nota` : "Cerrar orden y generar nota"}
             </button>
           </div>
         </div>

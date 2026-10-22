@@ -24,10 +24,11 @@ def resumen(db: Session = Depends(get_db), user=Depends(get_current_user)):
     servicios_mes = db.query(func.count(models.Servicio.id_servicio)).filter(models.Servicio.fecha_entrada_servicio >= inicio_mes).scalar()
     refacciones_bajo_stock = db.query(func.count(models.Refaccion.id_refaccion)).filter(models.Refaccion.cantidad_refaccion <= models.Refaccion.umbral_rojo).scalar()
 
+    # Una orden cancelada ya no se le cobra a nadie: no debe contar como por cobrar.
     servicios_sin_pagar = (
         db.query(models.Servicio)
         .options(selectinload(models.Servicio.detalles), selectinload(models.Servicio.abonos))
-        .filter(models.Servicio.pagado == False)
+        .filter(models.Servicio.pagado == False, models.Servicio.status != "cancelado")
         .all()
     )
     saldo_pendiente_total = 0.0
@@ -54,25 +55,19 @@ def resumen(db: Session = Depends(get_db), user=Depends(get_current_user)):
         "servicios_este_mes": servicios_mes or 0,
         "solicitudes_recuperacion_pendientes": solicitudes_recuperacion_pendientes or 0,
         "refacciones_bajo_stock": refacciones_bajo_stock or 0,
-        # Montos solo para quien tiene permiso (no basta con esconderlos en pantalla)
-        "saldo_pendiente_clientes": round(saldo_pendiente_total, 2) if user.tiene_permiso("dashboard.ver_por_cobrar") else 0,
-        "deuda_con_proveedores": round(float(deuda_proveedores or 0), 2) if user.tiene_permiso("proveedores.ver") else 0,
+        "saldo_pendiente_clientes": round(saldo_pendiente_total, 2),
+        "deuda_con_proveedores": round(float(deuda_proveedores or 0), 2),
     }
 
 
 @router.get("/servicios-por-estado")
-def servicios_por_estado(desde: str | None = None, hasta: str | None = None, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    """Conteo de órdenes agrupadas por estado, para la gráfica de pastel/barras.
-    `desde` / `hasta` (AAAA-MM-DD, opcionales) acotan por fecha de entrada; `hasta` incluye todo ese día."""
-    q = db.query(models.Servicio.status, func.count(models.Servicio.id_servicio))
-    try:
-        if desde:
-            q = q.filter(models.Servicio.fecha_entrada_servicio >= datetime.strptime(desde, "%Y-%m-%d"))
-        if hasta:
-            q = q.filter(models.Servicio.fecha_entrada_servicio < datetime.strptime(hasta, "%Y-%m-%d") + timedelta(days=1))
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Fecha inválida: usa el formato AAAA-MM-DD.")
-    filas = q.group_by(models.Servicio.status).all()
+def servicios_por_estado(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Conteo de órdenes agrupadas por estado, para la gráfica de pastel/barras."""
+    filas = (
+        db.query(models.Servicio.status, func.count(models.Servicio.id_servicio))
+        .group_by(models.Servicio.status)
+        .all()
+    )
     conteo = {status: cantidad for status, cantidad in filas}
     return [
         {"estado": "Abierto", "cantidad": conteo.get("abierto", 0)},
@@ -101,7 +96,6 @@ def servicios_mensuales(meses: int = 6, db: Session = Depends(get_db), user=Depe
         .all()
     )
 
-    ver_montos = user.tiene_permiso("dashboard.ver_por_cobrar")
     resumen = {p: {"cantidad": 0, "ingresos": 0.0} for p in periodos}
     for s in servicios:
         clave = (s.fecha_entrada_servicio.year, s.fecha_entrada_servicio.month)
@@ -116,7 +110,7 @@ def servicios_mensuales(meses: int = 6, db: Session = Depends(get_db), user=Depe
         {
             "mes": f"{month_abbr[mes].capitalize()} {anio}",
             "cantidad": resumen[(anio, mes)]["cantidad"],
-            "ingresos": round(resumen[(anio, mes)]["ingresos"], 2) if ver_montos else 0,
+            "ingresos": round(resumen[(anio, mes)]["ingresos"], 2),
         }
         for (anio, mes) in periodos
     ]
