@@ -236,7 +236,10 @@ def _sincronizar_columnas_faltantes():
                     elif isinstance(valor, str):
                         default_sql = " DEFAULT '" + valor.replace("'", "''") + "'"
                 agregar = "ADD" if es_mssql else "ADD COLUMN"  # SQL Server no acepta "ADD COLUMN"
-                conn.execute(text(f'ALTER TABLE "{tabla.name}" {agregar} "{columna.name}" {tipo_sql}{default_sql}'))
+                # SQL Server NO aplica el DEFAULT a las filas que ya existen: las deja
+                # en NULL y luego el schema revienta al leerlas. "WITH VALUES" las rellena.
+                con_valores = " WITH VALUES" if (es_mssql and default_sql) else ""
+                conn.execute(text(f'ALTER TABLE "{tabla.name}" {agregar} "{columna.name}" {tipo_sql}{default_sql}{con_valores}'))
                 print(f"[migración automática] agregada columna faltante: {tabla.name}.{columna.name}")
         conn.commit()
 
@@ -412,6 +415,18 @@ def _servicio_cliente_opcional():
         print("[migración automática] servicios: cliente y vehículo ahora opcionales (órdenes borrador)")
     except Exception as e:  # noqa: BLE001
         print(f"[migración] no se pudo relajar servicios.id_cliente/id_vehiculo: {e}")
+
+
+def _rellenar_orden_nulo():
+    """Los renglones guardados antes de que existiera la columna `orden` quedaron
+    en NULL (SQL Server no rellena al agregar una columna con DEFAULT), y al leerlos
+    el schema truena con "Input should be a valid integer". Se ponen en 0."""
+    for tabla in ("servicios_detalles", "cotizaciones_detalles"):
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(f"UPDATE {tabla} SET orden = 0 WHERE orden IS NULL"))
+        except Exception:  # noqa: BLE001  — la tabla o la columna aún no existen
+            pass
 
 
 def _vehiculo_cliente_opcional():
@@ -853,6 +868,7 @@ def run():
     _quitar_subcategoria_legacy()
     _servicio_cliente_opcional()
     _vehiculo_cliente_opcional()
+    _rellenar_orden_nulo()
     _indices_llaves_foraneas()
     db = sesion_global()
     try:

@@ -628,6 +628,13 @@ class ServicioDetalleOut(ServicioDetalleIn, ORMBase):
     fecha_detalle: datetime
     orden: int = 0
 
+    @field_validator("orden", mode="before")
+    @classmethod
+    def _orden_nulo_a_cero(cls, v):
+        # Renglones guardados antes de que existiera la columna traen NULL
+        # (SQL Server no rellena al agregar una columna con DEFAULT).
+        return 0 if v is None else v
+
 
 class CotizacionDetalleIn(BaseModel):
     id_tipo_servicio: Optional[int] = None
@@ -652,6 +659,11 @@ class CotizacionDetalleOut(CotizacionDetalleIn, ORMBase):
     id_cotizacion_detalle: int
     id_cotizacion: int
     orden: int = 0
+
+    @field_validator("orden", mode="before")
+    @classmethod
+    def _orden_nulo_a_cero(cls, v):
+        return 0 if v is None else v
 
 
 class CotizacionCostos(BaseModel):
