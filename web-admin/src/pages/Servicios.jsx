@@ -478,15 +478,7 @@ export default function Servicios() {
           <h1><IconoModulo ruta="/servicios" /> Órdenes de servicio</h1>
           <div className="subtitle">{filtrados.length}{filtrados.length !== servicios.length ? ` de ${servicios.length}` : ""} orden(es)</div>
         </div>
-        {hasPermission("servicios.crear") && (
-        <button className="btn btn-primary btn-nuevo" onClick={nuevaOrdenDirecta}>
-          <span className="btn-nuevo-icono"><Icono nombre="doc-add" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva orden</button>
-        )}
-      </div>
-
-      <div className={`panel ${vista === "kanban" ? "panel-kanban" : ""}`}>
-        <div className="toolbar">
-          <input className="search-input" placeholder="Buscar por orden, cliente, vehículo o placas…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div style={{ display: "flex", gap: 8 }}>
           <div className="vista-toggle vista-toggle-iconos">
             <button type="button" className={`vista-toggle-btn ${vista === "lista" ? "activo" : ""}`} title="Vista de lista" aria-label="Vista de lista" onClick={() => cambiarVista("lista")}>
               <Icono nombre="list" size={19} />
@@ -495,6 +487,16 @@ export default function Servicios() {
               <Icono nombre="grid" size={19} />
             </button>
           </div>
+          {hasPermission("servicios.crear") && (
+          <button className="btn btn-primary btn-nuevo" onClick={nuevaOrdenDirecta}>
+            <span className="btn-nuevo-icono"><Icono nombre="doc-add" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva orden</button>
+          )}
+        </div>
+      </div>
+
+      <div className={`panel ${vista === "kanban" ? "panel-kanban" : ""}`}>
+        <div className="toolbar">
+          <input className="search-input" placeholder="Buscar por orden, cliente, vehículo o placas…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 
         <div className="cat-chips">

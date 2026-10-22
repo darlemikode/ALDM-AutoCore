@@ -79,11 +79,13 @@ export default function Cotizaciones() {
         <FormModal
           title="Nueva cotización"
           icono="🧾"
+          colorAcento="teal"
           subtitulo="Presupuesto sin cliente ni vehículo ligado."
-          compacto
+          grupos={{ datos: { icono: "🧾", titulo: "Datos de la cotización", acento: "acento-teal", completo: true } }}
+          initialValues={{ vigente_hasta: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10) }}
           fields={[
-            { name: "titulo", label: "Título (ej. Afinación mayor Nissan Versa)", required: true, full: true },
-            { name: "vigente_hasta", label: "Vigente hasta (opcional)", type: "date" },
+            { name: "titulo", label: "Título", required: true, full: true, grupo: "datos", hint: "Ej. Afinación mayor Nissan Versa" },
+            { name: "vigente_hasta", label: "Vigente hasta", type: "date", grupo: "datos", hint: "Opcional — hasta cuándo sigue valiendo el precio" },
           ]}
           onSubmit={handleCreate}
           onClose={() => setCreating(false)}

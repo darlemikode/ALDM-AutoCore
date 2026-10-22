@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../api";
 import FormModal from "../../components/FormModal";
+import { Icono } from "../../components/Icono";
 import { useAuth } from "../../context/AuthContext";
 import { useUI } from "../../context/UIContext";
 import { Cargando, Dato, useCargar } from "./comun";
@@ -13,12 +14,19 @@ export default function UsuarioDetalle() {
   const { confirmDialog, notify } = useUI();
   const [modal, setModal] = useState(null); // { tipo, iniciales }
   const [roles, setRoles] = useState({}); // id_taller -> roles
+  const [enviandoEnlace, setEnviandoEnlace] = useState(false);
+  const [cooldownEnlace, setCooldownEnlace] = useState(0);
   const { datos, setDatos, error } = useCargar(async () => {
     const [lista, talleres] = await Promise.all([api.get("/superadmin/usuarios"), api.get("/superadmin/talleres")]);
     const u = lista.find((x) => x.id_usuario === id);
     if (!u) throw new Error("Usuario no encontrado");
     return { u, talleres };
   }, [id]);
+  useEffect(() => {
+    if (cooldownEnlace <= 0) return;
+    const t = setInterval(() => setCooldownEnlace((s) => (s > 1 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [cooldownEnlace]);
   if (!datos) return <Cargando error={error} />;
   const { u, talleres } = datos;
   const soyYo = yo?.username === u.username;
@@ -46,6 +54,18 @@ export default function UsuarioDetalle() {
     const ok = await confirmDialog(`${u.username} ya no podrá entrar a ${m.taller?.nombre_comercial}.`, { title: "Quitar acceso", danger: true, confirmar: "Sí, quitar acceso" });
     if (ok) guardarMembresias(u.membresias.filter((x) => x.id_taller !== m.id_taller));
   }
+  async function enviarEnlace() {
+    setEnviandoEnlace(true);
+    try {
+      const r = await api.post(`/superadmin/usuarios/${id}/restablecer-enlace`);
+      notify(r.detail, "success");
+      setCooldownEnlace(60);
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setEnviandoEnlace(false);
+    }
+  }
 
   return (
     <>
@@ -59,8 +79,22 @@ export default function UsuarioDetalle() {
         <label className="sa-check"><input type="checkbox" checked={u.es_superadmin} disabled={soyYo} onChange={(e) => actualizar({ es_superadmin: e.target.checked }).catch(() => {})} /> Súper administrador</label>
         <div className="sa-acciones">
           <button className="btn btn-secondary" onClick={() => setModal({ tipo: "datos", iniciales: { nombre_completo: u.nombre_completo, telefono: u.telefono || "", correo: u.correo || "" } })}>Editar datos</button>
-          <button className="btn btn-secondary" onClick={() => setModal({ tipo: "password", iniciales: {} })}>Nueva contraseña</button>
         </div>
+        <button
+          type="button"
+          className="btn-accion-discreta"
+          onClick={enviarEnlace}
+          disabled={!u.correo || enviandoEnlace || cooldownEnlace > 0}
+          title={!u.correo ? "Este usuario no tiene correo registrado." : ""}
+          style={{ marginTop: 10 }}
+        >
+          <Icono nombre="mail" size={15} />
+          {enviandoEnlace
+            ? "Enviando…"
+            : cooldownEnlace > 0
+            ? `Reenviar en ${cooldownEnlace}s`
+            : "Mandarle un enlace para restablecer su contraseña"}
+        </button>
       </div>
 
       <div className="panel">
@@ -97,12 +131,6 @@ export default function UsuarioDetalle() {
         <FormModal title="Datos del usuario" icono="👤" initialValues={modal.iniciales}
           fields={[{ name: "nombre_completo", label: "Nombre completo", required: true, full: true }, { name: "telefono", label: "Teléfono" }, { name: "correo", label: "Correo", type: "email" }]}
           onSubmit={async (v) => { await actualizar({ nombre_completo: v.nombre_completo, telefono: v.telefono || null, correo: v.correo || null }); setModal(null); }}
-          onClose={() => setModal(null)} />
-      )}
-      {modal?.tipo === "password" && (
-        <FormModal title="Nueva contraseña" subtitulo="Compártela con el usuario por un medio seguro." icono="🔑" initialValues={modal.iniciales}
-          fields={[{ name: "password", label: "Contraseña nueva", type: "password", required: true, hint: "Mínimo 6 caracteres" }]}
-          onSubmit={async (v) => { await actualizar({ password: v.password }); setModal(null); notify("Contraseña cambiada.", "success"); }}
           onClose={() => setModal(null)} />
       )}
       {modal?.tipo === "taller" && (
