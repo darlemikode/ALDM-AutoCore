@@ -1183,7 +1183,11 @@ export default function ServicioDetalle() {
           </div>
         )}
         {!detalleVisible && servicio.costos.total > 0 && (
-          <div className="saldo-flotante-hint">{cobrada ? "Orden cobrada · total" : "Desliza hasta el final para ver el detalle ↓"}</div>
+          <div className="saldo-flotante-hint">
+            {cobrada
+              ? (abierta ? "Pagada — falta cerrar la orden" : "Orden cerrada · total")
+              : "Desliza hasta el final para ver el detalle ↓"}
+          </div>
         )}
         {detalleVisible && (
           <div className="saldo-flotante-fila">
@@ -1306,11 +1310,16 @@ export default function ServicioDetalle() {
           </div>
           <div className="nota-bloque-body">
             <div className="lateral-acciones">
-              {abierta && puedeEditarOrden && (
-                <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; setModalCierre(true); }} title="Cobrar, cerrar la orden, generar la nota y avisar al cliente">
-                  <IconoAuto valor="🧾" size={18} /> Finalizar y generar nota
-                </button>
-              )}
+              {abierta && puedeEditarOrden && (() => {
+                // Ya pagada: lo que falta no es cobrar, es cerrarla
+                const soloCerrar = servicio.costos.saldo_pendiente <= 0 && servicio.costos.total > 0;
+                return (
+                  <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; setModalCierre(true); }}
+                    title={soloCerrar ? "Cerrar la orden, generar la nota y avisar al cliente" : "Cobrar, cerrar la orden, generar la nota y avisar al cliente"}>
+                    <IconoAuto valor="🧾" size={18} /> {soloCerrar ? "Cerrar orden y generar nota" : "Finalizar y generar nota"}
+                  </button>
+                );
+              })()}
               {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
                 <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo"); }} disabled={descargando} title="Imprimir la nota ahora">
                   <IconoAuto valor="🖨️" size={18} /> Imprimir nota
