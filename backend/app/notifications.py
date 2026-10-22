@@ -222,7 +222,16 @@ def _enviar_correo(destinatario: str, asunto: str, cuerpo: str, html: str | None
     msg["From"] = remitente
     msg["To"] = destinatario
 
-    with smtplib.SMTP(host, port, timeout=10) as server:
-        server.starttls()
-        server.login(user, password)
-        server.sendmail(remitente, [destinatario], msg.as_string())
+    # Puerto 465 = SSL directo (no se puede hacer STARTTLS ahí, truena); el
+    # resto (587, 25, etc.) usa STARTTLS normal. Varios proveedores de
+    # correo (Hostinger, cPanel, algunos de Office365) dan 465 por
+    # defecto — sin esto, el correo se queda sin enviar en silencio.
+    if port == 465:
+        with smtplib.SMTP_SSL(host, port, timeout=10) as server:
+            server.login(user, password)
+            server.sendmail(remitente, [destinatario], msg.as_string())
+    else:
+        with smtplib.SMTP(host, port, timeout=10) as server:
+            server.starttls()
+            server.login(user, password)
+            server.sendmail(remitente, [destinatario], msg.as_string())

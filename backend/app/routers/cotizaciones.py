@@ -145,6 +145,14 @@ def eliminar_detalle(cotizacion_id: int, detalle_id: int, db: Session = Depends(
     return _con_costos(_get_cotizacion_o_404(db, cotizacion_id))
 
 
+@router.delete("/{cotizacion_id}/detalles", response_model=schemas.CotizacionCompletaOut)
+def eliminar_todos_los_detalles(cotizacion_id: int, db: Session = Depends(get_db), user=Depends(require_permission("cotizaciones.editar"))):
+    _get_cotizacion_o_404(db, cotizacion_id)
+    db.query(models.CotizacionDetalle).filter(models.CotizacionDetalle.id_cotizacion == cotizacion_id).delete()
+    db.commit()
+    return _con_costos(_get_cotizacion_o_404(db, cotizacion_id))
+
+
 @router.get("/{cotizacion_id}/pdf")
 def descargar_pdf(cotizacion_id: int, db: Session = Depends(get_db), user=Depends(require_permission("cotizaciones.ver"))):
     from ..recibo_pdf import generar_cotizacion_pdf  # import diferido: evita cargar reportlab si no se usa

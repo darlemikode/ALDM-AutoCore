@@ -414,6 +414,29 @@ def _servicio_cliente_opcional():
         print(f"[migración] no se pudo relajar servicios.id_cliente/id_vehiculo: {e}")
 
 
+def _vehiculo_cliente_opcional():
+    """En cotizaciones se puede registrar un vehículo sin dueño capturado:
+    `vehiculos.id_cliente` deja de ser NOT NULL."""
+    inspector = inspect(engine)
+    if "vehiculos" not in inspector.get_table_names():
+        return
+    cols = {c["name"]: c for c in inspector.get_columns("vehiculos")}
+    if "id_cliente" not in cols or cols["id_cliente"].get("nullable", True):
+        return
+    try:
+        with engine.begin() as conn:
+            if es_sqlite:
+                _reconstruir_tabla_sqlite(conn, Base.metadata.tables["vehiculos"])
+                conn.execute(text("PRAGMA foreign_keys=ON"))
+            elif es_mssql:
+                conn.execute(text("ALTER TABLE vehiculos ALTER COLUMN id_cliente INT NULL"))
+            else:
+                conn.execute(text('ALTER TABLE vehiculos ALTER COLUMN "id_cliente" DROP NOT NULL'))
+        print("[migración automática] vehiculos: cliente ahora opcional (vehículos de cotización)")
+    except Exception as e:  # noqa: BLE001
+        print(f"[migración] no se pudo relajar vehiculos.id_cliente: {e}")
+
+
 def _quitar_subcategoria_legacy():
     """inventario_refacciones aún trae la columna vieja id_subcategoria_refaccion
     (NOT NULL) del diseño anterior; el modelo actual ya no la usa y bloquea los
@@ -829,6 +852,7 @@ def run():
     _vin_unico_filtrado()
     _quitar_subcategoria_legacy()
     _servicio_cliente_opcional()
+    _vehiculo_cliente_opcional()
     _indices_llaves_foraneas()
     db = sesion_global()
     try:

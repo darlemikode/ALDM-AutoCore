@@ -91,26 +91,32 @@ def obtener(vehiculo_id: int, db: Session = Depends(get_db), user=Depends(requir
     return vehiculo
 
 
-def _generar_numero_cuenta_vehiculo(db: Session, cliente: models.Cliente) -> str:
+def _generar_numero_cuenta_vehiculo(db: Session, cliente: models.Cliente | None) -> str:
     """Cuenta del vehículo, casada 1 a 1 con la cuenta del cliente:
-    <cuenta-del-cliente>-<consecutivo de 2 dígitos>, ej. CTE-000001-01."""
-    total_previos = (
-        db.query(models.Vehiculo).filter(models.Vehiculo.id_cliente == cliente.id_cliente).count()
-    )
-    sub_indice = total_previos + 1
-    numero_cuenta = f"{cliente.numero_cuenta}-{sub_indice:02d}"
+    <cuenta-del-cliente>-<consecutivo de 2 dígitos>, ej. CTE-000001-01.
+    Sin cliente (vehículo de cotización): SIN-CLIENTE-<consecutivo>."""
+    if cliente:
+        total_previos = db.query(models.Vehiculo).filter(models.Vehiculo.id_cliente == cliente.id_cliente).count()
+        sub_indice = total_previos + 1
+        numero_cuenta = f"{cliente.numero_cuenta}-{sub_indice:02d}"
+    else:
+        total_previos = db.query(models.Vehiculo).filter(models.Vehiculo.id_cliente.is_(None)).count()
+        sub_indice = total_previos + 1
+        numero_cuenta = f"SIN-CLIENTE-{sub_indice:04d}"
     # Salvaguarda ante huecos por vehículos eliminados previamente
     while db.query(models.Vehiculo).filter(models.Vehiculo.numero_cuenta == numero_cuenta).first():
         sub_indice += 1
-        numero_cuenta = f"{cliente.numero_cuenta}-{sub_indice:02d}"
+        numero_cuenta = f"{cliente.numero_cuenta}-{sub_indice:02d}" if cliente else f"SIN-CLIENTE-{sub_indice:04d}"
     return numero_cuenta
 
 
 @router.post("/", response_model=schemas.VehiculoOut, status_code=201)
 def crear(payload: schemas.VehiculoIn, db: Session = Depends(get_db), user=Depends(require_permission("vehiculos.crear"))):
-    cliente = db.query(models.Cliente).filter(models.Cliente.id_cliente == payload.id_cliente).first()
-    if not cliente:
-        raise HTTPException(status_code=400, detail="El cliente indicado no existe")
+    cliente = None
+    if payload.id_cliente:
+        cliente = db.query(models.Cliente).filter(models.Cliente.id_cliente == payload.id_cliente).first()
+        if not cliente:
+            raise HTTPException(status_code=400, detail="El cliente indicado no existe")
     numero_cuenta = _generar_numero_cuenta_vehiculo(db, cliente)
     vehiculo = models.Vehiculo(numero_cuenta=numero_cuenta, **payload.model_dump())
     db.add(vehiculo)

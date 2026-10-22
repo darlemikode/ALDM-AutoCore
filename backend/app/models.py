@@ -470,7 +470,8 @@ class Vehiculo(TenantMixin, Base):
     numero_cuenta = Column(String(30), unique=True, nullable=False, index=True)
     id_modelo_vehiculo = Column(Integer, ForeignKey("vehiculos_modelos.id_modelo_vehiculo"), nullable=True)
     id_marca_vehiculo = Column(Integer, ForeignKey("vehiculos_marcas.id_marca_vehiculo"), nullable=True)
-    id_cliente = Column(Integer, ForeignKey("clientes.id_cliente"), nullable=False)
+    # Nullable: una cotización puede guardar un vehículo sin dueño capturado.
+    id_cliente = Column(Integer, ForeignKey("clientes.id_cliente"), nullable=True)
     numserie_vehiculo = Column(String(50), nullable=True)
     placas_vehiculo = Column(String(20), nullable=True)
     id_color = Column(Integer, ForeignKey("colores_vehiculos.id_color"), nullable=True)
@@ -707,13 +708,20 @@ class Cotizacion(TenantMixin, Base):
     __tablename__ = "cotizaciones"
 
     id_cotizacion = Column(Integer, primary_key=True, index=True)
+    # Opcionales: a diferencia de una orden, una cotización puede quedarse
+    # sin cliente ni vehículo, o solo con el vehículo (sin dueño capturado).
+    id_cliente = Column(Integer, ForeignKey("clientes.id_cliente"), nullable=True)
+    id_vehiculo = Column(Integer, ForeignKey("vehiculos.id_vehiculo"), nullable=True)
     titulo = Column(String(150), nullable=False)  # ej. "Afinación mayor Nissan Versa 2018"
     iva_porcentaje = Column(Float, default=16)
     comentarios = Column(Text, nullable=True)
     fecha_cotizacion = Column(DateTime, default=datetime.utcnow)
     vigente_hasta = Column(DateTime, nullable=True)
 
-    detalles = relationship("CotizacionDetalle", back_populates="cotizacion", cascade="all, delete-orphan")
+    cliente = relationship("Cliente")
+    vehiculo = relationship("Vehiculo")
+    detalles = relationship("CotizacionDetalle", back_populates="cotizacion", cascade="all, delete-orphan",
+                             order_by="(CotizacionDetalle.orden, CotizacionDetalle.id_cotizacion_detalle)")
 
 
 class CotizacionDetalle(TenantMixin, Base):
@@ -728,6 +736,7 @@ class CotizacionDetalle(TenantMixin, Base):
     costo_mano_obra = Column(Float, default=0)
     costo_refaccion = Column(Float, default=0)
     costo_extra = Column(Float, default=0)
+    orden = Column(Integer, default=0)
 
     cotizacion = relationship("Cotizacion", back_populates="detalles")
     refaccion = relationship("Refaccion")

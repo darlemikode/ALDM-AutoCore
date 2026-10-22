@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas, password_tokens
 from ..database import get_db_global
-from ..notifications import enviar_correo_bienvenida_taller
+from ..notifications import enviar_correo_bienvenida_taller, enviar_correo_restablecer
 from ..security import generar_password_temporal, hash_password, invalidar_tokens, require_superadmin
 from ..seed import rol_admin_de, sembrar_taller
 from ..suscripciones import (
@@ -570,6 +570,18 @@ def actualizar_usuario(usuario_id: int, payload: schemas.UsuarioGlobalUpdate, db
         setattr(u, k, v)
     db.commit()
     return _usuario(db, usuario_id)
+
+
+@router.post("/usuarios/{usuario_id}/restablecer-enlace")
+def restablecer_enlace_usuario(usuario_id: int, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    """Le manda al usuario el mismo enlace de "olvidé mi contraseña" que
+    mandaría el self-service — sin generarle ni dictarle ninguna contraseña."""
+    u = _usuario(db, usuario_id)
+    if not u.correo:
+        raise HTTPException(status_code=400, detail="Este usuario no tiene correo registrado.")
+    token = password_tokens.generar_token(u, password_tokens.TIPO_RESET)
+    enviar_correo_restablecer(u.correo, u.nombre_completo, token)
+    return {"detail": f"Se mandó el enlace a {u.correo}."}
 
 
 @router.put("/usuarios/{usuario_id}/talleres", response_model=schemas.UsuarioGlobalOut)
