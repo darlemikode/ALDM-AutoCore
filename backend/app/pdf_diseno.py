@@ -12,6 +12,7 @@ fuentes instalados en Windows ni en el servidor.
 import io
 import math
 import os
+import unicodedata
 
 from reportlab.lib import colors
 from reportlab.lib.utils import ImageReader
@@ -96,6 +97,13 @@ def fecha_mx(dt):
 
 
 # --- Datos del taller ----------------------------------------------------------
+def _comparable(texto: str) -> str:
+    """Sin acentos, en mayúsculas y sin puntos, para comparar textos escritos a mano."""
+    plano = unicodedata.normalize("NFD", texto or "")
+    plano = "".join(ch for ch in plano if unicodedata.category(ch) != "Mn")
+    return " ".join(plano.upper().replace(".", " ").replace(",", " ").split())
+
+
 def datos_taller(taller) -> dict:
     if not taller:
         return {"nombre": "Mi Taller", "linea1": "", "linea2": "", "lineas": [], "logo": None}
@@ -103,11 +111,23 @@ def datos_taller(taller) -> dict:
     estado = getattr(getattr(taller, "estado", None), "nombre_estado", None)
     calle = " ".join(filter(None, [taller.calle, taller.numero_taller]))
     colonia = (taller.direccion or "").strip()
-    if colonia and not colonia.lower().startswith(("col.", "col ", "colonia")):
+    # Si quien capturó metió todo el domicilio en un solo campo, la calle y la
+    # colonia se repiten. Se deja solo una vez.
+    if calle and _comparable(calle) and _comparable(calle) in _comparable(colonia):
+        calle = ""
+    if colonia and _comparable(colonia) and _comparable(colonia) in _comparable(calle):
+        colonia = ""
+    # Solo se antepone "Col." si el texto no menciona ya una colonia (si trae el
+    # domicilio completo escrito a mano, anteponerlo daría "Col. Av. Paseo...").
+    if colonia and "COL" not in _comparable(colonia).split():
         colonia = f"Col. {colonia}"
     telefonos = [t for t in (taller.telefono, getattr(taller, "telefono2", None), getattr(taller, "telefono3", None)) if t]
     correos = [c for c in (taller.correo, getattr(taller, "correo2", None)) if c]
+    # Tampoco se repiten ciudad y estado si ya vienen escritos dentro del domicilio
+    escrito = _comparable(f"{calle} {colonia}")
     lugar = " - ".join(filter(None, [ciudad, estado]))
+    if ciudad and _comparable(ciudad) in escrito:
+        lugar = ""
     # Formato del encabezado: calle y número / colonia / CP + ciudad / teléfonos / correos / RFC
     lineas = [
         {"izq": calle.upper()} if calle else None,
@@ -207,13 +227,44 @@ class PlantillaDocumento:
         c.drawString(x, caja_y + caja_h - 8 * mm, self.t["nombre"][:36])
         c.setFillColor(colors.HexColor("#0b1218"))
         disponible = caja_x + caja_w - 4 * mm - x
-        for i, ln in enumerate(self.t["lineas"][:6]):
+        # Cuántos renglones caben dentro del recuadro sin desbordarlo por abajo
+        max_lineas = int((caja_h - 15 * mm) / (3.6 * mm) + 1e-6) + 1  # el epsilon evita perder un renglón por redondeo
+
+        def _partir(texto, tam, ancho_max):
+            """Corta el texto en varios renglones para que ninguno se salga de ancho."""
+            lineas_txt, actual = [], ""
+            for palabra in texto.split():
+                prueba = f"{actual} {palabra}".strip()
+                if not actual or c.stringWidth(prueba, "Helvetica-Bold", tam) <= ancho_max:
+                    actual = prueba
+                else:
+                    lineas_txt.append(actual)
+                    actual = palabra
+            if actual:
+                lineas_txt.append(actual)
+            return lineas_txt or [""]
+
+        def _bloque(tam):
+            """Arma todos los renglones ya cortados a este tamaño de letra."""
+            filas = []
+            for ln in self.t["lineas"]:
+                izq, der = ln.get("izq", ""), ln.get("der", "")
+                # El texto de la derecha va en el primer renglón: hay que apartarle su ancho
+                reservado = (c.stringWidth(der, "Helvetica-Bold", tam) + 6) if der else 0
+                for j, trozo in enumerate(_partir(izq, tam, max(disponible - reservado, 10))):
+                    filas.append((trozo, der if j == 0 else "", tam))
+            return filas
+
+        # Se encoge la letra hasta que TODO el bloque quepa dentro del recuadro
+        tam = 8.0
+        filas = _bloque(tam)
+        while tam > 5.5 and len(filas) > max_lineas:
+            tam -= 0.25
+            filas = _bloque(tam)
+
+        for i, (izq, der, tam_fila) in enumerate(filas[:max_lineas]):
             y = caja_y + caja_h - (13 + i * 3.6) * mm
-            izq, der = ln.get("izq", ""), ln.get("der", "")
-            tam = 8
-            while tam > 6 and c.stringWidth(izq, "Helvetica-Bold", tam) + (c.stringWidth(der, "Helvetica-Bold", tam) + 6 if der else 0) > disponible:
-                tam -= 0.25
-            c.setFont("Helvetica-Bold", tam)
+            c.setFont("Helvetica-Bold", tam_fila)
             c.drawString(x, y, izq)
             if der:
                 c.drawRightString(caja_x + caja_w - 4 * mm, y, der)
