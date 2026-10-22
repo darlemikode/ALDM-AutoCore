@@ -4,7 +4,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 
-load_dotenv(os.getenv("ENV_FILE") or None)  # ENV_FILE=.env.azure para usar otro archivo
+load_dotenv(os.getenv("ENV_FILE") or None, override=True)  # ENV_FILE=.env.azure para usar otro archivo
+# override=True: si no, con --reload el valor viejo del .env queda pegado en
+# el proceso supervisor y los cambios al .env no se aplican hasta cerrar toda
+# la terminal (no solo guardar un archivo).
 
 # Por defecto usa SQLite: un solo archivo (sistema_mecanico.db), sin instalar
 # ni levantar ningún servidor de base de datos. Si más adelante quieres usar

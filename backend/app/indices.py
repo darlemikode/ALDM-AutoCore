@@ -15,6 +15,8 @@ INDICES = [
     ("servicios_etapa_historial", "id_servicio"),
     ("vehiculos", "id_cliente"),
     ("cotizaciones", "id_cliente"),
+    ("cotizaciones", "id_vehiculo"),
+    ("cotizaciones_detalles", "id_cotizacion"),
     ("refacciones_compatibilidades", "id_refaccion"),
     ("refacciones_proveedores", "id_refaccion"),
 ]

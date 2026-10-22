@@ -397,7 +397,7 @@ class AccesoClienteOut(BaseModel):
 class VehiculoIn(BaseModel):
     id_modelo_vehiculo: Optional[int] = None
     id_marca_vehiculo: Optional[int] = None
-    id_cliente: int
+    id_cliente: Optional[int] = None  # None solo válido al crear desde una cotización
     numserie_vehiculo: Optional[str] = None
     placas_vehiculo: Optional[str] = None
 
@@ -645,11 +645,13 @@ class CotizacionDetalleUpdate(BaseModel):
     costo_mano_obra: Optional[float] = None
     costo_refaccion: Optional[float] = None
     costo_extra: Optional[float] = None
+    orden: Optional[int] = None
 
 
 class CotizacionDetalleOut(CotizacionDetalleIn, ORMBase):
     id_cotizacion_detalle: int
     id_cotizacion: int
+    orden: int = 0
 
 
 class CotizacionCostos(BaseModel):
@@ -659,6 +661,8 @@ class CotizacionCostos(BaseModel):
 
 
 class CotizacionIn(BaseModel):
+    id_cliente: Optional[int] = None
+    id_vehiculo: Optional[int] = None
     titulo: str
     iva_porcentaje: float = 16
     comentarios: Optional[str] = None
@@ -666,6 +670,8 @@ class CotizacionIn(BaseModel):
 
 
 class CotizacionUpdate(BaseModel):
+    id_cliente: Optional[int] = None
+    id_vehiculo: Optional[int] = None
     titulo: Optional[str] = None
     iva_porcentaje: Optional[float] = None
     comentarios: Optional[str] = None
@@ -678,6 +684,8 @@ class CotizacionOut(CotizacionIn, ORMBase):
 
 
 class CotizacionCompletaOut(CotizacionOut):
+    cliente: Optional[ClienteOut] = None
+    vehiculo: Optional[VehiculoOut] = None
     detalles: List[CotizacionDetalleOut] = []
     costos: CotizacionCostos = CotizacionCostos(subtotal=0, iva=0, total=0)
 
