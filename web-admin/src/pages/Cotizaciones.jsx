@@ -49,7 +49,7 @@ export default function Cotizaciones() {
       <div className="page-header">
         <div>
           <h1><IconoModulo ruta="/cotizaciones" /> Cotizaciones</h1>
-          <div className="subtitle">Presupuestos sin cliente ni vehículo ligado — para cuando solo preguntan cuánto costaría algo</div>
+          <div className="subtitle">Presupuestos para cuando solo preguntan cuánto costaría algo — el cliente y el vehículo son opcionales</div>
         </div>
         {hasPermission("cotizaciones.crear") && (
           <button className="btn btn-primary btn-nuevo" onClick={() => setCreating(true)}><span className="btn-nuevo-icono"><Icono nombre="document-text" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva cotización</button>
