@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from .. import models, nomina_calculo, schemas
 from ..database import get_db
-from ..security import require_permission
+from ..auditoria import registrar as registrar_auditoria
+from ..security import require_permission, verify_password
 
 router = APIRouter(prefix="/api/nomina", tags=["nomina"])
 
@@ -46,7 +47,7 @@ def obtener_periodo(periodo_id: int, db: Session = Depends(get_db), user=Depends
 
 def _empleados_para_nomina(db: Session):
     emps = db.query(models.Empleado).filter(models.Empleado.estatus.in_(("activo", "vacaciones", "incapacidad"))).all()
-    return [e for e in emps if (e.sueldo_base or 0) > 0 or (e.porcentaje_comision or 0) > 0 or (e.esquema_pago or "fijo") == "destajo"]
+    return [e for e in emps if nomina_calculo.sueldo_mensual_de(e) > 0 or (e.porcentaje_comision or 0) > 0 or (e.esquema_pago or "fijo") == "destajo"]
 
 
 def _crear_con_recibos(db: Session, periodo: models.PeriodoNomina) -> None:
@@ -64,7 +65,7 @@ def _crear_con_recibos(db: Session, periodo: models.PeriodoNomina) -> None:
         recibo = models.ReciboNomina(
             id_periodo=periodo.id_periodo,
             id_empleado=emp.id_empleado,
-            sueldo_base=emp.sueldo_base or 0,
+            sueldo_base=nomina_calculo.sueldo_del_periodo(emp, periodo.periodicidad),
             comisiones=nomina_calculo.calcular_comisiones(db, emp, periodo),
         )
         nomina_calculo.recalcular(recibo, emp, periodo.periodicidad)
@@ -108,7 +109,14 @@ def _generar_recurrentes(db: Session) -> None:
 def crear_periodo(payload: schemas.PeriodoNominaIn, db: Session = Depends(get_db), user=Depends(require_permission("nomina.crear"))):
     if payload.fecha_fin < payload.fecha_inicio:
         raise HTTPException(status_code=400, detail="La fecha final no puede ser anterior a la inicial.")
-    datos = payload.model_dump(exclude={"empleados"})
+    choque = db.query(models.PeriodoNomina).filter(
+        models.PeriodoNomina.periodicidad == payload.periodicidad,
+        models.PeriodoNomina.fecha_inicio <= payload.fecha_fin,
+        models.PeriodoNomina.fecha_fin >= payload.fecha_inicio,
+    ).first()
+    if choque:
+        raise HTTPException(status_code=400, detail=f"Ya existe un periodo {choque.periodicidad} del {choque.fecha_inicio} al {choque.fecha_fin} que se empalma. Si te equivocaste, edítalo (queda en Auditoría) en lugar de crear otro.")
+    datos = payload.model_dump(exclude={"empleados", "motivo"})
     datos["empleados_ids"] = ",".join(str(i) for i in (payload.empleados or [])) or None
     periodo = models.PeriodoNomina(**datos)
     _crear_con_recibos(db, periodo)
@@ -166,6 +174,40 @@ def crear_periodos_lote(payload: schemas.PeriodoLoteIn, db: Session = Depends(ge
     return {"creados": creados, "omitidos": omitidos}
 
 
+@router.post("/verificar-acceso")
+def verificar_acceso(payload: schemas.SueldoVerIn, db: Session = Depends(get_db), user=Depends(require_permission("nomina.ver"))):
+    """Confirma la contraseña del usuario para mostrar los montos de nómina en pantalla."""
+    if not user.tiene_permiso("nomina.ver_salario") and not verify_password(payload.password or "", user.hashed_password):
+        registrar_auditoria(db, user, "nomina", None, "acceso_montos_fallido", alerta="Contraseña incorrecta al mostrar montos de nómina")
+        db.commit()
+        raise HTTPException(status_code=403, detail="Contraseña incorrecta.")
+    registrar_auditoria(db, user, "nomina", None, "acceso_montos")
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/periodos/eliminar-futuros")
+def eliminar_periodos_futuros(payload: schemas.PeriodosFuturosDel, db: Session = Depends(get_db), user=Depends(require_permission("nomina.eliminar"))):
+    """Borra de una vez los periodos que aún no empiezan (y sin pagos), con motivo obligatorio y bitácora."""
+    motivo = (payload.motivo or "").strip()
+    if len(motivo) < 5:
+        raise HTTPException(status_code=400, detail="Escribe el motivo (mínimo 5 caracteres). Queda registrado en Auditoría.")
+    hoy = date.today()
+    borrados = 0
+    for p in db.query(models.PeriodoNomina).filter(models.PeriodoNomina.fecha_inicio > hoy).all():
+        if p.status == "pagado" or any(r.pagado for r in p.recibos):
+            continue
+        if payload.ids is not None and p.id_periodo not in payload.ids:
+            continue
+        total = sum((r.total_pagar or 0) for r in p.recibos)
+        registrar_auditoria(db, user, "periodo_nomina", p.id_periodo, "eliminacion_periodo", "periodo",
+                            f"{p.periodicidad} {p.fecha_inicio} a {p.fecha_fin} · {len(p.recibos)} recibo(s) · ${total:,.2f}", "eliminado", motivo)
+        db.delete(p)
+        borrados += 1
+    db.commit()
+    return {"borrados": borrados}
+
+
 @router.put("/periodos/{periodo_id}", response_model=schemas.PeriodoNominaOut)
 def editar_periodo(periodo_id: int, payload: schemas.PeriodoNominaIn, db: Session = Depends(get_db), user=Depends(require_permission("nomina.editar"))):
     periodo = db.query(models.PeriodoNomina).filter(models.PeriodoNomina.id_periodo == periodo_id).first()
@@ -181,12 +223,30 @@ def editar_periodo(periodo_id: int, payload: schemas.PeriodoNominaIn, db: Sessio
         db.commit()
         db.refresh(periodo)
         return periodo
+    nuevos_ids = ",".join(str(i) for i in (payload.empleados or [])) or None
+    cambios = [
+        ("fecha_inicio", periodo.fecha_inicio, payload.fecha_inicio),
+        ("fecha_fin", periodo.fecha_fin, payload.fecha_fin),
+        ("periodicidad", periodo.periodicidad, payload.periodicidad),
+        ("dia_pago", periodo.dia_pago, payload.dia_pago),
+        ("empleados_ids", periodo.empleados_ids, nuevos_ids),
+        ("recurrente", periodo.recurrente, payload.recurrente),
+    ]
+    cambios = [(c, a, n) for c, a, n in cambios if str(a or "") != str(n or "")]
+    # Corregir un periodo exige motivo: queda en la bitácora inmutable (campo, antes, después, quién y cuándo)
+    if any(c != "recurrente" for c, _, _ in cambios):
+        motivo = (payload.motivo or "").strip()
+        if len(motivo) < 5:
+            raise HTTPException(status_code=400, detail="Escribe el motivo de la corrección (mínimo 5 caracteres). Queda registrado en Auditoría.")
+        for campo, antes, despues in cambios:
+            registrar_auditoria(db, user, "periodo_nomina", periodo_id, "correccion_periodo", campo, antes, despues, motivo,
+                                "Periodo de nómina corregido" if campo in ("fecha_inicio", "fecha_fin") else None)
     periodo.fecha_inicio = payload.fecha_inicio
     periodo.fecha_fin = payload.fecha_fin
     periodo.periodicidad = payload.periodicidad
     periodo.recurrente = payload.recurrente
     periodo.dia_pago = payload.dia_pago
-    periodo.empleados_ids = ",".join(str(i) for i in (payload.empleados or [])) or None
+    periodo.empleados_ids = nuevos_ids
     for r in list(periodo.recibos):
         db.delete(r)
     db.flush()
@@ -217,11 +277,29 @@ def recalcular_periodo(periodo_id: int, db: Session = Depends(get_db), user=Depe
     periodo = db.query(models.PeriodoNomina).filter(models.PeriodoNomina.id_periodo == periodo_id).first()
     if not periodo:
         raise HTTPException(status_code=404, detail="Periodo no encontrado")
+    # Agrega a quien aún no tiene recibo (ej. se le capturó el sueldo después de crear el periodo)
+    ya = {r.id_empleado for r in periodo.recibos}
+    elegidos = {int(x) for x in (periodo.empleados_ids or "").split(",") if x.strip().isdigit()}
+    if elegidos:
+        candidatos = [e for e in db.query(models.Empleado).filter(models.Empleado.id_empleado.in_(elegidos)).all()
+                      if e.estatus in ("activo", "vacaciones", "incapacidad")]
+    else:
+        candidatos = _empleados_para_nomina(db)
+    for emp in candidatos:
+        if emp.id_empleado in ya:
+            continue
+        nuevo = models.ReciboNomina(id_periodo=periodo.id_periodo, id_empleado=emp.id_empleado,
+                                    sueldo_base=nomina_calculo.sueldo_del_periodo(emp, periodo.periodicidad),
+                                    comisiones=nomina_calculo.calcular_comisiones(db, emp, periodo))
+        nomina_calculo.recalcular(nuevo, emp, periodo.periodicidad)
+        db.add(nuevo)
+    db.flush()
+    db.refresh(periodo)
     for rec in periodo.recibos:
         if rec.pagado:
             continue
         emp = rec.empleado
-        rec.sueldo_base = emp.sueldo_base or 0
+        rec.sueldo_base = nomina_calculo.sueldo_del_periodo(emp, periodo.periodicidad)
         rec.comisiones = nomina_calculo.calcular_comisiones(db, emp, periodo)
         nomina_calculo.recalcular(rec, emp, periodo.periodicidad)
     db.commit()
@@ -264,12 +342,20 @@ def recibo_pdf(recibo_id: int, db: Session = Depends(get_db), user=Depends(requi
 
 
 @router.delete("/periodos/{periodo_id}", status_code=204)
-def eliminar_periodo(periodo_id: int, db: Session = Depends(get_db), user=Depends(require_permission("nomina.eliminar"))):
+def eliminar_periodo(periodo_id: int, motivo: str = "", db: Session = Depends(get_db), user=Depends(require_permission("nomina.eliminar"))):
     periodo = db.query(models.PeriodoNomina).filter(models.PeriodoNomina.id_periodo == periodo_id).first()
     if not periodo:
         raise HTTPException(status_code=404, detail="Periodo no encontrado")
     if periodo.status == "pagado":
         raise HTTPException(status_code=400, detail="Este periodo ya se pagó, no se puede eliminar.")
+    if any(r.pagado for r in periodo.recibos):
+        raise HTTPException(status_code=400, detail="Este periodo tiene recibos pagados, no se puede eliminar.")
+    if len((motivo or "").strip()) < 5:
+        raise HTTPException(status_code=400, detail="Escribe el motivo de la eliminación (mínimo 5 caracteres). Queda registrado en Auditoría.")
+    total = sum((r.total_pagar or 0) for r in periodo.recibos)
+    registrar_auditoria(db, user, "periodo_nomina", periodo_id, "eliminacion_periodo", "periodo",
+                        f"{periodo.periodicidad} {periodo.fecha_inicio} a {periodo.fecha_fin} · {len(periodo.recibos)} recibo(s) · ${total:,.2f}",
+                        "eliminado", motivo)
     db.delete(periodo)
     db.commit()
     return None

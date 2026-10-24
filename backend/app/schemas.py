@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, date
 from typing import Annotated, Optional, List
 
@@ -764,6 +765,7 @@ class ServicioUpdate(BaseModel):
     id_empleado_responsable: Optional[int] = None
     operaciones: Optional[str] = None
     comentarios_finales: Optional[str] = None
+    motivo_cambio_fecha: Optional[str] = Field(default=None, max_length=300)  # obligatorio al cambiar fechas a mano (no se guarda en la orden)
 
 
 class ServicioOut(ORMBase):
@@ -936,6 +938,7 @@ class CitaOut(ORMBase):
     id_tipo_servicio: Optional[int] = None
     descripcion: Optional[str] = None
     fecha_propuesta: Optional[datetime] = None
+    fecha_fin: Optional[datetime] = None
     estado: str
     fecha_creacion: datetime
     confirmada_por: Optional[str] = None
@@ -1027,7 +1030,8 @@ class EmpleadoIn(BaseModel):
     estatus: str = "activo"
     fecha_baja: Optional[date] = None
     id_usuario: Optional[int] = None
-    sueldo_base: float = 0
+    sueldo_base: Optional[float] = None  # derivado del mensual; solo lectura (se ignora al guardar)
+    sueldo_mensual: Optional[float] = None  # neto al mes; None = no tocar (se oculta sin verificación del administrador)
     periodicidad_pago: str = "quincenal"
     esquema_pago: str = "fijo"
     porcentaje_comision: float = 0
@@ -1041,8 +1045,18 @@ class EmpleadoEstatusIn(BaseModel):
     estatus: str
 
 
+class SueldoVerIn(BaseModel):
+    password: str
+
+
 class EmpleadoOut(EmpleadoIn, ORMBase):
     id_empleado: int
+
+    @field_validator("sueldo_base", "sueldo_mensual", mode="after")
+    @classmethod
+    def _ocultar_sueldo(cls, _v):
+        # El sueldo nunca sale en respuestas (ni anidado en recibos): solo vía /empleados/{id}/sueldo-base
+        return None
     fecha_creacion: datetime
 
 
@@ -1100,6 +1114,12 @@ class PeriodoNominaIn(BaseModel):
     recurrente: bool = False
     dia_pago: Optional[int] = Field(default=None, ge=0, le=6)
     empleados: Optional[list[int]] = None  # vacío/None = todos
+    motivo: Optional[str] = None  # obligatorio al corregir un periodo existente (queda en auditoría)
+
+
+class PeriodosFuturosDel(BaseModel):
+    motivo: str
+    ids: Optional[list[int]] = None  # None = todos los futuros sin pagos
 
 
 class PeriodoLoteIn(BaseModel):
@@ -1154,6 +1174,28 @@ class ConfiguracionTallerIn(BaseModel):
     numero_taller: Optional[str] = None
     id_estado: Optional[int] = None
     id_ciudad: Optional[int] = None
+    hora_apertura: Optional[str] = None
+    hora_cierre: Optional[str] = None
+    dias_atencion: Optional[str] = None
+
+    @field_validator("hora_apertura", "hora_cierre")
+    @classmethod
+    def _hora_valida(cls, v):
+        if v in (None, ""):
+            return v
+        if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", v):
+            raise ValueError("La hora debe tener formato HH:MM.")
+        return v
+
+    @field_validator("dias_atencion")
+    @classmethod
+    def _dias_validos(cls, v):
+        if v in (None, ""):
+            return v
+        if not re.fullmatch(r"[1-7](,[1-7]){0,6}", v):
+            raise ValueError("Los días de atención deben ser números del 1 al 7 separados por coma.")
+        return v
+
     # Código público del taller (va en su QR). Solo se puede mandar mientras
     # el taller no tenga uno ya fijado — ver routers/configuracion_taller.py.
     codigo_taller: Optional[str] = None

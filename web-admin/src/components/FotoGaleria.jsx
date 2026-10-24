@@ -94,7 +94,7 @@ export default function FotoGaleria({ entidadTipo, entidadId, puedeEditar, onCam
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           {fotos.map((foto) => (
             <div key={foto.id_foto} style={{ position: "relative", width: 120 }}>
-              <img
+              <img loading="lazy" decoding="async"
                 src={`/uploads/${foto.ruta_archivo}`}
                 alt={foto.descripcion || "Foto"}
                 onClick={() => setViendo(foto)}
@@ -137,7 +137,7 @@ export default function FotoGaleria({ entidadTipo, entidadId, puedeEditar, onCam
               >
                 <IconoAuto valor="✕" size={18} />
               </button>
-              <img
+              <img loading="lazy" decoding="async"
                 src={`/uploads/${viendo.ruta_archivo}`}
                 alt={viendo.descripcion || "Foto"}
                 style={{ display: "block", maxWidth: "100%", maxHeight: "85vh", borderRadius: 12, boxShadow: "0 12px 40px rgba(0,0,0,.4)" }}

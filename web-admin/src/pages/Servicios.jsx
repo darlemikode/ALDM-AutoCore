@@ -26,15 +26,15 @@ const STATUS_BADGE = {
 // chips de filtro y las columnas del Kanban salen de aquí.
 const OPCIONES_ESTATUS = [
   { clave: "", etiqueta: "Todas", emoji: "⚪", color: "var(--ink-500)" },
-  { clave: "en_proceso", etiqueta: "Recibido", emoji: "🔵", color: "#6aa7ff" },
-  { clave: "abierto", etiqueta: "En piso", emoji: "🟢", color: "#3ddc97" },
-  { clave: "pendiente", etiqueta: "Confirmación del cliente", emoji: "🟡", color: "#f0c419" },
-  { clave: "espera_refacciones", etiqueta: "Espera refacciones", emoji: "🟠", color: "#f0a838" },
-  { clave: "en_reparacion", etiqueta: "En reparación", emoji: "🔧", color: "#5fb8e0" },
-  { clave: "listo_entrega", etiqueta: "Listo para entrega", emoji: "✅", color: "#3fd690" },
-  { clave: "cerrado", etiqueta: "Órdenes finalizadas", emoji: "⚫", color: "#6b6b6d" },
-  { clave: "garantia", etiqueta: "Garantía", emoji: "🟣", color: "#a58aef" },
-  { clave: "cancelado", etiqueta: "Cancelado", emoji: "🔴", color: "#ff7a70" },
+  { clave: "en_proceso", etiqueta: "Recibido", emoji: "🔵", color: "#2563EB" },
+  { clave: "abierto", etiqueta: "En piso", emoji: "🟢", color: "#2563EB" },
+  { clave: "pendiente", etiqueta: "Confirmación del cliente", emoji: "🟡", color: "#F59E0B" },
+  { clave: "espera_refacciones", etiqueta: "Espera refacciones", emoji: "🟠", color: "#D97706" },
+  { clave: "en_reparacion", etiqueta: "En reparación", emoji: "🔧", color: "#1D4ED8" },
+  { clave: "listo_entrega", etiqueta: "Listo para entrega", emoji: "✅", color: "#16845B" },
+  { clave: "cerrado", etiqueta: "Órdenes finalizadas", emoji: "⚫", color: "#0F6B49" },
+  { clave: "garantia", etiqueta: "Garantía", emoji: "🟣", color: "#7C5CD6" },
+  { clave: "cancelado", etiqueta: "Cancelado", emoji: "🔴", color: "#6B7280" },
 ];
 const ETIQUETAS_ETAPA = Object.fromEntries(OPCIONES_ESTATUS.filter((op) => op.clave).map((op) => [op.clave, op.etiqueta]));
 const COLOR_ETAPA = Object.fromEntries(OPCIONES_ESTATUS.filter((op) => op.clave).map((op) => [op.clave, op.color]));
@@ -83,6 +83,7 @@ export default function Servicios() {
   const [sobreColumna, setSobreColumna] = useState(null); // clave de columna con el cursor encima
   const [creating, setCreating] = useState(false);
   const [eligiendoNueva, setEligiendoNueva] = useState(false);
+  const [clientePre, setClientePre] = useState(null); // cliente preelegido (viene del módulo Clientes)
   const yaCreoDirecta = useRef(false);
   const [garantiaOriginal, setGarantiaOriginal] = useState(null); // servicio original si venimos de "Reclamar garantía"
   const [prefillVehiculo, setPrefillVehiculo] = useState(null); // { id_cliente, id_vehiculo } si venimos de "crear orden" tras dar de alta un vehículo
@@ -145,6 +146,7 @@ export default function Servicios() {
   useEffect(() => {
     if (searchParams.get("nueva") === "1") {
       window.history.replaceState({}, "");
+      if (searchParams.get("cliente")) setClientePre(Number(searchParams.get("cliente")));
       nuevaOrdenDirecta();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -471,7 +473,7 @@ export default function Servicios() {
   return (
     <>
       {eligiendoNueva && (
-        <ElegirClienteVehiculo onConfirmar={confirmarNuevaOrden} onCerrar={() => setEligiendoNueva(false)} />
+        <ElegirClienteVehiculo idCliente={clientePre} onConfirmar={confirmarNuevaOrden} onCerrar={() => { setEligiendoNueva(false); setClientePre(null); }} />
       )}
       <div className="page-header">
         <div>
@@ -586,7 +588,7 @@ export default function Servicios() {
               const cli = s.cliente ? `${s.cliente.nombre_cliente} ${s.cliente.paterno_cliente || ""}`.trim() : null;
               const claveFila = columnaKanbanDe(s);
               return (
-                <div key={s.id_servicio} className={`orden-fila est-${s.status}`} style={{ "--acc": COLOR_ETAPA[claveFila] || "#3ddc97" }} onClick={() => navigate(`/servicios/${s.id_servicio}`)}>
+                <div key={s.id_servicio} className={`orden-fila est-${s.status}`} style={{ "--acc": COLOR_ETAPA[claveFila] || "#2563EB" }} onClick={() => navigate(`/servicios/${s.id_servicio}`)}>
                   <div className="orden-num">#{s.id_servicio}</div>
                   <div className="orden-main">
                     <div className="orden-titulo">{s.es_garantia && <><IconoAuto valor="🛡️" size={16} />{" "}</>}{s.nombre_servicio}</div>

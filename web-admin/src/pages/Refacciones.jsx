@@ -263,8 +263,8 @@ export default function Refacciones() {
       <div className="panel">
         <div className="toolbar">
           <input className="search-input" placeholder="Buscar por nombre o número de parte…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <button className={`btn btn-sm ${soloBajoStock ? "btn-primary" : "btn-secondary"}`} onClick={() => setSoloBajoStock((v) => !v)}>
-            Solo stock bajo
+          <button type="button" className={`btn-stock-bajo ${soloBajoStock ? "activo" : ""}`} aria-pressed={soloBajoStock} onClick={() => setSoloBajoStock((v) => !v)}>
+            <Icono nombre="warning" size={17} /> Solo stock bajo
           </button>
         </div>
 
@@ -284,7 +284,7 @@ export default function Refacciones() {
                   title={puedeEditar ? "Clic para editar la refacción" : undefined}
                   onClick={() => puedeEditar && abrirParaEditar(r)}>
                   <div className="veh-tarjeta-cuerpo">
-                    <div className="veh-tarjeta-titulo">{r.nombre_refaccion}</div>
+                    <div className="veh-tarjeta-titulo refaccion-nombre">{r.nombre_refaccion}</div>
                     <div className="veh-tarjeta-meta">
                       <span><Icono nombre="hash" size={14} /> {r.numero_refaccion || "Sin n.º de parte"}</span>
                       <span><span className="cat-pill" style={{ "--c": col }}>{cat}</span></span>
@@ -314,7 +314,7 @@ export default function Refacciones() {
               return (
                 <div key={r.id_refaccion} className="orden-fila fila-tabla" style={{ "--acc": col, cursor: puedeEditar ? "pointer" : undefined }} title={puedeEditar ? "Clic para editar la refacción" : undefined} onClick={() => puedeEditar && abrirParaEditar(r)}>
                   <div className="orden-main">
-                    <div className="orden-titulo">{r.nombre_refaccion}</div>
+                    <div className="orden-titulo refaccion-nombre">{r.nombre_refaccion}</div>
                     <div className="fila-datos">
                       <div className="fila-dato"><span className="fila-dato-etq">N.º de parte</span><span className="fila-dato-val">{r.numero_refaccion || "—"}</span></div>
                       <div className="fila-dato"><span className="fila-dato-etq">Categoría</span><span className="fila-dato-val"><span className="cat-pill" style={{ "--c": col }}>{cat}</span></span></div>
@@ -338,7 +338,6 @@ export default function Refacciones() {
 
       {editing && (
         <FormModal
-          tema="complementario"
           title={editing.id_refaccion ? "Editar refacción" : "Nueva refacción"}
           icono="⚙️"
           subtitulo="Datos de la refacción, proveedor y stock."

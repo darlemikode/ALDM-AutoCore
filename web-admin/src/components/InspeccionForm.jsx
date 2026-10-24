@@ -19,24 +19,22 @@ const ICONO_CATEGORIA = {
 };
 
 /**
- * Checklist de inspección digital, agrupado por categoría. Se guarda solo:
- * cada clic se guarda al momento y los comentarios al dejar de escribir.
- * El primer cambio crea la inspección; los siguientes la actualizan.
+ * Checklist de inspección digital, agrupado por categoría. NO se guarda solo:
+ * se captura completo y se guarda con «Finalizar inspección» (o «Guardar avance»).
+ * El primer guardado crea la inspección; los siguientes la actualizan.
  */
 export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExistente, refacciones, onGuardado, onClose, puedeEditar = true }) {
-  const { notify } = useUI();
+  const { notify, confirmDialog } = useUI();
   const [items, setItems] = useState([]);
   const [resultados, setResultados] = useState({}); // { id_item: {estado, comentario, id_refaccion_sugerida} }
   const [comentarioGeneral, setComentarioGeneral] = useState(inspeccionExistente?.comentario_general || "");
   const [idInspeccion, setIdInspeccion] = useState(inspeccionExistente?.id_inspeccion || null);
   const [estadoGuardado, setEstadoGuardado] = useState(""); // "" | guardando | guardado | error
-  const [pendiente, setPendiente] = useState(null); // { n, retraso } — pide un guardado
+  const [sucio, setSucio] = useState(false); // hay cambios sin guardar
 
   const idRef = useRef(inspeccionExistente?.id_inspeccion || null);
   const datosRef = useRef({ resultados, comentarioGeneral });
   datosRef.current = { resultados, comentarioGeneral };
-  const colaRef = useRef(Promise.resolve());
-  const timerRef = useRef(null);
 
   useEffect(() => {
     api.get("/inspecciones/items").then((data) => {
@@ -53,9 +51,9 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function persistir() {
+  async function guardar() {
     const { resultados: res, comentarioGeneral: general } = datosRef.current;
-    if (Object.keys(res).length === 0) return;
+    if (Object.keys(res).length === 0) return false;
     const payload = {
       id_vehiculo: idVehiculo,
       id_servicio: idServicio || null,
@@ -67,6 +65,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
         id_refaccion_sugerida: r.id_refaccion_sugerida || null,
       })),
     };
+    setEstadoGuardado("guardando");
     try {
       const guardada = idRef.current
         ? await api.put(`/inspecciones/${idRef.current}`, payload)
@@ -74,45 +73,35 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
       idRef.current = guardada.id_inspeccion;
       setIdInspeccion(guardada.id_inspeccion);
       setEstadoGuardado("guardado");
+      setSucio(false);
       onGuardado?.(guardada);
+      return true;
     } catch (err) {
       setEstadoGuardado("error");
       notify(err.message, "error");
+      return false;
     }
   }
 
-  // Guardados en fila: el primero crea la inspección y los demás la actualizan
-  function encolar() {
-    timerRef.current = null;
-    colaRef.current = colaRef.current.then(persistir);
-    return colaRef.current;
+  async function finalizar() {
+    if (!puedeEditar) { onClose(); return; }
+    if (await guardar()) {
+      notify("Inspección guardada.", "success");
+      onClose();
+    }
   }
 
-  useEffect(() => {
-    if (!pendiente) return undefined;
-    setEstadoGuardado("guardando");
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(encolar, pendiente.retraso);
-    return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendiente]);
-
-  function guardarLuego(retraso = 0) {
-    setPendiente((p) => ({ n: (p?.n || 0) + 1, retraso }));
+  async function cerrar() {
+    if (sucio && puedeEditar) {
+      const ok = await confirmDialog("Tienes cambios sin guardar en la inspección. ¿Salir sin guardarlos?", { danger: true, confirmar: "Sí, salir sin guardar" });
+      if (!ok) return;
+    }
+    onClose();
   }
 
   function actualizar(idItem, campo, valor) {
     setResultados((prev) => ({ ...prev, [idItem]: { ...prev[idItem], [campo]: valor } }));
-    guardarLuego(campo === "comentario" ? 900 : 0);
-  }
-
-  async function cerrar() {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      encolar();
-    }
-    await colaRef.current;
-    onClose();
+    setSucio(true);
   }
 
   const categorias = [...new Set(items.map((i) => i.categoria))];
@@ -129,14 +118,12 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
       items.filter((i) => i.categoria === cat).forEach((i) => { siguiente[i.id_item] = { ...siguiente[i.id_item], estado }; });
       return siguiente;
     });
-    guardarLuego(0);
+    setSucio(true);
   }
 
-  const textoGuardado = {
-    guardando: "Guardando…",
-    guardado: "Guardado",
-    error: "No se guardó",
-  }[estadoGuardado] || (idInspeccion ? "Guardado" : "Se guarda solo al tocar");
+  const textoGuardado = estadoGuardado === "guardando" ? "Guardando…" : estadoGuardado === "error" ? "No se guardó"
+    : sucio ? "Cambios sin guardar" : idInspeccion ? "Guardado" : "Aún sin guardar";
+  const claseGuardado = estadoGuardado === "guardando" ? "guardando" : estadoGuardado === "error" ? "error" : sucio || !idInspeccion ? "" : "guardado";
 
   return createPortal(
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && cerrar()}>
@@ -147,18 +134,19 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
             <div className="modal-avatar-icono" style={{ "--acc": "var(--teal-600)", "--acc-soft": "var(--teal-100)" }}><Icono nombre="search" size={26} /></div>
             <div>
               <h2>Inspección digital</h2>
-              <div className="modal-subtitulo">Toca el estado de cada punto; se guarda al instante. Lo que quede en "Mal" lo puedes ligar a la refacción que se necesita.</div>
+              <div className="modal-subtitulo">Revisa cada punto y, al terminar, pulsa «Finalizar inspección». Lo que quede en "Mal" lo puedes ligar a la refacción que se necesita.</div>
             </div>
           </div>
           <div className="insp-contadores">
             <span className="insp-cont bien"><Icono nombre="check-circle" size={18} /> <b>{conteo.bien}</b> Bien</span>
             <span className="insp-cont regular"><Icono nombre="warning" size={18} /> <b>{conteo.regular}</b> Regular</span>
             <span className="insp-cont mal"><Icono nombre="x-circle" size={18} /> <b>{conteo.mal}</b> Mal</span>
-            <span className={`guardado-auto ${estadoGuardado || (idInspeccion ? "guardado" : "")}`}>{textoGuardado}</span>
+            <span className={`guardado-auto ${claseGuardado}`}>{textoGuardado}</span>
           </div>
         </div>
 
-        <fieldset className="insp-cuerpo insp-fieldset" disabled={!puedeEditar}>
+        <div className="insp-cuerpo">
+        <fieldset className="insp-fieldset" disabled={!puedeEditar}>
           {categorias.map((cat) => {
             const delaCat = items.filter((i) => i.categoria === cat);
             const malos = delaCat.filter((i) => resultados[i.id_item]?.estado === "mal").length;
@@ -223,15 +211,30 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
 
           <div className="field full">
             <label><IconoAuto valor="📋" size={18} /> Comentario general</label>
-            <textarea value={comentarioGeneral} onChange={(e) => { setComentarioGeneral(e.target.value); guardarLuego(900); }} placeholder="Observaciones generales de la inspección" />
+            <textarea value={comentarioGeneral} onChange={(e) => { setComentarioGeneral(e.target.value); setSucio(true); }} placeholder="Observaciones generales de la inspección" />
           </div>
 
-          {idInspeccion && (
+          {idInspeccion ? (
             <div style={{ marginTop: 10 }}>
               <FotoGaleria entidadTipo="inspeccion" entidadId={idInspeccion} puedeEditar={puedeEditar} />
             </div>
+          ) : puedeEditar && (
+            <div className="field-hint" style={{ marginTop: 10 }}>📷 Para agregar fotos, pulsa primero «Guardar avance».</div>
           )}
         </fieldset>
+        </div>
+
+        <div className="insp-pie">
+          <button type="button" className="btn btn-secondary" onClick={cerrar} disabled={estadoGuardado === "guardando"}>{puedeEditar ? "Cancelar" : "Cerrar"}</button>
+          {puedeEditar && (
+            <>
+              <button type="button" className="btn btn-secondary" onClick={guardar} disabled={estadoGuardado === "guardando" || !sucio && !!idInspeccion}>Guardar avance</button>
+              <button type="button" className="btn btn-exito" onClick={finalizar} disabled={estadoGuardado === "guardando"}>
+                <Icono nombre="check-circle" size={18} /> {estadoGuardado === "guardando" ? "Guardando…" : "Finalizar inspección"}
+              </button>
+            </>
+          )}
+        </div>
 
       </div>
     </div>

@@ -9,9 +9,10 @@ from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import models, schemas
+from .. import models, nomina_calculo, schemas
 from ..database import get_db
-from ..security import get_current_user, require_permission
+from ..auditoria import registrar as registrar_auditoria
+from ..security import get_current_user, require_permission, verify_password
 
 router = APIRouter(prefix="/api/empleados", tags=["empleados"])
 
@@ -31,9 +32,32 @@ def _aplicar_estatus(empleado: models.Empleado, estatus: str) -> None:
         empleado.fecha_baja = None
 
 
+def _oculto(emp: models.Empleado, user=None) -> schemas.EmpleadoOut:
+    """El sueldo base nunca viaja en los listados: solo se ve verificando
+    la contraseña del administrador (POST /{id}/sueldo-base)."""
+    if user is not None and user.tiene_permiso("nomina.ver_salario"):
+        return schemas.EmpleadoOut.model_validate(emp).model_copy(update={"sueldo_mensual": nomina_calculo.sueldo_mensual_de(emp)})
+    return schemas.EmpleadoOut.model_validate(emp).model_copy(update={"sueldo_base": None, "sueldo_mensual": None})
+
+
 @router.get("/", response_model=list[schemas.EmpleadoOut])
 def listar(db: Session = Depends(get_db), user=Depends(require_permission("empleados.ver"))):
-    return db.query(models.Empleado).order_by(models.Empleado.nombre).all()
+    return [_oculto(e, user) for e in db.query(models.Empleado).order_by(models.Empleado.nombre).all()]
+
+
+@router.post("/{empleado_id}/sueldo-base")
+def ver_sueldo_base(empleado_id: int, payload: schemas.SueldoVerIn, db: Session = Depends(get_db), user=Depends(require_permission("empleados.editar"))):
+    """Revela el sueldo base solo si el administrador confirma su contraseña."""
+    empleado = db.query(models.Empleado).filter(models.Empleado.id_empleado == empleado_id).first()
+    if not empleado:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    if not user.tiene_permiso("nomina.ver_salario") and not verify_password(payload.password or "", user.hashed_password):
+        registrar_auditoria(db, user, "empleado", empleado_id, "consulta_sueldo_fallida", alerta="Contraseña incorrecta al consultar sueldo")
+        db.commit()
+        raise HTTPException(status_code=403, detail="Contraseña incorrecta.")
+    registrar_auditoria(db, user, "empleado", empleado_id, "consulta_sueldo")
+    db.commit()
+    return {"sueldo_mensual": nomina_calculo.sueldo_mensual_de(empleado), "sueldo_base": empleado.sueldo_base or 0}
 
 
 @router.post("/", response_model=schemas.EmpleadoOut, status_code=201)
@@ -42,12 +66,16 @@ def crear(payload: schemas.EmpleadoIn, db: Session = Depends(get_db), user=Depen
     estatus = datos.pop("estatus", "activo")
     datos.pop("activo", None)
     datos.pop("fecha_baja", None)
+    mensual = datos.pop("sueldo_mensual", None) or 0
+    datos.pop("sueldo_base", None)
+    datos["sueldo_mensual"] = mensual
+    datos["sueldo_base"] = round(mensual * nomina_calculo.dias_nominales(datos.get("periodicidad_pago")) / nomina_calculo.DIAS_LEY_MES, 2)
     empleado = models.Empleado(**datos)
     _aplicar_estatus(empleado, estatus)
     db.add(empleado)
     db.commit()
     db.refresh(empleado)
-    return empleado
+    return _oculto(empleado, user)
 
 
 @router.put("/{empleado_id}", response_model=schemas.EmpleadoOut)
@@ -59,12 +87,21 @@ def actualizar(empleado_id: int, payload: schemas.EmpleadoIn, db: Session = Depe
     estatus = datos.pop("estatus", empleado.estatus or "activo")
     datos.pop("activo", None)
     datos.pop("fecha_baja", None)
+    datos.pop("sueldo_base", None)  # derivado: nunca se captura directo
+    nuevo_mensual = datos.pop("sueldo_mensual", None)
+    if nuevo_mensual is not None:  # None = sin verificar → no se modifica
+        anterior = nomina_calculo.sueldo_mensual_de(empleado)
+        if anterior != nuevo_mensual:
+            registrar_auditoria(db, user, "empleado", empleado_id, "cambio_sueldo", "sueldo_mensual", anterior, nuevo_mensual)
+        empleado.sueldo_mensual = nuevo_mensual
+        periodicidad = datos.get("periodicidad_pago") or empleado.periodicidad_pago
+        empleado.sueldo_base = round(nuevo_mensual * nomina_calculo.dias_nominales(periodicidad) / nomina_calculo.DIAS_LEY_MES, 2)
     for key, value in datos.items():
         setattr(empleado, key, value)
     _aplicar_estatus(empleado, estatus)
     db.commit()
     db.refresh(empleado)
-    return empleado
+    return _oculto(empleado, user)
 
 
 @router.put("/{empleado_id}/estatus", response_model=schemas.EmpleadoOut)
@@ -75,7 +112,7 @@ def cambiar_estatus(empleado_id: int, payload: schemas.EmpleadoEstatusIn, db: Se
     _aplicar_estatus(empleado, payload.estatus)
     db.commit()
     db.refresh(empleado)
-    return empleado
+    return _oculto(empleado, user)
 
 
 @router.delete("/{empleado_id}", status_code=204)

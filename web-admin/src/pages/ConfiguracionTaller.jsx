@@ -13,6 +13,11 @@ import { Icono } from "../components/Icono";
  * remisión que se le entregan al cliente, más los datos fiscales que se
  * usan para timbrar (razón social, RFC y régimen del emisor).
  */
+const OPCIONES_HORA = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2), m = i % 2 ? "30" : "00";
+  return { v: `${String(h).padStart(2, "0")}:${m}`, t: `${String(h % 12 || 12)}:${m} ${h < 12 ? "a. m." : "p. m."}` };
+});
+
 const SECCIONES = [
   { id: "identidad", icono: "🏢", titulo: "Identidad del taller", desc: "Nombre, logo y contacto — así aparece en tus documentos" },
   { id: "ubicacion", icono: "📍", titulo: "Ubicación", desc: "Dónde está tu taller — así sale en notas y cotizaciones" },
@@ -62,6 +67,7 @@ export default function ConfiguracionTaller() {
       correo: d.correo, correo2: d.correo2, rfc: d.rfc, cp: d.cp, calle: d.calle,
       numero_taller: d.numero_taller, id_estado: d.id_estado || null, id_ciudad: d.id_ciudad || null,
       codigo_taller: d.codigo_taller || null,
+      hora_apertura: d.hora_apertura || null, hora_cierre: d.hora_cierre || null, dias_atencion: d.dias_atencion || null,
     };
   }
 
@@ -265,6 +271,45 @@ export default function ConfiguracionTaller() {
             <div className="field">
               <label>Número</label>
               <input value={data.numero_taller || ""} onChange={(e) => setData({ ...data, numero_taller: e.target.value })} />
+            </div>
+          </div>
+        </section>
+
+        <section className="cfg-card">
+          <div className="cfg-card-header">
+            <span className="cfg-card-icono"><Icono nombre="clock" size={18} /></span>
+            <div>
+              <h2>Horario de atención</h2>
+              <div className="cfg-card-desc">Es el horario que se marca en el calendario de citas.</div>
+            </div>
+          </div>
+          <div className="form-grid">
+            <div className="field">
+              <label>Apertura</label>
+              <select value={data.hora_apertura || "08:00"} onChange={(e) => setData({ ...data, hora_apertura: e.target.value })}>
+                {OPCIONES_HORA.map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Cierre</label>
+              <select value={data.hora_cierre || "18:00"} onChange={(e) => setData({ ...data, hora_cierre: e.target.value })}>
+                {OPCIONES_HORA.filter((o) => o.v > (data.hora_apertura || "08:00")).map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="field" style={{ marginTop: 12 }}>
+            <label>Días de atención</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[["1", "Lun"], ["2", "Mar"], ["3", "Mié"], ["4", "Jue"], ["5", "Vie"], ["6", "Sáb"], ["7", "Dom"]].map(([n, t]) => {
+                const dias = (data.dias_atencion || "1,2,3,4,5,6").split(",");
+                const on = dias.includes(n);
+                return (
+                  <button type="button" key={n} className={`btn btn-sm ${on ? "btn-primary" : "btn-secondary"}`}
+                    onClick={() => setData({ ...data, dias_atencion: (on ? dias.filter((x) => x !== n) : [...dias, n]).sort().join(",") })}>
+                    {t}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </section>

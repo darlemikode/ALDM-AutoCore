@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
 import FiltroChips, { colorGrupo, contarPor } from "../components/FiltroChips";
@@ -30,7 +31,7 @@ const CAMPOS = [
     { value: "fijo", label: "Sueldo fijo" }, { value: "mixto", label: "Sueldo + comisión" },
     { value: "comision", label: "Solo comisión por órdenes" }, { value: "destajo", label: "Destajo (por trabajo)" },
   ] },
-  { name: "sueldo_base", label: "Sueldo base (por periodo)", type: "number", grupo: "nomina" },
+  { name: "sueldo_mensual", label: "Sueldo neto mensual", type: "number", grupo: "nomina", full: true },
   { name: "porcentaje_comision", label: "% de comisión sobre mano de obra", type: "number", grupo: "nomina" },
   { name: "aplicar_impuestos", label: "Retener ISR e IMSS (estimado)", type: "checkbox", grupo: "nomina" },
   { name: "rfc_empleado", label: "RFC", grupo: "nomina" },
@@ -44,6 +45,76 @@ const GRUPOS_EMPLEADO = {
   trabajo: { icono: "👷", titulo: "Trabajo en el taller", acento: "acento-teal" },
   nomina: { icono: "💵", titulo: "Pago y nómina", acento: "acento-ambar" },
 };
+
+// Sueldo base: oculto hasta que el administrador confirma su contraseña.
+function SueldoCampo({ emp, value, onChange, notify }) {
+  const [pidiendo, setPidiendo] = useState(false);
+  const [pwd, setPwd] = useState("");
+  const [cargando, setCargando] = useState(false);
+  const nuevo = !emp?.id_empleado;
+  const visible = nuevo || (value !== null && value !== undefined);
+
+  function cerrar() { setPidiendo(false); setPwd(""); }
+
+  async function verificar() {
+    if (!pwd) return;
+    setCargando(true);
+    try {
+      const r = await api.post(`/empleados/${emp.id_empleado}/sueldo-base`, { password: pwd });
+      onChange(r.sueldo_mensual);
+      setPidiendo(false);
+      setPwd("");
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  if (visible) {
+    const mm = Number(value) || 0;
+    const f = (n) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return (
+      <>
+        <input type="number" value={value ?? ""} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} />
+        <div className="sueldo-previa" aria-live="polite">
+          <div><small>Semanal</small><b>{f(mm * 7 / 30)}</b></div>
+          <div><small>Quincenal</small><b>{f(mm * 15 / 30)}</b></div>
+          <div><small>Mensual</small><b>{f(mm)}</b></div>
+          <div><small>Por día</small><b>{f(mm / 30)}</b></div>
+        </div>
+        <div className="field-hint">El mes se toma de 30 días (como la ley): semana = 7/30, quincena = 15/30. Ver «Avisos legales» en Nómina.</div>
+      </>
+    );
+  }
+  return (
+    <>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <input type="text" value="••••••" disabled style={{ flex: 1 }} />
+        <button type="button" className="btn btn-secondary" onClick={() => setPidiendo(true)}>Ver sueldo</button>
+      </div>
+      {pidiendo && createPortal(
+        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && cerrar()}>
+          <div className="modal" style={{ maxWidth: 380 }}>
+            <h2 style={{ fontSize: 19 }}>Confirma tu identidad</h2>
+            <div className="field">
+              <label>Contraseña del administrador</label>
+              <input type="password" autoFocus autoComplete="current-password" value={pwd}
+                onChange={(e) => setPwd(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); verificar(); } }} />
+              <div className="field-hint">Se requiere para ver el sueldo base de este empleado.</div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={cerrar}>Cancelar</button>
+              <button type="button" className="btn btn-primary" disabled={cargando || !pwd} onClick={verificar}>{cargando ? "Verificando..." : "Verificar"}</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
 
 export default function Empleados() {
   const { notify, confirmDialog } = useUI();
@@ -63,7 +134,10 @@ export default function Empleados() {
 
   useEffect(() => { load(); }, []);
 
-  const campos = CAMPOS.concat([
+  const campos = CAMPOS.map((c) => c.name !== "sueldo_mensual" ? c : {
+    ...c, type: "custom",
+    render: (valor, set) => <SueldoCampo emp={editing} value={valor} onChange={set} notify={notify} />,
+  }).concat([
     {
       name: "id_usuario", label: "Cuenta de usuario ligada (opcional — para que vea su dashboard)",
       type: "select", grupo: "trabajo",
@@ -73,6 +147,8 @@ export default function Empleados() {
 
   async function handleSave(values) {
     const payload = { ...values, id_usuario: values.id_usuario ? Number(values.id_usuario) : null };
+    delete payload.sueldo_base; // el sueldo por periodo se deriva del mensual en el servidor
+    if (payload.sueldo_mensual === "" || payload.sueldo_mensual === undefined) payload.sueldo_mensual = editing?.id_empleado ? null : 0;
     if (editing?.id_empleado) {
       await api.put(`/empleados/${editing.id_empleado}`, payload);
       notify("Empleado actualizado.", "success");

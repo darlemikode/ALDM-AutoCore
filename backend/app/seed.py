@@ -57,7 +57,10 @@ PERMISOS = (
         ("facturacion.cancelar", "facturacion", "Cancelar facturas ante el SAT"),
         ("facturacion.configurar", "facturacion", "Configurar datos fiscales del emisor y el PAC"),
         ("dashboard.ver_por_cobrar", "dashboard", "Ver el total por cobrar (saldo pendiente de clientes) en el panel"),
+        ("nomina.ver_salario", "nomina", "Ver sueldos y montos de nómina sin pedir contraseña"),
         ("servicios.ver_precios", "servicios", "Ver los montos y precios (total, pagado, saldo) de las órdenes de servicio"),
+        ("servicios.editar_fechas", "servicios", "Cambiar a mano las fechas de entrada y salida de una orden (queda en la bitácora con motivo)"),
+        ("auditoria.ver", "auditoria", "Ver la bitácora de auditoría y el reporte de excepciones (cambios de fechas, cierres y citas retroactivas)"),
     ]
 )
 
@@ -164,14 +167,50 @@ ROLES_BASE = [
 # Checklist estándar de inspección digital — el dueño puede desactivar
 # puntos que no use desde el catálogo, no hace falta tocar código.
 ITEMS_INSPECCION = {
-    "Llantas": ["Presión y/o sensor de presión"],
-    "Frenos": ["Balatas delanteras", "Balatas traseras", "Líquido de frenos"],
-    "Luces": ["Faros delanteros", "Luces traseras", "Direccionales", "Luz de freno", "Luz de reversa"],
-    "Fluidos": ["Nivel de aceite de motor", "Anticongelante/refrigerante", "Líquido limpiaparabrisas", "Líquido de dirección hidráulica"],
-    "Batería y eléctrico": ["Batería (carga y terminales)", "Alternador", "Marcha"],
-    "Suspensión y dirección": ["Amortiguadores delanteros", "Amortiguadores traseros", "Rótulas y terminales"],
-    "Carrocería": ["Limpiaparabrisas", "Espejos", "Cinturones de seguridad"],
+    "Llantas": [
+        "Llanta delantera izquierda (dibujo y desgaste)", "Llanta delantera derecha (dibujo y desgaste)",
+        "Llanta trasera izquierda (dibujo y desgaste)", "Llanta trasera derecha (dibujo y desgaste)",
+        "Llanta de refacción", "Presión y/o sensor de presión", "Rines (golpes o deformación)", "Alineación y balanceo",
+    ],
+    "Frenos": [
+        "Balatas delanteras", "Balatas traseras", "Discos delanteros", "Discos traseros / tambores",
+        "Calipers y cilindros de rueda", "Mangueras y líneas de freno", "Líquido de frenos", "Freno de mano / estacionamiento",
+    ],
+    "Suspensión y dirección": [
+        "Amortiguador delantero izquierdo", "Amortiguador delantero derecho", "Amortiguador trasero izquierdo", "Amortiguador trasero derecho",
+        "Resortes / espirales delanteros", "Resortes / espirales traseros", "Soportes (bases) de amortiguador",
+        "Rótula inferior izquierda", "Rótula inferior derecha", "Rótula superior izquierda", "Rótula superior derecha",
+        "Terminal exterior de dirección izquierda", "Terminal exterior de dirección derecha", "Terminales interiores / cremallera de dirección",
+        "Bieleta estabilizadora delantera izquierda", "Bieleta estabilizadora delantera derecha",
+        "Buje de barra estabilizadora", "Horquilla / brazo inferior izquierdo", "Horquilla / brazo inferior derecho", "Bujes de horquilla",
+        "Cojinete / maza delantera izquierda", "Cojinete / maza delantera derecha", "Cojinete / maza trasera",
+        "Caja o cremallera de dirección (fugas)", "Bomba de dirección hidráulica",
+    ],
+    "Motor": [
+        "Fugas de aceite", "Banda de accesorios", "Banda o cadena de distribución", "Cables de bujía / bobinas",
+        "Soportes (gomas) de motor", "Mangueras y abrazaderas", "Computadora / testigos del tablero",
+    ],
+    "Enfriamiento y clima": [
+        "Radiador", "Mangueras de enfriamiento", "Bomba de agua", "Termostato", "Ventilador del radiador", "Tapón del radiador",
+        "Aire acondicionado (enfría)", "Compresor del A/C", "Filtro de cabina",
+    ],
+    "Transmisión y tracción": [
+        "Aceite de transmisión", "Clutch (embrague)", "Flecha homocinética izquierda", "Flecha homocinética derecha",
+        "Cubrepolvos de flechas", "Soportes de transmisión", "Diferencial / cardán",
+    ],
+    "Escape": ["Tubo de escape", "Silenciador", "Catalizador", "Soportes y abrazaderas del escape"],
+    "Luces": [
+        "Faros delanteros (luz baja)", "Faros delanteros (luz alta)", "Luces traseras", "Direccionales", "Luz de freno", "Luz de reversa", "Luz de placa", "Faros de niebla",
+    ],
+    "Fluidos": [
+        "Nivel de aceite de motor", "Anticongelante/refrigerante", "Líquido limpiaparabrisas", "Líquido de dirección hidráulica", "Aceite de transmisión (nivel)", "Aceite de diferencial",
+    ],
+    "Batería y eléctrico": ["Batería (carga y terminales)", "Alternador", "Marcha", "Fusibles y relevadores", "Claxon", "Testigos del tablero", "Elevadores de vidrios"],
+    "Carrocería": [
+        "Limpiaparabrisas", "Plumas traseras", "Espejos", "Cinturones de seguridad", "Parabrisas y vidrios", "Puertas y cerraduras", "Defensas / molduras", "Cofre y cajuela",
+    ],
 }
+
 
 ESTADOS_MEXICO = [
     "Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Chiapas",
@@ -685,6 +724,28 @@ def sembrar_globales(db):
     db.commit()
 
 
+def _sincronizar_items_inspeccion(db):
+    """Agrega al checklist los puntos que falten (sin duplicar ni borrar nada) y
+    ordena los conocidos según el catálogo. Los puntos genéricos viejos que ahora
+    están desglosados se desactivan (los resultados ya capturados se conservan)."""
+    existentes = {(i.categoria, i.nombre_item): i for i in db.query(models.InspeccionItem).all()}
+    orden = 0
+    for categoria, items in ITEMS_INSPECCION.items():
+        for nombre_item in items:
+            orden += 1
+            fila = existentes.get((categoria, nombre_item))
+            if fila is None:
+                db.add(models.InspeccionItem(categoria=categoria, nombre_item=nombre_item, orden=orden))
+            else:
+                fila.orden = orden
+    # Puntos retirados del catálogo (genéricos viejos o que el taller no quiere): se desactivan, no se borran
+    retirados = {"Rótulas y terminales", "Amortiguadores delanteros", "Amortiguadores traseros", "Faros delanteros",
+                 "Bujías", "Filtro de aire", "Filtro de aceite", "Filtro de combustible", "Bieleta estabilizadora trasera"}
+    for (categoria, nombre), fila in existentes.items():
+        if nombre in retirados:
+            fila.activo = False
+
+
 def sembrar_taller(id_taller: int):
     """Lo mínimo que necesita cada taller para operar: roles base (el
     Administrador General siempre con TODOS los permisos), su fila de
@@ -713,12 +774,7 @@ def sembrar_taller(id_taller: int):
             cats = {c.id_categoria_refaccion: c.nombre_categoria for c in db.query(models.RefaccionCategoria).all()}
             for sub in db.query(models.RefaccionSubcategoria).all():
                 db.add(models.Refaccion(nombre_refaccion=sub.nombre_subcategoria, categoria=cats.get(sub.id_categoria_refaccion)))
-        if not db.query(models.InspeccionItem).first():
-            orden = 0
-            for categoria, items in ITEMS_INSPECCION.items():
-                for nombre_item in items:
-                    orden += 1
-                    db.add(models.InspeccionItem(categoria=categoria, nombre_item=nombre_item, orden=orden))
+        _sincronizar_items_inspeccion(db)
         db.commit()
     finally:
         db.close()
@@ -859,6 +915,27 @@ def _migrar_comisiones_por_taller():
         print(f"[migración automática] comisiones por taller: {len(filas)} fila(s) copiadas")
 
 
+def _marcas_modelos_mayusculas():
+    """Deja en MAYÚSCULAS las marcas y modelos de vehículos que ya existían (idempotente; sin WHERE porque SQL Server compara sin distinguir mayúsculas)."""
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE vehiculos_marcas SET nombre_marca = UPPER(nombre_marca)"))
+        conn.execute(text("UPDATE vehiculos_modelos SET nombre_modelo = UPPER(nombre_modelo)"))
+
+
+def _migrar_sueldo_mensual():
+    """Empleados que ya tenían sueldo por periodo: se deduce su sueldo mensual (por 30 ÷ días del periodo) para no perder lo capturado."""
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        filas = conn.execute(text("SELECT id_empleado, sueldo_base, periodicidad_pago FROM empleados WHERE (sueldo_mensual IS NULL OR sueldo_mensual = 0) AND sueldo_base > 0")).fetchall()
+        dias = {"semanal": 7, "quincenal": 15, "mensual": 30}
+        for id_emp, base, per in filas:
+            mensual = round(float(base) * 30 / dias.get((per or "quincenal").lower(), 15), 2)
+            conn.execute(text("UPDATE empleados SET sueldo_mensual = :m WHERE id_empleado = :i"), {"m": mensual, "i": id_emp})
+        if filas:
+            print(f"[migración automática] sueldo mensual deducido para {len(filas)} empleado(s)")
+
+
 def run():
     Base.metadata.create_all(bind=engine)
     _migrar_comisiones_por_taller()
@@ -897,3 +974,5 @@ def run():
     for id_taller in ids:
         _limpiar_inventario_huerfano(id_taller)
         _consolidar_refacciones_existentes(id_taller)
+    _marcas_modelos_mayusculas()
+    _migrar_sueldo_mensual()

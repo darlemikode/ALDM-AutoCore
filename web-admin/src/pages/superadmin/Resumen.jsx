@@ -87,7 +87,7 @@ export default function Resumen() {
               <thead><tr><th>Taller</th><th>Vence</th><th>Estado</th><th className="num">Por periodo</th></tr></thead>
               <tbody>
                 {r.proximos_vencimientos.map((v) => (
-                  <tr key={v.id_taller} className="sa-fila-link" onClick={() => navigate(`/superadmin/talleres/${v.id_taller}`)}>
+                  <tr key={v.id_taller} className="sa-fila-link" style={{ "--acc": v.dias_restantes < 0 ? "var(--color-danger)" : v.dias_restantes <= 7 ? "var(--color-warning)" : "var(--color-success)" }} onClick={() => navigate(`/superadmin/talleres/${v.id_taller}`)}>
                     <td><strong>{v.nombre_comercial}</strong></td>
                     <td>{fmtFecha(v.fecha_vencimiento)} · {v.dias_restantes < 0 ? `venció hace ${-v.dias_restantes} día(s)` : v.dias_restantes === 0 ? "vence hoy" : `en ${v.dias_restantes} día(s)`}</td>
                     <td><EstadoBadge estado={v.estado} /></td>

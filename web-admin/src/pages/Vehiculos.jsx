@@ -290,7 +290,7 @@ export default function Vehiculos() {
                 style={{ "--acc": colorGrupo(nomMarcaV(v)) }}
                 onClick={() => hasPermission("vehiculos.editar") && setEditing(v)}
               >
-                <div className="cliente-avatar"><Icono nombre="car" size={22} /></div>
+                <div className={`cliente-avatar ${v.foto_principal ? "veh-miniatura" : ""}`}>{v.foto_principal ? <img src={v.foto_principal} alt={`Foto de ${nombreMarca(v.id_marca_vehiculo)} ${nombreModelo(v.id_modelo_vehiculo)}`} loading="lazy" /> : <Icono nombre="car" size={22} />}</div>
                 <div className="orden-main">
                   <div className="orden-titulo">
                     {nombreMarca(v.id_marca_vehiculo)} {nombreModelo(v.id_modelo_vehiculo)} {v.id_year_vehiculo || ""} <span className="cliente-cuenta">{v.placas_vehiculo || "Sin placas"}</span>
@@ -329,7 +329,7 @@ export default function Vehiculos() {
               <div key={v.id_vehiculo} className="veh-tarjeta" style={{ "--acc": colorGrupo(nomMarcaV(v)) }} onClick={() => hasPermission("vehiculos.editar") && setEditing(v)}>
                 <div className="veh-tarjeta-foto" onClick={(e) => { e.stopPropagation(); setFotosDe(v); }} title="Ver / agregar fotos">
                   {v.foto_principal ? (
-                    <img src={v.foto_principal} alt="" />
+                    <img loading="lazy" decoding="async" src={v.foto_principal} alt="" />
                   ) : (
                     <div className="veh-tarjeta-foto-vacia">
                       <Icono nombre="camera" size={26} />

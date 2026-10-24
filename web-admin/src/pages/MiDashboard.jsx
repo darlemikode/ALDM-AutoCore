@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import IconoModulo from "../components/IconoModulo";
+import TrabajosPorEmpleado from "../components/TrabajosPorEmpleado";
+import { useAuth } from "../context/AuthContext";
 
 // Catálogo unificado de estatus — mismo catálogo que ETAPAS_SERVICIO en el backend
 const ETIQUETAS_ETAPA = {
@@ -23,6 +25,8 @@ const ETIQUETAS_ETAPA = {
  * backend responde con un mensaje claro en vez de datos.
  */
 export default function MiDashboard() {
+  const { hasPermission } = useAuth();
+  const verEquipo = hasPermission("servicios.crear"); // quien administra órdenes ve los trabajos de todo el equipo
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,6 +44,7 @@ export default function MiDashboard() {
     return (
       <>
         <div className="page-header"><div><h1><IconoModulo ruta="/mi-dashboard" /> Mi dashboard</h1></div></div>
+        {verEquipo && <TrabajosPorEmpleado />}
         <div className="panel" style={{ borderLeft: "4px solid var(--red-600)" }}>{error}</div>
       </>
     );
@@ -53,6 +58,8 @@ export default function MiDashboard() {
           <div className="subtitle">Hola, {data.nombre_empleado}</div>
         </div>
       </div>
+
+      {verEquipo && <TrabajosPorEmpleado />}
 
       <div className="kpi-grid">
         <div className="kpi-card ok">
