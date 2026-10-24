@@ -101,13 +101,20 @@ export default function Clientes() {
   }
 
   // Abre una orden ya con este cliente; falta elegir su vehículo en la ventana de la orden
-  async function nuevaOrdenDe(cliente) {
+  // Icono de vehículos: si el cliente no tiene ninguno se abre directo el alta; si ya tiene, se muestran solo los suyos
+  async function irAVehiculos(c) {
     try {
-      const s = await api.post("/servicios/", { id_cliente: cliente.id_cliente, nombre_servicio: "Servicio general", iva_porcentaje: 0, tipos_mantenimiento_ids: [], autorizado_cliente: false });
-      navigate(`/servicios/${s.id_servicio}`);
+      const lista = await api.get(`/vehiculos/?id_cliente=${c.id_cliente}`);
+      const sinVehiculos = !lista || lista.length === 0;
+      navigate(`/vehiculos?id_cliente=${c.id_cliente}${sinVehiculos && hasPermission("vehiculos.crear") ? "&abrir_nuevo=1" : ""}`);
     } catch (err) {
       notify(err.message, "error");
     }
+  }
+
+  // La orden NO se crea aquí: se abre el selector de cliente/vehículo y se crea hasta confirmar.
+  function nuevaOrdenDe(cliente) {
+    navigate(`/servicios?nueva=1&cliente=${cliente.id_cliente}`);
   }
 
   const activados = clientes.filter((c) => c.cuenta_activada).length;
@@ -153,25 +160,26 @@ export default function Clientes() {
             {clientes.map((c) => {
               const tel = String(c.telefono1 || "").replace(/\D/g, "").slice(-10);
               return (
-                <div key={c.id_cliente} className={`orden-fila fila-acciones ${c.cuenta_activada ? "" : "est-cerrado"}`} onClick={() => navigate(`/vehiculos?id_cliente=${c.id_cliente}`)}>
+                <div key={c.id_cliente} className={`orden-fila fila-acciones fila-cliente ${c.cuenta_activada ? "" : "est-cerrado"}`} onClick={() => (hasPermission("clientes.editar") ? setEditing(c) : navigate(`/vehiculos?id_cliente=${c.id_cliente}`))} style={{ cursor: "pointer" }}>
                   <div className="cliente-avatar">{iniciales(c)}</div>
                   <div className="orden-main">
-                    <div className="orden-titulo">{c.nombre_cliente} {c.paterno_cliente} <span className="cliente-cuenta">{c.numero_cuenta}</span></div>
-                    <div className="orden-meta">
-                      {c.empresa_cliente && <span><Icono nombre="business" size={15} /> {c.empresa_cliente}</span>}
-                      <span><Icono nombre="phone" size={15} /> {c.telefono1 || "—"}</span>
-                      <span><Icono nombre="mail" size={15} /> {c.correo_cliente || "—"}</span>
-                    </div>
+                    <div className="orden-titulo">{c.nombre_cliente} {c.paterno_cliente}</div>
+                    <div className="orden-meta"><span className="cliente-cuenta">{c.numero_cuenta}</span></div>
+                  </div>
+                  <div className="cliente-contacto">
+                    <div><Icono nombre="phone" size={16} /><span>Teléfono</span><b>{c.telefono1 || "—"}</b></div>
+                    <div><Icono nombre="mail" size={16} /><span>Correo</span><b>{c.correo_cliente || "—"}</b></div>
+                    <div><Icono nombre="business" size={16} /><span>Empresa</span><b>{c.empresa_cliente || "—"}</b></div>
                   </div>
                   <div className="orden-estado">{c.cuenta_activada ? <span className="badge badge-teal">App activa</span> : <span className="badge badge-grey">Sin activar</span>}</div>
                   <div onClick={(e) => e.stopPropagation()}>
                     <div className="row-actions">
-                <Link className="btn-icono" to={`/vehiculos?id_cliente=${c.id_cliente}`} title="Vehículos" aria-label="Vehículos"><Icono nombre="car" size={18} /></Link>
+                <button type="button" className="btn-icono btn-icono-veh" title="Vehículos" aria-label="Vehículos" onClick={() => irAVehiculos(c)}><Icono nombre="car" size={20} /></button>
                 {hasPermission("servicios.crear") && (
-                  <button type="button" className="btn-icono btn-icono-fuerte" title="Nueva orden" aria-label="Nueva orden" onClick={() => nuevaOrdenDe(c)}><Icono nombre="doc-add" size={18} /></button>
+                  <button type="button" className="btn-icono btn-icono-fuerte" title="Nueva orden" aria-label="Nueva orden" onClick={() => nuevaOrdenDe(c)}><Icono nombre="doc-add" size={20} /></button>
                 )}
                 {tel.length === 10 ? (
-                  <a className="btn-icono" href={`https://wa.me/52${tel}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" aria-label="WhatsApp"><Icono nombre="chatbubble" size={18} /></a>
+                  <a className="btn-icono btn-icono-wa" href={`https://wa.me/52${tel}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" aria-label="WhatsApp"><Icono nombre="whatsapp" size={20} /></a>
                 ) : <span className="btn-icono-hueco" />}
                 {hasPermission("clientes.editar") && (!c.cuenta_activada ? (
                   <button type="button" className="btn-icono" title="Invitar a la app" aria-label="Invitar a la app" onClick={() => invitar(c)}><Icono nombre="link" size={18} /></button>

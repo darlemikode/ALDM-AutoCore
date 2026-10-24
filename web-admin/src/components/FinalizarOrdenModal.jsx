@@ -176,7 +176,7 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
           {error && <div className="error-text">{error}</div>}
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={onClose} disabled={enviando}>Cancelar</button>
-            <button className="btn btn-primary" onClick={finalizar} disabled={!listo || enviando}>
+            <button className={conSaldo ? "btn btn-exito" : "btn btn-primary"} onClick={finalizar} disabled={!listo || enviando}>
               {enviando ? "Guardando…" : conSaldo ? `Cobrar ${fmt(saldo)} y generar nota` : "Cerrar orden y generar nota"}
             </button>
           </div>

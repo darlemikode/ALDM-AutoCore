@@ -1,5 +1,5 @@
 import { IconoAuto } from "./Icono";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -33,6 +33,7 @@ const NAV = [
       { to: "/cotizaciones", label: "Cotizaciones", permisoRequerido: "cotizaciones.ver" },
       { to: "/empleados", label: "Empleados", permisoRequerido: "empleados.ver" },
       { to: "/nomina", label: "Nómina", permisoRequerido: "nomina.ver" },
+      { to: "/auditoria", label: "Auditoría", permisoRequerido: "auditoria.ver" },
     ],
   },
   {
@@ -278,13 +279,20 @@ export default function Layout() {
           <>
             {location.pathname !== "/" && (
               <div className="barra-regresar">
-                <button type="button" className="btn-regresar" onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"))}>
+                <button type="button" className="btn-regresar" onClick={() => {
+                  // Siempre a la pantalla anterior; si no hay historial (página abierta directo o recargada), al módulo padre
+                  if (window.history.state?.idx > 0 || window.history.length > 1 && document.referrer.startsWith(window.location.origin)) navigate(-1);
+                  else {
+                    const partes = location.pathname.split("/").filter(Boolean);
+                    navigate(partes.length > 1 ? `/${partes.slice(0, -1).join("/")}` : "/");
+                  }
+                }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
                   Regresar
                 </button>
               </div>
             )}
-            <Outlet />
+            <Suspense fallback={<div className="cargando-pagina" role="status" aria-label="Cargando"><span className="cargando-barra" /></div>}><Outlet /></Suspense>
           </>
         )}
       </main>

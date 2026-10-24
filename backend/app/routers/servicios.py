@@ -7,7 +7,9 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from ..vehiculo_utils import orden_abierta_del_vehiculo
 from .. import models, schemas
+from ..auditoria import alerta_cambio_fecha, alerta_cierre_repetido, registrar as registrar_auditoria
 from ..database import get_db
 from ..security import get_current_user, require_permission
 from ..ws_manager import manager
@@ -218,6 +220,19 @@ def _validar_cliente_vehiculo(db: Session, id_cliente, id_vehiculo, exigir_ambos
             raise HTTPException(status_code=400, detail="El vehículo no pertenece a ese cliente")
 
 
+def _validar_vehiculo_sin_orden_abierta(db: Session, id_vehiculo, excepto_servicio=None):
+    """Un vehículo no puede tener dos órdenes abiertas a la vez (ya está en el taller)."""
+    if id_vehiculo is None:
+        return
+    orden = orden_abierta_del_vehiculo(db, id_vehiculo, excepto_servicio)  # incluye registros duplicados con las mismas placas
+    if orden:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Este vehículo ya está en el taller con la orden #{orden.id_servicio} abierta ({orden.nombre_servicio}). "
+                   "Ábrela o ciérrala antes de crear otra.",
+        )
+
+
 def _exigir_cliente_y_vehiculo(servicio):
     if servicio.id_cliente is None or servicio.id_vehiculo is None:
         raise HTTPException(status_code=400, detail="Elige el cliente y el vehículo de la orden antes de continuar.")
@@ -227,6 +242,8 @@ def _exigir_cliente_y_vehiculo(servicio):
 def crear(payload: schemas.ServicioIn, db: Session = Depends(get_db), user=Depends(require_permission("servicios.crear"))):
     if payload.id_vehiculo is not None or payload.id_cliente is not None or payload.es_garantia:
         _validar_cliente_vehiculo(db, payload.id_cliente, payload.id_vehiculo, exigir_ambos=payload.es_garantia)
+        if not payload.es_garantia:
+            _validar_vehiculo_sin_orden_abierta(db, payload.id_vehiculo)
     # La autorización del cliente (con código) es OPCIONAL — depende del
     # interruptor "Verificación en 2 pasos" en Datos del taller. Antes esto
     # era obligatorio siempre, lo cual hacía inútil ese interruptor.
@@ -275,6 +292,22 @@ def actualizar(servicio_id: int, payload: schemas.ServicioUpdate, db: Session = 
     servicio = _get_servicio_o_404(db, servicio_id)
     updates = payload.model_dump(exclude_unset=True)
     tipos_ids = updates.pop("tipos_mantenimiento_ids", None)
+    motivo_fecha = (updates.pop("motivo_cambio_fecha", None) or "").strip()
+    # Fechas de entrada/salida: solo con permiso especial y con motivo; queda en la bitácora
+    cambios_fecha = []
+    for campo in ("fecha_entrada_servicio", "fecha_salida_servicio"):
+        if campo in updates:
+            anterior = getattr(servicio, campo)
+            nuevo = updates[campo]
+            if anterior == nuevo:
+                updates.pop(campo)
+                continue
+            cambios_fecha.append((campo, anterior, nuevo))
+    if cambios_fecha:
+        if not user.tiene_permiso("servicios.editar_fechas"):
+            raise HTTPException(status_code=403, detail="Tu rol no puede cambiar las fechas de una orden. Pídele al administrador que lo haga.")
+        if len(motivo_fecha) < 5:
+            raise HTTPException(status_code=422, detail="Escribe el motivo del cambio de fecha (mínimo 5 caracteres).")
     if updates.get("status") == "cancelado" and servicio.status != "cancelado":
         costos = _calcular_costos(servicio)
         if servicio.status == "cerrado" or (costos.total_abonado > 0 and costos.saldo_pendiente <= 0):
@@ -286,6 +319,8 @@ def actualizar(servicio_id: int, payload: schemas.ServicioUpdate, db: Session = 
             nuevo_vehiculo = None  # cambió el cliente: el vehículo anterior ya no aplica
             updates["id_vehiculo"] = None
         _validar_cliente_vehiculo(db, nuevo_cliente, nuevo_vehiculo)
+        if "id_vehiculo" in updates and nuevo_vehiculo != servicio.id_vehiculo and servicio.status == "abierto" and not servicio.es_garantia:
+            _validar_vehiculo_sin_orden_abierta(db, nuevo_vehiculo, excepto_servicio=servicio_id)
         if nuevo_vehiculo and not servicio.km_llegada and "km_llegada" not in updates:
             veh = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == nuevo_vehiculo).first()
             if veh and veh.km_vehiculo:
@@ -299,6 +334,14 @@ def actualizar(servicio_id: int, payload: schemas.ServicioUpdate, db: Session = 
     salida = updates.get("fecha_salida_servicio", servicio.fecha_salida_servicio)
     if entrada and salida and ("fecha_entrada_servicio" in updates or "fecha_salida_servicio" in updates) and salida.date() < entrada.date():
         raise HTTPException(status_code=400, detail="La fecha de salida no puede ser anterior a la de entrada.")
+    for campo, anterior, nuevo in cambios_fecha:
+        registrar_auditoria(db, user, "servicio", servicio_id, "cambio_fecha", campo, anterior, nuevo, motivo_fecha,
+                            alerta_cambio_fecha(campo, anterior, nuevo))
+    if se_esta_cerrando:
+        momento = datetime.utcnow()
+        registrar_auditoria(db, user, "servicio", servicio_id, "cierre", "status", servicio.status, "cerrado", None, alerta_cierre_repetido(db, momento))
+    if updates.get("status") == "cancelado" and servicio.status != "cancelado":
+        registrar_auditoria(db, user, "servicio", servicio_id, "cancelacion", "status", servicio.status, "cancelado")
     for key, value in updates.items():
         setattr(servicio, key, value)
     if tipos_ids is not None:
@@ -314,6 +357,17 @@ def actualizar(servicio_id: int, payload: schemas.ServicioUpdate, db: Session = 
 @router.delete("/{servicio_id}", status_code=204)
 def eliminar(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.eliminar"))):
     servicio = _get_servicio_o_404(db, servicio_id)
+    # Solo se eliminan borradores: sin vehículo, sin cambio de estatus y sin movimientos. Lo demás se cancela (queda historial).
+    motivos = []
+    if servicio.id_vehiculo is not None:
+        motivos.append("ya tiene vehículo")
+    if servicio.status != "abierto" or (servicio.etapa or "en_proceso") not in ("en_proceso",) or len(servicio.historial_etapas or []) > 1:
+        motivos.append("ya cambió de estatus")
+    if servicio.detalles or servicio.abonos:
+        motivos.append("tiene refacciones o abonos")
+    if motivos:
+        raise HTTPException(status_code=400, detail="No se puede eliminar esta orden: " + " y ".join(motivos) + ". Cancélala en lugar de eliminarla (así queda historial).")
+    registrar_auditoria(db, user, "servicio", servicio_id, "eliminacion_orden", "orden", f"#{servicio_id} {servicio.nombre_servicio}", "eliminada")
     db.delete(servicio)
     db.commit()
     return None

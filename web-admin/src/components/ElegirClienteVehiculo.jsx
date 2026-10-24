@@ -114,7 +114,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
   return (
     <ModalPortal>
       <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCerrar()}>
-        <div className="modal ecv-modal" style={{ maxWidth: 560, overflow: "visible" }}>
+        <div className="modal ecv-modal" style={{ maxWidth: 780, width: "min(780px, 94vw)", overflow: "visible" }}>
           <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={onCerrar}><Icono nombre="close" size={20} /></button>
           <div className="ecv-cabecera">
             <span className="ecv-icono"><Icono nombre="construct" size={22} /></span>

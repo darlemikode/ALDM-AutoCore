@@ -843,6 +843,7 @@ class CitaSolicitada(TenantMixin, Base):
     id_tipo_servicio = Column(Integer, ForeignKey("tipos_servicio.id_tipo_servicio"), nullable=True)
     descripcion = Column(Text, nullable=True)
     fecha_propuesta = Column(DateTime, nullable=True)
+    fecha_fin = Column(DateTime, nullable=True)  # fin del horario (citas agendadas desde el calendario)
     estado = Column(String(20), default="pendiente")  # pendiente | confirmada | rechazada
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
     confirmada_por = Column(String(50), nullable=True)
@@ -949,7 +950,8 @@ class Empleado(TenantMixin, Base):
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
 
     # --- Nómina ---------------------------------------------------------
-    sueldo_base = Column(Float, default=0)  # por periodo (según periodicidad_pago)
+    sueldo_base = Column(Float, default=0)  # DERIVADO del sueldo mensual según periodicidad_pago (compatibilidad)
+    sueldo_mensual = Column(Float, default=0)  # sueldo neto al mes; el pago por semana/quincena sale de aquí (÷ 30 días)
     periodicidad_pago = Column(String(20), default="quincenal")  # semanal | quincenal | mensual
     esquema_pago = Column(String(20), default="fijo")  # fijo | comision | mixto | destajo
     porcentaje_comision = Column(Float, default=0)  # % sobre la mano de obra de las órdenes cerradas que atendió
@@ -1048,6 +1050,10 @@ class ConfiguracionTaller(TenantMixin, Base):
     numero_taller = Column(String(20), nullable=True)  # número exterior / de sucursal
     id_estado = Column(Integer, ForeignKey("estados.id_estado"), nullable=True)
     id_ciudad = Column(Integer, ForeignKey("ciudades.id_ciudad"), nullable=True)
+    # Horario de atención: es el que se refleja en el calendario de citas
+    hora_apertura = Column(String(5), nullable=True)   # "08:00"
+    hora_cierre = Column(String(5), nullable=True)     # "18:00"
+    dias_atencion = Column(String(20), nullable=True)  # días ISO separados por coma: "1,2,3,4,5,6" (1=lunes … 7=domingo)
 
     estado = relationship("Estado", foreign_keys=[id_estado])
     ciudad = relationship("Ciudad", foreign_keys=[id_ciudad])
@@ -1361,3 +1367,53 @@ class ErrorSistema(TenantMixin, Base):
     usuario = Column(String(50), nullable=True)
     mensaje = Column(String(500), nullable=True)
     detalle = Column(Text, nullable=True)
+
+
+class BitacoraAuditoria(TenantMixin, Base):
+    """Bitácora de auditoría: cambios sensibles (fechas de órdenes, cierres,
+    cancelaciones, citas retroactivas). Solo se agrega: NADIE puede editarla ni
+    borrarla (el ORM lo bloquea y no existe endpoint para hacerlo). La fecha la
+    pone el servidor, nunca el equipo del usuario."""
+    __tablename__ = "bitacora_auditoria"
+
+    id_registro = Column(Integer, primary_key=True, index=True)
+    fecha = Column(DateTime, default=datetime.utcnow, index=True)
+    usuario = Column(String(50), nullable=True)
+    entidad = Column(String(30), nullable=False, index=True)   # servicio | cita
+    id_entidad = Column(Integer, nullable=True, index=True)
+    accion = Column(String(40), nullable=False)                # cambio_fecha | cierre | cancelacion | cita_retroactiva ...
+    campo = Column(String(40), nullable=True)
+    valor_anterior = Column(String(60), nullable=True)
+    valor_nuevo = Column(String(60), nullable=True)
+    motivo = Column(String(300), nullable=True)
+    sospechosa = Column(Boolean, default=False, index=True)
+    alerta = Column(String(300), nullable=True)
+
+
+from sqlalchemy import event as _sa_event
+
+
+@_sa_event.listens_for(BitacoraAuditoria, "before_update")
+def _bitacora_no_se_edita(mapper, connection, target):
+    raise ValueError("La bitácora de auditoría no se puede modificar.")
+
+
+@_sa_event.listens_for(BitacoraAuditoria, "before_delete")
+def _bitacora_no_se_borra(mapper, connection, target):
+    raise ValueError("La bitácora de auditoría no se puede borrar.")
+
+
+# Marcas y modelos de vehículos: SIEMPRE en MAYÚSCULAS (existentes y nuevos, por cualquier camino)
+def _mayusculas_marca(mapper, connection, target):
+    if target.nombre_marca:
+        target.nombre_marca = target.nombre_marca.strip().upper()
+
+
+def _mayusculas_modelo(mapper, connection, target):
+    if target.nombre_modelo:
+        target.nombre_modelo = target.nombre_modelo.strip().upper()
+
+
+for _evento in ("before_insert", "before_update"):
+    _sa_event.listen(VehiculoMarca, _evento, _mayusculas_marca)
+    _sa_event.listen(VehiculoModelo, _evento, _mayusculas_modelo)

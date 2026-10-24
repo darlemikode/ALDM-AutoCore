@@ -11,6 +11,7 @@ export const ACCIONES = {
   cancelar: { icono: "🚫", texto: "Cancelar" },
   configurar: { icono: "⚙️", texto: "Configurar" },
   ver_por_cobrar: { icono: "💰", texto: "Ver por cobrar" },
+  ver_salario: { icono: "💵", texto: "Ver salario" },
   ver_precios: { icono: "🏷️", texto: "Ver precios" },
 };
 const ORDEN = ["ver", "crear", "editar", "eliminar", "cancelar", "configurar"];

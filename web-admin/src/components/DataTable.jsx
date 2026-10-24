@@ -15,9 +15,10 @@ function acentoDe(indice) {
  * rows: array de objetos
  * onEdit / onDelete: opcionales, agregan botones de acción por fila
  * extraActions?(row): opcional, regresa JSX extra para la columna de acciones
+ * onRowClick(row): opcional, hace clicable toda la fila
  * emptyMessage: texto cuando no hay filas
  */
-export default function DataTable({ columns, rows, onEdit, onDelete, extraActions, acentoFila, emptyMessage = "Sin registros todavía." }) {
+export default function DataTable({ columns, rows, onEdit, onDelete, extraActions, acentoFila, onRowClick, emptyMessage = "Sin registros todavía." }) {
   if (!rows || rows.length === 0) {
     return <div className="empty-state">{emptyMessage}</div>;
   }
@@ -27,7 +28,8 @@ export default function DataTable({ columns, rows, onEdit, onDelete, extraAction
   return (
     <div className="ordenes-lista">
       {rows.map((row, i) => (
-        <div key={row.id ?? i} className="orden-fila fila-tabla" style={acentoFila ? { "--acc": acentoFila(row) } : acentoDe(i)}>
+        <div key={row.id ?? i} className="orden-fila fila-tabla" style={{ ...(acentoFila ? { "--acc": acentoFila(row) } : acentoDe(i)), ...(onRowClick ? { cursor: "pointer" } : {}) }}
+          onClick={onRowClick ? () => onRowClick(row) : undefined}>
           <div className="orden-main">
             <div className="orden-titulo">{primera.render ? primera.render(row) : row[primera.key]}</div>
             {resto.length > 0 && (

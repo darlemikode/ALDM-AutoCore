@@ -65,8 +65,11 @@ function mostrar(el, texto) {
   if (top < 6) { top = r.bottom + 8; abajo = true; }
   let left = r.left + r.width / 2 - g.width / 2;
   left = Math.max(6, Math.min(left, window.innerWidth - g.width - 6));
-  globo.style.top = `${top}px`;
-  globo.style.left = `${left}px`;
+  // La app usa html { zoom }: getBoundingClientRect devuelve píxeles reales de pantalla, pero
+  // top/left se aplican dentro del zoom, así que se dividen entre el factor para quedar junto al ícono.
+  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--zoom")) || 1;
+  globo.style.top = `${top / z}px`;
+  globo.style.left = `${left / z}px`;
   globo.classList.toggle("abajo", abajo);
 }
 

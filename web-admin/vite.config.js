@@ -12,6 +12,15 @@ export default defineConfig({
   build: {
     outDir: "../backend/app/web",
     emptyOutDir: true,
+    // Código dividido: librerías pesadas en archivos aparte que se descargan solo cuando una pantalla las usa
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-graficas": ["recharts"],
+        },
+      },
+    },
   },
   server: {
     port: 5173,

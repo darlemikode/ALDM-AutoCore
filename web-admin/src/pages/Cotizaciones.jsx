@@ -68,6 +68,7 @@ export default function Cotizaciones() {
               { key: "total", label: "Total estimado", render: (c) => fmt(c.costos?.total) },
             ]}
             rows={cotizaciones}
+            onRowClick={(c) => navigate(`/cotizaciones/${c.id_cotizacion}`)}
             onEdit={(c) => navigate(`/cotizaciones/${c.id_cotizacion}`)}
             onDelete={hasPermission("cotizaciones.eliminar") ? handleDelete : undefined}
             emptyMessage="No hay cotizaciones registradas todavía."

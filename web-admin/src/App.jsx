@@ -1,15 +1,16 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
-import Login from "./pages/Login";
-import EstablecerPassword from "./pages/EstablecerPassword";
+const Login = lazy(() => import("./pages/Login"));
+const EstablecerPassword = lazy(() => import("./pages/EstablecerPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Vehiculos = lazy(() => import("./pages/Vehiculos"));
 const Servicios = lazy(() => import("./pages/Servicios"));
 const ServicioDetalle = lazy(() => import("./pages/ServicioDetalle"));
 const Citas = lazy(() => import("./pages/Citas"));
+const Auditoria = lazy(() => import("./pages/Auditoria"));
 const Promociones = lazy(() => import("./pages/Promociones"));
 const Asistente = lazy(() => import("./pages/Asistente"));
 const Empleados = lazy(() => import("./pages/Empleados"));
@@ -34,6 +35,7 @@ const Cotizaciones = lazy(() => import("./pages/Cotizaciones"));
 const CotizacionDetalle = lazy(() => import("./pages/CotizacionDetalle"));
 const Nomina = lazy(() => import("./pages/Nomina"));
 const NominaDetalle = lazy(() => import("./pages/NominaDetalle"));
+const AvisosLegales = lazy(() => import("./pages/AvisosLegales"));
 const Facturacion = lazy(() => import("./pages/Facturacion"));
 const SuperAdmin = lazy(() => import("./pages/superadmin/SuperAdmin"));
 import ScrollToTop from "./components/ScrollToTop";
@@ -57,7 +59,25 @@ function RequirePermission({ clave, children }) {
   return children;
 }
 
+// Cuando el navegador queda libre se descargan en segundo plano las pantallas más usadas,
+// así al entrar a ellas ya están listas (carga anticipada sin bloquear el inicio).
+function precargarPantallas() {
+  [
+    () => import("./pages/Servicios"),
+    () => import("./pages/Clientes"),
+    () => import("./pages/Vehiculos"),
+    () => import("./pages/Cotizaciones"),
+    () => import("./pages/Refacciones"),
+  ].forEach((cargar, i) => setTimeout(() => cargar().catch(() => {}), i * 400));
+}
+
 export default function App() {
+  useEffect(() => {
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 2500));
+    const id = idle(precargarPantallas);
+    return () => { if (window.cancelIdleCallback && typeof id === "number") window.cancelIdleCallback(id); };
+  }, []);
+
   return (
     <>
       <ScrollToTop />
@@ -82,6 +102,7 @@ export default function App() {
         <Route path="cotizaciones" element={<RequirePermission clave="cotizaciones.ver"><Cotizaciones /></RequirePermission>} />
         <Route path="cotizaciones/:id" element={<RequirePermission clave="cotizaciones.ver"><CotizacionDetalle /></RequirePermission>} />
         <Route path="citas" element={<Citas />} />
+        <Route path="auditoria" element={<RequirePermission clave="auditoria.ver"><Auditoria /></RequirePermission>} />
         <Route path="promociones" element={<RequirePermission clave="promociones.ver"><Promociones /></RequirePermission>} />
         <Route path="asistente" element={<RequirePermission clave="servicios.ver"><Asistente /></RequirePermission>} />
         <Route path="empleados" element={<RequirePermission clave="empleados.ver"><Empleados /></RequirePermission>} />
@@ -103,6 +124,7 @@ export default function App() {
         <Route path="roles" element={<RequirePermission clave="roles.ver"><Roles /></RequirePermission>} />
         <Route path="superadmin/*" element={<RequireSuperadmin><SuperAdmin /></RequireSuperadmin>} />
         <Route path="nomina" element={<RequirePermission clave="nomina.ver"><Nomina /></RequirePermission>} />
+        <Route path="avisos-legales" element={<RequirePermission clave="nomina.ver"><AvisosLegales /></RequirePermission>} />
         <Route path="nomina/:id" element={<RequirePermission clave="nomina.ver"><NominaDetalle /></RequirePermission>} />
         <Route path="facturacion" element={<RequirePermission clave="facturacion.ver"><Facturacion /></RequirePermission>} />
       </Route>

@@ -2,7 +2,7 @@ import { IconoAuto } from "../components/Icono";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ResponsiveContainer, BarChart, Bar, Cell, LabelList,
+  ResponsiveContainer, BarChart, Bar, Cell, LabelList, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
 import { api } from "../api";
@@ -14,20 +14,76 @@ import SelectorFecha from "../components/SelectorFecha";
 import { Icono } from "../components/Icono";
 
 const COLORS = {
-  petrol: "#1565a8",
-  petrolDark: "#0b3d63",
-  petrolLight: "#5b9bd5",
-  green: "#2f7d5b",
-  red: "#c4432f",
-  grey: "#aebac0",
+  petrol: "#2563EB",
+  petrolDark: "#17191D",
+  petrolLight: "#6B7280",
+  green: "#16845B",
+  red: "#B91C1C",
+  grey: "#9CA3AF",
 };
 
 const ESTADO_COLORS = { Abierto: COLORS.petrol, Cerrado: COLORS.green, Cancelado: COLORS.red };
 
+// Marcador de la gráfica de puntos: cada mes es un punto; el último lleva un carro encima de la línea
+function PuntoCarro({ cx, cy, index, value, total }) {
+  if (cx == null || cy == null) return null;
+  const ultimo = index === total - 1;
+  return (
+    <g>
+      <text x={cx} y={ultimo ? cy - 34 : cy - 14} textAnchor="middle" style={{ fontSize: 15, fontWeight: 700, fill: "currentColor" }}>{value}</text>
+      {ultimo ? (
+        <g transform={`translate(${cx - 24}, ${cy - 26})`} className="carro-marcador">
+          <path d="M3 21 L3 15 Q3 12.5 6 12 L14 10.5 L20 4.5 Q21.2 3.5 23 3.5 L32 3.5 Q34 3.5 35.2 5 L40 11 L45 12.2 Q47 12.8 47 15 L47 21 Z" fill="#E10600" />
+          <path d="M16 10.5 L21 5.8 Q21.8 5.2 23 5.2 L27 5.2 L27 10.5 Z M29.5 5.2 L32 5.2 Q33 5.2 33.7 6 L37.2 10.5 L29.5 10.5 Z" fill="#DDE6F2" />
+          <circle cx="14" cy="22" r="5.2" fill="#17191D" /><circle cx="14" cy="22" r="2.2" fill="#9CA3AF" />
+          <circle cx="36" cy="22" r="5.2" fill="#17191D" /><circle cx="36" cy="22" r="2.2" fill="#9CA3AF" />
+          <rect x="44.5" y="14" width="3" height="2.4" rx="1" fill="#FFD166" />
+        </g>
+      ) : (
+        <circle cx={cx} cy={cy} r={6} fill="#fff" stroke="#E10600" strokeWidth={3} />
+      )}
+    </g>
+  );
+}
+
+// Neumático: el diagrama de pastel es la banda de colores dentro de una llanta con rin
+function NeumaticoEstados({ datos }) {
+  const total = datos.reduce((t, d) => t + d.valor, 0);
+  const R = 66, C = 2 * Math.PI * R;
+  let acumulado = 0;
+  return (
+    <svg viewBox="0 0 220 220" className="neumatico" role="img" aria-label={`Órdenes por estado: ${datos.map((d) => `${d.nombre} ${d.valor}`).join(", ")}`}>
+      <circle cx="110" cy="110" r="106" fill="#17191D" />
+      <circle cx="110" cy="110" r="99" fill="none" stroke="#33373F" strokeWidth="9" strokeDasharray="7 5" />
+      <circle cx="110" cy="110" r="86" fill="#22262C" />
+      <g className="neumatico-giro" style={{ transformOrigin: "110px 110px" }}>
+        <circle cx="110" cy="110" r={R} fill="none" stroke="#3A3F47" strokeWidth="30" />
+        {total > 0 && datos.filter((d) => d.valor > 0).map((d) => {
+          const largo = (d.valor / total) * C;
+          const trazo = Math.max(largo - 2, 0.1);
+          const el = (
+            <circle key={d.nombre} cx="110" cy="110" r={R} fill="none" stroke={d.color} strokeWidth="30"
+              strokeDasharray={`${trazo} ${C - trazo}`} strokeDashoffset={-acumulado} transform="rotate(-90 110 110)" />
+          );
+          acumulado += largo;
+          return el;
+        })}
+      </g>
+      <circle cx="110" cy="110" r="48" fill="#E5E7EB" stroke="#9CA3AF" strokeWidth="3" />
+      {[0, 72, 144, 216, 288].map((a) => (
+        <line key={a} x1="110" y1="110" x2="110" y2="68" stroke="#B8BEC8" strokeWidth="7" strokeLinecap="round" transform={`rotate(${a} 110 110)`} />
+      ))}
+      <circle cx="110" cy="110" r="25" fill="#17191D" stroke="#E10600" strokeWidth="3" />
+      <text x="110" y="113" textAnchor="middle" style={{ fontSize: 22, fontWeight: 800, fill: "#fff" }}>{total}</text>
+      <text x="110" y="126" textAnchor="middle" style={{ fontSize: 8, fontWeight: 600, fill: "#9CA3AF", letterSpacing: ".08em" }}>ÓRDENES</text>
+    </svg>
+  );
+}
+
 function ChartTooltip({ active, payload, label, formatter }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: "#1b2226", color: "#eef1f2", padding: "8px 12px", borderRadius: 6, fontSize: 12 }}>
+    <div style={{ background: "#17191D", color: "#E5E7EB", padding: "8px 12px", borderRadius: 6, fontSize: 12 }}>
       <div style={{ opacity: 0.7, marginBottom: 2 }}>{label}</div>
       {payload.map((p) => (
         <div key={p.dataKey}>{p.name}: {formatter ? formatter(p.value) : p.value}</div>
@@ -249,14 +305,13 @@ export default function Dashboard() {
           <h2 className="graf-titulo">Órdenes por mes</h2>
           <div className="graf-sub">Cuántos trabajos entraron cada mes</div>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={mensual} margin={{ top: 24, right: 8, left: 8, bottom: 0 }}>
+            <LineChart data={mensual} margin={{ top: 44, right: 36, left: 36, bottom: 0 }}>
               <XAxis dataKey="mes" tick={{ fontSize: 15, fill: "currentColor", fontWeight: 600 }} axisLine={false} tickLine={false} />
-              <YAxis hide />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(225,6,0,0.08)" }} />
-              <Bar dataKey="cantidad" name="Órdenes" animationDuration={1100} animationEasing="ease-out" fill={COLORS.petrol} radius={[8, 8, 0, 0]}>
-                <LabelList dataKey="cantidad" position="top" style={{ fontSize: 16, fontWeight: 700, fill: "currentColor" }} />
-              </Bar>
-            </BarChart>
+              <YAxis hide domain={[0, (max) => Math.max(max + 1, 3)]} />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: "#E10600", strokeOpacity: 0.25, strokeDasharray: "4 4" }} />
+              <Line type="monotone" dataKey="cantidad" name="Órdenes" stroke="#E10600" strokeWidth={3.5} strokeLinecap="round"
+                dot={<PuntoCarro total={mensual.length} />} activeDot={false} animationDuration={1400} animationEasing="ease-out" />
+            </LineChart>
           </ResponsiveContainer>
         </div>
 
@@ -296,6 +351,8 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        <div className="estado-neumatico">
+          <NeumaticoEstados datos={porEstado.map((e) => ({ nombre: e.estado, valor: e.cantidad, color: ESTADO_COLORS[e.estado] || COLORS.grey }))} />
         <div className="estado-lista">
           {(() => {
             const total = porEstado.reduce((t, e) => t + e.cantidad, 0) || 1;
@@ -310,6 +367,7 @@ export default function Dashboard() {
               </div>
             ));
           })()}
+        </div>
         </div>
       </div>
 

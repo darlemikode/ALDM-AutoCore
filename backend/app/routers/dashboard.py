@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from typing import Optional
 from calendar import month_abbr
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -191,3 +192,65 @@ def marcar_contactado(id_vehiculo: int, payload: MarcarContactadoIn, db: Session
     ))
     db.commit()
     return {"status": "ok"}
+
+
+@router.get("/trabajos-por-empleado")
+def trabajos_por_empleado(
+    id_empleado: Optional[int] = None,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    incluir_terminadas: bool = False,
+    db: Session = Depends(get_db),
+    user=Depends(require_permission("servicios.ver")),
+):
+    """Órdenes que cada trabajador tiene a su cargo. Por defecto solo las que se están
+    realizando (abiertas); con `incluir_terminadas` también las cerradas. Las fechas filtran
+    por traslape con el periodo de la orden (entrada → salida, o hasta hoy si sigue abierta)."""
+    q = (
+        db.query(models.Servicio)
+        .options(
+            joinedload(models.Servicio.empleado_responsable),
+            joinedload(models.Servicio.vehiculo).joinedload(models.Vehiculo.marca),
+            joinedload(models.Servicio.vehiculo).joinedload(models.Vehiculo.modelo),
+            joinedload(models.Servicio.cliente),
+        )
+        .filter(models.Servicio.status != "cancelado")
+    )
+    if not incluir_terminadas:
+        q = q.filter(models.Servicio.status == "abierto")
+    if id_empleado == 0:
+        q = q.filter(models.Servicio.id_empleado_responsable.is_(None))
+    elif id_empleado is not None:
+        q = q.filter(models.Servicio.id_empleado_responsable == id_empleado)
+    if hasta is not None:
+        q = q.filter(models.Servicio.fecha_entrada_servicio < datetime.combine(hasta + timedelta(days=1), datetime.min.time()))
+    if desde is not None:
+        q = q.filter((models.Servicio.fecha_salida_servicio.is_(None)) | (models.Servicio.fecha_salida_servicio >= datetime.combine(desde, datetime.min.time())))
+    ordenes = q.order_by(models.Servicio.fecha_entrada_servicio.desc()).limit(500).all()
+
+    def _nombre(e):
+        return " ".join(x for x in [e.nombre, e.paterno] if x)
+
+    trabajos = []
+    for o in ordenes:
+        v, c, e = o.vehiculo, o.cliente, o.empleado_responsable
+        trabajos.append({
+            "id_servicio": o.id_servicio,
+            "id_empleado": o.id_empleado_responsable,
+            "empleado": _nombre(e) if e else "Sin asignar",
+            "vehiculo": " ".join(x for x in [(v.marca.nombre_marca if v and v.marca else None), (v.modelo.nombre_modelo if v and v.modelo else None)] if x) if v else "",
+            "placas": v.placas_vehiculo if v else None,
+            "cliente": " ".join(x for x in [c.nombre_cliente, c.paterno_cliente] if x) if c else "",
+            "nombre_servicio": o.nombre_servicio,
+            "status": o.status,
+            "etapa": o.etapa,
+            "fecha_entrada": o.fecha_entrada_servicio.strftime("%Y-%m-%dT%H:%M:%S") + "Z" if o.fecha_entrada_servicio else None,
+            "fecha_salida": o.fecha_salida_servicio.strftime("%Y-%m-%dT%H:%M:%S") + "Z" if o.fecha_salida_servicio else None,
+        })
+    empleados = (
+        db.query(models.Empleado).filter(models.Empleado.activo == True).order_by(models.Empleado.nombre).all()  # noqa: E712
+    )
+    return {
+        "empleados": [{"id_empleado": e.id_empleado, "nombre": _nombre(e), "puesto": e.puesto} for e in empleados],
+        "trabajos": trabajos,
+    }

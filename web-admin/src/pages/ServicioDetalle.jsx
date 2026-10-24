@@ -35,6 +35,7 @@ export default function ServicioDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { confirmDialog, notify } = useUI();
+  const [cambioFecha, setCambioFecha] = useState(null); // { campo, valor, motivo }
   const { hasPermission, estadoSuscripcion } = useAuth();
   // Arranque no incluye Empleados: no se muestra «Empleado responsable»
   const tieneModuloEmpleados = !estadoSuscripcion?.modulos || estadoSuscripcion.modulos.includes("empleados");
@@ -159,9 +160,22 @@ export default function ServicioDetalle() {
 
   // Orden recién abierta (sin cliente o sin vehículo): se pide de inmediato
   useEffect(() => {
-    if (servicio && servicio.status === "abierto" && (!servicio.id_cliente || !servicio.id_vehiculo) && hasPermission("servicios.editar")) setEligiendoCV(true);
+    // Al cambiar de orden (ej. "Ir a la orden" desde un aviso) el selector se cierra si la nueva ya está completa
+    setEligiendoCV(!!(servicio && servicio.status === "abierto" && (!servicio.id_cliente || !servicio.id_vehiculo) && hasPermission("servicios.editar")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicio?.id_servicio]);
+
+  async function eliminarBorrador() {
+    const ok = await confirmDialog(`¿Eliminar la orden #${servicio.id_servicio}? Aún no tiene vehículo ni movimientos, así que se borra por completo.`, { danger: true, confirmar: "Sí, eliminar" });
+    if (!ok) return;
+    try {
+      await api.del(`/servicios/${servicio.id_servicio}`);
+      notify("Orden eliminada.", "success");
+      navigate("/servicios", { replace: true });
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
 
   async function guardarClienteVehiculo(datos) {
     try {
@@ -633,11 +647,20 @@ export default function ServicioDetalle() {
     return d.toISOString().slice(0, 10);
   };
 
-  async function cambiarFecha(campo, valor) {
+  // Cambiar una fecha a mano exige permiso y un motivo; queda en la bitácora de auditoría
+  function cambiarFecha(campo, valor) {
+    if (!hasPermission("servicios.editar_fechas")) { notify("Tu rol no puede cambiar las fechas de una orden. Pídele al administrador que lo haga.", "error"); return; }
+    setCambioFecha({ campo, valor, motivo: "" });
+  }
+  async function confirmarCambioFecha(e) {
+    e.preventDefault();
+    const { campo, valor, motivo } = cambioFecha;
+    if (motivo.trim().length < 5) { notify("Escribe el motivo del cambio (mínimo 5 caracteres).", "error"); return; }
     try {
-      const actualizado = await api.put(`/servicios/${id}`, { [campo]: valor ? `${valor}T12:00:00` : null });
+      const actualizado = await api.put(`/servicios/${id}`, { [campo]: valor ? `${valor}T12:00:00` : null, motivo_cambio_fecha: motivo.trim() });
       setServicio(actualizado);
-      notify("Se actualizó la fecha.", "success");
+      setCambioFecha(null);
+      notify("Se actualizó la fecha y quedó en la bitácora.", "success");
     } catch (err) {
       notify(err.message, "error");
     }
@@ -883,12 +906,12 @@ export default function ServicioDetalle() {
         <div className="orden-hero-fechas">
           <label className="orden-fecha">
             <span>Fecha de entrada</span>
-            <SelectorFecha value={fechaLocal(servicio.fecha_entrada_servicio)} max={fechaLocal(servicio.fecha_salida_servicio) || undefined} disabled={!hasPermission("servicios.editar")} required
+            <SelectorFecha value={fechaLocal(servicio.fecha_entrada_servicio)} max={fechaLocal(servicio.fecha_salida_servicio) || undefined} disabled={!hasPermission("servicios.editar_fechas")} required
               onChange={(v) => v && cambiarFecha("fecha_entrada_servicio", v)} />
           </label>
           <label className="orden-fecha">
             <span>Fecha de salida</span>
-            <SelectorFecha value={fechaLocal(servicio.fecha_salida_servicio)} min={fechaLocal(servicio.fecha_entrada_servicio)} disabled={!hasPermission("servicios.editar")}
+            <SelectorFecha value={fechaLocal(servicio.fecha_salida_servicio)} min={fechaLocal(servicio.fecha_entrada_servicio)} disabled={!hasPermission("servicios.editar_fechas")}
               onChange={(v) => cambiarFecha("fecha_salida_servicio", v)} />
             {!servicio.fecha_salida_servicio && <small>Sin capturar: la nota usa la fecha en que se genera.</small>}
           </label>
@@ -962,7 +985,7 @@ export default function ServicioDetalle() {
                 title={fotoVehiculo ? "Clic para ver la foto en grande" : puedeEditarFotoVeh ? "Clic para agregar una foto" : undefined}
               >
                 {fotoVehiculo ? (
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={`/uploads/${fotoVehiculo.ruta_archivo}`}
                     alt="Vehículo del cliente"
                     className="orden-foto-vehiculo"
@@ -1008,7 +1031,7 @@ export default function ServicioDetalle() {
                     >
                       <IconoAuto valor="✕" size={18} />
                     </button>
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={`/uploads/${fotoVehiculo.ruta_archivo}`}
                       alt="Vehículo del cliente"
                       style={{ display: "block", maxWidth: "100%", maxHeight: "85vh", borderRadius: 12, boxShadow: "0 12px 40px rgba(0,0,0,.4)" }}
@@ -1135,7 +1158,7 @@ export default function ServicioDetalle() {
                     <td className="celda-arrastre">
                       {puedeArrastrar && <span className="asa-arrastre" title="Arrastra para reordenar"><Icono nombre="list" size={16} /></span>}
                     </td>
-                    <td>{d.descripcion || "—"}</td>
+                    <td className="celda-descripcion">{d.descripcion || "—"}</td>
                     <td className="celda-categoria"><span className="chip-cat-ref">{clave}</span></td>
                     <td>
                       <input
@@ -1362,6 +1385,10 @@ export default function ServicioDetalle() {
               {!abierta && puedeEditarOrden && (
                 <button className="btn btn-secondary" onClick={() => cambiarStatus("abierto")} title="Volver a abrir la orden para editarla">↺ Reabrir orden</button>
               )}
+              {hasPermission("servicios.eliminar") && !servicio.id_vehiculo && servicio.status === "abierto" && (servicio.etapa || "en_proceso") === "en_proceso"
+                && (servicio.historial_etapas || []).length <= 1 && !(servicio.detalles || []).length && !(servicio.abonos || []).length && (
+                <button className="btn btn-danger" onClick={eliminarBorrador} title="Solo órdenes sin vehículo y sin movimientos"><IconoAuto valor="🗑️" size={18} /> Eliminar orden</button>
+              )}
               {puedeEditarOrden && servicio.status !== "cancelado" && servicio.status !== "cerrado" && !(servicio.costos.total_abonado > 0 && servicio.costos.saldo_pendiente <= 0) && (
                 <button className="btn btn-danger" onClick={() => cambiarStatus("cancelado")} title="Cancelar la orden (solo si no está pagada)"><IconoAuto valor="✕" size={18} /> Cancelar orden</button>
               )}
@@ -1398,29 +1425,36 @@ export default function ServicioDetalle() {
         </ModalPortal>
       )}
 
-      {/* Botón flotante de chat — el chat solo se despliega si lo pides */}
-      {abierta && (puedeEditarOrden || inspeccionActual) && (
+      {/* Botones flotantes: inspección y chat de la orden */}
+      <div className="fab-grupo">
+        {abierta && (puedeEditarOrden || inspeccionActual) && (
+          <button
+            type="button"
+            className="fab-pill fab-inspeccion"
+            onClick={() => setMostrandoInspeccion(true)}
+            title={inspeccionActual ? "Ver / editar la inspección del vehículo" : "Nueva inspección del vehículo"}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="5" y="4" width="14" height="17" rx="2" />
+              <path d="M9 4V3h6v1" />
+              <path d="M8.5 13l2.3 2.3L15.5 10.6" />
+            </svg>
+            <span>Inspección</span>
+          </button>
+        )}
         <button
-          className="chat-fab chat-fab-estatus"
-          onClick={() => setMostrandoInspeccion(true)}
-          title={inspeccionActual ? "Ver / editar la inspección del vehículo" : "Nueva inspección del vehículo"}
+          type="button"
+          className="fab-pill fab-chat"
+          onClick={() => { setChatAbierto((v) => !v); setEstatusAbierto(false); }}
+          title="Chat de la orden"
         >
-          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M4 19l2.2-6.2A3 3 0 0 1 9 11h9.5a3 3 0 0 1 2.6 1.5L23.5 17" />
-            <path d="M3 19h14v4a1 1 0 0 1-1 1h-1.5M3 19v4a1 1 0 0 0 1 1h1.5" />
-            <circle cx="8" cy="24" r="2" />
-            <path d="M11 24h1.5" />
-            <path d="M25.5 14.5a3.4 3.4 0 0 0-4.6 4.2l-4.4 4.4a1.5 1.5 0 0 0 2.1 2.1l4.4-4.4a3.4 3.4 0 0 0 4.2-4.6l-2 2-1.7-.4-.4-1.7z" />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+            <path d="M9 11h6M9 14h4" />
           </svg>
+          <span>Chat</span>
         </button>
-      )}
-      <button
-        className="chat-fab"
-        onClick={() => { setChatAbierto((v) => !v); setEstatusAbierto(false); }}
-        title="Chat de la orden"
-      >
-        <IconoAuto valor="💬" size={18} />
-      </button>
+      </div>
       {chatAbierto && (
         <div className="chat-flotante">
           <div className="chat-flotante-header">
@@ -1621,6 +1655,22 @@ export default function ServicioDetalle() {
             descargarPdf("remision", "preview");
           }}
         />
+      )}
+      {cambioFecha && (
+        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setCambioFecha(null)}>
+          <form className="modal" role="dialog" aria-label="Motivo del cambio de fecha" onSubmit={confirmarCambioFecha} style={{ maxWidth: 440 }}>
+            <h3 style={{ marginTop: 0 }}>Cambiar {cambioFecha.campo === "fecha_entrada_servicio" ? "fecha de entrada" : "fecha de salida"}</h3>
+            <p style={{ fontSize: 13, color: "var(--ink-500)" }}>Nueva fecha: <b>{cambioFecha.valor || "(sin fecha)"}</b>. El cambio queda registrado con tu usuario, la hora del servidor y este motivo.</p>
+            <div className="field">
+              <label>Motivo del cambio *</label>
+              <textarea rows={3} maxLength={300} autoFocus value={cambioFecha.motivo} onChange={(e) => setCambioFecha({ ...cambioFecha, motivo: e.target.value })} placeholder="Ej. El cliente dejó el auto un día antes y no se capturó" />
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button type="button" className="btn btn-ghost" onClick={() => setCambioFecha(null)}>Cancelar</button>
+              <button type="submit" className="btn btn-primary">Guardar cambio</button>
+            </div>
+          </form>
+        </div>
       )}
     </>
   );

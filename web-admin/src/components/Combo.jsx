@@ -37,10 +37,14 @@ export default function Combo({ opciones, value, onChange, required, disabled, p
     function colocar() {
       const r = caja.current?.getBoundingClientRect();
       if (!r) return;
-      const alto = 250;
+      // La app usa html { zoom }: las medidas del navegador son de pantalla y el estilo va dentro del zoom
+      const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--zoom")) || 1;
+      const alto = 420; // lista más amplia: caben más opciones sin hacer scroll
+      const ancho = Math.min(Math.max(r.width, 300), window.innerWidth - 16);
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8));
       const abajo = window.innerHeight - r.bottom;
-      const arriba = abajo < alto && r.top > abajo;
-      setPos({ left: r.left, width: r.width, ...(arriba ? { bottom: window.innerHeight - r.top + 4, maxHeight: Math.min(alto, r.top - 12) } : { top: r.bottom + 4, maxHeight: Math.min(alto, abajo - 12) }) });
+      const arriba = abajo < 260 && r.top > abajo;
+      setPos({ left: left / z, width: ancho / z, ...(arriba ? { bottom: (window.innerHeight - r.top + 4) / z, maxHeight: Math.min(alto, r.top - 12) / z } : { top: (r.bottom + 4) / z, maxHeight: Math.min(alto, abajo - 12) / z }) });
     }
     colocar();
     window.addEventListener("resize", colocar);
