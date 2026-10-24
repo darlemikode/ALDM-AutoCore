@@ -55,6 +55,8 @@ export default function Refacciones() {
   const [modelosVehiculo, setModelosVehiculo] = useState([]);
   const [q, setQ] = useState("");
   const [soloBajoStock, setSoloBajoStock] = useState(false);
+  const [vista, setVista] = useState(() => localStorage.getItem("sm_refacciones_vista") || "lista"); // lista | cuadros
+  useEffect(() => { localStorage.setItem("sm_refacciones_vista", vista); }, [vista]);  // se recuerda la vista elegida
   const [editing, setEditing] = useState(null);
   const [compatNueva, setCompatNueva] = useState({ id_marca_vehiculo: "", id_modelo_vehiculo: "" });
   const [loading, setLoading] = useState(true);
@@ -92,6 +94,7 @@ export default function Refacciones() {
   function fields(values) {
     return [
       { name: "nombre_refaccion", label: "Nombre", required: true, full: true, grupo: "general" },
+      { name: "preciocliente_refaccion", label: "Precio", type: "number", grupo: "general", full: true },
       {
         name: "__id_categoria", label: "Categoría", type: "select", required: true, grupo: "general", full: true, grande: true,
         options: categoriasRefaccion.map((c) => ({ value: c.id_categoria_refaccion, label: c.nombre_categoria })),
@@ -148,7 +151,8 @@ export default function Refacciones() {
       if (!ok) throw new Error(`No se guardó: "${capturados.nombre_refaccion}" ya existe en ${enOtras.join(", ")}.`);
     }
     // Los datos de stock, precios y proveedor viven en Inventario: al editar se conservan tal cual
-    const datos = editing?.id_refaccion ? { ...baseDe(editing), nombre_refaccion: capturados.nombre_refaccion } : { nombre_refaccion: capturados.nombre_refaccion };
+    const precio = Math.max(0, parseFloat(capturados.preciocliente_refaccion) || 0);
+    const datos = editing?.id_refaccion ? { ...baseDe(editing), nombre_refaccion: capturados.nombre_refaccion, preciocliente_refaccion: precio } : { nombre_refaccion: capturados.nombre_refaccion, preciocliente_refaccion: precio };
     datos.categoria = __id_categoria ? categoriasRefaccion.find((c) => c.id_categoria_refaccion === Number(__id_categoria))?.nombre_categoria || null : null;
     if (editing?.id_refaccion) {
       await api.put(`/refacciones/${editing.id_refaccion}`, datos);
@@ -243,7 +247,17 @@ export default function Refacciones() {
           <h1><IconoModulo ruta="/refacciones" /> Refacciones</h1>
           <div className="subtitle">Inventario de partes del taller</div>
         </div>
-        {hasPermission("refacciones.crear") && <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="cube" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva refacción</button>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <div className="vista-toggle vista-toggle-iconos">
+            <button type="button" className={`vista-toggle-btn ${vista === "lista" ? "activo" : ""}`} title="Vista de lista" aria-label="Vista de lista" onClick={() => setVista("lista")}>
+              <Icono nombre="list" size={19} />
+            </button>
+            <button type="button" className={`vista-toggle-btn ${vista === "cuadros" ? "activo" : ""}`} title="Vista de cuadros" aria-label="Vista de cuadros" onClick={() => setVista("cuadros")}>
+              <Icono nombre="grid" size={19} />
+            </button>
+          </div>
+          {hasPermission("refacciones.crear") && <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}><span className="btn-nuevo-icono"><Icono nombre="cube" size={22} /><span className="btn-nuevo-mas">+</span></span>Nueva refacción</button>}
+        </div>
       </div>
 
       <div className="panel">
@@ -260,38 +274,54 @@ export default function Refacciones() {
           <div className="loading-text">Cargando…</div>
         ) : visibles.length === 0 ? (
           <div className="empty-state">No hay refacciones registradas.</div>
+        ) : vista === "cuadros" ? (
+          <div className="veh-cuadros" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+            {visibles.map((r) => {
+              const cat = r.categoria || "Sin categoría";
+              const col = colorCategoria(cat);
+              return (
+                <div key={r.id_refaccion} className="veh-tarjeta" style={{ "--acc": col }}
+                  title={puedeEditar ? "Clic para editar la refacción" : undefined}
+                  onClick={() => puedeEditar && abrirParaEditar(r)}>
+                  <div className="veh-tarjeta-cuerpo">
+                    <div className="veh-tarjeta-titulo">{r.nombre_refaccion}</div>
+                    <div className="veh-tarjeta-meta">
+                      <span><Icono nombre="hash" size={14} /> {r.numero_refaccion || "Sin n.º de parte"}</span>
+                      <span><span className="cat-pill" style={{ "--c": col }}>{cat}</span></span>
+                      <span><Icono nombre="card" size={14} /> {fmt(r.preciocliente_refaccion)}</span>
+                    </div>
+                    <div className="veh-tarjeta-pie">
+                      {/* stopPropagation: los botones no deben disparar también el clic de la tarjeta */}
+                      <div className="row-actions" onClick={(e) => e.stopPropagation()}>
+                        {puedeEditar && (
+                          <button className="btn-icono" title="Editar" aria-label="Editar" onClick={() => abrirParaEditar(r)}><Icono nombre="pencil" size={18} /></button>
+                        )}
+                        {hasPermission("refacciones.eliminar") && (
+                          <button className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => handleDelete(r)}><Icono nombre="trash" size={18} /></button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="ordenes-lista">
             {visibles.map((r) => {
               const cat = r.categoria || "Sin categoría";
               const col = colorCategoria(cat);
               return (
-                <div key={r.id_refaccion} className="orden-fila fila-tabla" style={{ "--acc": col }}>
+                <div key={r.id_refaccion} className="orden-fila fila-tabla" style={{ "--acc": col, cursor: puedeEditar ? "pointer" : undefined }} title={puedeEditar ? "Clic para editar la refacción" : undefined} onClick={() => puedeEditar && abrirParaEditar(r)}>
                   <div className="orden-main">
-                    <div className="orden-titulo"><Editable puede={puedeEditar} valor={r.nombre_refaccion} mostrar={r.nombre_refaccion} onGuardar={(v) => v.trim() && actualizarCampo(r, { nombre_refaccion: v.trim() })} /></div>
+                    <div className="orden-titulo">{r.nombre_refaccion}</div>
                     <div className="fila-datos">
-                      <div className="fila-dato"><span className="fila-dato-etq">N.º de parte</span><span className="fila-dato-val"><Editable puede={puedeEditar} valor={r.numero_refaccion} mostrar={r.numero_refaccion || "—"} onGuardar={(v) => actualizarCampo(r, { numero_refaccion: v.trim() || null })} /></span></div>
-                      <div className="fila-dato"><span className="fila-dato-etq">Categoría</span><span className="fila-dato-val"><Editable
-                        puede={puedeEditar} valor={categoriasRefaccion.find((c) => c.nombre_categoria === r.categoria)?.id_categoria_refaccion ?? ""}
-                        opciones={categoriasRefaccion.map((c) => ({ value: c.id_categoria_refaccion, label: c.nombre_categoria }))}
-                        mostrar={<span className="cat-pill" style={{ "--c": col }}>{cat}</span>}
-                        onGuardar={(v) => actualizarCampo(r, { categoria: v ? categoriasRefaccion.find((c) => c.id_categoria_refaccion === Number(v))?.nombre_categoria || null : null })}
-                      /></span></div>
-                      <div className="fila-dato"><span className="fila-dato-etq">Proveedores</span><span className="fila-dato-val">{(r.proveedores_ids || []).map((pid) => proveedores.find((p) => p.id_proveedor === pid)?.nombre_proveedor).filter(Boolean).join(", ") || "—"}</span></div>
-                      <div className="fila-dato"><span className="fila-dato-etq">Marca</span><span className="fila-dato-val"><Editable
-                        puede={puedeEditar} valor={r.id_marca_refaccion ?? ""}
-                        opciones={marcas.map((m) => ({ value: m.id_marca_refaccion, label: m.nombre_marca }))}
-                        mostrar={nombreMarca(r.id_marca_refaccion)}
-                        onGuardar={(v) => actualizarCampo(r, { id_marca_refaccion: v ? Number(v) : null })}
-                      /></span></div>
-                      <div className="fila-dato"><span className="fila-dato-etq">Stock</span><span className="fila-dato-val"><Editable puede={puedeEditar} tipo="number" valor={r.cantidad_refaccion}
-                        mostrar={<span className={`badge ${r.cantidad_refaccion <= 3 ? "badge-red" : "badge-teal"}`}>{r.cantidad_refaccion}</span>}
-                        onGuardar={(v) => actualizarCampo(r, { cantidad_refaccion: Math.max(0, parseInt(v, 10) || 0) })} /></span></div>
-                      <div className="fila-dato"><span className="fila-dato-etq">Precio cliente</span><span className="fila-dato-val"><Editable puede={puedeEditar} tipo="number" valor={r.preciocliente_refaccion} mostrar={fmt(r.preciocliente_refaccion)}
-                        onGuardar={(v) => actualizarCampo(r, { preciocliente_refaccion: Math.max(0, parseFloat(v) || 0) })} /></span></div>
+                      <div className="fila-dato"><span className="fila-dato-etq">N.º de parte</span><span className="fila-dato-val">{r.numero_refaccion || "—"}</span></div>
+                      <div className="fila-dato"><span className="fila-dato-etq">Categoría</span><span className="fila-dato-val"><span className="cat-pill" style={{ "--c": col }}>{cat}</span></span></div>
+                      <div className="fila-dato"><span className="fila-dato-etq">Precio</span><span className="fila-dato-val">{fmt(r.preciocliente_refaccion)}</span></div>
                     </div>
                   </div>
-                  <div className="row-actions">
+                  <div className="row-actions" onClick={(e) => e.stopPropagation()}>
                         {puedeEditar && (
                           <button className="btn-icono" title="Editar todo" aria-label="Editar" onClick={() => abrirParaEditar(r)}><Icono nombre="pencil" size={18} /></button>
                         )}
@@ -308,6 +338,7 @@ export default function Refacciones() {
 
       {editing && (
         <FormModal
+          tema="complementario"
           title={editing.id_refaccion ? "Editar refacción" : "Nueva refacción"}
           icono="⚙️"
           subtitulo="Datos de la refacción, proveedor y stock."

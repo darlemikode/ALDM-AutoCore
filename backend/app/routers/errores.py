@@ -31,9 +31,16 @@ def reportar_desde_app(request: Request, payload: ErrorClienteIn, db: Session = 
 
 @router.get("/")
 def listar(limit: int = 100, db: Session = Depends(get_db), user=Depends(require_permission("configuracion.editar"))):
-    filas = db.query(models.ErrorSistema).order_by(models.ErrorSistema.fecha.desc()).limit(min(limit, 500)).all()
+    consulta = db.query(models.ErrorSistema)
+    if getattr(user, "es_superadmin", False):
+        # Los errores de las pantallas de súper admin se guardan sin taller
+        # (id_taller nulo, porque esas rutas usan la sesión global). El filtro
+        # por taller los dejaba invisibles justo para quien debe revisarlos.
+        consulta = consulta.execution_options(sin_filtro_taller=True)
+    filas = consulta.order_by(models.ErrorSistema.fecha.desc()).limit(min(limit, 500)).all()
     return [
         {"id_error": e.id_error, "codigo": e.codigo, "fecha": e.fecha, "origen": e.origen, "metodo": e.metodo,
-         "ruta": e.ruta, "status": e.status, "usuario": e.usuario, "mensaje": e.mensaje, "detalle": e.detalle}
+         "ruta": e.ruta, "status": e.status, "usuario": e.usuario, "mensaje": e.mensaje, "detalle": e.detalle,
+         "id_taller": e.id_taller}
         for e in filas
     ]
