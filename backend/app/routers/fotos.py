@@ -27,9 +27,20 @@ os.makedirs(CARPETA_UPLOADS, exist_ok=True)
 # A qué permiso corresponde poder subir/borrar fotos de cada tipo de entidad
 PERMISO_POR_ENTIDAD = {
     "vehiculo": "vehiculos.editar", "servicio": "servicios.editar", "inspeccion": "servicios.editar",
-    "proveedor": "proveedores.editar", "herramienta": "herramientas.editar", "cliente": "clientes.editar",
+    "inventario": "inventario.editar", "proveedor": "proveedores.editar", "herramienta": "herramientas.editar", "cliente": "clientes.editar",
 }
 EXTENSIONES_VALIDAS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+
+
+@router.get("/principales")
+def principales(entidad_tipo: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Foto más reciente de cada registro de ese tipo ({id: ruta}), en una sola
+    consulta, para mostrar las tarjetas con foto sin pedir /fotos/ una por una."""
+    fotos = db.query(models.Foto).filter(models.Foto.entidad_tipo == entidad_tipo).order_by(models.Foto.fecha.desc()).all()
+    res: dict[int, str] = {}
+    for foto in fotos:
+        res.setdefault(foto.entidad_id, f"/uploads/{foto.ruta_archivo}")
+    return res
 
 
 @router.get("/", response_model=list[schemas.FotoOut])
