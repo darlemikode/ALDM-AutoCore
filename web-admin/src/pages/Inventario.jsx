@@ -9,6 +9,8 @@ import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
 import { Icono } from "../components/Icono";
+import FotoGaleria from "../components/FotoGaleria";
+import ModalPortal from "../components/ModalPortal";
 
 /**
  * Inventario — cada renglón es un registro de stock/precio para una
@@ -34,6 +36,9 @@ export default function Inventario() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [vista, setVista] = useState("cuadros"); // cuadros | lista
+  const [fotos, setFotos] = useState({}); // { id_inventario_refaccion: ruta de su foto más reciente }
+  const [fotosDe, setFotosDe] = useState(null); // registro cuyas fotos se están viendo
 
   async function load() {
     const [inv, refs, cat, marcasRef, marcasVeh, modelosVeh, provs] = await Promise.all([
@@ -53,6 +58,11 @@ export default function Inventario() {
     setModelosVehiculo(modelosVeh);
     setProveedores(provs);
     setLoading(false);
+    cargarFotos();
+  }
+
+  async function cargarFotos() {
+    try { setFotos(await api.get("/fotos/principales?entidad_tipo=inventario")); } catch { /* sin fotos no pasa nada */ }
   }
 
   useEffect(() => { load(); }, []);
@@ -60,6 +70,14 @@ export default function Inventario() {
   function estaBajoStock(r) {
     return r.cantidad <= (r.umbral_rojo ?? 1);
   }
+  // Estado del stock para la etiqueta de la tarjeta
+  function estadoStock(r) {
+    if ((r.cantidad || 0) <= 0) return { texto: "Agotado", clase: "badge-red" };
+    if (estaBajoStock(r)) return { texto: "Stock crítico", clase: "badge-red" };
+    if (r.cantidad <= (r.umbral_naranja ?? 4)) return { texto: "Stock bajo", clase: "badge-amber" };
+    return { texto: "En stock", clase: "badge-teal" };
+  }
+  const dinero = (n) => (n ? `$${Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—");
 
   const filasFiltradas = filas.filter((r) => {
     const coincideTexto = !q.trim() || contiene(`${r.refaccion?.nombre_refaccion || ""} ${r.marca_refaccion?.nombre_marca || ""}`, q);
@@ -233,9 +251,19 @@ export default function Inventario() {
           <h1><IconoModulo ruta="/inventario" /> Inventario</h1>
           <div className="subtitle">Stock y precio por refacción, con las marcas/modelos de vehículo con las que es compatible</div>
         </div>
+        <div style={{ display: "flex", gap: 8 }}>
+        <div className="vista-toggle vista-toggle-iconos">
+          <button type="button" className={`vista-toggle-btn ${vista === "lista" ? "activo" : ""}`} title="Vista de lista" aria-label="Vista de lista" onClick={() => setVista("lista")}>
+            <Icono nombre="list" size={19} />
+          </button>
+          <button type="button" className={`vista-toggle-btn ${vista === "cuadros" ? "activo" : ""}`} title="Vista en cuadros" aria-label="Vista en cuadros" onClick={() => setVista("cuadros")}>
+            <Icono nombre="grid" size={19} />
+          </button>
+        </div>
         {hasPermission("inventario.crear") && (
           <button className="btn btn-primary btn-nuevo" onClick={() => { setEditing({}); setCompatNueva({ id_marca_vehiculo: "", id_modelo_vehiculo: "" }); setCompatibilidadesNuevas([]); }}><span className="btn-nuevo-icono"><Icono nombre="cube" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo registro</button>
         )}
+        </div>
       </div>
 
       <div className="panel">
@@ -253,6 +281,54 @@ export default function Inventario() {
           <div className="loading-text">Cargando…</div>
         ) : filasFiltradas.length === 0 ? (
           <div className="empty-state">Aún no hay refacciones en el inventario — da de alta la primera.</div>
+        ) : vista === "cuadros" ? (
+          <div className="veh-cuadros">
+            {filasFiltradas.map((r) => {
+              const cat = r.refaccion?.categoria || "Sin categoría";
+              const est = estadoStock(r);
+              const foto = fotos[r.id_inventario_refaccion];
+              return (
+                <div key={r.id_inventario_refaccion} className="veh-tarjeta" style={{ "--acc": colorGrupo(cat) }} onClick={() => hasPermission("inventario.editar") && (setEditing(r), setCompatNueva({ id_marca_vehiculo: "", id_modelo_vehiculo: "" }))}>
+                  <div className="veh-tarjeta-foto" onClick={(e) => { e.stopPropagation(); setFotosDe(r); }} title="Ver / agregar fotos">
+                    {foto ? (
+                      <img loading="lazy" decoding="async" src={foto} alt="" />
+                    ) : (
+                      <div className="veh-tarjeta-foto-vacia">
+                        <Icono nombre="camera" size={26} />
+                        <span>Agregar foto</span>
+                      </div>
+                    )}
+                    <span className={`badge ${est.clase} veh-tarjeta-estado`}>{est.texto}</span>
+                  </div>
+                  <div className="veh-tarjeta-cuerpo">
+                    <div className="veh-tarjeta-titulo">{r.refaccion?.nombre_refaccion || "—"}{r.marca_refaccion?.nombre_marca ? ` · ${r.marca_refaccion.nombre_marca}` : ""}</div>
+                    <div className="veh-tarjeta-meta">
+                      <span><Icono nombre="pricetag" size={14} /> {cat}</span>
+                      <span><Icono nombre="cube" size={14} /> {r.cantidad} en stock{r.ubicacion_fisica ? ` · ${r.ubicacion_fisica}` : ""}</span>
+                      <span><Icono nombre="car" size={14} /> {r.compatibilidades?.length
+                        ? r.compatibilidades.map((c) => `${c.marca_vehiculo?.nombre_marca || ""} ${c.modelo_vehiculo?.nombre_modelo || ""}`.trim()).join(", ")
+                        : "Sin compatibilidad"}</span>
+                    </div>
+                    <div className="veh-tarjeta-pie">
+                      <div className="row-actions" onClick={(e) => e.stopPropagation()}>
+                        <button className="btn-icono" title="Fotos" aria-label="Fotos" onClick={() => setFotosDe(r)}><IconoAuto valor="📷" size={18} /></button>
+                        {hasPermission("inventario.editar") && (
+                          <button className="btn-icono" title="Editar" aria-label="Editar" onClick={() => { setEditing(r); setCompatNueva({ id_marca_vehiculo: "", id_modelo_vehiculo: "" }); }}><Icono nombre="pencil" size={18} /></button>
+                        )}
+                        {hasPermission("inventario.eliminar") && (
+                          <button className="btn-icono btn-icono-peligro" title="Eliminar" aria-label="Eliminar" onClick={() => eliminar(r)}><Icono nombre="trash" size={18} /></button>
+                        )}
+                      </div>
+                      <div className="veh-tarjeta-contacto">
+                        <span className="veh-tarjeta-contacto-nombre"><Icono nombre="cash" size={13} /> Venta {dinero(r.preciocliente)}</span>
+                        <span className="veh-tarjeta-contacto-tel" title="Costo de compra"><Icono nombre="card" size={13} /> Costo {dinero(r.preciopropio)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           categoriasOrdenadas.map((cat) => (
             <div key={cat} style={{ marginBottom: 20 }}>
@@ -274,6 +350,26 @@ export default function Inventario() {
           ))
         )}
       </div>
+
+      {fotosDe && (
+        <ModalPortal>
+        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && (setFotosDe(null), cargarFotos())}>
+          <div className="modal" style={{ maxWidth: 480 }}>
+            <h2 style={{ fontSize: 18 }}>Fotos — {fotosDe.refaccion?.nombre_refaccion || "Refacción"}</h2>
+            <FotoGaleria
+              entidadTipo="inventario"
+              entidadId={fotosDe.id_inventario_refaccion}
+              puedeEditar={hasPermission("inventario.editar")}
+              onCambio={cargarFotos}
+              onFotoAgregada={() => { cargarFotos(); setFotosDe(null); }}
+            />
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={() => { setFotosDe(null); cargarFotos(); }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+        </ModalPortal>
+      )}
 
       {editing && (
         <FormModal
