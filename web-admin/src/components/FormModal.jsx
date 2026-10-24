@@ -38,7 +38,7 @@ import { IconoAuto, Icono } from "./Icono";
  * mostrarlo dentro del input — si no lo trae, FormModal intenta inferirlo
  * del nombre del campo (correo, teléfono, precio, fecha, código postal…).
  */
-export default function FormModal({ title, fields, initialValues, onSubmit, onClose, footerExtra, icono, colorAcento = "petrol", subtitulo, grupos, bloqueExtra, permitirOtra, compacto }) {
+export default function FormModal({ title, fields, initialValues, onSubmit, onClose, footerExtra, icono, colorAcento = "petrol", subtitulo, grupos, bloqueExtra, permitirOtra, compacto, tema }) {
   const { hasPermission } = useAuth();
   const [values, setValues] = useState(initialValues || {});
   const [saving, setSaving] = useState(false);
@@ -311,7 +311,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
 
   return createPortal(
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal ${bloques ? "modal-ancho" : ""} ${compacto ? "modal-compacto" : ""}`}>
+      <div className={`modal ${bloques ? "modal-ancho" : ""} ${compacto ? "modal-compacto" : ""} ${tema ? `modal-${tema}` : ""}`}>
         <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={onClose}><Icono nombre="close" size={20} /></button>
         <div className="modal-header-icono">
           <div className="modal-avatar-icono" style={{ "--acc": `var(--${colorAcento}-600)`, "--acc-soft": `var(--${colorAcento}-100)` }}>

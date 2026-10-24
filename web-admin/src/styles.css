@@ -4058,3 +4058,30 @@ select option:disabled { color: #8d8d8f; }
   50%      { box-shadow: 0 6px 24px color-mix(in srgb, var(--teal-600) 65%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) { .btn.btn-cobrar { animation: none; } }
+/* ── Tema claro: rojo intenso + azul antracita + coral suave ── */
+.modal.modal-complementario {
+  --cta: #E63946; --fondo: #F8F9FA; --tarjeta: #E9ECEF; --tinta: #1D3557; --acento: #F4A261; --borde: #CED4DA;
+  background: var(--fondo); border-color: var(--cta); color: var(--tinta);
+}
+.modal-complementario .modal-header-icono h2 { color: var(--tinta); }
+.modal-complementario .modal-subtitulo { color: color-mix(in srgb, var(--tinta) 65%, var(--fondo)); }
+.modal-complementario .modal-avatar-icono { color: var(--cta); background: color-mix(in srgb, var(--cta) 12%, var(--fondo)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cta) 40%, transparent); }
+.modal-complementario .nota-bloque { background: #fff; border-color: var(--borde); border-top-color: var(--cta); }
+.modal-complementario .nota-bloque.acento-teal, .modal-complementario .nota-bloque.acento-ambar { border-top-color: var(--acento); }
+.modal-complementario .nota-bloque-header { background: var(--tarjeta); border-bottom-color: var(--borde); }
+.modal-complementario .nota-bloque-header h2 { color: var(--tinta); }
+.modal-complementario .nota-bloque-header .icono { color: var(--cta); background: color-mix(in srgb, var(--cta) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cta) 34%, transparent); }
+.modal-complementario .nota-bloque.acento-teal .nota-bloque-header .icono, .modal-complementario .nota-bloque.acento-ambar .nota-bloque-header .icono { color: #c9742b; background: color-mix(in srgb, var(--acento) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acento) 55%, transparent); }
+.modal-complementario .field label { color: var(--tinta); opacity: .8; }
+.modal-complementario .field label .req { color: var(--cta); }
+.modal-complementario .field input, .modal-complementario .field select, .modal-complementario .field textarea { background: #fff; border-color: var(--borde); color: var(--tinta); }
+.modal-complementario .field input:focus, .modal-complementario .field select:focus, .modal-complementario .field textarea:focus { border-color: var(--acento); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 35%, transparent); outline: none; }
+.modal-complementario .icono-prefijo { color: var(--tinta); }
+.modal-complementario .btn-quick-add { color: var(--cta); border-color: var(--cta); background: color-mix(in srgb, var(--cta) 6%, transparent); }
+.modal-complementario .btn-quick-add:hover { background: var(--acento); border-color: var(--acento); color: var(--tinta); }
+.modal-complementario .modal-actions .btn-primary { background: var(--cta); border-color: var(--cta); color: #fff; font-weight: 700; }
+.modal-complementario .modal-actions .btn-primary:hover:not(:disabled) { background: var(--acento); border-color: var(--acento); color: var(--tinta); }
+.modal-complementario .modal-actions .btn-secondary { background: var(--tarjeta); border-color: var(--borde); color: var(--tinta); }
+.modal-complementario .modal-actions .btn-secondary:hover:not(:disabled) { border-color: var(--acento); }
+.modal-complementario .x-cerrar { color: var(--cta); border-color: var(--cta); background: color-mix(in srgb, var(--cta) 8%, transparent); }
+.modal-complementario .x-cerrar:hover:not(:disabled) { background: var(--acento); color: var(--tinta); }
