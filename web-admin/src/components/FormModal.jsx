@@ -49,9 +49,13 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
   const [quickAddSaving, setQuickAddSaving] = useState(false);
   const [quickAddError, setQuickAddError] = useState("");
 
+  // Solo se reinician los valores si los datos iniciales REALMENTE cambian (no por volver a pintar el padre
+  // con un objeto nuevo igual): si no, lo que el usuario ya escribió se borraba solo.
+  const claveInicial = JSON.stringify(initialValues || {});
   useEffect(() => {
     setValues(initialValues || {});
-  }, [initialValues]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveInicial]);
 
   // `fields` puede ser un array fijo, o una función(values) => array para
   // que un campo dependa de lo que el usuario ya eligió en otro (ej. la
@@ -187,7 +191,9 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
     return (
       <div className={`field ${f.full ? "full" : ""} ${f.grande ? "campo-grande" : ""} ${camposFaltantes.includes(f.name) ? "campo-con-error" : ""}`} key={f.name} data-autofoco={f.autofoco ? "1" : undefined}>
         <label>{f.label}{f.required && <span className="req" aria-hidden="true"> *</span>}</label>
-        {f.type === "buscable" ? (
+        {f.type === "custom" ? (
+          f.render(values[f.name], (v) => update(f.name, v))
+        ) : f.type === "buscable" ? (
           <ComboBuscable
             options={f.options}
             value={values[f.name] ?? ""}
@@ -327,7 +333,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
           {bloques ? (
             <div className="bloques-grid">
             {bloques.map((b) => (
-              <div className={`nota-bloque ${b.acento || ""} ${b.grande ? "bloque-grande" : ""}`} key={b.clave} style={{ ...(b.filas ? { gridRow: `span ${b.filas}` } : {}), ...(b.completo ? { gridColumn: "1 / -1" } : {}) }}>
+              <div className={`nota-bloque ${b.acento || ""} ${b.grande ? "bloque-grande" : ""}`} key={b.clave} style={{ ...(b.fila ? { gridRow: `${b.fila} / span ${b.filas || 1}` } : b.filas ? { gridRow: `span ${b.filas}` } : {}), ...(b.columna ? { gridColumn: b.columna } : {}), ...(b.completo ? { gridColumn: "1 / -1" } : {}) }}>
                 <div className="nota-bloque-header">
                   <span className="icono"><IconoAuto valor={b.icono} size={18} /></span>
                   <h2>{b.titulo}</h2>
