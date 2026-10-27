@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -37,6 +37,20 @@ export default function SelectorFecha({ value, onChange, min, max, disabled, req
     setPos({ top, left });
     setAbierto(true);
   }
+
+  // Con el zoom general de la app (html { zoom }) las coordenadas del botón y las del panel pueden venir en
+  // escalas distintas según el navegador: se mide dónde quedó el panel y se corrige para que quede pegado al botón.
+  useLayoutEffect(() => {
+    if (!abierto || !panel.current || !boton.current) return;
+    const pr = panel.current.getBoundingClientRect();
+    const br = boton.current.getBoundingClientRect();
+    const escala = panel.current.offsetWidth ? pr.width / panel.current.offsetWidth : 1;
+    let topV = br.bottom + 6;
+    if (topV + pr.height > window.innerHeight) topV = Math.max(8, br.top - pr.height - 6);
+    let leftV = Math.min(Math.max(8, br.left), window.innerWidth - pr.width - 8);
+    const dx = (leftV - pr.left) / (escala || 1), dy = (topV - pr.top) / (escala || 1);
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) setPos((p) => ({ top: p.top + dy, left: p.left + dx }));
+  }, [abierto]);
 
   useEffect(() => {
     if (!abierto) return;

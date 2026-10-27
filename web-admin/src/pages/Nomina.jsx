@@ -70,9 +70,11 @@ function previewLote(rango, periodicidad, dia, existentes) {
     const fin = parse(calcularFin(periodicidad, dia, iso(ini)));
     const a = iso(ini), b = iso(fin);
     const p = { fecha_inicio: a, fecha_fin: b, periodicidad };
+    const choque = existentes.find((e) => e.periodicidad === periodicidad && String(e.fecha_inicio).slice(0, 10) <= b && String(e.fecha_fin).slice(0, 10) >= a);
     out.push({
+      choque: choque ? `${fechaCorta(choque.fecha_inicio)} — ${fechaCorta(choque.fecha_fin)}` : null,
       inicio: a, fin: b, nombre: nombrePeriodo(p), rangoTxt: `${fechaCorta(a)} — ${fechaCorta(b)}`,
-      existe: existentes.some((e) => e.periodicidad === periodicidad && String(e.fecha_inicio).slice(0, 10) <= b && String(e.fecha_fin).slice(0, 10) >= a),
+      existe: !!choque,
     });
     ini = sumar(fin, 1);
   }
@@ -387,6 +389,7 @@ export default function Nomina() {
           titulo="Editar periodo de nómina"
           subtitulo="Con recibos ya pagados solo se puede cambiar la repetición. Al corregir, los recibos se regeneran con los datos actuales."
           pedirMotivo
+          soloRepeticion={editando.status === "pagado" || (editando.recibos || []).some((r) => r.pagado)}
           inicial={{ ...editando, fecha_inicio: String(editando.fecha_inicio).slice(0, 10), fecha_fin: String(editando.fecha_fin).slice(0, 10), dia_pago: String(editando.dia_pago ?? 4), empleados: (editando.empleados_ids || "").split(",").filter(Boolean).map(Number) }}
           empleados={empleados}
           calcularFin={calcularFin}

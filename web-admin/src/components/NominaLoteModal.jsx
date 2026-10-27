@@ -76,7 +76,8 @@ export default function NominaLoteModal({ empleados, generar, onSubmit, onClose 
               <div key={p.inicio} className={`nl-fila ${p.existe ? "existe" : ""}`}>
                 <span>{p.nombre}</span>
                 <small>{p.rangoTxt}</small>
-                <em>{p.existe ? "Ya existe · se omite" : "Se creará"}</em>
+                <em title={p.choque ? `Se traslapa con el periodo ya registrado ${p.choque}` : undefined}>{p.existe ? "Ya existe · se omite" : "Se creará"}</em>
+                {p.existe && p.choque && <small className="nl-choque">Se traslapa con el periodo {p.choque}</small>}
               </div>
             ))}
           </div>

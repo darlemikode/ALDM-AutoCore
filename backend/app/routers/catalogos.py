@@ -54,9 +54,23 @@ router.include_router(make_crud_router(
 # seed.py: _migrar_subcategorias_a_refacciones). El modelo RefaccionSubcategoria
 # se deja en la base de datos solo para esa migración, sin exponerse ya en la API.
 
+def _validar_inventario(db, data, excluir_id):
+    """El código de barras identifica UN producto: no se repite dentro del taller."""
+    codigo = (data.get("codigo_barras") or "").strip()
+    data["codigo_barras"] = codigo or None
+    if not codigo:
+        return
+    q = db.query(models.InventarioRefaccion).filter(models.InventarioRefaccion.codigo_barras == codigo)
+    if excluir_id:
+        q = q.filter(models.InventarioRefaccion.id_inventario_refaccion != excluir_id)
+    if q.first():
+        raise HTTPException(status_code=400, detail=f'El código de barras "{codigo}" ya está asignado a otro producto.')
+
+
 router.include_router(make_crud_router(
     model=models.InventarioRefaccion, schema_out=schemas.InventarioRefaccionOut, schema_in=schemas.InventarioRefaccionIn,
     prefix="/api/inventario-refacciones", tags=["catálogos"], id_field="id_inventario_refaccion", filtro_campo="id_refaccion", permiso="inventario",
+    validar=_validar_inventario,
 ))
 
 # POST personalizado para compatibilidades: antes de crear, valida si YA

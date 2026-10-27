@@ -544,6 +544,13 @@ class InventarioRefaccionIn(BaseModel):
     preciopropio: float = 0
     preciocliente: float = 0
     ubicacion_fisica: Optional[str] = None
+    almacen: Optional[str] = None
+    pasillo: Optional[str] = None
+    estanteria: Optional[str] = None
+    nivel: Optional[str] = None
+    posicion: Optional[str] = None
+    codigo_barras: Optional[str] = None
+    unidad: Optional[str] = "pza"
     umbral_naranja: int = 4
     umbral_rojo: int = 1
 
@@ -1645,3 +1652,65 @@ class FinalizarServicioOut(BaseModel):
 
 
 PagoSuscripcionOut.model_rebuild()
+
+
+# ---- Venta de mostrador -------------------------------------------------------
+class VentaMostradorLineaIn(BaseModel):
+    id_inventario_refaccion: int
+    cantidad: int = 1
+    precio_unitario: Optional[float] = None  # si no se manda, se usa el precio de venta del inventario
+
+
+class VentaMostradorIn(BaseModel):
+    lineas: List[VentaMostradorLineaIn]
+    id_cliente: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    metodo_pago: str = "Efectivo"
+    descuento: float = 0
+    recibido: Optional[float] = None
+    notas: Optional[str] = None
+
+
+class VentaMostradorDetalleOut(ORMBase):
+    id_detalle: int
+    id_inventario_refaccion: Optional[int] = None
+    descripcion: str
+    codigo_barras: Optional[str] = None
+    cantidad: float
+    precio_unitario: float
+    importe: float
+
+
+class VentaMostradorOut(ORMBase):
+    id_venta: int
+    folio: Optional[int] = None
+    fecha: Optional[datetime] = None
+    id_cliente: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    metodo_pago: Optional[str] = None
+    subtotal: float = 0
+    descuento: float = 0
+    total: float = 0
+    recibido: Optional[float] = None
+    cambio: Optional[float] = None
+    estatus: str = "Pagada"
+    notas: Optional[str] = None
+    atendio: Optional[str] = None
+    detalles: List[VentaMostradorDetalleOut] = []
+
+
+class EntradaStockIn(BaseModel):
+    cantidad: int = 1
+    costo: Optional[float] = None
+
+
+class EtiquetaItemIn(BaseModel):
+    id_inventario_refaccion: int
+    copias: int = 1
+
+
+class EtiquetasIn(BaseModel):
+    items: List[EtiquetaItemIn]
+    formato: str = "50x25"  # 50x25 (rollo térmico) | 60x40 | carta (hoja de 3x10)
+    mostrar_precio: bool = True
+
