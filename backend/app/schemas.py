@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, date
 from typing import Annotated, Optional, List
 
@@ -543,6 +544,13 @@ class InventarioRefaccionIn(BaseModel):
     preciopropio: float = 0
     preciocliente: float = 0
     ubicacion_fisica: Optional[str] = None
+    almacen: Optional[str] = None
+    pasillo: Optional[str] = None
+    estanteria: Optional[str] = None
+    nivel: Optional[str] = None
+    posicion: Optional[str] = None
+    codigo_barras: Optional[str] = None
+    unidad: Optional[str] = "pza"
     umbral_naranja: int = 4
     umbral_rojo: int = 1
 
@@ -764,6 +772,7 @@ class ServicioUpdate(BaseModel):
     id_empleado_responsable: Optional[int] = None
     operaciones: Optional[str] = None
     comentarios_finales: Optional[str] = None
+    motivo_cambio_fecha: Optional[str] = Field(default=None, max_length=300)  # obligatorio al cambiar fechas a mano (no se guarda en la orden)
 
 
 class ServicioOut(ORMBase):
@@ -936,6 +945,7 @@ class CitaOut(ORMBase):
     id_tipo_servicio: Optional[int] = None
     descripcion: Optional[str] = None
     fecha_propuesta: Optional[datetime] = None
+    fecha_fin: Optional[datetime] = None
     estado: str
     fecha_creacion: datetime
     confirmada_por: Optional[str] = None
@@ -1027,7 +1037,7 @@ class EmpleadoIn(BaseModel):
     estatus: str = "activo"
     fecha_baja: Optional[date] = None
     id_usuario: Optional[int] = None
-    sueldo_base: float = 0
+    sueldo_base: Optional[float] = None  # None = no tocar (se oculta sin verificación del administrador)
     periodicidad_pago: str = "quincenal"
     esquema_pago: str = "fijo"
     porcentaje_comision: float = 0
@@ -1039,6 +1049,10 @@ class EmpleadoIn(BaseModel):
 
 class EmpleadoEstatusIn(BaseModel):
     estatus: str
+
+
+class SueldoVerIn(BaseModel):
+    password: str
 
 
 class EmpleadoOut(EmpleadoIn, ORMBase):
@@ -1154,6 +1168,28 @@ class ConfiguracionTallerIn(BaseModel):
     numero_taller: Optional[str] = None
     id_estado: Optional[int] = None
     id_ciudad: Optional[int] = None
+    hora_apertura: Optional[str] = None
+    hora_cierre: Optional[str] = None
+    dias_atencion: Optional[str] = None
+
+    @field_validator("hora_apertura", "hora_cierre")
+    @classmethod
+    def _hora_valida(cls, v):
+        if v in (None, ""):
+            return v
+        if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", v):
+            raise ValueError("La hora debe tener formato HH:MM.")
+        return v
+
+    @field_validator("dias_atencion")
+    @classmethod
+    def _dias_validos(cls, v):
+        if v in (None, ""):
+            return v
+        if not re.fullmatch(r"[1-7](,[1-7]){0,6}", v):
+            raise ValueError("Los días de atención deben ser números del 1 al 7 separados por coma.")
+        return v
+
     # Código público del taller (va en su QR). Solo se puede mandar mientras
     # el taller no tenga uno ya fijado — ver routers/configuracion_taller.py.
     codigo_taller: Optional[str] = None
@@ -1603,3 +1639,65 @@ class FinalizarServicioOut(BaseModel):
 
 
 PagoSuscripcionOut.model_rebuild()
+
+
+# ---- Venta de mostrador -------------------------------------------------------
+class VentaMostradorLineaIn(BaseModel):
+    id_inventario_refaccion: int
+    cantidad: int = 1
+    precio_unitario: Optional[float] = None  # si no se manda, se usa el precio de venta del inventario
+
+
+class VentaMostradorIn(BaseModel):
+    lineas: List[VentaMostradorLineaIn]
+    id_cliente: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    metodo_pago: str = "Efectivo"
+    descuento: float = 0
+    recibido: Optional[float] = None
+    notas: Optional[str] = None
+
+
+class VentaMostradorDetalleOut(ORMBase):
+    id_detalle: int
+    id_inventario_refaccion: Optional[int] = None
+    descripcion: str
+    codigo_barras: Optional[str] = None
+    cantidad: float
+    precio_unitario: float
+    importe: float
+
+
+class VentaMostradorOut(ORMBase):
+    id_venta: int
+    folio: Optional[int] = None
+    fecha: Optional[datetime] = None
+    id_cliente: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    metodo_pago: Optional[str] = None
+    subtotal: float = 0
+    descuento: float = 0
+    total: float = 0
+    recibido: Optional[float] = None
+    cambio: Optional[float] = None
+    estatus: str = "Pagada"
+    notas: Optional[str] = None
+    atendio: Optional[str] = None
+    detalles: List[VentaMostradorDetalleOut] = []
+
+
+class EntradaStockIn(BaseModel):
+    cantidad: int = 1
+    costo: Optional[float] = None
+
+
+class EtiquetaItemIn(BaseModel):
+    id_inventario_refaccion: int
+    copias: int = 1
+
+
+class EtiquetasIn(BaseModel):
+    items: List[EtiquetaItemIn]
+    formato: str = "50x25"  # 50x25 (rollo térmico) | 60x40 | carta (hoja de 3x10)
+    mostrar_precio: bool = True
+

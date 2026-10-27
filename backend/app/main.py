@@ -10,7 +10,7 @@ import os
 
 from .rate_limit import limiter
 
-from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, notificaciones, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router
+from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, inventario, notificaciones, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router
 from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
@@ -207,6 +207,7 @@ app.include_router(clientes.router)
 app.include_router(vehiculos.router)
 app.include_router(proveedores.router)
 app.include_router(refacciones.router)
+app.include_router(inventario.router)
 app.include_router(herramientas.router)
 app.include_router(servicios.router)
 app.include_router(catalogos.router)

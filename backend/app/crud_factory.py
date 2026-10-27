@@ -25,6 +25,7 @@ def make_crud_router(
     tags: list,
     id_field: str,
     permiso: str = "catalogos",  # prefijo del permiso para crear/editar/eliminar (p. ej. "inventario")
+    validar=None,  # callable(db, data: dict, excluir_id|None) que lanza HTTPException si los datos no son válidos
     filtro_campo: str = None,  # ej. "id_marca" — si se pasa, admite ?<filtro_campo>=X para acotar el listado (catálogos hijos de otro, como modelos de una marca o subcategorías de una categoría)
 ) -> APIRouter:
     router = APIRouter(prefix=prefix, tags=tags)
@@ -47,7 +48,10 @@ def make_crud_router(
 
     @router.post("/", response_model=schema_out, status_code=201)
     def crear(payload: schema_in, db: Session = Depends(get_db), user=Depends(require_permission(f"{permiso}.crear"))):
-        item = model(**payload.model_dump())
+        datos = payload.model_dump()
+        if validar:
+            validar(db, datos, None)
+        item = model(**datos)
         db.add(item)
         db.commit()
         db.refresh(item)
@@ -58,7 +62,10 @@ def make_crud_router(
         item = db.query(model).filter(getattr(model, id_field) == item_id).first()
         if not item:
             raise HTTPException(status_code=404, detail="No encontrado")
-        for key, value in payload.model_dump().items():
+        datos = payload.model_dump()
+        if validar:
+            validar(db, datos, item_id)
+        for key, value in datos.items():
             setattr(item, key, value)
         db.commit()
         db.refresh(item)
