@@ -5232,3 +5232,55 @@ table { border-spacing: 0 10px; }
 .avisos-legales ul { margin: 6px 0 10px 22px; }
 .avisos-legales .avisos-nota { margin-top: 24px; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, var(--ink-500) 14%, transparent); font-size: 13.5px; color: var(--ink-600); }
 .nom-aviso-legal { margin: 18px 0 4px; font-size: 13px; color: var(--ink-500); text-align: center; }
+
+/* ---- Inventario: pestañas, punto de venta, etiquetas ---- */
+.inv-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.inv-tab { border: 1px solid var(--ink-300); background: var(--paper-100); color: var(--ink-700); border-radius: 100px; padding: 8px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 7px; align-items: center; }
+.inv-tab:hover { border-color: var(--contorno); }
+.inv-tab.activa { background: var(--petrol-500); border-color: var(--petrol-500); color: #fff; }
+.pv { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 980px) { .pv { grid-template-columns: 1fr; } }
+.pv-escaner { display: flex; gap: 10px; align-items: center; }
+.pv-input { flex: 1; min-width: 0; font-size: 15px; }
+.pv-lista { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; max-height: 62vh; overflow-y: auto; }
+.pv-prod { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; text-align: left; width: 100%; padding: 8px 10px; border: 1px solid var(--ink-300); border-radius: 10px; background: var(--paper-100); cursor: pointer; color: var(--ink-900); }
+.pv-prod:hover { border-color: var(--petrol-500); }
+.pv-prod-foto { width: 44px; height: 44px; border-radius: 8px; background: var(--paper-0); display: grid; place-items: center; overflow: hidden; color: var(--ink-500); }
+.pv-prod-foto img { width: 100%; height: 100%; object-fit: cover; }
+.pv-prod-info, .pv-linea-nombre { display: flex; flex-direction: column; min-width: 0; }
+.pv-prod-info small, .pv-linea-nombre small, .pv-prod-precio small { color: var(--ink-500); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-prod-precio { display: flex; flex-direction: column; align-items: flex-end; font-weight: 800; }
+.pv-bajo { color: var(--red-600) !important; font-weight: 700; }
+.pv-titulo { margin: 0 0 10px; font-size: 16px; }
+.pv-carrito { display: flex; flex-direction: column; gap: 4px; max-height: 38vh; overflow-y: auto; margin-bottom: 12px; }
+.pv-linea { display: grid; grid-template-columns: 1fr auto 86px 82px auto; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--ink-300); }
+.pv-cant { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--ink-300); border-radius: 8px; overflow: hidden; }
+.pv-cant button { border: 0; background: var(--paper-0); width: 28px; height: 28px; cursor: pointer; font-size: 16px; color: var(--ink-900); }
+.pv-cant span { min-width: 28px; text-align: center; font-weight: 700; }
+.pv-precio { width: 86px; padding: 6px 8px; }
+.pv-importe { text-align: right; font-weight: 700; }
+.pv-pago { display: flex; flex-direction: column; gap: 8px; }
+.pv-fila { display: flex; gap: 8px; }
+.pv-fila > * { flex: 1; min-width: 0; }
+.pv-totales { border: 1px solid var(--ink-300); border-radius: 10px; padding: 8px 12px; background: var(--paper-0); }
+.pv-totales > div { display: flex; justify-content: space-between; padding: 3px 0; font-size: 14px; }
+.pv-total { font-size: 22px !important; font-weight: 800; border-top: 1px solid var(--ink-300); margin-top: 4px; padding-top: 6px !important; }
+.pv-cobrar { flex: 2 !important; padding: 12px; font-size: 16px; justify-content: center; }
+.et-lista { display: flex; flex-direction: column; max-height: 60vh; overflow-y: auto; border: 1px solid var(--ink-300); border-radius: 10px; }
+.et-fila { display: grid; grid-template-columns: auto 1fr 86px; gap: 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--ink-300); }
+.et-fila:last-child { border-bottom: 0; }
+.et-activa { background: var(--petrol-100); }
+.inv-ubic { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.inv-ubic span { background: var(--paper-0); border: 1px solid var(--ink-300); border-radius: 6px; padding: 1px 6px; font-size: 11px; font-weight: 600; color: var(--ink-700); }
+
+/* Inventario: bloque de compatibilidad (combos arriba, lista abajo) */
+.inv-compat { display: flex; flex-direction: column; gap: 10px; }
+.inv-compat-combos { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.inv-compat-lista { display: flex; flex-direction: column; border: 1px solid var(--ink-300); border-radius: 10px; overflow-y: auto; max-height: 300px; min-height: 120px; background: var(--paper-100); }
+.inv-compat-fila { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--ink-300); font-size: 13.5px; }
+.inv-compat-fila:last-child { border-bottom: 0; }
+.inv-compat-vacio { padding: 18px 12px; color: var(--ink-500); font-size: 13px; text-align: center; }
+@media (max-width: 900px) { .bloques-grid > .nota-bloque { grid-column: 1 / -1 !important; grid-row: auto !important; } }
+@media (max-width: 700px) { .bloques-grid .nota-bloque-body.form-grid { grid-template-columns: 1fr 1fr !important; } }
+.pv-filtros { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.pv-filtros select { flex: 1; min-width: 130px; }

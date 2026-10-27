@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
+import { useAuth } from "../context/AuthContext";
+import { advertenciaListoEntrega } from "../lib/advertenciaEntrega";
 import { IconoAuto } from "./Icono";
 
 // Catálogo de estatus — mismo catálogo unificado que el backend (ETAPAS_SERVICIO)
@@ -22,7 +24,8 @@ const ETAPAS = [
  * opcional). Cada cambio le llega al cliente en su app.
  */
 export default function EstatusLateral({ servicio, puedeEditar, onActualizado }) {
-  const { notify } = useUI();
+  const { notify, confirmDialog } = useUI();
+  const { hasPermission } = useAuth();
   const [eligiendo, setEligiendo] = useState(null); // clave de la etapa por confirmar
   const [comentario, setComentario] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -34,6 +37,11 @@ export default function EstatusLateral({ servicio, puedeEditar, onActualizado })
   const historial = (servicio.historial_etapas || []).slice().reverse();
 
   async function confirmar() {
+    // Listo para entrega sin refacciones ni saldo: se advierte (quien no ve precios no puede juzgarlo)
+    if (eligiendo === "listo_entrega" && hasPermission("servicios.ver_precios")) {
+      const aviso = advertenciaListoEntrega(servicio);
+      if (aviso && !(await confirmDialog(aviso, { title: "Faltan refacciones o saldo", confirmar: "Cambiar de todos modos" }))) return;
+    }
     setGuardando(true);
     try {
       const actualizado = await api.put(`/servicios/${servicio.id_servicio}/etapa`, { etapa: eligiendo, comentario: comentario.trim() || null });

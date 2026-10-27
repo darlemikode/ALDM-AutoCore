@@ -333,7 +333,7 @@ export default function FormModal({ title, fields, initialValues, onSubmit, onCl
           {bloques ? (
             <div className="bloques-grid">
             {bloques.map((b) => (
-              <div className={`nota-bloque ${b.acento || ""} ${b.grande ? "bloque-grande" : ""}`} key={b.clave} style={{ ...(b.filas ? { gridRow: `span ${b.filas}` } : {}), ...(b.completo ? { gridColumn: "1 / -1" } : {}) }}>
+              <div className={`nota-bloque ${b.acento || ""} ${b.grande ? "bloque-grande" : ""}`} key={b.clave} style={{ ...(b.fila ? { gridRow: `${b.fila} / span ${b.filas || 1}` } : b.filas ? { gridRow: `span ${b.filas}` } : {}), ...(b.columna ? { gridColumn: b.columna } : {}), ...(b.completo ? { gridColumn: "1 / -1" } : {}) }}>
                 <div className="nota-bloque-header">
                   <span className="icono"><IconoAuto valor={b.icono} size={18} /></span>
                   <h2>{b.titulo}</h2>

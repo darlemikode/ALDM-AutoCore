@@ -9,7 +9,7 @@ const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "
 const dias = (a, b) => (a && b ? Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000) + 1 : null);
 
 /** Alta / edición de un periodo de nómina (mismo estilo que el asistente de varios periodos). */
-export default function NominaPeriodoModal({ titulo, subtitulo, inicial, empleados, calcularFin, onSubmit, onClose, pedirMotivo }) {
+export default function NominaPeriodoModal({ titulo, subtitulo, inicial, empleados, calcularFin, onSubmit, onClose, pedirMotivo, soloRepeticion }) {
   const [v, setV] = useState(inicial);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +26,7 @@ export default function NominaPeriodoModal({ titulo, subtitulo, inicial, emplead
   async function guardar() {
     if (!v.fecha_inicio || !v.fecha_fin) { setError("Elige las fechas del periodo."); return; }
     if (invalido) { setError("La fecha de fin debe ser igual o posterior a la de inicio."); return; }
-    if (pedirMotivo && (v.motivo || "").trim().length < 5) { setError("Escribe el motivo de la corrección (mínimo 5 caracteres)."); return; }
+    if (pedirMotivo && !soloRepeticion && (v.motivo || "").trim().length < 5) { setError("Escribe el motivo de la corrección (mínimo 5 caracteres)."); return; }
     setGuardando(true); setError("");
     try { await onSubmit(v); } catch (e) { setError(e.message || "No se pudo guardar."); } finally { setGuardando(false); }
   }
@@ -37,8 +37,13 @@ export default function NominaPeriodoModal({ titulo, subtitulo, inicial, emplead
         <h2 style={{ fontSize: 21 }}>{titulo}</h2>
         <div className="modal-subtitulo">{subtitulo}</div>
 
+        {soloRepeticion && (
+          <div className="np-nota mal" style={{ marginTop: 10 }}>
+            🔒 Este periodo ya tiene recibos pagados: las fechas, la frecuencia y los empleados ya no se pueden cambiar; solo la repetición automática.
+          </div>
+        )}
         <div className="nl-paso"><span className="nl-num">1</span> ¿Cada cuándo se paga?</div>
-        <div className="nl-frec">
+        <div className="nl-frec" style={soloRepeticion ? { pointerEvents: "none", opacity: 0.5 } : undefined}>
           {FRECUENCIAS.map(([k, l, d]) => (
             <button type="button" key={k} className={v.periodicidad === k ? "on" : ""} onClick={() => cambiar({ periodicidad: k })}>
               <b>{l}</b><small>{d}</small>
@@ -46,7 +51,7 @@ export default function NominaPeriodoModal({ titulo, subtitulo, inicial, emplead
           ))}
         </div>
         {v.periodicidad === "semanal" && (
-          <div className="nl-dias">
+          <div className="nl-dias" style={soloRepeticion ? { pointerEvents: "none", opacity: 0.5 } : undefined}>
             <span>Se paga el:</span>
             {DIAS.map((l, i) => <button type="button" key={l} className={Number(v.dia_pago) === i ? "on" : ""} onClick={() => cambiar({ dia_pago: String(i) })}>{l.slice(0, 3)}</button>)}
           </div>
@@ -54,16 +59,16 @@ export default function NominaPeriodoModal({ titulo, subtitulo, inicial, emplead
 
         <div className="nl-paso"><span className="nl-num">2</span> ¿De qué fecha a qué fecha?</div>
         <div className="np-fechas">
-          <div className="np-fecha"><label>Empieza el</label><SelectorFecha value={v.fecha_inicio} required onChange={(x) => cambiar({ fecha_inicio: x })} /></div>
+          <div className="np-fecha"><label>Empieza el</label><SelectorFecha value={v.fecha_inicio} required disabled={soloRepeticion} onChange={(x) => cambiar({ fecha_inicio: x })} /></div>
           <span className="np-flecha" aria-hidden="true">→</span>
-          <div className="np-fecha"><label>Termina el</label><SelectorFecha value={v.fecha_fin} required onChange={(x) => set({ fecha_fin: x })} /></div>
+          <div className="np-fecha"><label>Termina el</label><SelectorFecha value={v.fecha_fin} required disabled={soloRepeticion} onChange={(x) => set({ fecha_fin: x })} /></div>
         </div>
         <div className={`np-nota ${invalido ? "mal" : ""}`}>
           {invalido ? "⚠ La fecha de fin debe ser igual o posterior a la de inicio." : n ? `${n} día(s) de periodo · el fin se calcula solo, pero puedes cambiarlo.` : "Elige la fecha de inicio."}
         </div>
 
         <div className="nl-paso"><span className="nl-num">3</span> ¿A quién se le paga?</div>
-        <div className="nl-emps">
+        <div className="nl-emps" style={soloRepeticion ? { pointerEvents: "none", opacity: 0.5 } : undefined}>
           <button type="button" className={`nl-emp todos ${elegidos.length === 0 ? "on" : ""}`} onClick={() => set({ empleados: [] })}>Todos los que cobran</button>
           {empleados.map((e) => (
             <button type="button" key={e.value} className={`nl-emp ${elegidos.includes(e.value) ? "on" : ""}`} onClick={() => toggle(e.value)}>{e.label}</button>
@@ -75,7 +80,7 @@ export default function NominaPeriodoModal({ titulo, subtitulo, inicial, emplead
           <span><b>Repetir automáticamente</b><small>Al terminar este periodo se crea el siguiente solo, con la misma configuración.</small></span>
         </label>
 
-        {pedirMotivo && (
+        {pedirMotivo && !soloRepeticion && (
           <div className="np-motivo">
             <label>Motivo de la corrección <span className="req">*</span></label>
             <textarea rows={2} placeholder="Ej. Se capturó mal la fecha de fin; el periodo correcto es del 24 al 30 de octubre." value={v.motivo || ""} onChange={(e) => set({ motivo: e.target.value })} />

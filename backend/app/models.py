@@ -354,7 +354,15 @@ class InventarioRefaccion(TenantMixin, Base):
     cantidad = Column(Integer, default=0)
     preciopropio = Column(Float, default=0)
     preciocliente = Column(Float, default=0)
-    ubicacion_fisica = Column(String(80), nullable=True)
+    ubicacion_fisica = Column(String(80), nullable=True)   # referencia libre (ej. "bodega trasera")
+    # Ubicación estructurada en el almacén
+    almacen = Column(String(60), nullable=True)
+    pasillo = Column(String(30), nullable=True)
+    estanteria = Column(String(30), nullable=True)
+    nivel = Column(String(30), nullable=True)
+    posicion = Column(String(30), nullable=True)
+    codigo_barras = Column(String(64), nullable=True, index=True)
+    unidad = Column(String(20), nullable=True, default="pza")
     umbral_naranja = Column(Integer, default=4)
     umbral_rojo = Column(Integer, default=1)
 
@@ -1367,6 +1375,45 @@ class ErrorSistema(TenantMixin, Base):
     usuario = Column(String(50), nullable=True)
     mensaje = Column(String(500), nullable=True)
     detalle = Column(Text, nullable=True)
+
+
+class VentaMostrador(TenantMixin, Base):
+    """Venta de mostrador (refaccionaria): productos del inventario cobrados
+    al momento, con ticket o nota de venta. Al registrarla se descuenta el
+    stock; al cancelarla se regresa."""
+    __tablename__ = "ventas_mostrador"
+
+    id_venta = Column(Integer, primary_key=True, index=True)
+    folio = Column(Integer, nullable=True, index=True)  # consecutivo por taller
+    fecha = Column(DateTime, default=datetime.utcnow)
+    id_cliente = Column(Integer, ForeignKey("clientes.id_cliente"), nullable=True)
+    cliente_nombre = Column(String(150), nullable=True)
+    metodo_pago = Column(String(30), default="Efectivo")
+    subtotal = Column(Float, default=0)
+    descuento = Column(Float, default=0)
+    total = Column(Float, default=0)
+    recibido = Column(Float, nullable=True)
+    cambio = Column(Float, nullable=True)
+    estatus = Column(String(20), default="Pagada")  # Pagada | Cancelada
+    notas = Column(Text, nullable=True)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
+    atendio = Column(String(150), nullable=True)
+
+    detalles = relationship("VentaMostradorDetalle", cascade="all, delete-orphan", order_by="VentaMostradorDetalle.id_detalle")
+
+
+class VentaMostradorDetalle(TenantMixin, Base):
+    __tablename__ = "ventas_mostrador_detalle"
+
+    id_detalle = Column(Integer, primary_key=True, index=True)
+    id_venta = Column(Integer, ForeignKey("ventas_mostrador.id_venta"), nullable=False, index=True)
+    id_inventario_refaccion = Column(Integer, ForeignKey("inventario_refacciones.id_inventario_refaccion"), nullable=True)
+    descripcion = Column(String(200), nullable=False)
+    codigo_barras = Column(String(64), nullable=True)
+    cantidad = Column(Float, default=1)
+    precio_unitario = Column(Float, default=0)
+    costo_unitario = Column(Float, default=0)
+    importe = Column(Float, default=0)
 
 
 class BitacoraAuditoria(TenantMixin, Base):
