@@ -61,6 +61,16 @@ def inspeccion_de_servicio(db, models, servicio_id: int):
             .all()
         )
         inspeccion.fotos_pdf = [f.ruta_archivo for f in fotos]
+        # Fotos de cada punto en Regular/Mal (entidad "inspeccion_item"; la descripción guarda el id del punto)
+        por_punto = {}
+        for f in (
+            db.query(models.Foto)
+            .filter(models.Foto.entidad_tipo == "inspeccion_item", models.Foto.entidad_id == inspeccion.id_inspeccion)
+            .order_by(models.Foto.fecha)
+            .all()
+        ):
+            por_punto.setdefault(str(f.descripcion), []).append(f.ruta_archivo)
+        inspeccion.fotos_puntos_pdf = por_punto
     return inspeccion
 
 

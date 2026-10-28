@@ -26,7 +26,7 @@ os.makedirs(CARPETA_UPLOADS, exist_ok=True)
 
 # A qué permiso corresponde poder subir/borrar fotos de cada tipo de entidad
 PERMISO_POR_ENTIDAD = {
-    "vehiculo": "vehiculos.editar", "servicio": "servicios.editar", "inspeccion": "servicios.editar",
+    "vehiculo": "vehiculos.editar", "servicio": "servicios.editar", "inspeccion": "servicios.editar", "inspeccion_item": "servicios.editar",
     "inventario": "inventario.editar", "proveedor": "proveedores.editar", "herramienta": "herramientas.editar", "cliente": "clientes.editar",
 }
 EXTENSIONES_VALIDAS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}

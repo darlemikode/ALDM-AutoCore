@@ -79,6 +79,10 @@ def bloques_cliente_vehiculo(servicio, extra_vehiculo=(), con_comentario=False):
 
 
 def generar_recibo_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion=None) -> bytes:
+    # Diseño con barra lateral (taller, cliente y vehículo a la izquierda; conceptos a la derecha)
+    from .pdf_nota import generar_recibo
+    return generar_recibo(servicio, costos, taller, inspeccion)
+
     buffer = BytesIO()
     liquidado = costos.saldo_pendiente <= 0
     plantilla = PlantillaDocumento(
@@ -156,6 +160,9 @@ def generar_recibo_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion
 
 
 def generar_cotizacion_pdf(cotizacion, costos, taller=None) -> bytes:
+    from .pdf_nota import generar_cotizacion
+    return generar_cotizacion(cotizacion, costos, taller)
+
     """Presupuesto sin cliente ni vehículo ligados."""
     buffer = BytesIO()
     vigencia = f"{cotizacion.vigente_hasta:%d/%m/%Y}" if cotizacion.vigente_hasta else "Sin fecha límite"

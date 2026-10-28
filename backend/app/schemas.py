@@ -1184,6 +1184,29 @@ class ConfiguracionTallerIn(BaseModel):
     hora_apertura: Optional[str] = None
     hora_cierre: Optional[str] = None
     dias_atencion: Optional[str] = None
+    horarios_dia: Optional[str] = None
+
+    @field_validator("horarios_dia")
+    @classmethod
+    def _horarios_dia_validos(cls, v):
+        if v in (None, ""):
+            return None
+        import json
+        try:
+            d = json.loads(v)
+        except ValueError:
+            raise ValueError("Los horarios por día no tienen un formato válido.")
+        if not isinstance(d, dict):
+            raise ValueError("Los horarios por día no tienen un formato válido.")
+        for dia, h in d.items():
+            if dia not in {"1", "2", "3", "4", "5", "6", "7"} or not isinstance(h, dict):
+                raise ValueError("Los horarios por día no tienen un formato válido.")
+            ap, ci = h.get("ap"), h.get("ci")
+            if not (isinstance(ap, str) and isinstance(ci, str) and re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", ap) and re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", ci)):
+                raise ValueError("Las horas deben tener formato HH:MM.")
+            if ci <= ap:
+                raise ValueError("El cierre debe ser posterior a la apertura.")
+        return v if d else None
 
     @field_validator("hora_apertura", "hora_cierre")
     @classmethod

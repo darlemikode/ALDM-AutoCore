@@ -724,6 +724,14 @@ def sembrar_globales(db):
     db.commit()
 
 
+PUNTOS_GENERICOS = {
+    "Rótulas y terminales": "Suspensión y dirección", "Amortiguadores delanteros": "Suspensión y dirección",
+    "Amortiguadores traseros": "Suspensión y dirección", "Bieleta estabilizadora trasera": "Suspensión y dirección",
+    "Faros delanteros": "Luces", "Bujías": "Motor", "Filtro de aire": "Motor", "Filtro de aceite": "Motor",
+    "Filtro de combustible": "Motor",
+}
+
+
 def _sincronizar_items_inspeccion(db):
     """Agrega al checklist los puntos que falten (sin duplicar ni borrar nada) y
     ordena los conocidos según el catálogo. Los puntos genéricos viejos que ahora
@@ -738,12 +746,16 @@ def _sincronizar_items_inspeccion(db):
                 db.add(models.InspeccionItem(categoria=categoria, nombre_item=nombre_item, orden=orden))
             else:
                 fila.orden = orden
-    # Puntos retirados del catálogo (genéricos viejos o que el taller no quiere): se desactivan, no se borran
-    retirados = {"Rótulas y terminales", "Amortiguadores delanteros", "Amortiguadores traseros", "Faros delanteros",
-                 "Bujías", "Filtro de aire", "Filtro de aceite", "Filtro de combustible", "Bieleta estabilizadora trasera"}
-    for (categoria, nombre), fila in existentes.items():
-        if nombre in retirados:
-            fila.activo = False
+                fila.activo = True
+    # Puntos genéricos: siempre disponibles junto con los desglosados (si ya existen en la BD, en la
+    # categoría que tengan, solo se reactivan; si no, se crean).
+    for nombre, categoria in PUNTOS_GENERICOS.items():
+        fila = next((f for (c, n), f in existentes.items() if n == nombre), None)
+        if fila is None:
+            orden += 1
+            db.add(models.InspeccionItem(categoria=categoria, nombre_item=nombre, orden=orden))
+        else:
+            fila.activo = True
 
 
 def sembrar_taller(id_taller: int):

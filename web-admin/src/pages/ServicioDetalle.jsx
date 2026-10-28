@@ -12,11 +12,15 @@ import EstatusLateral from "../components/EstatusLateral";
 import ChatOrden from "../components/ChatOrden";
 import InspeccionForm from "../components/InspeccionForm";
 import FinalizarOrdenModal from "../components/FinalizarOrdenModal";
+import SeguimientoOrdenModal from "../components/SeguimientoOrdenModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
 import ElegirClienteVehiculo from "../components/ElegirClienteVehiculo";
 import { Icono, IconoAuto } from "../components/Icono";
+
+// Un renglón es «mano de obra» cuando solo lleva importe de mano de obra (sin refacción ni precio de refacción).
+const esManoObra = (d) => (d.costo_mano_obra || 0) > 0 && !d.id_refaccion && !d.id_inventario_refaccion && !((d.costo_refaccion || 0) > 0);
 
 function BloqueNota({ icono, titulo, acento, accion, children }) {
   return (
@@ -84,7 +88,7 @@ export default function ServicioDetalle() {
   // vista previa: si alguna refacción quedó con precio en $0, no se deja
   // continuar — se posiciona el cursor en esa celda para capturarlo primero.
   function bloquearPorRefaccionSinPrecio() {
-    const sinPrecio = (servicio.detalles || []).find((d) => !((d.costo_refaccion || 0) > 0));
+    const sinPrecio = (servicio.detalles || []).find((d) => !esManoObra(d) && !((d.costo_refaccion || 0) > 0));
     if (!sinPrecio) return false;
     notify(`«${sinPrecio.descripcion || "Una refacción"}» no tiene precio capturado. Captúralo para continuar.`, "error");
     const el = document.querySelector(`.tabla-refacciones input[data-det="${sinPrecio.id_servicio_detalle}"][data-campo="u"]`);
@@ -106,6 +110,7 @@ export default function ServicioDetalle() {
   }, [servicio]);
 
   const [addingDetalle, setAddingDetalle] = useState(false);
+  const [addingManoObra, setAddingManoObra] = useState(false);
   const [creandoRefaccion, setCreandoRefaccion] = useState(null); // {} para abrir el form de "Nueva refacción" (acceso rápido desde Agregar refacciones)
   const [modoMultiple, setModoMultiple] = useState(false);
   const [seleccionMultiple, setSeleccionMultiple] = useState({});
@@ -115,6 +120,7 @@ export default function ServicioDetalle() {
   const [addingAbono, setAddingAbono] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [modalCierre, setModalCierre] = useState(false);
+  const [verSeguimiento, setVerSeguimiento] = useState(false);
   const [textoConfirmar, setTextoConfirmar] = useState("");
   const [cerrando, setCerrando] = useState(false);
   const [chatAbierto, setChatAbierto] = useState(false);
@@ -337,6 +343,8 @@ export default function ServicioDetalle() {
   const fmt = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
   const abierta = servicio.status === "abierto";
   const puedeEditarOrden = hasPermission("servicios.editar");
+  const detallesRef = servicio.detalles.filter((d) => !esManoObra(d));
+  const detallesMO = servicio.detalles.filter(esManoObra);
 
   async function handleAddDetalle(values) {
     try {
@@ -368,6 +376,30 @@ export default function ServicioDetalle() {
     } catch (err) {
       notify(err.message, "error");
     }
+  }
+
+  async function handleAddManoObra(values) {
+    const cantidad = Math.max(Number(values.cantidad) || 1, 1);
+    const unitario = Number(values.precio_unitario) || 0;
+    if (!(unitario > 0)) { notify("Captura un precio mayor a cero.", "error"); return; }
+    try {
+      await api.post(`/servicios/${id}/detalles`, {
+        descripcion: (values.descripcion || "").trim() || "Mano de obra",
+        cantidad,
+        costo_mano_obra: Math.round(unitario * cantidad * 100) / 100,
+        costo_refaccion: 0,
+        costo_extra: 0,
+      });
+      setAddingManoObra(false);
+      load();
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  }
+
+  async function guardarManoObra(d, { cantidad, unitario }) {
+    if (!(unitario > 0)) { notify("El precio debe ser mayor a cero. Para quitarla usa el botón de eliminar.", "error"); load(); return; }
+    handleUpdateDetalle(d.id_servicio_detalle, { cantidad, costo_mano_obra: Math.round(unitario * cantidad * 100) / 100 });
   }
 
   function alternarSeleccionMultiple(idRefaccion, marcada) {
@@ -522,14 +554,18 @@ export default function ServicioDetalle() {
     }
   }
 
-  async function reordenarDetalles(idxDesde, idxHasta) {
+  // `grupo` es la lista que se está reordenando (refacciones o mano de obra); las refacciones
+  // quedan siempre antes que la mano de obra al renumerar.
+  async function reordenarDetalles(idxDesde, idxHasta, grupo) {
     if (idxDesde === idxHasta) return;
-    const lista = [...servicio.detalles];
+    const lista = [...grupo];
     const [movido] = lista.splice(idxDesde, 1);
     lista.splice(idxHasta, 0, movido);
-    setServicio((s) => ({ ...s, detalles: lista }));
+    const otras = servicio.detalles.filter((d) => !grupo.includes(d));
+    const completa = grupo === detallesMO ? [...otras, ...lista] : [...lista, ...otras];
+    setServicio((s) => ({ ...s, detalles: completa }));
     try {
-      await Promise.all(lista.map((d, i) => api.put(`/servicios/${id}/detalles/${d.id_servicio_detalle}`, { orden: i })));
+      await Promise.all(completa.map((d, i) => (d.orden === i ? null : api.put(`/servicios/${id}/detalles/${d.id_servicio_detalle}`, { orden: i }))));
     } catch (err) {
       notify(err.message, "error");
       load();
@@ -537,11 +573,17 @@ export default function ServicioDetalle() {
   }
 
   async function borrarTodasRefacciones() {
-    const n = servicio.detalles.length;
+    const refs = servicio.detalles.filter((d) => !esManoObra(d));
+    const n = refs.length;
     const ok = await confirmDialog(`¿Borrar ${n === 1 ? "la refacción" : `las ${n} refacciones`} de esta orden? Las piezas que se descontaron regresan al inventario. Esta acción no se puede deshacer.`, { danger: true, confirmar: "Sí, borrar" });
     if (!ok) return;
     try {
-      await api.del(`/servicios/${id}/detalles`);
+      if (refs.length === servicio.detalles.length) {
+        await api.del(`/servicios/${id}/detalles`);
+      } else {
+        // Hay mano de obra en la orden: se quitan solo las refacciones, una por una
+        for (const d of refs) await api.del(`/servicios/${id}/detalles/${d.id_servicio_detalle}`);
+      }
       notify("Listo: se quitaron todas las refacciones de la orden.", "success");
       load();
     } catch (err) {
@@ -561,8 +603,8 @@ export default function ServicioDetalle() {
     }
   }
 
-  async function handleDeleteDetalle(detalleId) {
-    const ok = await confirmDialog("¿Quitar esta refacción de la orden? Si estaba ligada al inventario, la pieza regresa al stock.", { danger: true, confirmar: "Sí, quitar" });
+  async function handleDeleteDetalle(detalleId, manoObra = false) {
+    const ok = await confirmDialog(manoObra ? "¿Quitar esta mano de obra de la orden?" : "¿Quitar esta refacción de la orden? Si estaba ligada al inventario, la pieza regresa al stock.", { danger: true, confirmar: "Sí, quitar" });
     if (!ok) return;
     try {
       await api.del(`/servicios/${id}/detalles/${detalleId}`);
@@ -851,6 +893,11 @@ export default function ServicioDetalle() {
             )}
           </div>
           <div className="orden-hero-herramientas">
+            {servicio.status === "abierto" && hasPermission("servicios.editar") && hasPermission("servicios.ver_precios") && (
+              <span className="tip-envoltura" title="Enlace y QR para que el cliente vea el avance, las refacciones y el monto">
+                <button className="btn btn-primary" onClick={() => setVerSeguimiento(true)}><IconoAuto valor="📱" size={18} /> Seguimiento al cliente (QR)</button>
+              </span>
+            )}
             <span className="tip-envoltura" title={servicio.detalles.length > 0 ? "Vista previa de la nota (incluye la inspección, si ya se hizo)" : "La vista previa se activa cuando ya se agregó al menos una refacción"}>
               <button className="icon-btn" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; descargarPdf("recibo", "preview"); }} disabled={descargando || servicio.detalles.length === 0}><IconoAuto valor="🔍" size={18} /></button>
             </span>
@@ -1105,7 +1152,7 @@ export default function ServicioDetalle() {
         titulo="Refacciones"
         accion={
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {hasPermission("servicios.editar") && abierta && servicio.detalles.length > 0 && (
+            {hasPermission("servicios.editar") && abierta && detallesRef.length > 0 && (
               <button className="btn btn-agregar btn-borrar-todo" onClick={borrarTodasRefacciones}>
                 <Icono nombre="trash" size={18} /> Borrar todas
               </button>
@@ -1118,7 +1165,7 @@ export default function ServicioDetalle() {
           </div>
         }
       >
-        {servicio.detalles.length === 0 ? (
+        {detallesRef.length === 0 ? (
           <div className="empty-state">Esta orden todavía no tiene refacciones. Usa «Agregar refacción» para empezar.</div>
         ) : (
           <table className="tabla-refacciones">
@@ -1134,7 +1181,7 @@ export default function ServicioDetalle() {
               </tr>
             </thead>
             <tbody>
-              {servicio.detalles.map((d, idx) => {
+              {detallesRef.map((d, idx) => {
                 const ref = refacciones.find((r) => r.id_refaccion === d.id_refaccion);
                 const clave = ref?.categoria ? `${ref.categoria}${ref.subcategoria ? " / " + ref.subcategoria : ""}` : "Sin categoría";
                 const puedeArrastrar = puedeEditarOrden && abierta;
@@ -1150,7 +1197,7 @@ export default function ServicioDetalle() {
                       e.preventDefault();
                       setSobreDetalleIdx(null);
                       if (dragDetalleRef.current == null) return;
-                      reordenarDetalles(dragDetalleRef.current, idx);
+                      reordenarDetalles(dragDetalleRef.current, idx, detallesRef);
                       dragDetalleRef.current = null;
                     }}
                     onDragEnd={() => { dragDetalleRef.current = null; setSobreDetalleIdx(null); }}
@@ -1192,6 +1239,83 @@ export default function ServicioDetalle() {
 
       </BloqueNota>
 
+      <BloqueNota
+        icono="🛠️"
+        titulo="Mano de obra"
+        accion={
+          puedeEditarOrden && (
+            <button className="btn btn-agregar" onClick={() => setAddingManoObra(true)} disabled={!abierta}>
+              <Icono nombre="add" size={18} /> Agregar mano de obra
+            </button>
+          )
+        }
+      >
+        {detallesMO.length === 0 ? (
+          <div className="empty-state">Todavía no hay mano de obra. Usa «Agregar mano de obra» para capturar lo que cobras por el trabajo.</div>
+        ) : (
+          <table className="tabla-refacciones">
+            <thead>
+              <tr>
+                <th aria-label="Mover"></th>
+                <th>Descripción</th>
+                <th>Tipo</th>
+                <th>Cantidad</th>
+                <th>Precio unitario</th>
+                <th>Precio final</th>
+                <th aria-label="Acciones"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {detallesMO.map((d, idx) => {
+                const puedeArrastrar = puedeEditarOrden && abierta;
+                const cant = d.cantidad || 1;
+                return (
+                  <tr
+                    key={d.id_servicio_detalle}
+                    className={`fila-arrastrable ${sobreDetalleIdx === `mo${idx}` ? "fila-sobre" : ""}`}
+                    draggable={puedeArrastrar}
+                    onDragStart={() => { dragDetalleRef.current = idx; }}
+                    onDragOver={(e) => { if (!puedeArrastrar) return; e.preventDefault(); setSobreDetalleIdx(`mo${idx}`); }}
+                    onDragLeave={() => setSobreDetalleIdx((v) => (v === `mo${idx}` ? null : v))}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setSobreDetalleIdx(null);
+                      if (dragDetalleRef.current == null) return;
+                      reordenarDetalles(dragDetalleRef.current, idx, detallesMO);
+                      dragDetalleRef.current = null;
+                    }}
+                    onDragEnd={() => { dragDetalleRef.current = null; setSobreDetalleIdx(null); }}
+                  >
+                    <td className="celda-arrastre">
+                      {puedeArrastrar && <span className="asa-arrastre" title="Arrastra para reordenar"><Icono nombre="list" size={16} /></span>}
+                    </td>
+                    <td className="celda-descripcion">{d.descripcion || "—"}</td>
+                    <td className="celda-categoria"><span className="chip-cat-ref">Mano de obra</span></td>
+                    <td>
+                      <input
+                        key={`mc-${d.id_servicio_detalle}-${d.cantidad}`} type="number" min="1" defaultValue={cant} disabled={!abierta || !puedeEditarOrden}
+                        onBlur={(e) => { const v = Math.max(Number(e.target.value) || 1, 1); if (v !== cant) guardarManoObra(d, { cantidad: v, unitario: (d.costo_mano_obra || 0) / cant }); }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        key={`mu-${d.id_servicio_detalle}-${d.costo_mano_obra}-${d.cantidad}`} type="number" step="0.01"
+                        defaultValue={Math.round(((d.costo_mano_obra || 0) / cant) * 100) / 100} disabled={!abierta || !puedeEditarOrden}
+                        onBlur={(e) => { const v = Number(e.target.value) || 0; const actual = Math.round(((d.costo_mano_obra || 0) / cant) * 100) / 100; if (v !== actual) guardarManoObra(d, { cantidad: cant, unitario: v }); }}
+                      />
+                    </td>
+                    <td className="celda-total">{fmt(d.costo_mano_obra || 0)}</td>
+                    <td>
+                      {puedeEditarOrden && <button className="btn btn-danger btn-sm" title="Quitar" aria-label="Quitar" onClick={() => handleDeleteDetalle(d.id_servicio_detalle, true)} disabled={!abierta}><Icono nombre="trash" size={18} /></button>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </BloqueNota>
+
       <div ref={finOrdenRef} className="fin-orden-sentinela" aria-hidden="true" />
 
       {(() => {
@@ -1199,7 +1323,7 @@ export default function ServicioDetalle() {
         const cobrada = servicio.costos.saldo_pendiente <= 0 && servicio.costos.total > 0;
         const detalleVisible = detalleCostosAbierto && servicio.costos.total > 0;
         return (
-      <div className={`saldo-flotante ${detalleVisible ? "saldo-flotante-abierta" : "atenuada"}`} key={servicio.costos.saldo_pendiente} title="Desliza hasta el final de las refacciones para ver el detalle de costos">
+      <div className={`saldo-flotante ${detalleVisible ? "saldo-flotante-abierta" : "atenuada"}`} key={servicio.costos.saldo_pendiente} title="Desliza hasta el final de la orden para ver el detalle de costos">
         {!detalleVisible && (
           <div className="saldo-flotante-resumen">
             <span className="saldo-flotante-monto mono">{fmt(cobrada ? servicio.costos.total : servicio.costos.saldo_pendiente)}</span>
@@ -1467,6 +1591,22 @@ export default function ServicioDetalle() {
         </div>
       )}
 
+      {addingManoObra && (
+        <FormModal
+          title="Agregar mano de obra"
+          icono="🛠️"
+          subtitulo={`Trabajo a cobrar en la orden #${servicio.id_servicio}.`}
+          fields={[
+            { name: "descripcion", label: "Descripción", required: true, full: true, autofoco: true, placeholder: "Ej. Cambio de balatas, afinación mayor…" },
+            { name: "cantidad", label: "Cantidad", type: "number" },
+            { name: "precio_unitario", label: "Precio unitario", type: "number", required: true, grande: true },
+          ]}
+          initialValues={{ cantidad: 1 }}
+          onSubmit={handleAddManoObra}
+          onClose={() => setAddingManoObra(false)}
+        />
+      )}
+
       {addingDetalle && (() => {
         const q = busquedaMulti.trim().toLowerCase();
         const refaccionesFiltradas = refacciones.filter((r) =>
@@ -1638,6 +1778,8 @@ export default function ServicioDetalle() {
           onClose={() => setMostrandoInspeccion(false)}
         />
       )}
+
+      {verSeguimiento && <SeguimientoOrdenModal idServicio={servicio.id_servicio} onClose={() => setVerSeguimiento(false)} />}
 
       {modalCierre && (
         <FinalizarOrdenModal

@@ -1061,6 +1061,8 @@ class ConfiguracionTaller(TenantMixin, Base):
     # Horario de atención: es el que se refleja en el calendario de citas
     hora_apertura = Column(String(5), nullable=True)   # "08:00"
     hora_cierre = Column(String(5), nullable=True)     # "18:00"
+    # Horario distinto para ciertos días (JSON): {"6": {"ap": "09:00", "ci": "14:00"}}; los días que no aparezcan usan el general
+    horarios_dia = Column(Text, nullable=True)
     dias_atencion = Column(String(20), nullable=True)  # días ISO separados por coma: "1,2,3,4,5,6" (1=lunes … 7=domingo)
 
     estado = relationship("Estado", foreign_keys=[id_estado])
@@ -1414,6 +1416,25 @@ class VentaMostradorDetalle(TenantMixin, Base):
     precio_unitario = Column(Float, default=0)
     costo_unitario = Column(Float, default=0)
     importe = Column(Float, default=0)
+
+
+class SeguimientoOrden(TenantMixin, Base):
+    """Enlace / QR de seguimiento público de una orden. Solo se guarda el hash
+    del token (para buscarlo) y una copia cifrada (para que el personal pueda
+    volver a mostrar el enlace). Que el enlace funcione NO depende de esta
+    fila sino del estatus de la orden: solo sirve mientras esté en proceso."""
+    __tablename__ = "seguimiento_ordenes"
+
+    id_seguimiento = Column(Integer, primary_key=True, index=True)
+    id_servicio = Column(Integer, ForeignKey("servicios.id_servicio"), nullable=False, index=True)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)  # SHA-256 del token
+    token_cifrado = Column(TextoCifrado(300), nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_por = Column(String(50), nullable=True)
+    revocado_en = Column(DateTime, nullable=True)  # NULL = vigente
+    revocado_por = Column(String(50), nullable=True)
+    ultimo_acceso = Column(DateTime, nullable=True)
+    accesos = Column(Integer, default=0)
 
 
 class BitacoraAuditoria(TenantMixin, Base):
