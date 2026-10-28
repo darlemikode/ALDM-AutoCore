@@ -10,7 +10,7 @@ import os
 
 from .rate_limit import limiter
 
-from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, inventario, notificaciones, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router, auditoria as auditoria_router
+from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, inventario, seguimiento, notificaciones, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router, auditoria as auditoria_router
 from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
@@ -235,6 +235,8 @@ app.include_router(diagnostico.router)
 app.include_router(consumo_router.router)
 app.include_router(auditoria_router.router)
 app.include_router(inventario.router)
+app.include_router(seguimiento.publico)
+app.include_router(seguimiento.interno)
 app.include_router(ws_router.router)
 
 # Archivos subidos (fotos de vehículos/servicios) — se sirven directo desde

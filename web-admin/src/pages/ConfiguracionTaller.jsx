@@ -67,7 +67,7 @@ export default function ConfiguracionTaller() {
       correo: d.correo, correo2: d.correo2, rfc: d.rfc, cp: d.cp, calle: d.calle,
       numero_taller: d.numero_taller, id_estado: d.id_estado || null, id_ciudad: d.id_ciudad || null,
       codigo_taller: d.codigo_taller || null,
-      hora_apertura: d.hora_apertura || null, hora_cierre: d.hora_cierre || null, dias_atencion: d.dias_atencion || null,
+      hora_apertura: d.hora_apertura || null, hora_cierre: d.hora_cierre || null, dias_atencion: d.dias_atencion || null, horarios_dia: d.horarios_dia || null,
     };
   }
 
@@ -312,6 +312,50 @@ export default function ConfiguracionTaller() {
               })}
             </div>
           </div>
+          {(() => {
+            const NOMBRES = { 1: "Lunes", 2: "Martes", 3: "Miércoles", 4: "Jueves", 5: "Viernes", 6: "Sábado", 7: "Domingo" };
+            const dias = (data.dias_atencion || "1,2,3,4,5,6").split(",").filter(Boolean).sort();
+            let esp = {};
+            try { esp = JSON.parse(data.horarios_dia || "{}") || {}; } catch { esp = {}; }
+            const guardar = (nuevo) => setData({ ...data, horarios_dia: Object.keys(nuevo).length ? JSON.stringify(nuevo) : null });
+            const apGen = data.hora_apertura || "08:00", ciGen = data.hora_cierre || "18:00";
+            if (dias.length === 0) return null;
+            return (
+              <div className="field" style={{ marginTop: 14 }}>
+                <label>Horario distinto por día</label>
+                <div className="cfg-card-desc" style={{ marginBottom: 8 }}>Los días sin cambios usan el horario general de arriba.</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {dias.map((n) => {
+                    const h = esp[n];
+                    return (
+                      <div key={n} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ width: 92, fontWeight: 600 }}>{NOMBRES[n]}</span>
+                        {h ? (
+                          <>
+                            <select style={{ width: 150 }} value={h.ap} onChange={(e) => {
+                              const ap = e.target.value; guardar({ ...esp, [n]: { ap, ci: h.ci > ap ? h.ci : (OPCIONES_HORA.find((o) => o.v > ap)?.v || h.ci) } });
+                            }}>
+                              {OPCIONES_HORA.map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
+                            </select>
+                            <span>a</span>
+                            <select style={{ width: 150 }} value={h.ci} onChange={(e) => guardar({ ...esp, [n]: { ap: h.ap, ci: e.target.value } })}>
+                              {OPCIONES_HORA.filter((o) => o.v > h.ap).map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
+                            </select>
+                            <button type="button" className="btn btn-sm btn-secondary" onClick={() => { const { [n]: _x, ...resto } = esp; guardar(resto); }}>Usar horario general</button>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ opacity: .7 }}>{OPCIONES_HORA.find((o) => o.v === apGen)?.t || apGen} a {OPCIONES_HORA.find((o) => o.v === ciGen)?.t || ciGen}</span>
+                            <button type="button" className="btn btn-sm btn-secondary" onClick={() => guardar({ ...esp, [n]: { ap: apGen, ci: ciGen } })}>Cambiar horario</button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {!sinAccesoFiscal && (

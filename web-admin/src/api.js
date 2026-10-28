@@ -36,7 +36,7 @@ async function request(path, { method = "GET", body, isForm = false } = {}) {
       // acaba de cambiar la contraseña y esta era una petición vieja que
       // seguía en vuelo), este 401 es de esa petición vieja: no hay que
       // cerrar la sesión nueva por ella.
-      if (getToken() === token) {
+      if (getToken() === token && !window.location.pathname.startsWith("/seguimiento/")) {
         setToken(null);
         window.location.href = "/login";
       }

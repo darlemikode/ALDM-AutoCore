@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 const Login = lazy(() => import("./pages/Login"));
+const Seguimiento = lazy(() => import("./pages/Seguimiento"));
 const EstablecerPassword = lazy(() => import("./pages/EstablecerPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Clientes = lazy(() => import("./pages/Clientes"));
@@ -85,6 +86,7 @@ export default function App() {
       <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/establecer-password" element={<EstablecerPassword />} />
+      <Route path="/seguimiento/:token" element={<Seguimiento />} />
       <Route
         path="/"
         element={

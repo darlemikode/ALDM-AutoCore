@@ -20,6 +20,10 @@ from .schemas import ServicioCostos
 
 
 def generar_nota_remision_pdf(servicio, costos: ServicioCostos, taller=None, inspeccion=None) -> bytes:
+    # Diseño con barra lateral (taller, cliente y vehículo a la izquierda; conceptos a la derecha)
+    from .pdf_nota import generar_nota_remision
+    return generar_nota_remision(servicio, costos, taller, inspeccion)
+
     buffer = BytesIO()
     entrega = f"{(fecha_mx(servicio.fecha_salida_servicio) or hoy_mx()):%d/%m/%Y}"
     liquidado = costos.saldo_pendiente <= 0

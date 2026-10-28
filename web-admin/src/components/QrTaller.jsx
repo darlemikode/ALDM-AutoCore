@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { toQR } from "../lib/toqr";
 
 /** Dibuja un QR en un <canvas> (sin dependencias externas). */
-export default function QrTaller({ contenido, tamano = 200 }) {
+export default function QrTaller({ contenido, tamano = 200, nombreArchivo = "qr-taller.png" }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function QrTaller({ contenido, tamano = 200 }) {
 
   function descargar() {
     const enlace = document.createElement("a");
-    enlace.download = "qr-taller.png";
+    enlace.download = nombreArchivo;
     enlace.href = ref.current.toDataURL("image/png");
     enlace.click();
   }

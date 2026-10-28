@@ -226,7 +226,11 @@ export default function Citas() {
   }
   useEffect(() => {
     api.get("/configuracion-taller/")
-      .then((c) => setHorario({ ap: c.hora_apertura || "08:00", ci: c.hora_cierre || "18:00", dias: (c.dias_atencion || "1,2,3,4,5,6").split(",") }))
+      .then((c) => {
+        let esp = {};
+        try { esp = JSON.parse(c.horarios_dia || "{}") || {}; } catch { esp = {}; }
+        setHorario({ ap: c.hora_apertura || "08:00", ci: c.hora_cierre || "18:00", dias: (c.dias_atencion || "1,2,3,4,5,6").split(","), esp });
+      })
       .catch(() => {});
     cargarTaller();
     window.addEventListener("focus", cargarTaller); // al volver de la orden se refresca
@@ -247,9 +251,15 @@ export default function Citas() {
   const rangoOrden = (o) => (o._fin
     ? `${fCorta(o.fecha_entrada_servicio)}${o.fecha_salida_servicio ? ` → ${fCorta(o.fecha_salida_servicio)}` : ""}`
     : `Desde ${fCorta(o.fecha_entrada_servicio)} · en taller`);
+  // Horario de un día: el especial si el taller lo configuró, si no el general
+  const horarioDe = (f) => {
+    const e = horario.esp?.[String(((f.getDay() + 6) % 7) + 1)];
+    return e ? { ap: e.ap, ci: e.ci } : { ap: horario.ap, ci: horario.ci };
+  };
   // Marcas de entrada/salida de órdenes en la cuadrícula, a la hora real en que ocurrieron
   const marcasDia = (f) => {
     const k = claveDia(f);
+    const hd = horarioDe(f);
     const m = [];
     const min = (x) => { const d = new Date(x); return d.getHours() * 60 + d.getMinutes(); };
     const mismoDia = (x) => x && claveDia(new Date(x)) === k;
@@ -267,7 +277,7 @@ export default function Citas() {
     });
     // Siempre dentro del horario de atención: antes de abrir queda en la apertura y
     // después del cierre queda en la hora de cierre, con la hora real como nota.
-    const ap = aMin(horario.ap), ci = aMin(horario.ci);
+    const ap = aMin(hd.ap), ci = aMin(hd.ci);
     const alto = MARK_H / HORA_PX * 60; // alto de la etiqueta en minutos
     m.forEach((x) => {
       x.real = x.min;
@@ -535,7 +545,7 @@ export default function Citas() {
     }
     if (fueraDeHorario) {
       const ok = await confirmDialog(
-        `La cita queda fuera del horario de atención del taller (${etiqueta12(horario.ap)} – ${etiqueta12(horario.ci)}). ¿Quieres agendarla de todos modos?`,
+        `La cita queda fuera del horario de atención del taller (${etiqueta12(horarioDe(new Date(`${nueva.fecha}T12:00:00`)).ap)} – ${etiqueta12(horarioDe(new Date(`${nueva.fecha}T12:00:00`)).ci)}). ¿Quieres agendarla de todos modos?`,
         { title: "Fuera de horario", confirmar: "Sí, agendar" }
       );
       if (!ok) return;
@@ -567,7 +577,7 @@ export default function Citas() {
 
   const diaAbierto = (f) => horario.dias.includes(String(((f.getDay() + 6) % 7) + 1));
   const fueraDeHorario = !!nueva && !!nueva.fecha && !!nueva.hora && (
-    !diaAbierto(new Date(`${nueva.fecha}T12:00:00`)) || aMin(nueva.hora) < aMin(horario.ap) || aMin(nueva.hora_fin) > aMin(horario.ci)
+    !diaAbierto(new Date(`${nueva.fecha}T12:00:00`)) || aMin(nueva.hora) < aMin(horarioDe(new Date(`${nueva.fecha}T12:00:00`)).ap) || aMin(nueva.hora_fin) > aMin(horarioDe(new Date(`${nueva.fecha}T12:00:00`)).ci)
   );
   const nuevaPasada = !!nueva && !nueva.id_cita && !!nueva.fecha && !!nueva.hora && new Date(`${nueva.fecha}T${nueva.hora}:00`) < ahora;
   const nombreVeh = (v) => `${v.marca?.nombre_marca || ""} ${v.modelo?.nombre_modelo || ""}`.trim() || v.numero_cuenta;
@@ -615,7 +625,9 @@ export default function Citas() {
   const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
 
   // Ventana visible: solo el horario de atención del taller (se amplía si hay citas fuera de él)
-  let minIni = aMin(horario.ap), maxFin = aMin(horario.ci);
+  const abiertos = diasVista.filter(diaAbierto).map(horarioDe);
+  let minIni = abiertos.length ? Math.min(...abiertos.map((h) => aMin(h.ap))) : aMin(horario.ap);
+  let maxFin = abiertos.length ? Math.max(...abiertos.map((h) => aMin(h.ci))) : aMin(horario.ci);
   diasVista.forEach((f) => posicionar(porDia[claveDia(f)] || []).forEach((it) => { minIni = Math.min(minIni, it.ini); maxFin = Math.max(maxFin, it.fin); }));
   if (nueva && nueva.hora && nueva.hora_fin) { minIni = Math.min(minIni, aMin(nueva.hora)); maxFin = Math.max(maxFin, aMin(nueva.hora_fin)); }
   const iniMin = Math.floor(minIni / 60) * 60;
@@ -945,8 +957,8 @@ export default function Citas() {
                             ? <div className="gcal-cerrado" style={{ top: 0, height: altoCuerpo }} title="El taller no atiende este día" />
                             : (
                               <>
-                                <div className="gcal-cerrado" style={{ top: 0, height: Math.max(((aMin(horario.ap) - iniMin) / 60) * HORA_PX, 0) }} />
-                                <div className="gcal-cerrado" style={{ top: ((aMin(horario.ci) - iniMin) / 60) * HORA_PX, height: Math.max(altoCuerpo - ((aMin(horario.ci) - iniMin) / 60) * HORA_PX, 0) }} />
+                                <div className="gcal-cerrado" style={{ top: 0, height: Math.max(((aMin(horarioDe(f).ap) - iniMin) / 60) * HORA_PX, 0) }} />
+                                <div className="gcal-cerrado" style={{ top: ((aMin(horarioDe(f).ci) - iniMin) / 60) * HORA_PX, height: Math.max(altoCuerpo - ((aMin(horarioDe(f).ci) - iniMin) / 60) * HORA_PX, 0) }} />
                               </>
                             )}
                           {marcas.map((x, i) => {
@@ -970,7 +982,7 @@ export default function Citas() {
                                 </Link>
                                 <div className="gcal-tip" role="tooltip">
                                   <div className="gcal-tip-tit"><Icono nombre={x.tipo === "out" ? "check" : "wrench"} size={17} /> {x.tipo === "rep" ? "En reparación" : x.tipo === "est" ? "Cambio de estatus" : x.tipo === "in" ? "Entrada al taller" : "Salida del taller"} · {x.horaReal}</div>
-                                  {x.ajustada && <div className="gcal-tip-nota"><Icono nombre="warning" size={15} /> Fuera de horario: se muestra en {x.real < aMin(horario.ap) ? "la apertura" : "el cierre"} ({etiqueta12(x.real < aMin(horario.ap) ? horario.ap : horario.ci)}).</div>}
+                                  {x.ajustada && <div className="gcal-tip-nota"><Icono nombre="warning" size={15} /> Fuera de horario: se muestra en {x.real < aMin(horarioDe(f).ap) ? "la apertura" : "el cierre"} ({etiqueta12(x.real < aMin(horarioDe(f).ap) ? horarioDe(f).ap : horarioDe(f).ci)}).</div>}
                                   {!x.fin && <div className="gcal-tip-fila"><span className="gcal-punto" style={{ background: etX(x).c }} /><div><span>Estatus</span><b>{etX(x).t}</b></div></div>}
                                   <div className="gcal-tip-fila"><Icono nombre="car" size={16} /><div><span>Vehículo</span><b>{[nombreVehOrden(x.o), placasOrden(x.o)].filter(Boolean).join(" · ")}</b></div></div>
                                   {cli.nombre && <div className="gcal-tip-fila"><Icono nombre="user" size={16} /><div><span>Cliente</span><b>{[cli.nombre, cli.tel].filter(Boolean).join(" · ")}</b></div></div>}

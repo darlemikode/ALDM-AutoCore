@@ -20,7 +20,9 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     async function loadUser() {
-      if (!getToken()) {
+      // La página pública de seguimiento no usa la sesión: no se consulta /auth/me ahí
+      // (con un token vencido en el navegador mandaba al cliente a /login).
+      if (window.location.pathname.startsWith("/seguimiento/") || !getToken()) {
         setLoading(false);
         return;
       }
