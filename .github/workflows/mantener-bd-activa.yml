@@ -1,8 +1,9 @@
 name: Mantener base de datos activa
 
 on:
-  schedule:
-    - cron: "0,30 14-23,0-1 * * *"
+  # Horario desactivado: el ping mantenía despierta la base y generaba cobro.
+  # schedule:
+  #   - cron: "0,30 14-23,0-1 * * *"
   workflow_dispatch:
 
 jobs:
