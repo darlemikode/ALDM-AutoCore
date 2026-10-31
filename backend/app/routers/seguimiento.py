@@ -35,6 +35,7 @@ from ..database import SessionLocal, get_db
 from ..rate_limit import limiter
 from ..security import require_permission
 from ..tenancy import MODO_SUPERADMIN, MODO_TALLER, fijar_tenant
+from .recepcion import recepcion_publica
 from .servicios import ETAPAS_SERVICIO
 
 publico = APIRouter(prefix="/api/seguimiento", tags=["seguimiento"])
@@ -198,6 +199,7 @@ def consultar(request: Request, token: str, db: Session = Depends(db_publica)):
         },
         "cliente": _cliente_txt(s.cliente),
         "inspeccion": _inspeccion_publica(db, s.id_servicio),
+        "recepcion": recepcion_publica(db, s),
         "orden": {
             "folio": s.id_servicio,
             "servicio": s.nombre_servicio,

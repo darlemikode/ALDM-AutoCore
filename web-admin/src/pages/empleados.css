@@ -1,0 +1,18 @@
+.emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 14px; }
+.emp-card { display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 16px; border: 1px solid var(--contorno); border-top: 3px solid var(--acc, var(--petrol-500)); background: linear-gradient(160deg, color-mix(in srgb, var(--acc, var(--petrol-500)) 8%, transparent), transparent 60%); transition: transform .15s, box-shadow .15s; }
+.emp-card.clicable { cursor: pointer; }
+.emp-card.clicable:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.28); }
+.emp-card.baja { opacity: .6; }
+.emp-cab { display: flex; align-items: center; gap: 12px; }
+.emp-avatar { flex: none; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: var(--acc, var(--petrol-500)); background: color-mix(in srgb, var(--acc, var(--petrol-500)) 20%, transparent); border: 1.5px solid var(--acc, var(--petrol-500)); }
+.emp-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.emp-id b { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emp-puesto { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--acc, var(--ink-500)); }
+.emp-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 12px; border-top: 1px solid var(--contorno); }
+.emp-dato { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.emp-dato small { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-500); }
+.emp-tel { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.emp-nd { color: var(--ink-500); }
+.emp-pie { display: flex; justify-content: flex-start; }
+.emp-wa { display: inline-flex; align-items: center; gap: 7px; padding: 4px 18px; align-self: stretch; justify-content: center; white-space: nowrap; letter-spacing: .02em; border-radius: 999px; background: #2e8b57; color: #fff !important; font-weight: 600; font-size: 13px; text-decoration: none; box-shadow: 0 3px 10px rgba(46,139,87,.28); transition: filter .15s, transform .15s; }
+.emp-wa:hover { filter: brightness(1.08); transform: translateY(-1px); }

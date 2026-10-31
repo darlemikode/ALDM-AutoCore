@@ -13,6 +13,10 @@ import FotoGaleria from "../components/FotoGaleria";
 import EtapaTracker from "../components/EtapaTracker";
 import ChatOrden from "../components/ChatOrden";
 import InspeccionForm from "../components/InspeccionForm";
+import RecepcionAutoModal from "../components/RecepcionAutoModal";
+import NuevaRefaccionModal from "../components/NuevaRefaccionModal";
+import Auto3D from "../components/Auto3D";
+import { ZONAS, zonasRefaccion } from "../lib/zonas";
 import { useAuth } from "../context/AuthContext";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
@@ -161,6 +165,9 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   const [descargando, setDescargando] = useState(null);
   const [descargandoFactura, setDescargandoFactura] = useState(null);
   const [mostrandoInspeccion, setMostrandoInspeccion] = useState(false);
+  const [mostrandoRecepcion, setMostrandoRecepcion] = useState(false);
+  const [verAutoRef, setVerAutoRef] = useState(false); // elegir refacciones tocando el auto
+  const [zonaRef, setZonaRef] = useState(null); // clave de ZONAS | "otras" | null
   const [chatAbierto, setChatAbierto] = useState(!!route.params?.abrirChat);
 
   // Si llegamos aquí desde la campanita (con params.abrirChat), se abre el
@@ -183,6 +190,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
   // Hoja "Agregar": del catálogo (selección múltiple) o concepto libre
   const [modalRefacciones, setModalRefacciones] = useState(false);
+  const [creandoRef, setCreandoRef] = useState(false); // alta rápida de una refacción que no existe
   const [modoAgregar, setModoAgregar] = useState("catalogo");
   const [libre, setLibre] = useState({ descripcion: "", id_tipo_servicio: "", cantidad: "1", costo_mano_obra: "", costo_refaccion: "", costo_extra: "" });
   const [seleccion, setSeleccion] = useState({});
@@ -484,8 +492,23 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     }
   }
 
+  async function crearRefaccionRapida({ nombre, categoria, precio }) {
+    const norm = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    const existente = refacciones.find((r) => norm(r.nombre_refaccion) === norm(nombre) && norm(r.categoria) === norm(categoria));
+    let r = existente;
+    if (!r) {
+      if (!refacciones.some((x) => norm(x.categoria) === norm(categoria))) {
+        try { await api.post("/refacciones-categorias/", { nombre_categoria: categoria }); } catch { /* el texto se guarda igual en la refacción */ }
+      }
+      r = await api.post("/refacciones/", { nombre_refaccion: nombre, categoria, preciocliente_refaccion: precio });
+      setRefacciones((p) => [...p, r]);
+    }
+    setBusquedaRef(""); setFiltroCategoria(""); setZonaRef(null);
+    setSeleccion((p) => ({ ...p, [r.id_refaccion]: { cantidad: 1 } }));
+  }
+
   function abrirAgregar(modo = "catalogo") {
-    setSeleccion({}); setFiltroCategoria(""); setBusquedaRef(""); setModoAgregar(modo); setModalRefacciones(true);
+    setSeleccion({}); setFiltroCategoria(""); setBusquedaRef(""); setVerAutoRef(false); setZonaRef(null); setModoAgregar(modo); setModalRefacciones(true);
   }
 
   // --- Abono ---
@@ -533,7 +556,6 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   const pagoFinalListo = !conSaldoFinal || faltaFinal <= 0.005;
 
   async function confirmarCierre() {
-    if (textoConfirmar !== "CONFIRMAR") return;
     if (!pagoFinalListo) { alerta("Falta cobrar", `Todavía falta ${fmt(faltaFinal)} para cubrir el saldo.`); return; }
     setCerrando(true);
     try {
@@ -617,10 +639,21 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
   // Refacciones para el selector
   const categoriasDisponibles = [...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort();
-  const refFiltradas = refacciones.filter((r) =>
+  const refPorBusqueda = refacciones.filter((r) => !busquedaRef || contiene(r.nombre_refaccion || "", busquedaRef));
+  const refFiltradas = refPorBusqueda.filter((r) =>
     (!filtroCategoria || r.categoria === filtroCategoria) &&
-    (!busquedaRef || contiene(r.nombre_refaccion || "", busquedaRef))
+    (!zonaRef || (zonaRef === "otras" ? zonasRefaccion(r).length === 0 : zonasRefaccion(r).includes(zonaRef)))
   );
+  // Cuántas refacciones hay (y cuántas marcadas) por zona del auto
+  const conteoZona = {}, marcadasZona = {};
+  let refSinZona = 0;
+  if (verAutoRef) {
+    refPorBusqueda.forEach((r) => {
+      const zs = zonasRefaccion(r);
+      if (!zs.length) refSinZona += 1;
+      zs.forEach((z) => { conteoZona[z] = (conteoZona[z] || 0) + 1; if (seleccion[r.id_refaccion]) marcadasZona[z] = (marcadasZona[z] || 0) + 1; });
+    });
+  }
   const seleccionadas = Object.keys(seleccion).length;
 
   const PESTANAS = [
@@ -858,6 +891,10 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                 <Text style={styles.accesoTexto}>{inspeccionActual ? "Ver inspección" : "Nueva inspección"}</Text>
               </TouchableOpacity>
               )}
+              <TouchableOpacity style={styles.acceso} onPress={() => setMostrandoRecepcion(true)}>
+                <Ionicons name="car-sport-outline" size={24} color={colors.petrol600} />
+                <Text style={styles.accesoTexto}>Recepción y avance</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.acceso} onPress={() => setChatAbierto(true)}>
                 <Ionicons name="chatbubbles-outline" size={24} color={colors.petrol600} />
                 <Text style={styles.accesoTexto}>Chat con el cliente</Text>
@@ -1018,9 +1055,16 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         idServicio={servicio.id_servicio}
         inspeccionExistente={inspeccionActual}
         refacciones={refacciones}
-        onGuardado={(g) => { setInspeccionActual(g); setMostrandoInspeccion(false); }}
+        onGuardado={(g) => setInspeccionActual(g)}
         onClose={() => setMostrandoInspeccion(false)}
         puedeEditar={puedeEditar && abierta}
+      />
+
+      <RecepcionAutoModal
+        visible={mostrandoRecepcion}
+        idServicio={servicio.id_servicio}
+        puedeEditar={puedeEditar && abierta}
+        onClose={() => setMostrandoRecepcion(false)}
       />
 
       {/* Chat */}
@@ -1108,6 +1152,9 @@ export default function ServicioDetalleScreen({ route, navigation }) {
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: 8 }}>
             <TextInput style={styles.search} placeholder="Buscar refacción…" placeholderTextColor={colors.ink500} value={busquedaRef} onChangeText={setBusquedaRef} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+              <TouchableOpacity style={[styles.chip, verAutoRef && styles.chipActivo]} onPress={() => { setVerAutoRef(!verAutoRef); setZonaRef(null); }}>
+                <Text style={[styles.chipTexto, verAutoRef && styles.chipTextoActivo]}>🚗 {verAutoRef ? "Ocultar auto" : "Elegir en el auto"}</Text>
+              </TouchableOpacity>
               {["", ...categoriasDisponibles].map((c) => (
                 <TouchableOpacity key={c || "todas"} style={[styles.chip, filtroCategoria === c && styles.chipActivo]} onPress={() => setFiltroCategoria(c)}>
                   <Text style={[styles.chipTexto, filtroCategoria === c && styles.chipTextoActivo]}>{c || "Todas"}</Text>
@@ -1116,9 +1163,27 @@ export default function ServicioDetalleScreen({ route, navigation }) {
             </ScrollView>
           </View>
           <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 8 }}>
+            {verAutoRef && (
+              <View style={{ marginBottom: 6 }}>
+                <Auto3D compacto altura={230} fps={18} estadoZona={(z) => (marcadasZona[z] ? "refsel" : conteoZona[z] ? "ref" : "ninguno")}
+                  etiqueta={(z) => (conteoZona[z] ? (conteoZona[z] > 99 ? "99+" : String(conteoZona[z])) : "")}
+                  elegida={zonaRef && zonaRef !== "otras" ? zonaRef : null} onSelect={(z) => setZonaRef(zonaRef === z ? null : z)}
+                  ayuda="Gira el auto y toca una zona para ver sus refacciones" />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                  <Text style={[styles.filaTitulo, { flex: 1, minWidth: 140, color: colors.petrol600 }]} numberOfLines={2}>{zonaRef === "otras" ? "Sin zona" : zonaRef ? ZONAS[zonaRef] : "Todo el vehículo"}</Text>
+                  {refSinZona > 0 && (
+                    <TouchableOpacity style={[styles.chip, zonaRef === "otras" && styles.chipActivo]} onPress={() => setZonaRef(zonaRef === "otras" ? null : "otras")}>
+                      <Text style={[styles.chipTexto, zonaRef === "otras" && styles.chipTextoActivo]}>Sin zona ({refSinZona})</Text>
+                    </TouchableOpacity>
+                  )}
+                  {zonaRef && <TouchableOpacity style={styles.chip} onPress={() => setZonaRef(null)}><Text style={styles.chipTexto}>Ver todas</Text></TouchableOpacity>}
+                </View>
+              </View>
+            )}
             {refFiltradas.length === 0 ? (
               <View style={{ gap: 10 }}>
                 <Text style={styles.vacio}>{refacciones.length === 0 ? "Todavía no hay refacciones en el catálogo." : "No hay refacciones que coincidan."}</Text>
+                {hasPermission("refacciones.crear") && <Boton icono="add-circle-outline" texto={`Agregar al catálogo${busquedaRef.trim() ? ` «${busquedaRef.trim()}»` : ""}`} onPress={() => setCreandoRef(true)} />}
                 <Boton icono="create-outline" texto="Agregarla como concepto libre" onPress={() => { setLibre((p) => ({ ...p, descripcion: busquedaRef })); setModoAgregar("libre"); }} />
               </View>
             ) : refFiltradas.map((r) => {
@@ -1154,6 +1219,8 @@ export default function ServicioDetalleScreen({ route, navigation }) {
           )}
         </View>
       </Modal>
+      <NuevaRefaccionModal visible={creandoRef} nombreInicial={busquedaRef.trim()} onCerrar={() => setCreandoRef(false)} onCrear={crearRefaccionRapida}
+        categorias={[...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort()} />
 
       {/* Registrar abono */}
       <Modal visible={modalAbono} transparent animationType="slide" onRequestClose={() => setModalAbono(false)}>
@@ -1231,13 +1298,18 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               </View>
             ) : null}
 
-            <Text style={[styles.label, { marginTop: spacing.md }]}>Escribe CONFIRMAR para cerrar la orden</Text>
-            <TextInput style={styles.input} value={textoConfirmar} onChangeText={setTextoConfirmar} placeholder="CONFIRMAR" placeholderTextColor={colors.ink500} autoCapitalize="characters" />
+            <Text style={[styles.label, { marginTop: spacing.md }]}>Al continuar</Text>
+            <View style={{ gap: 4 }}>
+              {conSaldoFinal ? <Text style={styles.ivaTexto}>✓ Se registra el cobro de {fmt(saldoFinal)}</Text> : null}
+              <Text style={styles.ivaTexto}>✓ La orden #{servicio.id_servicio} se cerrará (puedes reabrirla después)</Text>
+              <Text style={styles.ivaTexto}>✓ Se generará la nota de remisión para imprimir o enviar</Text>
+              {notificarFinal && cliente.cuenta_activada ? <Text style={styles.ivaTexto}>✓ Se avisará al cliente que su vehículo está listo</Text> : null}
+            </View>
 
             <View style={styles.modalAcciones}>
               <Boton texto="Cancelar" onPress={() => setModalCierre(false)} estilo={{ flex: 1 }} />
               <Boton tipo="primario" texto={conSaldoFinal ? `Cobrar y finalizar` : "Finalizar"} onPress={confirmarCierre} cargando={cerrando}
-                deshabilitado={textoConfirmar !== "CONFIRMAR" || !pagoFinalListo} estilo={{ flex: 1.4 }} />
+                deshabilitado={!pagoFinalListo} estilo={{ flex: 1.4 }} />
             </View>
           </ScrollCampos>
         </View>

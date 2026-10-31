@@ -368,6 +368,7 @@ def eliminar(servicio_id: int, db: Session = Depends(get_db), user=Depends(requi
     if motivos:
         raise HTTPException(status_code=400, detail="No se puede eliminar esta orden: " + " y ".join(motivos) + ". Cancélala en lugar de eliminarla (así queda historial).")
     registrar_auditoria(db, user, "servicio", servicio_id, "eliminacion_orden", "orden", f"#{servicio_id} {servicio.nombre_servicio}", "eliminada")
+    db.query(models.DanoRecepcion).filter(models.DanoRecepcion.id_servicio == servicio_id).delete(synchronize_session=False)
     db.delete(servicio)
     db.commit()
     return None

@@ -10,7 +10,7 @@ import os
 
 from .rate_limit import limiter
 
-from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, inventario, seguimiento, notificaciones, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router, auditoria as auditoria_router
+from .routers import auth, catalogos, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, inventario, seguimiento, recepcion, notificaciones, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router, auditoria as auditoria_router
 from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
@@ -42,13 +42,6 @@ for _o in ("https://aldmautocore.com", "https://www.aldmautocore.com"):
     if _o not in _origenes_permitidos:
         _origenes_permitidos.append(_o)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_origenes_permitidos,
-    allow_credentials=False,  # usamos JWT Bearer, no cookies — no se necesitan credenciales de CORS
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Límite de peticiones por IP (fuerza bruta / saturación) — límite global
 # aquí, y uno más estricto directo en /auth/login (ver routers/auth.py).
@@ -59,6 +52,16 @@ app.add_exception_handler(
 )
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1024)  # respuestas JSON ~5x más ligeras
+
+# CORS va al final para quedar como capa más externa: así hasta las respuestas del límite de peticiones (429)
+# y de errores llevan sus cabeceras CORS; si no, el navegador las reporta como «Failed to fetch».
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origenes_permitidos,
+    allow_credentials=False,  # usamos JWT Bearer, no cookies — no se necesitan credenciales de CORS
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Métodos que cambian datos — cuando uno de estos responde 2xx, algo en la
@@ -237,6 +240,7 @@ app.include_router(auditoria_router.router)
 app.include_router(inventario.router)
 app.include_router(seguimiento.publico)
 app.include_router(seguimiento.interno)
+app.include_router(recepcion.router)
 app.include_router(ws_router.router)
 
 # Archivos subidos (fotos de vehículos/servicios) — se sirven directo desde
