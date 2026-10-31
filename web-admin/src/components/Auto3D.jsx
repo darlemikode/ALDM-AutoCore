@@ -5,7 +5,13 @@ import "./auto3d.css";
 const SIMBOLO = { bien: "✓", regular: "!", mal: "✕", ninguno: "" };
 
 // Auto deportivo en alambre azul: gira solo, se arrastra y se orienta hacia la zona elegida.
-export default function Auto3D({ estadoZona, elegida, onSelect, nombres = {} }) {
+//  · puntos: mapa clave -> { p: [[x,y,z]], ang } (por defecto, las zonas de la inspección)
+//  · avance: { progreso, zonas } para iluminar el auto · sinPuntos: solo el auto, sin botones
+//  · compacto: puntos más chicos (muchas piezas) · ayuda: texto bajo el auto
+//  · etiqueta(clave, estado): texto dentro del punto (por defecto ✓ ! ✕)
+export default function Auto3D({ estadoZona = () => "ninguno", elegida, onSelect = () => {}, nombres = {}, puntos = PUNTOS3D, avance = null, sinPuntos = false, compacto = false, ayuda, etiqueta = null }) {
+  const avanceRef = useRef(avance);
+  avanceRef.current = avance;
   const vistaRef = useRef(null);
   const canvasRef = useRef(null);
   const dotsRef = useRef({});
@@ -13,7 +19,7 @@ export default function Auto3D({ estadoZona, elegida, onSelect, nombres = {} }) 
   const objetivo = useRef(null);
   const arrastre = useRef({ activo: false, x: 0, movido: false, hasta: 0 });
 
-  useEffect(() => { objetivo.current = elegida && PUNTOS3D[elegida] ? PUNTOS3D[elegida].ang : null; }, [elegida]);
+  useEffect(() => { objetivo.current = elegida && puntos[elegida] ? puntos[elegida].ang : null; }, [elegida, puntos]);
 
   useEffect(() => {
     const vista = vistaRef.current, canvas = canvasRef.current;
@@ -44,7 +50,7 @@ export default function Auto3D({ estadoZona, elegida, onSelect, nombres = {} }) 
       if (ang.current > 180) ang.current -= 360;
       if (ang.current < -180) ang.current += 360;
       if (w > 0) {
-        dibujar(ctx, w, h, ang.current, t);
+        dibujar(ctx, w, h, ang.current, t, avanceRef.current);
         // Los puntos siguen al auto; los del lado oculto se atenúan
         Object.values(dotsRef.current).forEach((d) => {
           if (!d.el) return;
@@ -74,24 +80,24 @@ export default function Auto3D({ estadoZona, elegida, onSelect, nombres = {} }) 
   const arriba = () => { arrastre.current.activo = false; arrastre.current.hasta = performance.now() + 3500; setTimeout(() => { arrastre.current.movido = false; }, 0); };
 
   return (
-    <div className="auto3d">
+    <div className={`auto3d${compacto ? " compacto" : ""}`}>
       <div ref={vistaRef} className="car-vista" onPointerDown={abajo} onPointerMove={mover} onPointerUp={arriba} onPointerLeave={arriba} onPointerCancel={arriba}>
         <span className="car-esq tl" /><span className="car-esq tr" /><span className="car-esq bl" /><span className="car-esq br" />
         <canvas ref={canvasRef} className="car-canvas" aria-hidden="true" />
-        {Object.entries(PUNTOS3D).map(([k, z]) => z.p.map((p, i) => {
+        {!sinPuntos && Object.entries(puntos).map(([k, z]) => z.p.map((p, i) => {
           const est = estadoZona(k);
           const activo = elegida === k;
           return (
             <button type="button" key={`${k}-${i}`} ref={(el) => { dotsRef.current[`${k}-${i}`] = { el, p, arriba: p[0] === 0 && p[1] >= 0.7 }; }}
-              title={nombres[k]} aria-label={`${nombres[k] || k}: ${est === "ninguno" ? "sin puntos" : est}`} aria-pressed={activo}
+              title={nombres[k] || z.nombre} aria-label={`${nombres[k] || z.nombre || k}: ${est === "ninguno" ? "sin marcar" : est}`} aria-pressed={activo}
               className={`car-dot est-${est}${activo ? " activo" : ""}`}
               onClick={() => { if (!arrastre.current.movido) onSelect(k); }}>
-              {SIMBOLO[est]}
+              {etiqueta ? etiqueta(k, est) : SIMBOLO[est]}
             </button>
           );
         }))}
       </div>
-      <small className="car-ayuda">Arrastra para girar · toca un punto para revisarlo</small>
+      <small className="car-ayuda">{ayuda || (sinPuntos ? "Arrastra para girar" : "Arrastra para girar · toca un punto para revisarlo")}</small>
     </div>
   );
 }

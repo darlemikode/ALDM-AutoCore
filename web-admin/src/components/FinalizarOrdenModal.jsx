@@ -28,7 +28,6 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
   const [mixTarjeta, setMixTarjeta] = useState("");
   const [comentarios, setComentarios] = useState(servicio.comentarios_finales || "");
   const [notificar, setNotificar] = useState(true);
-  const [confirmar, setConfirmar] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,7 +42,7 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
 
   const tarjetaExcede = conSaldo && ((forma === "tarjeta" && pago.recibido > saldo + 0.005) || (forma === "mixto" && (Number(mixTarjeta) || 0) > saldo + 0.005));
   const pagoCompleto = !conSaldo || (pago.falta <= 0.005 && !tarjetaExcede);
-  const listo = pagoCompleto && confirmar === "CONFIRMAR";
+  const listo = pagoCompleto;
 
   const billetes = [saldo, Math.ceil(saldo / 100) * 100, Math.ceil(saldo / 500) * 500, Math.ceil(saldo / 1000) * 1000]
     .filter((v, i, a) => v >= saldo && a.indexOf(v) === i)
@@ -169,8 +168,13 @@ export default function FinalizarOrdenModal({ servicio, onClose, onFinalizada, n
           </div>
 
           <div className="fin-bloque">
-            <div className="fin-titulo">Escribe <b>CONFIRMAR</b> para cerrar la orden y generar la nota</div>
-            <input value={confirmar} onChange={(e) => setConfirmar(e.target.value.toUpperCase())} placeholder="CONFIRMAR" className="fin-confirmar" />
+            <div className="fin-titulo">Al continuar</div>
+            <ul className="fin-canales">
+              {conSaldo && <li>✓ Se registra el cobro de {fmt(saldo)}</li>}
+              <li>✓ La orden #{servicio.id_servicio} se cerrará y ya no se podrá editar (puedes reabrirla después)</li>
+              <li>✓ Se generará la nota de remisión para imprimir o enviar</li>
+              {notificar && <li>✓ Se avisará al cliente que su vehículo está listo</li>}
+            </ul>
           </div>
 
           {error && <div className="error-text">{error}</div>}

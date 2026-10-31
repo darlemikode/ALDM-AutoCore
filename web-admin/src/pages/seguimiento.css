@@ -220,3 +220,25 @@
 .seg-visor-nav.sig { right: 10px; }
 .seg-visor-cont { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; color: #cbd5e1; font-size: 13px; }
 @keyframes seg-visor-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Avance iluminado del vehículo */
+.seg-avance { margin-bottom: 14px; }
+.seg-avance-barra { height: 8px; border-radius: 99px; background: color-mix(in srgb, var(--suave) 22%, transparent); overflow: hidden; margin-top: 12px; }
+.seg-avance-barra span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #2f8bff, #46e1be); transition: width .6s ease; }
+.seg-avance-pct { margin: 8px 0 0; color: var(--suave); font-size: 13px; text-align: center; }
+.seg-avance-pct b { color: inherit; font-size: 16px; }
+.seg-avance-zonas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.seg-avance-zonas li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 600; border: 1px solid var(--borde); }
+.seg-avance-zonas li i { width: 9px; height: 9px; border-radius: 50%; }
+.seg-avance-zonas li span { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--suave); }
+.seg-avance-zonas li.proceso i { background: #ffb932; box-shadow: 0 0 8px #ffb932; }
+.seg-avance-zonas li.listo i { background: #3ceb87; box-shadow: 0 0 8px #3ceb87; }
+
+/* Recepción del vehículo */
+.seg-recep-intro { margin: 0 0 12px; color: var(--suave); font-size: 14px; }
+.seg-danos { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.seg-danos li { display: flex; gap: 10px; align-items: flex-start; }
+.seg-danos li strong { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.seg-danos li span:not(.seg-chip) { display: block; color: var(--suave); font-size: 13px; }
+.seg-danos .seg-chip { text-transform: capitalize; }
+.seg-ver-todos { margin-top: 12px; background: none; border: 1px solid var(--borde); color: inherit; border-radius: 99px; padding: 8px 16px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }

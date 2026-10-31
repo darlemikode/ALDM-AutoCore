@@ -13,6 +13,9 @@ import ChatOrden from "../components/ChatOrden";
 import InspeccionForm from "../components/InspeccionForm";
 import FinalizarOrdenModal from "../components/FinalizarOrdenModal";
 import SeguimientoOrdenModal from "../components/SeguimientoOrdenModal";
+import RecepcionAutoModal from "../components/RecepcionAutoModal";
+import SelectorZonaRefacciones from "../components/SelectorZonaRefacciones";
+import { zonasRefaccion } from "../components/zonasRefaccion";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
@@ -116,11 +119,14 @@ export default function ServicioDetalle() {
   const [seleccionMultiple, setSeleccionMultiple] = useState({});
   const [filtroCategoriaMulti, setFiltroCategoriaMulti] = useState([]);
   const [busquedaMulti, setBusquedaMulti] = useState("");
+  const [verAutoRef, setVerAutoRef] = useState(false); // elegir refacciones tocando el auto
+  const [zonaRef, setZonaRef] = useState(null); // zona del auto elegida (clave | "otras" | null)
   const [guardandoMultiple, setGuardandoMultiple] = useState(false);
   const [addingAbono, setAddingAbono] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [modalCierre, setModalCierre] = useState(false);
   const [verSeguimiento, setVerSeguimiento] = useState(false);
+  const [verRecepcion, setVerRecepcion] = useState(false);
   const [textoConfirmar, setTextoConfirmar] = useState("");
   const [cerrando, setCerrando] = useState(false);
   const [chatAbierto, setChatAbierto] = useState(false);
@@ -1551,6 +1557,16 @@ export default function ServicioDetalle() {
 
       {/* Botones flotantes: inspección y chat de la orden */}
       <div className="fab-grupo">
+        {abierta && (
+          <button type="button" className="fab-pill fab-inspeccion" onClick={() => setVerRecepcion(true)} title="Recepción del vehículo (daños) y avance por zonas">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 15l1.6-4.6A2 2 0 0 1 6.5 9h11a2 2 0 0 1 1.9 1.4L21 15" />
+              <rect x="3" y="15" width="18" height="4" rx="1.5" />
+              <circle cx="7.5" cy="17" r=".6" /><circle cx="16.5" cy="17" r=".6" />
+            </svg>
+            <span>Recepción y avance</span>
+          </button>
+        )}
         {abierta && (puedeEditarOrden || inspeccionActual) && (
           <button
             type="button"
@@ -1609,9 +1625,10 @@ export default function ServicioDetalle() {
 
       {addingDetalle && (() => {
         const q = busquedaMulti.trim().toLowerCase();
-        const refaccionesFiltradas = refacciones.filter((r) =>
+        const porBusqueda = refacciones.filter((r) => !q || contiene(r.nombre_refaccion || "", q));
+        const refaccionesFiltradas = porBusqueda.filter((r) =>
           (filtroCategoriaMulti.length === 0 || filtroCategoriaMulti.includes(r.categoria || "Sin categoría")) &&
-          (!q || contiene(r.nombre_refaccion || "", q))
+          (!zonaRef || (zonaRef === "otras" ? zonasRefaccion(r).length === 0 : zonasRefaccion(r).includes(zonaRef)))
         );
         // Se muestran TODAS las refacciones del catálogo — si el vehículo de esta
         // orden tiene inventario específico, se usa ese stock/precio real.
@@ -1632,7 +1649,7 @@ export default function ServicioDetalle() {
         });
         const clavesOrdenadas = Object.keys(grupos).sort((a, b) => (a === "Sin categoría" ? 1 : b === "Sin categoría" ? -1 : a.localeCompare(b)));
         const totalMarcadas = Object.keys(seleccionMultiple).length;
-        const cerrar = () => { setAddingDetalle(false); setSeleccionMultiple({}); setBusquedaMulti(""); setFiltroCategoriaMulti([]); };
+        const cerrar = () => { setAddingDetalle(false); setSeleccionMultiple({}); setBusquedaMulti(""); setFiltroCategoriaMulti([]); setZonaRef(null); };
         return (
           <ModalPortal>
           <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setAddingDetalle(false)}>
@@ -1641,6 +1658,10 @@ export default function ServicioDetalle() {
               <div className="add-ref-cab">
                 <h2>Agregar refacciones</h2>
                 <input className="add-ref-buscar" placeholder="Buscar refacción…" value={busquedaMulti} onChange={(e) => setBusquedaMulti(e.target.value)} />
+                <button type="button" className={`btn btn-secondary btn-sm add-ref-modo${verAutoRef ? " on" : ""}`} aria-pressed={verAutoRef}
+                  onClick={() => { setVerAutoRef((v) => !v); setZonaRef(null); }} title="Elegir la zona del auto para ver solo sus refacciones">
+                  {verAutoRef ? "Ocultar auto" : "Elegir en el auto"}
+                </button>
                 {hasPermission("refacciones.crear") && (
                   <button type="button" className="btn btn-secondary btn-sm add-ref-nueva" onClick={() => setCreandoRefaccion({})}>
                     <Icono nombre="add" size={16} /> Nueva refacción
@@ -1649,9 +1670,20 @@ export default function ServicioDetalle() {
               </div>
               <FiltroChips multiple items={conteoCat} valor={filtroCategoriaMulti} onChange={setFiltroCategoriaMulti} total={refacciones.length} />
 
+              <div className="add-ref-cuerpo">
+              {verAutoRef && <SelectorZonaRefacciones refacciones={porBusqueda} seleccion={seleccionMultiple} zona={zonaRef} onZona={setZonaRef} />}
               <div className="tarjetas-refaccion-grid add-ref-grid">
                 {refaccionesFiltradas.length === 0 ? (
-                  <div className="empty-state">No hay refacciones que coincidan.</div>
+                  <div className="empty-state">
+                    No hay refacciones que coincidan.
+                    {hasPermission("refacciones.crear") && (
+                      <div style={{ marginTop: 10 }}>
+                        <button type="button" className="btn btn-primary" onClick={() => setCreandoRefaccion({ nombre_refaccion: busquedaMulti.trim() })}>
+                          <Icono nombre="add" size={16} /> Agregar al catálogo{busquedaMulti.trim() ? ` «${busquedaMulti.trim()}»` : ""}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   clavesOrdenadas.map((clave) => (
                     <div key={`grupo-${clave}`} className="add-ref-grupo">
@@ -1713,6 +1745,7 @@ export default function ServicioDetalle() {
                     </div>
                   ))
                 )}
+              </div>
               </div>
 
               <div className="modal-actions">
@@ -1780,6 +1813,7 @@ export default function ServicioDetalle() {
       )}
 
       {verSeguimiento && <SeguimientoOrdenModal idServicio={servicio.id_servicio} onClose={() => setVerSeguimiento(false)} />}
+      {verRecepcion && <RecepcionAutoModal idServicio={servicio.id_servicio} puedeEditar={puedeEditarOrden} onClose={() => setVerRecepcion(false)} />}
 
       {modalCierre && (
         <FinalizarOrdenModal
