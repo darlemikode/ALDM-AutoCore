@@ -11,6 +11,7 @@ import { api, getToken, API_URL, WS_URL, urlArchivo, archivoParaForm } from "../
 import { colors } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import InspeccionView from "../components/InspeccionView";
+import AvanceYRecepcion from "../components/AvanceYRecepcion";
 import { ETAPAS } from "./MisServiciosScreen";
 import { alerta } from "../ui/Dialogo";
 
@@ -311,6 +312,8 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               {servicio.tipos_mantenimiento?.length ? <Fila etiqueta="Trabajos" valor={servicio.tipos_mantenimiento.map((t) => t.nombre_tipo).join(", ")} /> : null}
               {servicio.es_garantia ? <Fila etiqueta="Tipo" valor="Garantía" /> : null}
             </View>
+
+            <AvanceYRecepcion servicioId={servicio.id_servicio} etapa={servicio.etapa} />
 
             {servicio.diagnostico ? (
               <View style={styles.tarjeta}>

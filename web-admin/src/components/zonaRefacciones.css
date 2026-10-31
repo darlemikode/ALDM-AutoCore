@@ -1,0 +1,27 @@
+/* Selector de refacciones por zona del auto (modal "Agregar refacciones") */
+.add-ref-cuerpo { display: flex; gap: 14px; flex: 1 1 0; min-height: 0; }
+.modal-grande > .add-ref-cuerpo { flex: 1 1 0 !important; min-height: 0; }
+.add-ref-cuerpo > .add-ref-grid { flex: 1 1 0 !important; min-width: 0; }
+.add-ref-auto { flex: none; width: min(340px, 40%); display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
+.add-ref-auto .car-vista { height: 300px; }
+.add-ref-auto-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 28px; }
+.add-ref-auto-cab strong { font-size: 15px; }
+.add-ref-auto-todas { border: 1.5px solid var(--contorno); background: transparent; color: var(--ink-700); border-radius: 99px; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.add-ref-auto-todas:hover { border-color: var(--petrol-500); color: var(--petrol-500); }
+.add-ref-auto-leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; font-size: 12px; color: var(--ink-500); }
+.add-ref-auto-leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.add-ref-auto-leyenda i.ref { background: #2f6fe0; } .add-ref-auto-leyenda i.refsel { background: #1fb57a; }
+.add-ref-auto-otras { align-self: center; border: 1.5px dashed var(--contorno); background: transparent; color: var(--ink-700); border-radius: 99px; padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.add-ref-auto-otras b { background: color-mix(in srgb, var(--ink-900) 12%, transparent); border-radius: 99px; padding: 0 8px; font-size: 12px; }
+.add-ref-auto-otras.activo { background: var(--petrol-500); border-color: var(--petrol-500); color: #fff; border-style: solid; }
+.add-ref-auto-otras.activo b { background: rgba(255, 255, 255, .22); }
+.car-dot.est-ref { background: #2f6fe0; }
+.car-dot.est-refsel { background: #1fb57a; }
+.auto3d.compacto .car-dot.est-ref, .auto3d.compacto .car-dot.est-refsel { font-size: 10px; }
+@media (max-width: 860px) {
+  .add-ref-cuerpo { flex-direction: column; overflow-y: auto; }
+  .add-ref-cuerpo > .add-ref-grid { flex: none !important; min-height: 280px; }
+  .add-ref-auto { width: 100%; overflow: visible; }
+  .add-ref-auto .car-vista { height: 230px; }
+}
+.add-ref-modo.on { background: var(--petrol-500); border-color: var(--petrol-500); color: #fff; }

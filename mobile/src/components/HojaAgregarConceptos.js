@@ -6,6 +6,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
+import Auto3D from "./Auto3D";
+import { ZONAS, zonasRefaccion } from "../lib/zonas";
+import NuevaRefaccionModal from "./NuevaRefaccionModal";
 
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const VACIO = { descripcion: "", id_tipo_servicio: "", cantidad: "1", costo_mano_obra: "", costo_refaccion: "", costo_extra: "" };
@@ -16,22 +19,38 @@ const VACIO = { descripcion: "", id_tipo_servicio: "", cantidad: "1", costo_mano
  *  - Concepto libre: mano de obra o cualquier cargo fuera del catálogo.
  * onAgregarCatalogo([{ refaccion, cantidad, precio }])  onAgregarLibre(concepto)
  */
-export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refacciones = [], tipos = [], precioDe, stockDe, onAgregarCatalogo, onAgregarLibre, onCerrar }) {
+export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refacciones = [], tipos = [], precioDe, stockDe, onAgregarCatalogo, onAgregarLibre, onCerrar, onCrearRefaccion = null, categoriasCatalogo = null }) {
   const [modo, setModo] = useState("catalogo");
   const [seleccion, setSeleccion] = useState({});
   const [categoria, setCategoria] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [libre, setLibre] = useState(VACIO);
   const [guardando, setGuardando] = useState(false);
+  const [verAuto, setVerAuto] = useState(false); // elegir la zona tocando el auto
+  const [zona, setZona] = useState(null); // clave de ZONAS | "otras" | null
+  const [creando, setCreando] = useState(false); // alta rápida de una refacción que no existe
 
   useEffect(() => {
-    if (visible) { setSeleccion({}); setCategoria(""); setBusqueda(""); setLibre(VACIO); setModo(refacciones.length ? "catalogo" : "libre"); }
+    if (visible) { setSeleccion({}); setCategoria(""); setBusqueda(""); setVerAuto(false); setZona(null); setLibre(VACIO); setModo(refacciones.length ? "catalogo" : "libre"); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const precio = (r) => (precioDe ? precioDe(r) : (r.preciocliente_refaccion || r.preciopropio_refaccion)) || 0;
   const categorias = [...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort();
-  const filtradas = refacciones.filter((r) => (!categoria || r.categoria === categoria) && (!busqueda || contiene(r.nombre_refaccion || "", busqueda)));
+  const categoriasAlta = categoriasCatalogo || categorias;
+  const porBusqueda = refacciones.filter((r) => !busqueda || contiene(r.nombre_refaccion || "", busqueda));
+  const filtradas = porBusqueda.filter((r) => (!categoria || r.categoria === categoria)
+    && (!zona || (zona === "otras" ? zonasRefaccion(r).length === 0 : zonasRefaccion(r).includes(zona))));
+  // Cuántas refacciones hay (y cuántas marcadas) por zona del auto
+  const conteoZona = {}, marcadasZona = {};
+  let sinZona = 0;
+  if (verAuto) {
+    porBusqueda.forEach((r) => {
+      const zs = zonasRefaccion(r);
+      if (!zs.length) sinZona += 1;
+      zs.forEach((z) => { conteoZona[z] = (conteoZona[z] || 0) + 1; if (seleccion[String(r.id_refaccion)]) marcadasZona[z] = (marcadasZona[z] || 0) + 1; });
+    });
+  }
   const n = Object.keys(seleccion).length;
   const set = (k) => (v) => setLibre((p) => ({ ...p, [k]: v }));
   const importeLibre = (Number(libre.costo_mano_obra) || 0) + (Number(libre.costo_refaccion) || 0) + (Number(libre.costo_extra) || 0);
@@ -91,6 +110,9 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
                 <TextInput style={styles.buscadorInput} placeholder="Buscar refacción…" placeholderTextColor={colors.ink500} value={busqueda} onChangeText={setBusqueda} />
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                <TouchableOpacity style={[styles.chip, verAuto && styles.chipActivo]} onPress={() => { setVerAuto(!verAuto); setZona(null); }}>
+                  <Text style={[styles.chipTexto, verAuto && styles.chipTextoActivo]}>🚗 {verAuto ? "Ocultar auto" : "Elegir en el auto"}</Text>
+                </TouchableOpacity>
                 {["", ...categorias].map((c) => (
                   <TouchableOpacity key={c || "todas"} style={[styles.chip, categoria === c && styles.chipActivo]} onPress={() => setCategoria(c)}>
                     <Text style={[styles.chipTexto, categoria === c && styles.chipTextoActivo]}>{c || "Todas"}</Text>
@@ -99,9 +121,33 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
               </ScrollView>
             </View>
             <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 8 }}>
+              {verAuto && (
+                <View style={{ marginBottom: 6 }}>
+                  <Auto3D compacto altura={230} fps={18} estadoZona={(z) => (marcadasZona[z] ? "refsel" : conteoZona[z] ? "ref" : "ninguno")}
+                    etiqueta={(z) => (conteoZona[z] ? (conteoZona[z] > 99 ? "99+" : String(conteoZona[z])) : "")}
+                    elegida={zona && zona !== "otras" ? zona : null} onSelect={(z) => setZona(zona === z ? null : z)}
+                    ayuda="Gira el auto y toca una zona para ver sus refacciones" />
+                  <View style={styles.zonaBarra}>
+                    <Text style={styles.zonaNombre} numberOfLines={2}>{zona === "otras" ? "Sin zona" : zona ? ZONAS[zona] : "Todo el vehículo"}</Text>
+                    {sinZona > 0 && (
+                      <TouchableOpacity style={[styles.chip, zona === "otras" && styles.chipActivo]} onPress={() => setZona(zona === "otras" ? null : "otras")}>
+                        <Text style={[styles.chipTexto, zona === "otras" && styles.chipTextoActivo]}>Sin zona ({sinZona})</Text>
+                      </TouchableOpacity>
+                    )}
+                    {zona && (
+                      <TouchableOpacity style={styles.chip} onPress={() => setZona(null)}><Text style={styles.chipTexto}>Ver todas</Text></TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
               {filtradas.length === 0 ? (
                 <View style={{ gap: 10 }}>
                   <Text style={styles.vacio}>{refacciones.length ? "Nada coincide." : "Todavía no hay refacciones en el catálogo."}</Text>
+                  {onCrearRefaccion && (
+                    <TouchableOpacity style={styles.btnSecundario} onPress={() => setCreando(true)}>
+                      <Text style={styles.btnSecundarioTexto}>＋ Agregar al catálogo{busqueda.trim() ? ` «${busqueda.trim()}»` : ""}</Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity style={styles.btnSecundario} onPress={() => { setLibre((p) => ({ ...p, descripcion: busqueda })); setModo("libre"); }}>
                     <Text style={styles.btnSecundarioTexto}>Agregarlo como concepto libre</Text>
                   </TouchableOpacity>
@@ -183,11 +229,23 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
           </TouchableOpacity>
         </View>
       </View>
+      {onCrearRefaccion && (
+        <NuevaRefaccionModal visible={creando} nombreInicial={busqueda.trim()} categorias={categoriasAlta} onCerrar={() => setCreando(false)}
+          onCrear={async (datos) => {
+            const r = await onCrearRefaccion(datos);
+            if (r?.id_refaccion != null) {
+              setBusqueda(""); setCategoria(""); setZona(null);
+              setSeleccion((p) => ({ ...p, [String(r.id_refaccion)]: { cantidad: 1 } }));
+            }
+          }} />
+      )}
     </Modal>
   );
 }
 
 const styles = crearEstilos({
+  zonaBarra: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 8 },
+  zonaNombre: { flex: 1, minWidth: 140, fontSize: 13, fontWeight: "800", color: colors.petrol600 },
   pantalla: { flex: 1, backgroundColor: colors.paper0, paddingTop: 36 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.lg, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.ink300 },
   titulo: { fontFamily: "BarlowCondensed_600SemiBold", fontSize: 22, color: colors.ink900 },

@@ -663,6 +663,8 @@ class Servicio(TenantMixin, Base):
     cliente = relationship("Cliente", back_populates="servicios")
     vehiculo = relationship("Vehiculo", back_populates="servicios")
     empleado_responsable = relationship("Empleado", back_populates="servicios_responsable")
+    # Avance por zonas del auto que marca el taller: JSON {"frenos": "proceso" | "listo", ...} (se ve en el seguimiento)
+    avance_zonas = Column(Text, nullable=True)
     tipo_mantenimiento = relationship("TipoServicio")
     tipos_mantenimiento = relationship("TipoServicio", secondary="servicio_tipos_mantenimiento")
     detalles = relationship("ServicioDetalle", back_populates="servicio", cascade="all, delete-orphan",
@@ -685,6 +687,21 @@ class ServicioEtapaHistorial(TenantMixin, Base):
     actualizado_por = Column(String(50), nullable=True)  # username
 
     servicio = relationship("Servicio", back_populates="historial_etapas")
+
+
+class DanoRecepcion(TenantMixin, Base):
+    """Daño previo del vehículo marcado en el auto al recibirlo (pieza, tipo, gravedad, comentario).
+    Sus fotos viven en `fotos` con entidad_tipo "dano_recepcion"."""
+    __tablename__ = "danos_recepcion"
+
+    id_dano = Column(Integer, primary_key=True, index=True)
+    id_servicio = Column(Integer, ForeignKey("servicios.id_servicio"), nullable=False)
+    pieza = Column(String(30), nullable=False)
+    tipo = Column(String(20), nullable=False, default="otro")
+    gravedad = Column(String(10), nullable=False, default="leve")  # leve | medio | severo
+    comentario = Column(String(255), nullable=True)
+    fecha = Column(DateTime, default=datetime.utcnow)
+    registrado_por = Column(String(50), nullable=True)
 
 
 class ServicioDetalle(TenantMixin, Base):

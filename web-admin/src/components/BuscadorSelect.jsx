@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
  * Selector con buscador: se escribe para filtrar y se elige de la lista.
  *   opciones: [{ value, label, sub? }]
  */
-export default function BuscadorSelect({ label, opciones, value, onChange, placeholder = "Buscar…", disabled, vacio = "Sin resultados" }) {
+export default function BuscadorSelect({ label, opciones, value, onChange, placeholder = "Buscar…", disabled, vacio = "Sin resultados", onCrear = null, textoCrear = "Crear" }) {
   const [q, setQ] = useState("");
   const [abierto, setAbierto] = useState(false);
   const caja = useRef(null);
@@ -54,7 +54,17 @@ export default function BuscadorSelect({ label, opciones, value, onChange, place
       )}
       {abierto && !disabled && (
         <div className="buscador-lista">
-          {filtradas.length === 0 ? <div className="buscador-vacio">{vacio}</div> : filtradas.map((o, i) => (
+          {filtradas.length === 0 ? (
+            <div className="buscador-vacio">
+              {vacio}
+              {onCrear && (
+                <button type="button" className="buscador-item resaltado" style={{ marginTop: 6, width: "100%" }}
+                  onMouseDown={(e) => e.preventDefault()} onClick={() => { const t = q.trim(); setAbierto(false); setQ(""); onCrear(t); }}>
+                  <span>＋ {textoCrear}{q.trim() ? ` «${q.trim()}»` : ""}</span>
+                </button>
+              )}
+            </div>
+          ) : filtradas.map((o, i) => (
             <button type="button" key={o.value} className={"buscador-item" + (String(o.value) === String(value) ? " activo" : "") + (i === sel ? " resaltado" : "")}
               onMouseEnter={() => setSel(i)} onClick={() => elegir(o)}>
               <span>{o.label}</span>{o.sub && <small>{o.sub}</small>}

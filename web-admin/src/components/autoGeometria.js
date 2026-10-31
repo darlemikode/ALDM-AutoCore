@@ -108,6 +108,32 @@ export const PUNTOS3D = {
   luces_t: { p: [[0.5, 0.58, -2.14], [-0.5, 0.58, -2.14]], ang: 180 },
 };
 
+// Piezas de carrocería (recepción del vehículo: daños previos). Misma convención que PUNTOS3D.
+export const PIEZAS3D = {
+  cofre: { nombre: "Cofre", p: [[0, 0.7, 1.35]], ang: 15 },
+  defensa_del: { nombre: "Defensa delantera", p: [[0, 0.3, 2.2]], ang: 0 },
+  faro_izq: { nombre: "Faro delantero izquierdo", p: [[0.56, 0.5, 2.06]], ang: -25 },
+  faro_der: { nombre: "Faro delantero derecho", p: [[-0.56, 0.5, 2.06]], ang: 25 },
+  salp_del_izq: { nombre: "Salpicadera delantera izquierda", p: [[0.97, 0.55, 1.4]], ang: -70 },
+  salp_del_der: { nombre: "Salpicadera delantera derecha", p: [[-0.97, 0.55, 1.4]], ang: 70 },
+  puerta_del_izq: { nombre: "Puerta delantera izquierda", p: [[0.99, 0.5, 0.25]], ang: -90 },
+  puerta_del_der: { nombre: "Puerta delantera derecha", p: [[-0.99, 0.5, 0.25]], ang: 90 },
+  puerta_tra_izq: { nombre: "Puerta trasera izquierda", p: [[0.99, 0.52, -0.6]], ang: -95 },
+  puerta_tra_der: { nombre: "Puerta trasera derecha", p: [[-0.99, 0.52, -0.6]], ang: 95 },
+  salp_tra_izq: { nombre: "Salpicadera trasera izquierda", p: [[0.95, 0.62, -1.5]], ang: -120 },
+  salp_tra_der: { nombre: "Salpicadera trasera derecha", p: [[-0.95, 0.62, -1.5]], ang: 120 },
+  cajuela: { nombre: "Cajuela", p: [[0, 0.82, -1.65]], ang: 165 },
+  defensa_tra: { nombre: "Defensa trasera", p: [[0, 0.3, -2.2]], ang: 180 },
+  techo: { nombre: "Techo", p: [[0, 1.02, -0.2]], ang: -30 },
+  parabrisas: { nombre: "Parabrisas", p: [[0, 0.9, 0.62]], ang: 20 },
+  espejo_izq: { nombre: "Espejo izquierdo", p: [[1.1, 0.74, 0.5]], ang: -80 },
+  espejo_der: { nombre: "Espejo derecho", p: [[-1.1, 0.74, 0.5]], ang: 80 },
+  llanta_del_izq: { nombre: "Llanta delantera izquierda", p: [[1.06, 0.34, 1.0]], ang: -55 },
+  llanta_del_der: { nombre: "Llanta delantera derecha", p: [[-1.06, 0.34, 1.0]], ang: 55 },
+  llanta_tra_izq: { nombre: "Llanta trasera izquierda", p: [[1.06, 0.34, -1.0]], ang: -125 },
+  llanta_tra_der: { nombre: "Llanta trasera derecha", p: [[-1.06, 0.34, -1.0]], ang: 125 },
+};
+
 const PITCH = 0.42;
 export function proyectar([x, y, z], yaw, w, h) {
   const th = (yaw * Math.PI) / 180;
@@ -120,9 +146,16 @@ export function proyectar([x, y, z], yaw, w, h) {
   return { x: w / 2 + xr * k, y: h * 0.5 + sy * k, zr, zc };
 }
 
-export function dibujar(ctx, w, h, yaw, t) {
+// avance (opcional): { progreso: 0..1, zonas: { clave_zona: "proceso" | "listo" } }
+//  · progreso ilumina el auto de adelante hacia atrás; · zonas resaltan el área ya atendida / en trabajo.
+export function dibujar(ctx, w, h, yaw, t, avance) {
   ctx.clearRect(0, 0, w, h);
   const barrido = ((t * 0.00045) % 1) * 6 - 3; // franja luminosa que recorre el auto
+  const prog = avance && typeof avance.progreso === "number" ? clamp(avance.progreso, 0, 1) : null;
+  const frente = 2.3 - (prog || 0) * 4.6; // hasta dónde llega la luz del avance (z, de adelante hacia atrás)
+  const focos = [];
+  if (avance && avance.zonas) Object.entries(avance.zonas).forEach(([k, e]) => (PUNTOS3D[k]?.p || []).forEach((p) => focos.push({ p, e })));
+  const pulso = 0.65 + 0.35 * Math.sin(t / 260);
   const trazar = (lista, ancho, glow) => {
     lista.forEach(({ a, b, w: peso }) => {
       const pa = proyectar(a, yaw, w, h), pb = proyectar(b, yaw, w, h);
@@ -130,9 +163,28 @@ export function dibujar(ctx, w, h, yaw, t) {
       const zm = (a[2] + b[2]) / 2;
       const luz = glow ? Math.exp(-((zm - barrido) ** 2) / 0.12) : 0;
       const al = clamp((0.14 + 0.7 * prof) * (0.35 + 0.65 * peso) + luz * 0.6, 0, 1);
-      const r = Math.round(lerp(60, 170, luz)), g = Math.round(lerp(150, 230, luz)), bl = 255;
-      ctx.strokeStyle = `rgba(${r},${g},${bl},${al})`;
-      ctx.lineWidth = ancho * (0.7 + 0.8 * peso) * (0.8 + 0.5 * prof);
+      let r = Math.round(lerp(60, 170, luz)), g = Math.round(lerp(150, 230, luz)), bl = 255;
+      let alfa = al, grosor = 1;
+      if (glow && prog !== null && zm >= frente) {
+        // zona ya recorrida por el avance: verde azulado, con más brillo justo en el frente
+        const borde = Math.exp(-((zm - frente) ** 2) / 0.06);
+        r = Math.round(lerp(70, 210, borde)); g = Math.round(lerp(225, 255, borde)); bl = Math.round(lerp(190, 235, borde));
+        alfa = clamp(al + 0.32 + borde * 0.35, 0, 1); grosor = 1.15 + borde * 0.5;
+      }
+      if (glow && focos.length) {
+        const xm = (a[0] + b[0]) / 2, ym = (a[1] + b[1]) / 2;
+        for (const f of focos) {
+          const d = Math.hypot(xm - f.p[0], ym - f.p[1], zm - f.p[2]);
+          if (d < 0.8) {
+            const k = 1 - d / 0.8;
+            const listo = f.e === "listo";
+            r = Math.round(lerp(r, listo ? 60 : 255, k)); g = Math.round(lerp(g, listo ? 235 : 185, k)); bl = Math.round(lerp(bl, listo ? 135 : 50, k));
+            alfa = clamp(Math.max(alfa, 0.45 + 0.5 * k * (listo ? 1 : pulso)), 0, 1); grosor = Math.max(grosor, 1 + k * 0.9);
+          }
+        }
+      }
+      ctx.strokeStyle = `rgba(${r},${g},${bl},${alfa})`;
+      ctx.lineWidth = ancho * grosor * (0.7 + 0.8 * peso) * (0.8 + 0.5 * prof);
       ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
     });
   };

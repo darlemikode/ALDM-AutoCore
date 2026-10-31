@@ -278,6 +278,37 @@ def fotos_de_mi_inspeccion(inspeccion_id: int, db: Session = Depends(get_db), cl
     )
 
 
+@router.get("/mis-servicios/{servicio_id}/visual")
+def mi_seguimiento_visual(servicio_id: int, db: Session = Depends(get_db), cliente: models.Cliente = Depends(get_current_cliente)):
+    """Lo que el cliente ve en el auto 3D de su app: avance del vehículo, daños de recepción (con fotos) y
+    las fotos de los puntos de la inspección que quedaron en Regular/Mal. Solo lectura."""
+    from .recepcion import recepcion_publica  # import diferido: evita ciclos entre routers
+
+    servicio = db.query(models.Servicio).filter(models.Servicio.id_servicio == servicio_id).first()
+    if not servicio or servicio.id_cliente != cliente.id_cliente:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+
+    fotos_puntos: dict = {}
+    inspeccion = (
+        db.query(models.Inspeccion)
+        .options(joinedload(models.Inspeccion.resultados))
+        .filter(models.Inspeccion.id_servicio == servicio_id)
+        .order_by(models.Inspeccion.fecha.desc())
+        .first()
+    )
+    if inspeccion:
+        malos = {str(r.id_item) for r in inspeccion.resultados if r.estado in ("regular", "mal")}
+        for f in (
+            db.query(models.Foto)
+            .filter(models.Foto.entidad_tipo == "inspeccion_item", models.Foto.entidad_id == inspeccion.id_inspeccion)
+            .order_by(models.Foto.fecha.asc())
+            .all()
+        ):
+            if str(f.descripcion) in malos:
+                fotos_puntos.setdefault(str(f.descripcion), []).append(f"/uploads/{f.ruta_archivo}")
+    return {"recepcion": recepcion_publica(db, servicio), "fotos_puntos": fotos_puntos}
+
+
 # --- Promociones (solo lectura, para el inicio de la app) -------------------
 @router.get("/promociones", response_model=list[schemas.PromocionOut])
 def promociones_vigentes(db: Session = Depends(get_db), cliente: models.Cliente = Depends(get_current_cliente)):

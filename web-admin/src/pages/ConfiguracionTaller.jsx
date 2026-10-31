@@ -5,6 +5,7 @@ import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import QrTaller from "../components/QrTaller";
+import "./taller.css";
 import IconoModulo from "../components/IconoModulo";
 import { Icono } from "../components/Icono";
 

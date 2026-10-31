@@ -1,11 +1,16 @@
 import ScrollCampos from "../ui/ScrollCampos";
 import { useEffect, useRef, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Image, ActivityIndicator } from "react-native";
 import { Picker } from "../ui/Picker";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
 import FotoGaleria from "./FotoGaleria";
 import { crearEstilos } from "../ui/estilos";
+import Auto3D from "./Auto3D";
+import VisorFoto from "./VisorFoto";
+import { ZONAS, zonasDe, peorEstado } from "../lib/zonas";
+import { urlFoto, elegirOrigenFoto, capturarFoto, subirFoto } from "../lib/fotos";
+import { alerta } from "../ui/Dialogo";
 
 const ESTADOS = {
   bien: { icono: "✅", texto: "Bien" },
@@ -32,6 +37,10 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
   const [idInspeccion, setIdInspeccion] = useState(inspeccionExistente?.id_inspeccion || null);
   const [estadoGuardado, setEstadoGuardado] = useState(""); // "" | guardando | guardado | error
   const [pendiente, setPendiente] = useState(null);
+  const [zona, setZona] = useState(null); // zona elegida en el auto 3D
+  const [fotosPuntos, setFotosPuntos] = useState({}); // { id_item: [foto] } — fotos de puntos en Regular/Mal
+  const [subiendoFoto, setSubiendoFoto] = useState(null);
+  const [visor, setVisor] = useState(null); // { fotos: [url], indice }
 
   const idRef = useRef(inspeccionExistente?.id_inspeccion || null);
   const datosRef = useRef({ resultados, comentarioGeneral });
@@ -44,6 +53,8 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
     idRef.current = inspeccionExistente?.id_inspeccion || null;
     setIdInspeccion(inspeccionExistente?.id_inspeccion || null);
     setEstadoGuardado("");
+    setZona(null);
+    cargarFotosPuntos(inspeccionExistente?.id_inspeccion);
     api.get("/inspecciones/items").then((data) => {
       setItems(data);
       const iniciales = {};
@@ -86,6 +97,51 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
     } catch (err) {
       setEstadoGuardado("error");
     }
+  }
+
+  async function cargarFotosPuntos(id) {
+    setFotosPuntos({});
+    if (!id) return;
+    try {
+      const lista = await api.get(`/fotos/?entidad_tipo=inspeccion_item&entidad_id=${id}`);
+      const por = {};
+      (Array.isArray(lista) ? lista : []).forEach((f) => { (por[f.descripcion] = por[f.descripcion] || []).push(f); });
+      setFotosPuntos(por);
+    } catch { /* sin fotos */ }
+  }
+
+  async function agregarFotoPunto(idItem) {
+    const origen = await elegirOrigenFoto();
+    if (!origen) return;
+    const foto = await capturarFoto(origen);
+    if (!foto) return;
+    setSubiendoFoto(idItem);
+    try {
+      // La foto necesita una inspección guardada: si todavía no existe, se guarda primero
+      if (!idRef.current) {
+        clearTimeout(timerRef.current);
+        await encolar();
+      }
+      if (!idRef.current) throw new Error("No se pudo guardar la inspección para adjuntar la foto.");
+      const nueva = await subirFoto(api, { entidadTipo: "inspeccion_item", entidadId: idRef.current, descripcion: idItem, foto });
+      setFotosPuntos((prev) => ({ ...prev, [idItem]: [...(prev[idItem] || []), nueva] }));
+    } catch (err) {
+      alerta("No se subió la foto", err.message);
+    } finally {
+      setSubiendoFoto(null);
+    }
+  }
+
+  function borrarFotoPunto(idItem, foto) {
+    alerta("Eliminar foto", "¿Seguro? No se puede deshacer.", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Eliminar", style: "destructive", onPress: async () => {
+        try {
+          await api.del(`/fotos/${foto.id_foto}`);
+          setFotosPuntos((prev) => ({ ...prev, [idItem]: (prev[idItem] || []).filter((f) => f.id_foto !== foto.id_foto) }));
+        } catch (err) { alerta("Error", err.message); }
+      } },
+    ]);
   }
 
   function encolar() {
@@ -132,7 +188,22 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
     onClose();
   }
 
-  const categorias = [...new Set(items.map((i) => i.categoria))];
+  // Puntos del checklist por zona del auto
+  const itemsPorZona = {};
+  items.forEach((it) => zonasDe(it.categoria, it.nombre_item).forEach((z) => { (itemsPorZona[z] = itemsPorZona[z] || []).push(it); }));
+  const estadoZona = (z) => peorEstado((itemsPorZona[z] || []).map((it) => resultados[it.id_item]?.estado || "bien"));
+  const itemsVisibles = zona && itemsPorZona[zona] ? itemsPorZona[zona] : items;
+  function marcarZona(z, estado) {
+    if (!puedeEditar) return;
+    setResultados((prev) => {
+      const siguiente = { ...prev };
+      (itemsPorZona[z] || []).forEach((i) => { siguiente[i.id_item] = { ...siguiente[i.id_item], estado }; });
+      return siguiente;
+    });
+    guardarLuego(0);
+  }
+
+  const categorias = [...new Set(itemsVisibles.map((i) => i.categoria))];
   const valores = Object.values(resultados);
   const conteo = {
     bien: valores.filter((r) => r.estado === "bien").length,
@@ -165,8 +236,31 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
       <ScrollCampos style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
         <Text style={styles.hint}>Toca el estado de cada punto; se guarda al instante. Lo que quede en "Mal" lo puedes ligar a la refacción que se necesita.</Text>
 
+        <View style={styles.mapa}>
+          <Auto3D altura={250} compacto fps={18} estadoZona={(z) => (itemsPorZona[z] ? estadoZona(z) : "ninguno")} elegida={zona}
+            onSelect={(z) => setZona(zona === z ? null : z)} ayuda="Gira el auto · toca una zona para ver solo sus puntos" />
+          <View style={styles.leyenda}>
+            <Text style={[styles.leyendaItem, { color: colors.teal600 }]}>● Bien</Text>
+            <Text style={[styles.leyendaItem, { color: colors.warn600 }]}>● Regular</Text>
+            <Text style={[styles.leyendaItem, { color: colors.red600 }]}>● Mal</Text>
+          </View>
+          {zona && itemsPorZona[zona] && (
+            <View style={styles.zonaBarra}>
+              <Text style={styles.zonaNombre} numberOfLines={2}>{ZONAS[zona]}</Text>
+              {puedeEditar && (
+                <TouchableOpacity style={styles.botonTodoBien} onPress={() => marcarZona(zona, "bien")}>
+                  <Text style={styles.botonTodoBienTexto}>✅ Todo bien aquí</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.botonTodoBien} onPress={() => setZona(null)}>
+                <Text style={styles.botonTodoBienTexto}>Ver todos</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         {categorias.map((cat) => {
-          const delaCat = items.filter((i) => i.categoria === cat);
+          const delaCat = itemsVisibles.filter((i) => i.categoria === cat);
           const malos = delaCat.filter((i) => resultados[i.id_item]?.estado === "mal").length;
           return (
             <View key={cat} style={{ marginBottom: spacing.lg }}>
@@ -207,6 +301,25 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
                           value={r.comentario}
                           onChangeText={(v) => actualizar(item.id_item, "comentario", v)}
                         />
+                        <View style={styles.fotosFila}>
+                          {(fotosPuntos[item.id_item] || []).map((foto, k, lista) => (
+                            <View key={foto.id_foto} style={styles.fotoMini}>
+                              <TouchableOpacity onPress={() => setVisor({ fotos: lista.map((x) => urlFoto(x.ruta_archivo)), indice: k })}>
+                                <Image source={{ uri: urlFoto(foto.ruta_archivo) }} style={styles.fotoImg} />
+                              </TouchableOpacity>
+                              {puedeEditar && (
+                                <TouchableOpacity style={styles.fotoBorrar} onPress={() => borrarFotoPunto(item.id_item, foto)} accessibilityLabel="Eliminar foto">
+                                  <Text style={styles.fotoBorrarTexto}>✕</Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          ))}
+                          {puedeEditar && (
+                            <TouchableOpacity style={styles.fotoAgregar} onPress={() => agregarFotoPunto(item.id_item)} disabled={subiendoFoto !== null}>
+                              {subiendoFoto === item.id_item ? <ActivityIndicator color={colors.petrol500} /> : <Text style={styles.fotoAgregarTexto}>📷 Foto</Text>}
+                            </TouchableOpacity>
+                          )}
+                        </View>
                         {r.estado === "mal" && (
                           <View style={[styles.pickerWrap, { marginTop: 8 }]}>
                             <Picker titulo="Sugerir refacción" style={{ color: colors.ink900 }} dropdownIconColor={colors.ink500}
@@ -245,6 +358,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
           </View>
         )}
       </ScrollCampos>
+      {visor && <VisorFoto fotos={visor.fotos} indice={visor.indice} onClose={() => setVisor(null)} />}
     </Modal>
   );
 }
@@ -276,4 +390,16 @@ const styles = crearEstilos({
   textarea: { minHeight: 70, textAlignVertical: "top" },
   pickerWrap: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, overflow: "hidden" },
   label: { fontSize: 11, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 },
+  mapa: { marginBottom: spacing.lg },
+  leyenda: { flexDirection: "row", justifyContent: "center", gap: 14, marginTop: 4 },
+  leyendaItem: { fontSize: 11, fontWeight: "700" },
+  zonaBarra: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: spacing.sm },
+  zonaNombre: { flex: 1, minWidth: 140, fontSize: 13, fontWeight: "800", color: colors.petrol600 },
+  fotosFila: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8, alignItems: "center" },
+  fotoMini: { position: "relative" },
+  fotoImg: { width: 64, height: 64, borderRadius: 8, backgroundColor: colors.paper0 },
+  fotoBorrar: { position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: "rgba(20,24,28,0.85)", alignItems: "center", justifyContent: "center" },
+  fotoBorrarTexto: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  fotoAgregar: { height: 64, minWidth: 84, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.ink300, alignItems: "center", justifyContent: "center" },
+  fotoAgregarTexto: { fontSize: 12, fontWeight: "700", color: colors.ink700 },
 });

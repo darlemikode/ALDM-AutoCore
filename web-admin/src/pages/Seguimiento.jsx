@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import Auto3D from "../components/Auto3D";
 import { ZONAS, zonasDe, peorEstado } from "../components/AutoInspeccion";
+import { PIEZAS3D } from "../components/autoGeometria";
 import "./seguimiento.css";
 
 // Pasos del trabajo, en orden. Si la orden está en «Garantía» (u otra), solo se muestra la etiqueta.
@@ -30,6 +31,8 @@ const ICONOS = {
   costos: <><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></>,
   inspeccion: <><path d="M9 11l3 3 8-8" /><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9" /></>,
   legal: <><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" /><path d="M9 12l2 2 4-4" /></>,
+  avance: <><path d="M3 17l5-5 4 4 8-9" /><path d="M15 7h5v5" /></>,
+  recepcion: <><path d="M3 15l1.6-4.6A2 2 0 0 1 6.5 9h11a2 2 0 0 1 1.9 1.4L21 15" /><rect x="3" y="15" width="18" height="4" rx="1.5" /><circle cx="7.5" cy="17" r=".7" /><circle cx="16.5" cy="17" r=".7" /></>,
   ubicacion: <><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></>,
 };
 function Ico({ n, size = 20 }) {
@@ -107,6 +110,64 @@ function AutoInspeccion({ puntos }) {
   );
 }
 
+// ---- Avance del vehículo: el auto se ilumina según la etapa y las zonas que el taller va atendiendo ----
+function AvanceAuto({ avance }) {
+  const pct = Math.round((avance?.progreso || 0) * 100);
+  const zonas = avance?.zonas || {};
+  const listas = Object.keys(zonas).filter((k) => zonas[k] === "listo").map((k) => NOMBRES_ZONA[k]).filter(Boolean);
+  const enProceso = Object.keys(zonas).filter((k) => zonas[k] === "proceso").map((k) => NOMBRES_ZONA[k]).filter(Boolean);
+  return (
+    <section className="seg-tarjeta seg-avance" aria-labelledby="seg-t-avance">
+      <h2 id="seg-t-avance"><Ico n="avance" />Avance de tu vehículo</h2>
+      <Auto3D sinPuntos avance={avance} ayuda="Arrastra para girar" />
+      <div className="seg-avance-barra" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Avance del servicio">
+        <span style={{ width: `${pct}%` }} />
+      </div>
+      <p className="seg-avance-pct"><b>{pct}%</b> del servicio</p>
+      {(listas.length > 0 || enProceso.length > 0) && (
+        <ul className="seg-avance-zonas">
+          {enProceso.map((n) => <li key={`p-${n}`} className="proceso"><i />{n}<span>En proceso</span></li>)}
+          {listas.map((n) => <li key={`l-${n}`} className="listo"><i />{n}<span>Listo</span></li>)}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// ---- Recepción: daños con los que llegó el vehículo, marcados en el auto ----
+function RecepcionAuto({ danos }) {
+  const [sel, setSel] = useState(null);
+  const porPieza = useMemo(() => {
+    const m = {};
+    danos.forEach((d) => { (m[d.pieza] = m[d.pieza] || []).push(d); });
+    return m;
+  }, [danos]);
+  const puntos = useMemo(() => Object.fromEntries(Object.entries(PIEZAS3D).filter(([k]) => porPieza[k])), [porPieza]);
+  const estadoPieza = (k) => (porPieza[k] ? (porPieza[k].some((d) => d.gravedad === "severo") ? "mal" : "regular") : "ninguno");
+  const lista = sel && porPieza[sel] ? porPieza[sel] : danos;
+  return (
+    <section className="seg-tarjeta" aria-labelledby="seg-t-recep">
+      <h2 id="seg-t-recep"><Ico n="recepcion" />Recepción del vehículo</h2>
+      <p className="seg-recep-intro">Así recibimos tu vehículo. Estos son los detalles que se registraron al llegar.</p>
+      <Auto3D puntos={puntos} compacto estadoZona={estadoPieza} elegida={sel && porPieza[sel] ? sel : null}
+        onSelect={(k) => setSel(sel === k ? null : k)} ayuda="Arrastra para girar · toca una marca para ver el detalle" />
+      <ul className="seg-danos">
+        {lista.map((d, i) => (
+          <li key={i}>
+            <span className={`seg-chip ${d.gravedad === "severo" ? "mal" : "regular"}`}>{d.gravedad}</span>
+            <div>
+              <strong>{d.pieza_nombre}</strong>
+              <span>{d.tipo_nombre}{d.comentario ? ` — ${d.comentario}` : ""}</span>
+              <FotosPunto fotos={d.fotos} />
+            </div>
+          </li>
+        ))}
+      </ul>
+      {sel && <button type="button" className="seg-ver-todos" onClick={() => setSel(null)}>Ver todos los detalles</button>}
+    </section>
+  );
+}
+
 export default function Seguimiento() {
   const { token } = useParams();
   const [estado, setEstado] = useState("cargando"); // cargando | ok | finalizada | no_valido
@@ -174,7 +235,7 @@ export default function Seguimiento() {
     );
   }
 
-  const { taller, cliente, orden, conceptos, montos, inspeccion } = datos;
+  const { taller, cliente, orden, conceptos, montos, inspeccion, recepcion } = datos;
   const verMontos = !!datos.montos_visibles && !!montos;
   const telDigitos = String(taller.telefono || "").replace(/\D/g, "");
   const waNumero = telDigitos.length === 10 ? `52${telDigitos}` : telDigitos.length >= 11 ? telDigitos : "";
@@ -221,6 +282,8 @@ export default function Seguimiento() {
           )}
         </section>
 
+        {recepcion && idx >= 0 && <AvanceAuto avance={recepcion.avance} />}
+
         <div className="seg-cols">
           <div className="seg-col">
             <section className="seg-tarjeta" aria-labelledby="seg-t-cli">
@@ -233,6 +296,8 @@ export default function Seguimiento() {
                 {orden.fecha_entrada && <div><dt>Recibido</dt><dd>{fechaHora(orden.fecha_entrada)}</dd></div>}
               </dl>
             </section>
+
+        {recepcion && recepcion.danos.length > 0 && <RecepcionAuto danos={recepcion.danos} />}
 
         {inspeccion && (
           <section className="seg-tarjeta" aria-labelledby="seg-t-insp">
