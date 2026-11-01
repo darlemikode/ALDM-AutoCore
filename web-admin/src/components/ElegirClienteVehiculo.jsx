@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { opMarca, opModelo } from "./Combo";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
@@ -85,14 +86,14 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     return [
       { name: "id_marca_vehiculo", label: "Marca", type: "select", required: true,
         onElegir: (idMarca, v) => (v.id_modelo_vehiculo && modelos.find((m) => m.id_modelo_vehiculo === v.id_modelo_vehiculo)?.id_marca_vehiculo !== idMarca ? { id_modelo_vehiculo: null } : {}),
-        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca })),
+        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) })),
         creatable: { endpoint: "/vehiculos-marcas/", createField: "nombre_marca", idField: "id_marca_vehiculo", label: "marca", onCreated: (n) => setMarcas((p) => [...p, n]) } },
       { name: "id_modelo_vehiculo", label: "Modelo", type: "select", required: true,
         onElegir: (idModelo) => {
           const m = modelos.find((x) => x.id_modelo_vehiculo === idModelo);
           return m ? { id_marca_vehiculo: m.id_marca_vehiculo } : {};
         },
-        options: modelos.filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo).map((m) => ({ value: m.id_modelo_vehiculo, label: values.id_marca_vehiculo ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim() })),
+        options: modelos.filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo).map((m) => ({ value: m.id_modelo_vehiculo, ...opModelo(m, marcas), label: values.id_marca_vehiculo ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim() })),
         creatable: values.id_marca_vehiculo ? { endpoint: "/vehiculos-modelos/", createField: "nombre_modelo", idField: "id_modelo_vehiculo", label: "modelo",
           extraFields: (v) => ({ id_marca_vehiculo: v.id_marca_vehiculo }), onCreated: (n) => setModelos((p) => [...p, n]) } : null },
       { name: "placas_vehiculo", label: "Placas" },

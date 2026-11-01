@@ -1,13 +1,20 @@
 import { contiene, norm } from "../lib/texto";
 import { IconoAuto } from "../components/Icono";
 import { Link } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { opMarca } from "../components/Combo";
 import { Icono } from "../components/Icono";
+import "./catalogos.css";
+import LogoMarca from "../components/LogoMarca";
+import ImagenModelo from "../components/ImagenModelo";
+import ImagenMarca from "../components/ImagenMarca";
+import ColorAuto, { hexDeColor } from "../components/ColorAuto";
+import ModalPortal from "../components/ModalPortal";
 
 // Mismo ciclo de acentos que Roles y Super Admin — cada catálogo toma un color.
 const COLORES = ["petrol", "teal", "warn", "violet", "blue"];
@@ -45,28 +52,41 @@ const CATALOGS = {
     deps: ["estados"],
   },
   colores: {
-    label: "Colores de vehículo", grupo: "Vehículos", icono: "🎨", descripcion: "Colores que se eligen al registrar un vehículo.",
+    colorRef: true, label: "Colores de vehículo", grupo: "Vehículos", icono: "🎨", descripcion: "Colores que se eligen al registrar un vehículo.",
     endpoint: "/colores-vehiculos", idField: "id_color", nombreField: "nombre_color",
-    fields: [{ name: "nombre_color", label: "Nombre", required: true }],
+    fields: [
+      { name: "nombre_color", label: "Nombre", required: true },
+      {
+        name: "codigo_hex", label: "Color de referencia", type: "custom", full: true,
+        render: (valor, set) => (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <ColorAuto nombre="" hex={valor || "#9AA0A6"} size={90} />
+            <input type="color" value={valor && /^#[0-9a-fA-F]{6}$/.test(valor) ? valor : "#9aa0a6"} onChange={(e) => set(e.target.value.toUpperCase())} style={{ width: 64, height: 42, padding: 2 }} aria-label="Elegir color" />
+            <input value={valor || ""} placeholder="#C8102E" maxLength={7} onChange={(e) => set(e.target.value)} style={{ width: 110 }} />
+            {valor && <button type="button" className="btn btn-secondary btn-sm" onClick={() => set("")}>Quitar</button>}
+          </div>
+        ),
+      },
+    ],
   },
   marcasVehiculos: {
     label: "Marcas de vehículo", grupo: "Vehículos", icono: "🏷", descripcion: "Armadoras (Nissan, Chevrolet, VW…).",
-    endpoint: "/vehiculos-marcas", idField: "id_marca_vehiculo", nombreField: "nombre_marca", notaField: "comentarios",
+    logo: true, endpoint: "/vehiculos-marcas", idField: "id_marca_vehiculo", nombreField: "nombre_marca", notaField: "comentarios",
     fields: [{ name: "nombre_marca", label: "Nombre", required: true }, { name: "comentarios", label: "Comentarios", type: "textarea", full: true }],
   },
   modelosVehiculos: {
     label: "Modelos de vehículo", grupo: "Vehículos", icono: "🚙", descripcion: "Modelos de cada marca (Versa, Aveo, Jetta…).",
-    endpoint: "/vehiculos-modelos", idField: "id_modelo_vehiculo", nombreField: "nombre_modelo", notaField: "comentario",
+    logoPadre: true, endpoint: "/vehiculos-modelos", idField: "id_modelo_vehiculo", nombreField: "nombre_modelo", notaField: "comentario",
     padre: { dep: "marcasVehiculos", campo: "id_marca_vehiculo", nombre: "nombre_marca", idField: "id_marca_vehiculo", label: "Marca", plural: "marcas" },
     fields: (deps) => [
       { name: "nombre_modelo", label: "Nombre", required: true },
-      { name: "id_marca_vehiculo", label: "Marca", type: "select", required: true, options: deps.marcasVehiculos.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca })) },
+      { name: "id_marca_vehiculo", label: "Marca", type: "select", required: true, options: deps.marcasVehiculos.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) })) },
       { name: "comentario", label: "Comentario", type: "textarea", full: true },
     ],
     deps: ["marcasVehiculos"],
   },
   marcasRefacciones: {
-    label: "Marcas de refacciones", grupo: "Refacciones y herramientas", icono: "⚙️", descripcion: "Fabricantes de refacciones (Bosch, Brembo, NGK…).",
+    logoRefaccion: true, label: "Marcas de refacciones", grupo: "Refacciones y herramientas", icono: "⚙️", descripcion: "Fabricantes de refacciones (Bosch, Brembo, NGK…).",
     endpoint: "/refacciones-marcas", idField: "id_marca_refaccion", nombreField: "nombre_marca", notaField: "comentarios",
     fields: [{ name: "nombre_marca", label: "Nombre", required: true }, { name: "comentarios", label: "Comentarios", type: "textarea", full: true }],
   },
@@ -95,7 +115,52 @@ const CLAVES_ESENCIALES = CLAVES.filter((k) => !esAvanzado(k));
 const CLAVES_AVANZADAS = CLAVES.filter(esAvanzado);
 const GRUPOS = [...new Set(CLAVES_ESENCIALES.map((k) => CATALOGS[k].grupo))];
 
-export default function Catalogos() {
+// Foto del modelo dentro del formulario de edición: ver la actual (o la sugerida), subir una propia o quitarla.
+function CampoFotoModelo({ fila, marca, endpoint, idField, onCambio, variante }) {
+  const { notify } = useUI();
+  const [imagen, setImagen] = useState(fila?.imagen || null);
+  const [trabajando, setTrabajando] = useState(false);
+  const id = fila?.[idField];
+  if (!id) return <div className="field-hint">Guarda el registro primero; después podrás agregar su imagen desde Editar.</div>;
+
+  async function subir(archivo) {
+    if (!archivo) return;
+    const fd = new FormData();
+    fd.append("archivo", archivo);
+    setTrabajando(true);
+    try {
+      const r = await api.postForm(`${endpoint}/${id}/imagen`, fd);
+      setImagen(r.imagen); onCambio(id, r.imagen);
+      notify("Foto actualizada.", "success");
+    } catch (err) { notify(err.message, "error"); } finally { setTrabajando(false); }
+  }
+  async function quitar() {
+    setTrabajando(true);
+    try {
+      await api.del(`${endpoint}/${id}/imagen`);
+      setImagen(null); onCambio(id, null);
+      notify("Se usará la imagen sugerida.", "success");
+    } catch (err) { notify(err.message, "error"); } finally { setTrabajando(false); }
+  }
+  return (
+    <div className="cat-campo-foto">
+      {variante === "marca"
+        ? <ImagenMarca marca={fila.nombre_marca} imagen={imagen} size={120} />
+        : <ImagenModelo marca={marca} modelo={fila.nombre_modelo} imagen={imagen} size={120} />}
+      <div className="cat-campo-foto-acc">
+        <label className="btn btn-secondary btn-sm cat-foto-btn">
+          {trabajando ? "Subiendo…" : imagen ? "📷 Cambiar foto" : "📷 Subir foto"}
+          <input type="file" accept="image/*" hidden disabled={trabajando} onChange={(e) => { subir(e.target.files?.[0]); e.target.value = ""; }} />
+        </label>
+        {imagen && <button type="button" className="btn btn-secondary btn-sm" disabled={trabajando} onClick={quitar}>Quitar mi foto</button>}
+        <div className="field-hint">{imagen ? "Esta es tu foto propia." : "Se muestra una imagen sugerida de internet (puede faltar). Sube la tuya para reemplazarla."}</div>
+      </div>
+    </div>
+  );
+}
+
+export default function Catalogos({ admin = false }) {
+  const ruta = (ep) => (admin ? "/superadmin/catalogos" : "") + ep;
   const { confirmDialog, notify } = useUI();
   const { hasPermission } = useAuth();
   const [tab, setTab] = useState(CLAVES_ESENCIALES[0]);
@@ -109,6 +174,10 @@ export default function Catalogos() {
   const [filtroPadre, setFiltroPadre] = useState("");
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [guardandoRapido, setGuardandoRapido] = useState(false);
+  const [vista, setVista] = useState("lista");
+  const listaRef = useRef(null);
+  const [verImagen, setVerImagen] = useState(null);
+  const [mostrarSubir, setMostrarSubir] = useState(false);
 
   const puedeCrear = hasPermission("catalogos.crear");
   const puedeEditar = hasPermission("catalogos.editar");
@@ -146,7 +215,7 @@ export default function Catalogos() {
 
   // Conteo de todos los catálogos para la lista de la izquierda
   useEffect(() => {
-    Promise.allSettled(CLAVES.map((k) => api.get(CATALOGS[k].endpoint + "/"))).then((res) => {
+    Promise.allSettled(CLAVES.map((k) => api.get(ruta(CATALOGS[k].endpoint) + "/"))).then((res) => {
       const c = {};
       res.forEach((r, i) => { if (r.status === "fulfilled") c[CLAVES[i]] = r.value.length; });
       setConteos(c);
@@ -163,11 +232,11 @@ export default function Catalogos() {
     try {
       const depData = {};
       for (const name of config.deps || []) {
-        depData[name] = await api.get(CATALOGS[name].endpoint + "/");
+        depData[name] = await api.get(ruta(CATALOGS[name].endpoint) + "/");
       }
       if (!sigueVigente()) return;
       setDeps(depData);
-      const datos = await api.get(config.endpoint + "/");
+      const datos = await api.get(ruta(config.endpoint) + "/");
       if (!sigueVigente()) return;
       setRows(datos);
       setConteos((c) => ({ ...c, [tab]: datos.length }));
@@ -183,12 +252,27 @@ export default function Catalogos() {
     setBusqueda("");
     setFiltroPadre("");
     setNuevoNombre("");
+    setVista(CATALOGS[tab].logo || CATALOGS[tab].logoRefaccion || CATALOGS[tab].colorRef ? "cuadro" : "lista");
     load(() => vigente);
     return () => { vigente = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  const fields = typeof config.fields === "function" ? config.fields(depsSeguros) : config.fields;
+  const fieldsBase = typeof config.fields === "function" ? config.fields(depsSeguros) : config.fields;
+  const campoFoto = (extra) => ({
+    name: "_foto", label: extra.etiqueta, type: "custom", full: true,
+    render: () => (
+      <CampoFotoModelo
+        key={editing[config.idField] || "nuevo"} fila={editing} endpoint={ruta(config.endpoint)} idField={config.idField}
+        variante={extra.variante} marca={extra.marca}
+        onCambio={(id, img) => setRows((rs) => rs.map((x) => (x[config.idField] === id ? { ...x, imagen: img } : x)))}
+      />
+    ),
+  });
+  const fields = !editing ? fieldsBase
+    : config.logoPadre ? [...fieldsBase, campoFoto({ etiqueta: "Foto del modelo", variante: "modelo", marca: (depsSeguros.marcasVehiculos || []).find((m) => m.id_marca_vehiculo === editing.id_marca_vehiculo)?.nombre_marca || "" })]
+    : config.logoRefaccion ? [...fieldsBase, campoFoto({ etiqueta: "Logo de la marca", variante: "marca" })]
+    : fieldsBase;
   const padres = config.padre ? depsSeguros[config.padre.dep] || [] : [];
   const nombrePadre = (row) => padres.find((p) => p[config.padre.idField] === row[config.padre.campo])?.[config.padre.nombre] || "—";
 
@@ -203,10 +287,10 @@ export default function Catalogos() {
 
   async function handleSave(values) {
     if (editing?.[config.idField]) {
-      await api.put(`${config.endpoint}/${editing[config.idField]}`, values);
+      await api.put(`${ruta(config.endpoint)}/${editing[config.idField]}`, values);
       notify("Registro actualizado.", "success");
     } else {
-      await api.post(`${config.endpoint}/`, values);
+      await api.post(`${ruta(config.endpoint)}/`, values);
       notify("Registro agregado.", "success");
     }
     setEditing(null);
@@ -231,7 +315,7 @@ export default function Catalogos() {
     try {
       const payload = { [config.nombreField]: nombre };
       if (config.padre) payload[config.padre.campo] = Number(filtroPadre);
-      await api.post(`${config.endpoint}/`, payload);
+      await api.post(`${ruta(config.endpoint)}/`, payload);
       setNuevoNombre("");
       notify(`"${nombre}" agregado.`, "success");
       load();
@@ -246,7 +330,7 @@ export default function Catalogos() {
     const ok = await confirmDialog(`¿Eliminar "${row[config.nombreField]}" de ${config.label}?`, { danger: true, confirmar: "Sí, eliminar" });
     if (!ok) return;
     try {
-      await api.del(`${config.endpoint}/${row[config.idField]}`);
+      await api.del(`${ruta(config.endpoint)}/${row[config.idField]}`);
       load();
       notify("Registro eliminado.", "success");
     } catch (err) {
@@ -256,7 +340,7 @@ export default function Catalogos() {
 
   return (
     <>
-      <div className="page-header">
+      {!admin && <div className="page-header">
         <div className="page-header-titulo">
           <div>
             <h1><IconoModulo ruta="/catalogos" /> Catálogos generales</h1>
@@ -266,7 +350,7 @@ export default function Catalogos() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       <div className="roles-layout cat-layout">
         <div className="roles-lista">
@@ -298,6 +382,10 @@ export default function Catalogos() {
 
           <div className="cat-filtros">
             <input className="search-input" placeholder={`Buscar en ${config.label.toLowerCase()}…`} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+            <div className="cat-vista" role="group" aria-label="Vista">
+              <button type="button" className={vista === "lista" ? "on" : ""} onClick={() => setVista("lista")} title="Vista de lista">☰ Lista</button>
+              <button type="button" className={vista === "cuadro" ? "on" : ""} onClick={() => setVista("cuadro")} title="Vista en cuadro">▦ Cuadro</button>
+            </div>
             {config.padre && (
               <select value={filtroPadre} onChange={(e) => setFiltroPadre(e.target.value)}>
                 <option value="">{config.padre.label === "Marca" ? "Todas las" : "Todos los"} {config.padre.plural}</option>
@@ -308,7 +396,7 @@ export default function Catalogos() {
             )}
           </div>
 
-          <div className="modulo-card" style={acentoDe(indice)}>
+          <div className="modulo-card cat-modulo" style={acentoDe(indice)}>
             <div className="modulo-card-header">
               <span className="modulo-card-icono"><IconoAuto valor={config.icono} size={18} /></span>
               <span className="modulo-card-titulo">
@@ -333,15 +421,31 @@ export default function Catalogos() {
               </form>
             )}
 
-            <div className="cat-lista">
+            <div className="cat-lista" ref={listaRef} onScroll={(e) => setMostrarSubir(e.currentTarget.scrollTop > 160)}>
               {loading ? (
                 <div className="loading-text">Cargando…</div>
               ) : filtradas.length === 0 ? (
                 <div className="empty-state">{rows.length ? "Ningún registro coincide con la búsqueda." : "Sin registros en este catálogo."}</div>
+              ) : vista === "cuadro" ? (
+                <div className="cat-cuadro">
+                  {filtradas.map((r) => (
+                    <div className="cat-marca" key={r[config.idField]}>
+                      <div className="cat-marca-logo">{config.logo ? <LogoMarca nombre={r[config.nombreField]} /> : config.logoPadre ? <ImagenModelo marca={nombrePadre(r)} modelo={r[config.nombreField]} imagen={r.imagen} size={84} onAbrir={setVerImagen} /> : config.logoRefaccion ? <ImagenMarca marca={r[config.nombreField]} imagen={r.imagen} size={84} onAbrir={setVerImagen} /> : config.colorRef ? <ColorAuto nombre={r[config.nombreField]} hex={r.codigo_hex} size={84} /> : <span className="cat-marca-inicial">{String(r[config.nombreField] || "?").trim().charAt(0).toUpperCase()}</span>}</div>
+                      <div className="cat-marca-nombre" title={r[config.nombreField]}>{r[config.nombreField]}</div>
+                      {config.padre && <div className="cat-marca-sub">{nombrePadre(r)}</div>}
+                      {(puedeEditar || puedeEliminar) && (
+                        <div className="cat-marca-acc">
+                          {puedeEditar && <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(r)}>Editar</button>}
+                          {puedeEliminar && <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDelete(r)}>Eliminar</button>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               ) : (
                 filtradas.map((r) => (
                   <div className="cat-item" key={r[config.idField]}>
-                    <span className="cat-item-punto" />
+                    {config.logo || config.logoPadre || config.logoRefaccion || config.colorRef ? <span className={"cat-item-logo" + (config.logoPadre ? " modelo" : "")}>{config.logoPadre ? <ImagenModelo size={34} marca={nombrePadre(r)} modelo={r[config.nombreField]} imagen={r.imagen} onAbrir={setVerImagen} /> : config.logoRefaccion ? <ImagenMarca size={34} marca={r[config.nombreField]} imagen={r.imagen} onAbrir={setVerImagen} /> : config.colorRef ? <ColorAuto size={34} nombre={r[config.nombreField]} hex={r.codigo_hex} /> : <LogoMarca size={26} nombre={r[config.nombreField]} />}</span> : <span className="cat-item-punto" />}
                     <div className="cat-item-info">
                       <div className="cat-item-nombre">{r[config.nombreField]}</div>
                       {(config.padre || (config.notaField && r[config.notaField])) && (
@@ -358,10 +462,25 @@ export default function Catalogos() {
                   </div>
                 ))
               )}
+              {mostrarSubir && (
+                <button type="button" className="cat-subir" title="Volver arriba" aria-label="Volver arriba" onClick={() => listaRef.current?.scrollTo({ top: 0, behavior: "smooth" })}>↑ Subir</button>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {verImagen && (
+        <ModalPortal>
+          <div className="modal-backdrop" onClick={() => setVerImagen(null)}>
+            <div className="cat-visor" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={() => setVerImagen(null)}><Icono nombre="close" size={20} /></button>
+              <img src={verImagen.url} alt={verImagen.titulo} onError={(e) => { if (e.currentTarget.src !== verImagen.respaldo) e.currentTarget.src = verImagen.respaldo; }} />
+              <div className="cat-visor-titulo">{verImagen.titulo}</div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
 
       {editing && (
         <FormModal

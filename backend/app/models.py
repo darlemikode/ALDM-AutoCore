@@ -274,6 +274,7 @@ class ColorVehiculo(CatalogoCompartidoMixin, Base):
 
     id_color = Column(Integer, primary_key=True, index=True)
     nombre_color = Column(String(50), nullable=False)
+    codigo_hex = Column(String(9), nullable=True)  # color de referencia (#RRGGBB)
 
 
 class VehiculoMarca(CatalogoCompartidoMixin, Base):
@@ -293,6 +294,7 @@ class VehiculoModelo(CatalogoCompartidoMixin, Base):
     id_marca_vehiculo = Column(Integer, ForeignKey("vehiculos_marcas.id_marca_vehiculo"), nullable=False)
     nombre_modelo = Column(String(80), nullable=False)
     comentario = Column(Text, nullable=True)
+    imagen = Column(String(255), nullable=True)  # foto propia del modelo (clave en /uploads)
 
     marca = relationship("VehiculoMarca", back_populates="modelos")
 
@@ -303,6 +305,7 @@ class RefaccionMarca(CatalogoCompartidoMixin, Base):
     id_marca_refaccion = Column(Integer, primary_key=True, index=True)
     nombre_marca = Column(String(80), nullable=False)
     comentarios = Column(Text, nullable=True)
+    imagen = Column(String(255), nullable=True)  # logo propio de la marca (clave en /uploads)
 
 
 class RefaccionCategoria(CatalogoCompartidoMixin, Base):

@@ -1,0 +1,9 @@
+# Con la regla de rama "Require review from Code Owners", nada de esto cambia sin tu aprobación.
+# Sustituye TU_USUARIO_GITHUB por tu usuario real.
+/.github/               @TU_USUARIO_GITHUB
+/backend/app/security.py   @TU_USUARIO_GITHUB
+/backend/app/sesion_taller.py @TU_USUARIO_GITHUB
+/backend/app/main.py       @TU_USUARIO_GITHUB
+/backend/requirements*.txt @TU_USUARIO_GITHUB
+/web-admin/package*.json   @TU_USUARIO_GITHUB
+/web-admin/vite.config.*   @TU_USUARIO_GITHUB

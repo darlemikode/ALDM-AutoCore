@@ -101,8 +101,7 @@ PERMISOS_TECNICO = [
 ]
 
 # --- Módulos del sistema y paquetes de suscripción (super administración) --
-# Mismo catálogo de 8 módulos que se muestra en la página pública de
-# módulos — clave estable para referenciarlos desde cada paquete.
+# Catálogo de módulos que se muestra en la página pública y en los paquetes — clave estable para referenciarlos desde cada paquete.
 MODULOS_SISTEMA = [
     ("ordenes_servicio", "Órdenes de servicio", "Recepción, diagnóstico, avance, cobro y cierre de cada servicio.", "🔧", 1),
     ("cotizaciones", "Cotizaciones", "Presupuestos para el cliente antes de abrir la orden.", "🧾", 2),
@@ -121,6 +120,14 @@ MODULOS_SISTEMA = [
     ("app_taller", "App móvil del taller", "App para que el dueño y su equipo trabajen las órdenes desde el celular.", "📲", 15),
     ("asistente_ia", "Asistente IA", "Chat con inteligencia artificial para dudas del día a día del taller. 60 consultas/mes incluidas, excedente con costo adicional.", "🤖", 16),
     ("agente_whatsapp", "Agente WhatsApp (IA)", "Atiende y da seguimiento a clientes por WhatsApp de forma automática con IA. 150 interacciones/mes incluidas, excedente con costo adicional.", "💬", 17),
+    ("citas", "Citas y calendario", "Agenda del taller: citas solicitadas por los clientes, calendario por día y generación de la orden desde la cita.", "📅", 18),
+    ("promociones", "Promociones", "Ofertas y anuncios que ven tus clientes al abrir su app.", "🏷️", 19),
+    ("seguimiento_qr", "Seguimiento por QR", "Enlace público con QR para que el cliente vea el avance de su orden sin instalar nada.", "🔗", 20),
+    ("inspeccion_digital", "Inspección y recepción 3D", "Fotos de la unidad y daños marcados sobre el auto en 3D al recibirlo, como evidencia.", "📸", 21),
+    ("chat_ordenes", "Chat con el cliente", "Mensajes en vivo con fotos dentro de cada orden de servicio.", "💬", 22),
+    ("comisiones", "Comisiones", "Porcentajes por tipo de pago y comisión estimada en cada nota o recibo.", "💰", 23),
+    ("auditoria", "Auditoría", "Bitácora inalterable de cambios de fechas, cierres, cancelaciones y citas retroactivas.", "🔎", 24),
+    ("notas_recibos", "Notas de remisión y recibos", "Nota de remisión y recibos en PDF para imprimir o enviar por WhatsApp.", "🧾", 25),
 ]
 
 # Módulos que antes venían "dentro" de otro: al crearse por primera vez se
@@ -133,6 +140,14 @@ MODULOS_HEREDADOS = {
     "refacciones": "inventario",
     "catalogos": None,
     "empleados": None,
+    "citas": "app_movil",
+    "promociones": "app_movil",
+    "seguimiento_qr": "ordenes_servicio",
+    "inspeccion_digital": "ordenes_servicio",
+    "chat_ordenes": "ordenes_servicio",
+    "notas_recibos": "ordenes_servicio",
+    "comisiones": "empleados",
+    "auditoria": None,
 }
 
 # Paquetes base (precios definitivos 13-oct-2026: $699 / $999 / $1,399 al mes
@@ -140,10 +155,12 @@ MODULOS_HEREDADOS = {
 # súper administrador puede editarlos o crear otros desde su app.
 PAQUETES_BASE = [
     ("Arranque", "Para el taller que va empezando: órdenes ilimitadas, cotizaciones, clientes y refacciones.", 699.0,
-     ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones"]),
+     ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones",
+      "seguimiento_qr", "inspeccion_digital", "chat_ordenes", "notas_recibos"]),
     ("Taller Pro", "El más contratado: suma inventario y punto de venta, proveedores, herramientas, empleados, roles y permisos, reportes, app móvil del taller y asistente IA.", 999.0,
      ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones", "inventario", "herramientas",
-      "proveedores", "catalogos", "empleados", "roles_permisos", "reportes", "app_taller", "asistente_ia"]),
+      "proveedores", "catalogos", "empleados", "roles_permisos", "reportes", "app_taller", "asistente_ia",
+      "seguimiento_qr", "inspeccion_digital", "chat_ordenes", "notas_recibos", "comisiones", "auditoria"]),
     ("Full Garage", "Todo el sistema: nómina, facturación electrónica, app para tus clientes y agente de WhatsApp con IA.", 1399.0,
      [c for c, *_ in MODULOS_SISTEMA]),
 ]

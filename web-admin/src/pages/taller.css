@@ -1,0 +1,124 @@
+/* Tablero del taller: una tarjeta por bahía con el auto iluminado según su avance */
+.taller-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.bahia-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; border: 1.5px solid var(--contorno); background: var(--paper-100); min-width: 0; }
+.bahia-card.libre { border-style: dashed; }
+.bahia-card.ocupada.nivel-medio { border-color: #e49a1c; }
+.bahia-card.ocupada.nivel-largo { border-color: #e5484d; box-shadow: 0 0 0 3px color-mix(in srgb, #e5484d 18%, transparent); }
+.bahia-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bahia-card h2 { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.bahia-estado { padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; background: color-mix(in srgb, #2f6fe0 16%, transparent); color: #2f6fe0; }
+.bahia-estado.libre { background: color-mix(in srgb, #1fb57a 16%, transparent); color: #1fb57a; }
+.bahia-auto { cursor: pointer; }
+.bahia-auto .car-vista { height: 190px; }
+.bahia-info { display: flex; flex-direction: column; gap: 6px; }
+.bahia-veh { font-size: 16px; font-weight: 700; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+.bahia-veh:hover { text-decoration: underline; }
+.bahia-veh small { font-weight: 600; color: var(--ink-500); }
+.bahia-cliente, .bahia-mecanico { font-size: 13.5px; color: var(--ink-500); overflow-wrap: anywhere; }
+.bahia-filas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bahia-etapa { padding: 3px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 700; border: 1.5px solid var(--contorno); color: var(--ink-700); }
+.bahia-tiempo { padding: 3px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 800; font-variant-numeric: tabular-nums; color: #fff; }
+.bahia-tiempo.nivel-ok { background: #1fb57a; } .bahia-tiempo.nivel-medio { background: #d98a00; } .bahia-tiempo.nivel-largo { background: #e5484d; }
+.bahia-liberar { align-self: flex-start; border: 1.5px solid var(--contorno); background: transparent; color: var(--ink-700); border-radius: 99px; padding: 6px 14px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.bahia-liberar:hover { border-color: var(--red-600); color: var(--red-600); }
+.bahia-libre-cuerpo { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 230px; color: var(--ink-500); text-align: center; }
+.bahia-libre-cuerpo p { margin: 0; }
+.bahia-libre-cuerpo select { max-width: 100%; }
+.bahia-libre-icono { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; border: 1.5px dashed var(--contorno); }
+.taller-vacio { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; }
+.taller-vacio p { margin: 0; color: var(--ink-500); max-width: 46ch; }
+.taller-sin { margin-top: 18px; }
+.taller-sin h3 { margin: 0 0 10px; font-size: 15px; }
+.taller-sin ul { display: flex; flex-direction: column; gap: 6px; }
+.taller-sin li { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.taller-sin li span { color: var(--ink-500); font-size: 13px; }
+
+/* Configuración de bahías */
+.bahias-cfg { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; list-style: none; padding: 0; }
+.bahias-cfg li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 10px; border: 1.5px solid var(--contorno); border-radius: 12px; }
+.bahias-cfg li.inactiva { opacity: .6; }
+.bahias-cfg-orden { display: inline-flex; flex-direction: column; }
+.bahias-cfg-orden button { border: 0; background: none; color: var(--ink-500); font-size: 10px; line-height: 1.1; cursor: pointer; padding: 1px 4px; }
+.bahias-cfg-orden button:disabled { opacity: .25; cursor: default; }
+.bahias-cfg-nombre { flex: 1; min-width: 120px; text-align: left; border: 0; background: none; font: inherit; font-weight: 700; color: inherit; cursor: text; padding: 6px 0; }
+.bahias-cfg li input[type="text"], .bahias-cfg li > input:not([type]) { flex: 1; min-width: 120px; }
+.bahias-cfg-ocupada { color: #2f6fe0; font-weight: 700; }
+.bahias-cfg-activa { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.bahias-cfg-x { border: 0; background: none; font-size: 22px; line-height: 1; color: var(--ink-500); cursor: pointer; padding: 0 6px; }
+.bahias-cfg-x:hover { color: var(--red-600); }
+.bahias-cfg-vacio { color: var(--ink-500); border-style: dashed !important; }
+.bahias-cfg-nueva { display: flex; gap: 10px; flex-wrap: wrap; }
+.bahias-cfg-nueva input { flex: 1; min-width: 180px; }
+
+/* Bahía dentro de la orden */
+.orden-bahia-meta { font-size: 12.5px; color: var(--ink-500); margin-top: 4px; }
+
+/* ===== Tablero operable ===== */
+.taller-resumen { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.taller-resumen .res { padding: 8px 14px; border-radius: 12px; border: 1.5px solid var(--contorno); font-size: 13.5px; color: var(--ink-500); }
+.taller-resumen .res b { font-size: 20px; margin-right: 4px; color: var(--ink-700); font-variant-numeric: tabular-nums; }
+.taller-resumen .res.rojo { border-color: #e5484d; background: color-mix(in srgb, #e5484d 12%, transparent); } .taller-resumen .res.rojo b { color: #e5484d; }
+.taller-resumen .res.ambar { border-color: #d98a00; background: color-mix(in srgb, #d98a00 12%, transparent); } .taller-resumen .res.ambar b { color: #d98a00; }
+.taller-resumen .res.verde b { color: #1fb57a; }
+.taller-atencion { margin-bottom: 16px; padding: 12px 14px; border-radius: 14px; border: 1.5px solid #e5484d; background: color-mix(in srgb, #e5484d 7%, transparent); }
+.taller-atencion h3 { margin: 0 0 8px; font-size: 15px; }
+.taller-atencion ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.taller-atencion li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding-left: 10px; border-left: 4px solid #d98a00; }
+.taller-atencion li.rojo { border-left-color: #e5484d; }
+.taller-atencion .donde { font-size: 12.5px; color: var(--ink-500); }
+.taller-atencion .que { font-size: 13.5px; font-weight: 700; }
+.bahia-card.ocupada.sem-ambar { border-color: #d98a00; }
+.bahia-card.ocupada.sem-rojo { border-color: #e5484d; box-shadow: 0 0 0 3px color-mix(in srgb, #e5484d 20%, transparent); }
+.bahia-promesa { padding: 3px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+.bahia-promesa.ok { background: #1fb57a; } .bahia-promesa.pronto { background: #d98a00; } .bahia-promesa.atrasada { background: #e5484d; }
+.bahia-promesa.sin { background: transparent; color: var(--ink-500); border: 1.5px dashed var(--contorno); font-weight: 600; }
+.bahia-alertas { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.bahia-alertas li { font-size: 12.5px; font-weight: 700; padding-left: 8px; border-left: 3px solid #d98a00; color: #b86e00; }
+.bahia-alertas li.rojo { border-left-color: #e5484d; color: #e5484d; }
+.bahia-ops { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bahia-ops select { min-width: 0; width: 100%; }
+.bahia-mas { align-self: flex-start; border: 0; background: none; color: #2f6fe0; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 2px 0; }
+.bahia-panel { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1.5px dashed var(--contorno); }
+.bahia-panel-titulo { font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-500); margin-top: 4px; }
+.zonas-ops { display: flex; flex-direction: column; gap: 5px; }
+.zona-op { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.zona-op > div { display: inline-flex; border: 1.5px solid var(--contorno); border-radius: 99px; overflow: hidden; }
+.zona-op button { border: 0; background: transparent; color: var(--ink-500); font: inherit; font-size: 12px; font-weight: 700; padding: 4px 10px; cursor: pointer; }
+.zona-op button.on { background: var(--ink-500); color: #fff; }
+.zona-op button.on.proceso { background: #d98a00; } .zona-op button.on.listo { background: #1fb57a; }
+.promesa-ops, .aviso-ops { display: flex; flex-direction: column; gap: 6px; }
+.aviso-ops { flex-direction: row; flex-wrap: wrap; } .aviso-ops select { flex: 1; min-width: 160px; }
+.promesa-rapidos { display: flex; gap: 6px; flex-wrap: wrap; }
+.promesa-rapidos button { border: 1.5px solid var(--contorno); background: transparent; color: var(--ink-700); border-radius: 99px; padding: 4px 12px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.bahia-panel small { color: var(--ink-500); }
+.taller-sin li { align-items: center; }
+
+/* ===== Modo TV (pantalla grande, siempre oscuro) ===== */
+.taller-tv {
+  position: fixed; inset: 0; z-index: 2000; overflow: auto; padding: 2vh 2vw; background: #0a1020; color: #eaf1ff;
+  --paper-100: #121b30; --contorno: #2b3a5c; --ink-500: #9db0d6; --ink-700: #dce7ff;
+}
+.taller-tv .tv-barra { display: flex; align-items: center; gap: 24px; margin-bottom: 1.6vh; }
+.taller-tv .tv-barra h1 { margin: 0; font-size: clamp(24px, 2.6vw, 48px); flex: 1; color: #fff; }
+.taller-tv .tv-reloj { font-size: clamp(28px, 3.2vw, 60px); font-weight: 800; font-variant-numeric: tabular-nums; }
+.taller-tv .tv-barra button { background: transparent; border: 1.5px solid var(--contorno); color: var(--ink-500); border-radius: 99px; padding: 6px 16px; font: inherit; cursor: pointer; opacity: .5; }
+.taller-tv .tv-barra button:hover { opacity: 1; }
+.taller-tv .taller-resumen .res { font-size: clamp(14px, 1.3vw, 24px); padding: 1vh 1.2vw; }
+.taller-tv .taller-resumen .res b { font-size: clamp(24px, 2.4vw, 46px); }
+.taller-tv .taller-atencion { background: color-mix(in srgb, #e5484d 14%, #0a1020); }
+.taller-tv .taller-atencion h3 { font-size: clamp(16px, 1.5vw, 28px); }
+.taller-tv .taller-atencion strong { font-size: clamp(16px, 1.6vw, 30px); color: #fff; }
+.taller-tv .taller-atencion .que { font-size: clamp(14px, 1.4vw, 26px); color: #ffd7d9; }
+.taller-tv .taller-atencion .donde { font-size: clamp(13px, 1.1vw, 20px); }
+.taller-tv .taller-grid { grid-template-columns: repeat(auto-fill, minmax(clamp(300px, 24vw, 520px), 1fr)); gap: 1.6vw; }
+.taller-tv .bahia-card h2 { font-size: clamp(20px, 1.9vw, 36px); }
+.taller-tv .bahia-veh { font-size: clamp(18px, 1.8vw, 34px); color: #fff; }
+.taller-tv .bahia-cliente, .taller-tv .bahia-mecanico { font-size: clamp(13px, 1.2vw, 22px); }
+.taller-tv .bahia-etapa, .taller-tv .bahia-promesa, .taller-tv .bahia-tiempo { font-size: clamp(13px, 1.25vw, 24px); }
+.taller-tv .bahia-alertas li { font-size: clamp(13px, 1.2vw, 22px); }
+.taller-tv .bahia-auto .car-vista { height: clamp(170px, 18vw, 340px); }
+.taller-tv .bahia-card.ocupada.sem-rojo { animation: tv-pulso 1.8s ease-in-out infinite; }
+@keyframes tv-pulso { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, #e5484d 35%, transparent); } }
+.taller-tv .taller-sin { background: var(--paper-100); border: 1.5px solid var(--contorno); }
+.taller-tv .taller-sin li { font-size: clamp(14px, 1.3vw, 24px); }
+@media (prefers-reduced-motion: reduce) { .taller-tv .bahia-card.ocupada.sem-rojo { animation: none; } }

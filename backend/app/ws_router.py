@@ -17,6 +17,17 @@ def _sub(token: str) -> str | None:
         return None
 
 
+def _version_vigente(token: str, usuario) -> bool:
+    """El token debe ser de la versión actual del usuario: al cambiar la
+    contraseña (o cerrar sesiones) los tokens viejos dejan de servir también
+    en el WebSocket, igual que en la API."""
+    try:
+        ver = int(jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM]).get("ver", 0) or 0)
+    except (JWTError, ValueError):
+        return False
+    return ver == (usuario.version_token or 0)
+
+
 def _validar_acceso(token: str, servicio_id: int, db: Session, id_taller: int | None) -> bool:
     """Un cliente solo puede conectarse a SU PROPIO servicio; alguien del
     taller puede conectarse a cualquiera DE SU TALLER, si tiene permiso de
@@ -35,7 +46,7 @@ def _validar_acceso(token: str, servicio_id: int, db: Session, id_taller: int | 
         cliente = db.query(models.Cliente).filter(models.Cliente.id_cliente == id_cliente).first()
         return bool(cliente and cliente.cuenta_activada and servicio.id_cliente == id_cliente)
     usuario = db.query(models.Usuario).filter(models.Usuario.username == sub).first()
-    return bool(usuario and usuario.activo and usuario.activo_en_taller and usuario.tiene_permiso("servicios.ver"))
+    return bool(usuario and usuario.activo and usuario.activo_en_taller and _version_vigente(token, usuario) and usuario.tiene_permiso("servicios.ver"))
 
 
 @router.websocket("/api/ws/servicio/{servicio_id}")
@@ -75,7 +86,7 @@ def _token_valido(token: str, db: Session, id_taller: int | None) -> bool:
         cliente = db.query(models.Cliente).filter(models.Cliente.id_cliente == id_cliente).first()
         return bool(cliente and cliente.cuenta_activada)
     usuario = db.query(models.Usuario).filter(models.Usuario.username == sub).first()
-    return bool(usuario and usuario.activo and usuario.activo_en_taller)
+    return bool(usuario and usuario.activo and usuario.activo_en_taller and _version_vigente(token, usuario))
 
 
 @router.websocket("/api/ws/global")

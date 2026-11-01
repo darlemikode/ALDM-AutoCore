@@ -1,5 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import LogoMarca from "./LogoMarca";
+import "./comboImg.css";
+
+// Ayudas para opciones con imagen: logo de la marca o foto del modelo
+export const opMarca = (m) => ({ logo: m.nombre_marca });
+export const opModelo = () => ({}); // los modelos van sin imagen en los combos
+const Icono = ({ o }) => o.logo ? <span className="combo-logo"><LogoMarca nombre={o.logo} /></span> : null;
 
 const norm = (t) => String(t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -71,7 +78,8 @@ export default function Combo({ opciones, value, onChange, required, disabled, p
   }
 
   return (
-    <div className="combo" ref={caja}>
+    <div className={"combo" + (elegido && elegido.logo ? " combo-con-img" : "")} ref={caja}>
+      {elegido && !abierto && elegido.logo && <span className="combo-img-sel"><Icono o={elegido} /></span>}
       <input
         className="combo-input"
         value={abierto ? q : (elegido ? elegido.label : "")}
@@ -95,7 +103,8 @@ export default function Combo({ opciones, value, onChange, required, disabled, p
               onMouseDown={(e) => { e.preventDefault(); elegir(o); }}
               onMouseEnter={() => setCursor(i)}
             >
-              {o.label}
+              <Icono o={o} />
+              <span className="combo-txt">{o.label}</span>
             </div>
           ))}
         </div>,

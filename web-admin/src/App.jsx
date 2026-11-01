@@ -28,7 +28,6 @@ const Refacciones = lazy(() => import("./pages/Refacciones"));
 const Proveedores = lazy(() => import("./pages/Proveedores"));
 const ProveedorDetalle = lazy(() => import("./pages/ProveedorDetalle"));
 const Herramientas = lazy(() => import("./pages/Herramientas"));
-const Catalogos = lazy(() => import("./pages/Catalogos"));
 const ConfiguracionInicio = lazy(() => import("./pages/ConfiguracionInicio"));
 const Usuarios = lazy(() => import("./pages/Usuarios"));
 const Roles = lazy(() => import("./pages/Roles"));
@@ -120,7 +119,7 @@ export default function App() {
         <Route path="proveedores" element={<RequirePermission clave="proveedores.ver"><Proveedores /></RequirePermission>} />
         <Route path="proveedores/:id" element={<RequirePermission clave="proveedores.ver"><ProveedorDetalle /></RequirePermission>} />
         <Route path="herramientas" element={<RequirePermission clave="herramientas.ver"><Herramientas /></RequirePermission>} />
-        <Route path="catalogos" element={<RequirePermission clave="catalogos.ver"><Catalogos /></RequirePermission>} />
+        <Route path="catalogos" element={<RequireSuperadmin><Navigate to="/superadmin/catalogos-generales" replace /></RequireSuperadmin>} />
         <Route path="configuracion" element={<ConfiguracionInicio />} />
         <Route path="usuarios" element={<RequirePermission clave="usuarios.ver"><Usuarios /></RequirePermission>} />
         <Route path="roles" element={<RequirePermission clave="roles.ver"><Roles /></RequirePermission>} />

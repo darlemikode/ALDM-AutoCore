@@ -75,6 +75,14 @@ const ICONO_MODULO_EXTRA = {
   reportes: { nombre: "chart", color: "#7aa8ff" },
   app_movil: { nombre: "phone", color: "#ff8fb1" },
   app_taller: { nombre: "phone", color: "#ff6b5f" },
+  citas: { nombre: "calendar", color: "#6bc4ff" },
+  promociones: { nombre: "pricetag", color: "#ffa86b" },
+  seguimiento_qr: { nombre: "link", color: "#2de2d0" },
+  inspeccion_digital: { nombre: "camera", color: "#c58bff" },
+  chat_ordenes: { nombre: "chatbubble", color: "#6bdc8c" },
+  comisiones: { nombre: "cash", color: "#7be07b" },
+  auditoria: { nombre: "shield", color: "#ffd166" },
+  notas_recibos: { nombre: "document", color: "#9fb3ba" },
 };
 export function iconoModuloSistema(clave) {
   if (ICONO_MODULO_EXTRA[clave]) return ICONO_MODULO_EXTRA[clave];

@@ -7,6 +7,7 @@ import BuscadorSelect from "../components/BuscadorSelect";
 import ClienteFormModal from "../components/ClienteFormModal";
 import FormModal from "../components/FormModal";
 import IconoModulo from "../components/IconoModulo";
+import { opMarca } from "../components/Combo";
 import { Icono } from "../components/Icono";
 
 // Nueva orden: se entra directo a la pantalla de la orden. En el lugar del
@@ -98,7 +99,7 @@ export default function NuevaOrden() {
   function camposVehiculo(values) {
     return [
       { name: "id_marca_vehiculo", label: "Marca", type: "select", required: true,
-        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca })),
+        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) })),
         creatable: { endpoint: "/vehiculos-marcas/", createField: "nombre_marca", idField: "id_marca_vehiculo", label: "marca", onCreated: (n) => setMarcas((p) => [...p, n]) } },
       { name: "id_modelo_vehiculo", label: "Modelo", type: "select", required: true,
         options: modelos.filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo).map((m) => ({ value: m.id_modelo_vehiculo, label: m.nombre_modelo })),

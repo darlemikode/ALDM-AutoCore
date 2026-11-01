@@ -21,7 +21,8 @@ function acentoDe(indice) {
 export default function ConfiguracionInicio() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, estadoSuscripcion } = useAuth();
+  const tieneMod = (m) => !estadoSuscripcion?.modulos || estadoSuscripcion.modulos.includes(m);
   const refAyuda = useRef(null);
 
   // «?» lleva aquí: se baja directo a la Ayuda
@@ -59,7 +60,7 @@ export default function ConfiguracionInicio() {
         puedeConfigurar && { to: "/configuracion-taller", icono: "🏢", label: "Datos del taller", descripcion: "Nombre, logo, dirección y datos fiscales de la empresa." },
         puedeConfigurar && { to: "/suscripcion", icono: "⭐", label: "Suscripción", descripcion: "Tu paquete, vencimiento, pagos y módulos adicionales." },
         puedeConfigurar && { to: "/integraciones", icono: "🔌", label: "Integraciones", descripcion: "Llaves para el agente de WhatsApp (n8n)." },
-        puedeConfigurar && { to: "/comisiones", icono: "💳", label: "Comisiones", descripcion: "Porcentajes que gana cada técnico o vendedor por servicio." },
+        puedeConfigurar && tieneMod("comisiones") && { to: "/comisiones", icono: "💳", label: "Comisiones", descripcion: "Porcentajes que gana cada técnico o vendedor por servicio." },
       ].filter(Boolean),
     },
     {

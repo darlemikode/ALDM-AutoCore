@@ -1,4 +1,5 @@
 import { IconoAuto } from "../components/Icono";
+import { opMarca, opModelo } from "../components/Combo";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
@@ -121,7 +122,7 @@ export default function Vehiculos() {
         grupo: "identificacion",
         // Al cambiar de marca, se limpia el modelo si ya no le corresponde
         onElegir: (idMarca, v) => (v.id_modelo_vehiculo && modelos.find((m) => m.id_modelo_vehiculo === v.id_modelo_vehiculo)?.id_marca_vehiculo !== idMarca ? { id_modelo_vehiculo: null } : {}),
-        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca })),
+        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) })),
         creatable: {
           endpoint: "/vehiculos-marcas/",
           createField: "nombre_marca",
@@ -143,7 +144,7 @@ export default function Vehiculos() {
         },
         options: modelos
           .filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo)
-          .map((m) => ({ value: m.id_modelo_vehiculo, label: values.id_marca_vehiculo ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim() })),
+          .map((m) => ({ value: m.id_modelo_vehiculo, ...opModelo(m, marcas), label: values.id_marca_vehiculo ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim() })),
         creatable: values.id_marca_vehiculo
           ? {
               endpoint: "/vehiculos-modelos/",

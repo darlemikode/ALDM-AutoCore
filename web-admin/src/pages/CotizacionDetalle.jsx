@@ -6,7 +6,7 @@ import FormModal from "../components/FormModal";
 import ClienteFormModal from "../components/ClienteFormModal";
 import FiltroChips from "../components/FiltroChips";
 import BuscadorSelect from "../components/BuscadorSelect";
-import Combo from "../components/Combo";
+import Combo, { opMarca, opModelo } from "../components/Combo";
 import ModalPortal from "../components/ModalPortal";
 import { useAuth } from "../context/AuthContext";
 import { useUI } from "../context/UIContext";
@@ -177,13 +177,13 @@ function ElegirClienteVehiculoCotizacion({ idCliente: cli0, idVehiculo: veh0, ve
             <div className="field">
               <label>Marca</label>
               <Combo value={marcaSel} onChange={elegirMarca} placeholder="Sin capturar"
-                opciones={marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca }))} />
+                opciones={marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) }))} />
             </div>
             <div className="field">
               <label>Modelo</label>
               <Combo value={modeloSel} onChange={elegirModelo} placeholder="Sin capturar"
                 opciones={modelos.filter((m) => !marcaSel || m.id_marca_vehiculo === Number(marcaSel)).map((m) => ({
-                  value: m.id_modelo_vehiculo,
+                  value: m.id_modelo_vehiculo, ...opModelo(m, marcas),
                   label: marcaSel ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim(),
                 }))} />
             </div>

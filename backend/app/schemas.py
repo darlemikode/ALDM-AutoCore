@@ -283,6 +283,17 @@ class FotoOut(ORMBase):
 
 class ColorVehiculoIn(BaseModel):
     nombre_color: str
+    codigo_hex: Optional[str] = None
+
+    @field_validator("codigo_hex")
+    @classmethod
+    def _hex_valido(cls, v):
+        if v in (None, ""):
+            return None
+        import re
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+            raise ValueError("El color de referencia debe ser un código como #C8102E")
+        return v.upper()
 
 
 class ColorVehiculoOut(ColorVehiculoIn, ORMBase):
@@ -306,6 +317,7 @@ class VehiculoModeloIn(BaseModel):
 
 class VehiculoModeloOut(VehiculoModeloIn, ORMBase):
     id_modelo_vehiculo: int
+    imagen: Optional[str] = None
 
 
 class RefaccionMarcaIn(BaseModel):
@@ -315,6 +327,7 @@ class RefaccionMarcaIn(BaseModel):
 
 class RefaccionMarcaOut(RefaccionMarcaIn, ORMBase):
     id_marca_refaccion: int
+    imagen: Optional[str] = None
 
 
 class RefaccionCategoriaIn(BaseModel):

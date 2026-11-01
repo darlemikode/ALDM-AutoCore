@@ -115,6 +115,9 @@ export function AuthProvider({ children }) {
   // pantalla si el rol actual puede hacer algo, en vez del viejo isAdmin fijo.
   // Los permisos ya vienen filtrados por el paquete contratado del taller.
   function hasPermission(clave) {
+    // Catálogos generales: solo el súper administrador los ve y administra; los talleres solo los leen
+    // (en listas y selectores), sin pantalla propia ni altas rápidas.
+    if (String(clave).startsWith("catalogos.")) return !!user?.es_superadmin;
     return permisos.includes(clave);
   }
 

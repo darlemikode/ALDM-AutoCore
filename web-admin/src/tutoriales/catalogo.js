@@ -1,4 +1,5 @@
 import { BIENVENIDA } from "./bienvenida";
+import { T } from "./modulos";
 
 // Ayuda: recorridos con globos de texto, agrupados por módulo.
 // pasos = función (nombre) => [...]  ·  sin pasos = "Próximamente".
@@ -56,19 +57,35 @@ export const AYUDA = [
   {
     modulo: "Administración", icono: "🏢", tutoriales: [
       { clave: "facturacion", titulo: "Facturación CFDI", desc: "Configuración fiscal y timbrado.", permiso: "facturacion.ver" },
-      { clave: "catalogos", titulo: "Catálogos generales", desc: "Listas de clientes, vehículos y refacciones.", permiso: "catalogos.ver" },
+      { clave: "catalogos", titulo: "Catálogos generales", desc: "Marcas, modelos y listas que administra ALDM." },
       { clave: "promociones", titulo: "Promociones", desc: "Lo que ven tus clientes en su app.", permiso: "promociones.ver" },
       { clave: "integraciones", titulo: "Integraciones", desc: "Llave para el agente de WhatsApp.", permiso: "configuracion.editar" },
+      { clave: "auditoria", titulo: "Auditoría", desc: "Quién hizo qué y cuándo.", permiso: "auditoria.ver" },
+      { clave: "errores", titulo: "Errores del sistema", desc: "Registro de fallos para soporte.", permiso: "configuracion.editar" },
     ],
   },
   {
     modulo: "Consulta", icono: "📊", tutoriales: [
-      { clave: "panel", titulo: "Panel general y Mi dashboard", desc: "Indicadores del día." },
+      { clave: "panel", titulo: "Panel general", desc: "Indicadores del día." },
+      { clave: "mi-dashboard", titulo: "Mi dashboard", desc: "Tus órdenes, comisiones y avance." },
       { clave: "asistente", titulo: "Asistente", desc: "Códigos de falla y manuales." },
       { clave: "busqueda", titulo: "Búsqueda y atajos", desc: "Buscar sin acentos, filtros y teclado." },
     ],
   },
 ];
+
+// Rutas donde corre cada recorrido; los pasos viven en ./modulos.js
+const RUTAS = {
+  "config-taller": "/configuracion-taller", "usuarios-alta": "/usuarios", suscripcion: "/suscripcion",
+  "orden-nueva": "/servicios", "orden-refacciones": "/servicios", "orden-editar": "/servicios", "orden-fechas": "/servicios",
+  "orden-abonos": "/servicios", "orden-estatus": "/servicios", "orden-finalizar": "/servicios", "orden-nota": "/servicios",
+  cotizaciones: "/cotizaciones", citas: "/citas", "cliente-alta": "/clientes", "vehiculo-alta": "/vehiculos", "cliente-app": "/clientes",
+  refacciones: "/refacciones", inventario: "/inventario", proveedores: "/proveedores", herramientas: "/herramientas",
+  empleados: "/empleados", nomina: "/nomina", comisiones: "/comisiones", roles: "/roles",
+  facturacion: "/facturacion", catalogos: "/configuracion", promociones: "/promociones", integraciones: "/integraciones",
+  auditoria: "/auditoria", errores: "/errores", "mi-dashboard": "/mi-dashboard", panel: "/", asistente: "/asistente", busqueda: "/clientes",
+};
+for (const m of AYUDA) for (const x of m.tutoriales) if (!x.pasos && T[x.clave]) { x.pasos = T[x.clave]; x.ruta = RUTAS[x.clave] || "/"; }
 
 export function tutorialPorClave(clave) {
   for (const m of AYUDA) {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api";
 import { contiene, norm } from "../../lib/texto";
 import { Icono } from "../Icono";
+import Combo, { opMarca } from "../Combo";
 import { useUI } from "../../context/UIContext";
 import ModalPortal from "../ModalPortal";
 import EscanerCamara from "./EscanerCamara";
@@ -140,10 +141,8 @@ export default function PuntoVenta({ filas, fotos, onVendida, marcasVehiculo = [
           <button type="button" className="btn btn-secondary" onClick={() => setCamara(true)} title="Escanear con la cámara"><Icono nombre="camera" size={18} /> Cámara</button>
         </div>
         <div className="pv-filtros">
-          <select value={fMarca} onChange={(e) => { setFMarca(e.target.value); setFModelo(""); }}>
-            <option value="">Marca (vehículo)</option>
-            {marcasVehiculo.map((m) => <option key={m.id_marca_vehiculo} value={m.id_marca_vehiculo}>{m.nombre_marca}</option>)}
-          </select>
+          <Combo placeholder="Marca (vehículo)" value={fMarca} onChange={(v) => { setFMarca(v == null ? "" : String(v)); setFModelo(""); }}
+            opciones={[{ value: "", label: "Marca (vehículo)" }, ...marcasVehiculo.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) }))]} />
           <select value={fModelo} disabled={!fMarca} onChange={(e) => setFModelo(e.target.value)}>
             <option value="">Modelo</option>
             {modelosVehiculo.filter((mo) => String(mo.id_marca_vehiculo) === fMarca).map((mo) => <option key={mo.id_modelo_vehiculo} value={mo.id_modelo_vehiculo}>{mo.nombre_modelo}</option>)}

@@ -1,52 +1,62 @@
 """Todos los catálogos simples, generados con la fábrica CRUD genérica."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..crud_factory import make_crud_router
 from ..database import get_db
 from ..security import require_permission
+from .. import almacenamiento
+from ..subida_archivos import leer_y_validar_imagen, nombre_unico
 
 router = APIRouter()
 
 router.include_router(make_crud_router(
     model=models.Pais, schema_out=schemas.PaisOut, schema_in=schemas.PaisIn,
     prefix="/api/paises", tags=["catálogos"], id_field="id_pais",
+    modo="lectura",
 ))
 
 router.include_router(make_crud_router(
     model=models.Estado, schema_out=schemas.EstadoOut, schema_in=schemas.EstadoIn,
     prefix="/api/estados", tags=["catálogos"], id_field="id_estado",
+    modo="lectura",
 ))
 
 router.include_router(make_crud_router(
     model=models.Ciudad, schema_out=schemas.CiudadOut, schema_in=schemas.CiudadIn,
     prefix="/api/ciudades", tags=["catálogos"], id_field="id_ciudad", filtro_campo="id_estado",
+    modo="lectura",
 ))
 
 router.include_router(make_crud_router(
     model=models.ColorVehiculo, schema_out=schemas.ColorVehiculoOut, schema_in=schemas.ColorVehiculoIn,
     prefix="/api/colores-vehiculos", tags=["catálogos"], id_field="id_color",
+    modo="lectura",
 ))
 
 router.include_router(make_crud_router(
     model=models.VehiculoMarca, schema_out=schemas.VehiculoMarcaOut, schema_in=schemas.VehiculoMarcaIn,
     prefix="/api/vehiculos-marcas", tags=["catálogos"], id_field="id_marca_vehiculo",
+    modo="lectura",
 ))
 
 router.include_router(make_crud_router(
     model=models.VehiculoModelo, schema_out=schemas.VehiculoModeloOut, schema_in=schemas.VehiculoModeloIn,
     prefix="/api/vehiculos-modelos", tags=["catálogos"], id_field="id_modelo_vehiculo", filtro_campo="id_marca_vehiculo",
+    modo="lectura",
 ))
 
 router.include_router(make_crud_router(
     model=models.RefaccionMarca, schema_out=schemas.RefaccionMarcaOut, schema_in=schemas.RefaccionMarcaIn,
     prefix="/api/refacciones-marcas", tags=["catálogos"], id_field="id_marca_refaccion",
+    modo="lectura",
 ))
 
 router.include_router(make_crud_router(
     model=models.RefaccionCategoria, schema_out=schemas.RefaccionCategoriaOut, schema_in=schemas.RefaccionCategoriaIn,
     prefix="/api/refacciones-categorias", tags=["catálogos"], id_field="id_categoria_refaccion",
+    modo="lectura",
 ))
 
 # El endpoint de /refacciones-subcategorias/ se retiró — esas listas ahora
@@ -120,9 +130,11 @@ router.include_router(make_crud_router(
 router.include_router(make_crud_router(
     model=models.HerramientaMarca, schema_out=schemas.HerramientaMarcaOut, schema_in=schemas.HerramientaMarcaIn,
     prefix="/api/herramientas-marcas", tags=["catálogos"], id_field="id_herramienta_marca",
+    modo="lectura",
 ))
 
 router.include_router(make_crud_router(
     model=models.TipoServicio, schema_out=schemas.TipoServicioOut, schema_in=schemas.TipoServicioIn,
     prefix="/api/tipos-servicio", tags=["catálogos"], id_field="id_tipo_servicio",
+    modo="lectura",
 ))

@@ -1,0 +1,46 @@
+# Despliegue a Azure App Service (versión endurecida).
+# Cambios frente a la anterior: permisos mínimos, entorno "produccion" con
+# aprobación manual obligatoria, npm sin scripts de instalación.
+name: Desplegar a Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AZURE_WEBAPP_NAME: aldm-autocore-app
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    environment: produccion   # GitHub → Settings → Environments → produccion → Required reviewers (tú)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web-admin/package-lock.json
+
+      - name: Compilar web-admin
+        working-directory: web-admin
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+
+      - name: Copiar la página informativa
+        run: cp -r sitio-web backend/app/sitio
+
+      - name: Subir a Azure
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: backend

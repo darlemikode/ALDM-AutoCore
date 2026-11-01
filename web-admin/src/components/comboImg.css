@@ -1,0 +1,49 @@
+.combo{position:relative}
+.combo-input{border-radius:14px!important;transition:box-shadow .18s,border-color .18s}
+.combo-input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary,#e5252a) 28%,transparent)!important}
+.combo.combo-con-img .combo-input{padding-left:52px!important}
+.combo-img-sel{position:absolute;left:9px;top:50%;transform:translateY(-50%);display:inline-flex;pointer-events:none}
+.combo-img-sel img,.combo-img-sel .cat-marca-inicial{width:30px!important;height:30px!important;box-sizing:border-box;padding:4px;border-radius:10px;background:linear-gradient(145deg,#fff,#e9edf2);object-fit:contain;font-size:13px!important;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+
+/* Lista flotante: vidrio oscuro, esquinas amplias, scroll fino */
+.combo-lista.combo-flota{border-radius:20px!important;padding:8px!important;border:1px solid rgba(255,255,255,.09)!important;background:color-mix(in srgb,#14161b 92%,transparent)!important;backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);box-shadow:0 24px 60px -12px rgba(0,0,0,.75),0 0 0 1px rgba(0,0,0,.4),0 0 40px -10px color-mix(in srgb,var(--color-primary,#e5252a) 35%,transparent)!important;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent;animation:comboEntra .16s ease-out}
+@keyframes comboEntra{from{opacity:0;transform:translateY(-6px) scale(.985)}to{opacity:1;transform:none}}
+.combo-flota::-webkit-scrollbar{width:6px}
+.combo-flota::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:6px}
+
+.combo-flota .combo-item{position:relative;border-radius:14px!important;margin:0!important;transition:background .12s,transform .12s}
+.combo-flota .combo-item+.combo-item{margin-top:2px!important}
+.combo-flota .combo-item:has(img),.combo-flota .combo-item:has(.cat-marca-inicial){display:flex;align-items:center;gap:14px;padding:8px 12px}
+.combo-flota .combo-item::before{content:"";position:absolute;left:0;top:22%;bottom:22%;width:3px;border-radius:3px;background:var(--color-primary,#e5252a);opacity:0;transform:scaleY(.4);transition:.15s}
+.combo-flota .combo-item.cursor{background:color-mix(in srgb,var(--color-primary,#e5252a) 16%,transparent)!important}
+.combo-flota .combo-item.cursor::before{opacity:1;transform:none}
+.combo-item .combo-txt{flex:1;min-width:0;font-weight:600;letter-spacing:.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.combo-item>img,.combo-item>.cat-marca-inicial{flex:none;width:40px!important;height:40px!important;box-sizing:border-box;padding:6px;border-radius:12px;background:linear-gradient(145deg,#fff,#e6eaf0);object-fit:contain;box-shadow:0 2px 6px rgba(0,0,0,.4),inset 0 -2px 0 rgba(0,0,0,.06);transition:transform .15s}
+.combo-item>.cat-marca-inicial{display:inline-flex;align-items:center;justify-content:center;font-size:17px!important;font-weight:800;color:#3a3f48}
+.combo-item.cursor>img,.combo-item.cursor>.cat-marca-inicial{transform:scale(1.08) rotate(-2deg)}
+
+/* Elegido: palomita en círculo */
+.combo-flota .combo-item.elegido{background:color-mix(in srgb,var(--color-primary,#e5252a) 10%,transparent)}
+.combo-flota .combo-item.elegido::after{content:"✓";float:none;margin-left:auto;flex:none;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;background:var(--color-primary,#e5252a);color:#fff}
+
+/* Logo en recuadro fijo: todas las marcas alineadas */
+.combo-logo{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;box-sizing:border-box;padding:6px;border-radius:12px;background:linear-gradient(145deg,#fff,#e6eaf0);box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden;font-size:17px;font-weight:800;color:#3a3f48;line-height:1}
+.combo-logo img{width:100%!important;height:100%!important;object-fit:contain;display:block;padding:0!important;background:none!important;box-shadow:none!important;border-radius:0!important}
+.combo-logo .cat-marca-inicial{font-size:17px!important;font-weight:800;color:#3a3f48;width:auto!important;height:auto!important;padding:0!important;background:none!important}
+.combo-item>.combo-logo{width:40px;height:40px}
+.combo-item:has(.combo-logo){display:flex!important;align-items:center;gap:14px;padding:8px 12px!important}
+.combo-img-sel .combo-logo{width:30px;height:30px;padding:4px;border-radius:10px}
+.combo-img-sel .combo-logo .cat-marca-inicial{font-size:13px!important}
+.combo-item.cursor>.combo-logo{transform:scale(1.08)}
+
+/* Estética común de todas las ventanas */
+.modal{border-radius:22px!important;box-shadow:0 30px 80px -20px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.07)!important}
+.modal .field>label{font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.modal .field input:not(.combo-requerido):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]),.modal .combo-input{min-height:46px;border-radius:14px!important;background:rgba(255,255,255,.035)!important;border:1px solid rgba(255,255,255,.1)!important;transition:border-color .15s,box-shadow .15s,background .15s}
+.modal .field input:not(.combo-requerido):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):hover,.modal .combo-input:hover{border-color:rgba(255,255,255,.22)!important;background:rgba(255,255,255,.055)!important}
+.modal .field input:not(.combo-requerido):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):focus,.modal .combo-input:focus{border-color:var(--color-primary,#e5252a)!important}
+.select-with-add{display:flex;align-items:stretch;gap:10px}
+.select-with-add .combo{flex:1;min-width:0}
+.select-with-add .btn-quick-add{flex:none;min-height:46px;padding:0 16px;border-radius:14px;border:1px dashed color-mix(in srgb,var(--color-primary,#e5252a) 70%,transparent);background:color-mix(in srgb,var(--color-primary,#e5252a) 10%,transparent);font-weight:700;letter-spacing:.3px;transition:background .15s,transform .15s}
+.select-with-add .btn-quick-add:hover{background:color-mix(in srgb,var(--color-primary,#e5252a) 22%,transparent);transform:translateY(-1px)}
+.modal .form-grid{gap:18px 20px}

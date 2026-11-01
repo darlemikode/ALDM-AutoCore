@@ -9,6 +9,7 @@ import FotoGaleria from "../components/FotoGaleria";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
+import { opMarca } from "../components/Combo";
 import { Icono } from "../components/Icono";
 
 export default function Herramientas() {
@@ -35,7 +36,7 @@ export default function Herramientas() {
     { name: "modelo_herramienta", label: "Modelo", grupo: "general" },
     {
       name: "id_herramienta_marca", label: "Marca", type: "select", grupo: "general",
-      options: marcas.map((m) => ({ value: m.id_herramienta_marca, label: m.nombre_marca })),
+      options: marcas.map((m) => ({ value: m.id_herramienta_marca, label: m.nombre_marca, ...opMarca(m) })),
       creatable: {
         endpoint: "/herramientas-marcas/", createField: "nombre_marca", idField: "id_herramienta_marca", label: "marca",
         onCreated: (nueva) => setMarcas((prev) => [...prev, nueva]),

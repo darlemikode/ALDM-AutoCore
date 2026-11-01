@@ -1,0 +1,22 @@
+# Avisos y PRs automáticos de versiones con vulnerabilidades (revisa cada PR antes de aceptarlo).
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /web-admin
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /e2e
+    schedule: { interval: monthly }
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule: { interval: monthly }
+  - package-ecosystem: npm
+    directory: /mobile-cliente
+    schedule: { interval: monthly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

@@ -1,0 +1,48 @@
+/* Refacciones: diseño sobrio. Un solo acento (la categoría) como punto de color;
+   títulos y textos en neutro para que se lean primero. */
+:root:not(.__) .ref-pagina .veh-tarjeta,
+:root:not(.__) .ref-pagina .orden-fila {
+  background: var(--paper-100);
+  border: 1px solid color-mix(in srgb, var(--ink-900) 12%, transparent);
+  box-shadow: none;
+}
+:root:not(.__) .ref-pagina .veh-tarjeta:hover,
+:root:not(.__) .ref-pagina .orden-fila:hover {
+  background: color-mix(in srgb, var(--ink-900) 4%, var(--paper-100));
+  border-color: color-mix(in srgb, var(--ink-900) 28%, transparent);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .14);
+}
+.ref-pagina .veh-tarjeta::before, .ref-pagina .orden-fila::before { opacity: 1; width: 3px; }
+
+/* Título: neutro, grande y en negritas */
+:root:not(.__) .ref-pagina .refaccion-nombre,
+:root[data-theme="dark"] .ref-pagina .refaccion-nombre {
+  color: var(--ink-900) !important; text-shadow: none !important;
+  font-size: 16.5px !important; font-weight: 800 !important; letter-spacing: -.005em;
+}
+.ref-pagina .veh-tarjeta:hover .refaccion-nombre, .ref-pagina .orden-fila:hover .refaccion-nombre { filter: none; }
+.ref-pagina .veh-tarjeta-cuerpo { gap: 6px; }
+.ref-pagina .veh-tarjeta-meta { gap: 6px; color: var(--ink-500); font-weight: 500; }
+.ref-pagina .veh-tarjeta-meta svg { color: var(--ink-500); }
+.ref-pagina .ref-parte { font-family: var(--font-mono); font-size: 12px; }
+.ref-pagina .ref-precio { color: var(--ink-900); font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* Categoría: punto de color + texto neutro (sin fondo ni borde de color) */
+:root:not(.__) .ref-pagina .cat-pill {
+  background: none !important; border: none !important; padding: 0;
+  color: var(--ink-500) !important; font-size: 12.5px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.ref-pagina .cat-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+
+/* Filtros por categoría: neutros; solo el punto lleva color */
+:root:not(.__) .ref-pagina .cat-chip {
+  background: transparent; color: var(--ink-700);
+  border: 1px solid color-mix(in srgb, var(--ink-900) 16%, transparent);
+}
+:root:not(.__) .ref-pagina .cat-chip:hover { background: color-mix(in srgb, var(--ink-900) 6%, transparent); }
+:root:not(.__) .ref-pagina .cat-chip-on {
+  background: var(--ink-900); color: var(--paper-100); border-color: var(--ink-900);
+}
+:root:not(.__) .ref-pagina .cat-chip-on b { color: inherit; opacity: .8; }
+.ref-pagina .cat-chip .cat-punto { background: var(--c); }

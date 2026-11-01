@@ -46,6 +46,7 @@ export default function ServicioDetalle() {
   const { hasPermission, estadoSuscripcion } = useAuth();
   // Arranque no incluye Empleados: no se muestra «Empleado responsable»
   const tieneModuloEmpleados = !estadoSuscripcion?.modulos || estadoSuscripcion.modulos.includes("empleados");
+  const tieneMod = (m) => !estadoSuscripcion?.modulos || estadoSuscripcion.modulos.includes(m);
   const [servicio, setServicio] = useState(null);
   const [comentariosFinales, setComentariosFinales] = useState("");
   const [guardandoComentarios, setGuardandoComentarios] = useState(false);
@@ -899,7 +900,7 @@ export default function ServicioDetalle() {
             )}
           </div>
           <div className="orden-hero-herramientas">
-            {servicio.status === "abierto" && hasPermission("servicios.editar") && hasPermission("servicios.ver_precios") && (
+            {servicio.status === "abierto" && tieneMod("seguimiento_qr") && hasPermission("servicios.editar") && hasPermission("servicios.ver_precios") && (
               <span className="tip-envoltura" title="Enlace y QR para que el cliente vea el avance, las refacciones y el monto">
                 <button className="btn btn-primary" onClick={() => setVerSeguimiento(true)}><IconoAuto valor="📱" size={18} /> Seguimiento al cliente (QR)</button>
               </span>
@@ -1557,7 +1558,7 @@ export default function ServicioDetalle() {
 
       {/* Botones flotantes: inspección y chat de la orden */}
       <div className="fab-grupo">
-        {abierta && (
+        {abierta && tieneMod("inspeccion_digital") && (
           <button type="button" className="fab-pill fab-inspeccion" onClick={() => setVerRecepcion(true)} title="Recepción del vehículo (daños) y avance por zonas">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M3 15l1.6-4.6A2 2 0 0 1 6.5 9h11a2 2 0 0 1 1.9 1.4L21 15" />
@@ -1567,7 +1568,7 @@ export default function ServicioDetalle() {
             <span>Recepción y avance</span>
           </button>
         )}
-        {abierta && (puedeEditarOrden || inspeccionActual) && (
+        {abierta && tieneMod("inspeccion_digital") && (puedeEditarOrden || inspeccionActual) && (
           <button
             type="button"
             className="fab-pill fab-inspeccion"
@@ -1582,7 +1583,7 @@ export default function ServicioDetalle() {
             <span>Inspección</span>
           </button>
         )}
-        <button
+        {tieneMod("chat_ordenes") && <button
           type="button"
           className="fab-pill fab-chat"
           onClick={() => { setChatAbierto((v) => !v); setEstatusAbierto(false); }}
@@ -1593,9 +1594,9 @@ export default function ServicioDetalle() {
             <path d="M9 11h6M9 14h4" />
           </svg>
           <span>Chat</span>
-        </button>
+        </button>}
       </div>
-      {chatAbierto && (
+      {chatAbierto && tieneMod("chat_ordenes") && (
         <div className="chat-flotante">
           <div className="chat-flotante-header">
             <span><IconoAuto valor="💬" size={18} /> Chat de la orden</span>
@@ -1617,7 +1618,7 @@ export default function ServicioDetalle() {
             { name: "cantidad", label: "Cantidad", type: "number" },
             { name: "precio_unitario", label: "Precio unitario", type: "number", required: true, grande: true },
           ]}
-          initialValues={{ cantidad: 1 }}
+          initialValues={{ descripcion: "Mano de Obra", cantidad: 1 }}
           onSubmit={handleAddManoObra}
           onClose={() => setAddingManoObra(false)}
         />

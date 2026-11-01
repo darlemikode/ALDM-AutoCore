@@ -14,6 +14,7 @@ from ..security import (
 from ..suscripciones import contenido_qr, estado_taller, permiso_en_modulos
 from ..tenancy import MODO_SUPERADMIN, MODO_TALLER, fijar_tenant, taller_actual
 from ..rate_limit import limiter
+from .. import lockout
 from ..sesion_taller import MENSAJE_SIN_APP_TALLER, es_app_taller
 from .usuarios import (
     listar as _listar_usuarios, crear as _crear_usuario, actualizar as _actualizar_usuario,
@@ -100,13 +101,22 @@ def _elegir_taller(db: Session, user: models.Usuario, codigo: str | None) -> int
 @limiter.limit("5/minute")
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     fijar_tenant(db, MODO_SUPERADMIN)  # usuarios y membresías son globales
+    espera = lockout.segundos_bloqueado(form_data.username)
+    if espera:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Cuenta bloqueada temporalmente por demasiados intentos fallidos. Intenta de nuevo en {max(1, espera // 60)} min.",
+            headers={"Retry-After": str(espera)},
+        )
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        lockout.registrar_fallo(form_data.username)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    lockout.limpiar(form_data.username)
     codigo = form_data.client_id or request.headers.get("x-taller")
     id_taller = _elegir_taller(db, user, codigo)
     if id_taller is None and not user.es_superadmin:
