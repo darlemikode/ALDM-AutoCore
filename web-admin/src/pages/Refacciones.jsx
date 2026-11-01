@@ -2,6 +2,9 @@ import { IconoAuto } from "../components/Icono";
 import { useEffect, useState, useRef } from "react";
 import { api } from "../api";
 import { Icono } from "../components/Icono";
+import LogoMarca from "../components/LogoMarca";
+import "./refacciones.css";
+import Combo, { opMarca } from "../components/Combo";
 import FiltroChips, { colorGrupo as colorCategoria, contarPor } from "../components/FiltroChips";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
@@ -54,7 +57,6 @@ export default function Refacciones() {
   const [marcasVehiculo, setMarcasVehiculo] = useState([]);
   const [modelosVehiculo, setModelosVehiculo] = useState([]);
   const [q, setQ] = useState("");
-  const [soloBajoStock, setSoloBajoStock] = useState(false);
   const [vista, setVista] = useState(() => localStorage.getItem("sm_refacciones_vista") || "lista"); // lista | cuadros
   useEffect(() => { localStorage.setItem("sm_refacciones_vista", vista); }, [vista]);  // se recuerda la vista elegida
   const [editing, setEditing] = useState(null);
@@ -65,7 +67,6 @@ export default function Refacciones() {
   async function load() {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
-    if (soloBajoStock) params.set("bajo_stock", "true");
     const [r, m, p, cat, marcasVeh, modelosVeh] = await Promise.all([
       api.get(`/refacciones/?${params}`),
       api.get("/refacciones-marcas/"),
@@ -87,7 +88,7 @@ export default function Refacciones() {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, soloBajoStock]);
+  }, [q]);
 
   useActualizacionGlobal("refacciones", load);
 
@@ -237,6 +238,24 @@ export default function Refacciones() {
   const conteoCat = contarPor(refacciones, (r) => r.categoria || "Sin categoría");
   const visibles = catSel.length ? refacciones.filter((r) => catSel.includes(r.categoria || "Sin categoría")) : refacciones;
 
+  // Marcas de vehículo compatibles (sin repetir) para mostrar sus logos
+  function marcasCompatibles(r) {
+    const vistos = new Map();
+    for (const c of r.compatibilidades || []) if (c.marca_vehiculo) vistos.set(c.marca_vehiculo.id_marca_vehiculo, c.marca_vehiculo.nombre_marca);
+    if (r.marca_vehiculo_compatible) vistos.set(r.marca_vehiculo_compatible.id_marca_vehiculo, r.marca_vehiculo_compatible.nombre_marca);
+    return [...vistos.values()];
+  }
+  function LogosCompatibles({ r }) {
+    const ms = marcasCompatibles(r);
+    if (ms.length === 0) return <span style={{ color: "var(--ink-500)" }}>—</span>;
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        {ms.slice(0, 5).map((n) => <span key={n} style={{ background: "#fff", borderRadius: 7, padding: 2, display: "inline-flex" }}><LogoMarca nombre={n} size={24} /></span>)}
+        {ms.length > 5 && <small style={{ color: "var(--ink-500)", fontWeight: 700 }}>+{ms.length - 5}</small>}
+      </span>
+    );
+  }
+
   function nombreMarca(id) { return marcas.find((m) => m.id_marca_refaccion === id)?.nombre_marca || "—"; }
   const fmt = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
@@ -260,12 +279,9 @@ export default function Refacciones() {
         </div>
       </div>
 
-      <div className="panel">
+      <div className="panel ref-pagina">
         <div className="toolbar">
           <input className="search-input" placeholder="Buscar por nombre o número de parte…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <button type="button" className={`btn-stock-bajo ${soloBajoStock ? "activo" : ""}`} aria-pressed={soloBajoStock} onClick={() => setSoloBajoStock((v) => !v)}>
-            <Icono nombre="warning" size={17} /> Solo stock bajo
-          </button>
         </div>
 
         <FiltroChips multiple items={conteoCat} valor={catSel} onChange={setCatSel} total={refacciones.length} />
@@ -286,9 +302,10 @@ export default function Refacciones() {
                   <div className="veh-tarjeta-cuerpo">
                     <div className="veh-tarjeta-titulo refaccion-nombre">{r.nombre_refaccion}</div>
                     <div className="veh-tarjeta-meta">
-                      <span><Icono nombre="hash" size={14} /> {r.numero_refaccion || "Sin n.º de parte"}</span>
+                      <span className="ref-parte"><Icono nombre="hash" size={14} /> {r.numero_refaccion || "Sin n.º de parte"}</span>
                       <span><span className="cat-pill" style={{ "--c": col }}>{cat}</span></span>
-                      <span><Icono nombre="card" size={14} /> {fmt(r.preciocliente_refaccion)}</span>
+                      <span className="ref-precio">{fmt(r.preciocliente_refaccion)}</span>
+                      <span><LogosCompatibles r={r} /></span>
                     </div>
                     <div className="veh-tarjeta-pie">
                       {/* stopPropagation: los botones no deben disparar también el clic de la tarjeta */}
@@ -319,6 +336,7 @@ export default function Refacciones() {
                       <div className="fila-dato"><span className="fila-dato-etq">N.º de parte</span><span className="fila-dato-val">{r.numero_refaccion || "—"}</span></div>
                       <div className="fila-dato"><span className="fila-dato-etq">Categoría</span><span className="fila-dato-val"><span className="cat-pill" style={{ "--c": col }}>{cat}</span></span></div>
                       <div className="fila-dato"><span className="fila-dato-etq">Precio</span><span className="fila-dato-val">{fmt(r.preciocliente_refaccion)}</span></div>
+                      <div className="fila-dato"><span className="fila-dato-etq">Compatible con</span><span className="fila-dato-val" style={{ overflow: "visible", maxWidth: "none" }}><LogosCompatibles r={r} /></span></div>
                     </div>
                   </div>
                   <div className="row-actions" onClick={(e) => e.stopPropagation()}>
@@ -363,10 +381,11 @@ export default function Refacciones() {
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 8 }}>
-                  <select style={{ flex: 1 }} value={compatNueva.id_marca_vehiculo} onChange={(e) => setCompatNueva({ id_marca_vehiculo: e.target.value, id_modelo_vehiculo: "" })}>
-                    <option value="">-- Marca --</option>
-                    {marcasVehiculo.map((m) => <option key={m.id_marca_vehiculo} value={m.id_marca_vehiculo}>{m.nombre_marca}</option>)}
-                  </select>
+                  <div style={{ flex: 1 }}>
+                    <Combo placeholder="-- Marca --" value={compatNueva.id_marca_vehiculo}
+                      onChange={(v) => setCompatNueva({ id_marca_vehiculo: v == null ? "" : String(v), id_modelo_vehiculo: "" })}
+                      opciones={[{ value: "", label: "-- Marca --" }, ...marcasVehiculo.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) }))]} />
+                  </div>
                   <select style={{ flex: 1 }} value={compatNueva.id_modelo_vehiculo} disabled={!compatNueva.id_marca_vehiculo} onChange={(e) => setCompatNueva({ ...compatNueva, id_modelo_vehiculo: e.target.value })}>
                     <option value="">-- Modelo (opcional) --</option>
                     {modelosVehiculo.filter((mo) => mo.id_marca_vehiculo === Number(compatNueva.id_marca_vehiculo)).map((mo) => <option key={mo.id_modelo_vehiculo} value={mo.id_modelo_vehiculo}>{mo.nombre_modelo}</option>)}

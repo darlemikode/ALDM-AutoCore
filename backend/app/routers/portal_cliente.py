@@ -7,17 +7,19 @@ invitación desde el panel/app (ver POST /api/clientes/{id}/invitar), y el
 cliente lo usa aquí una sola vez para activar su cuenta con una contraseña
 propia.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas
 from ..database import get_db
+from ..rate_limit import limiter
+from .. import lockout
 from ..push_notifications import enviar_push
 from ..security import (
     create_client_access_token, get_current_cliente, hash_password, verify_password,
@@ -35,19 +37,37 @@ def _buscar_por_identificador(db: Session, identificador: str):
     )
 
 
+VIGENCIA_INVITACION_HORAS = 72
+_MSJ_ACTIVAR = "No pudimos validar tus datos. Revisa el código o pide al taller una invitación nueva."
+
+
 @router.post("/activar", response_model=schemas.ClienteTokenOut)
-def activar_cuenta(payload: schemas.ActivarCuentaIn, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def activar_cuenta(request: Request, payload: schemas.ActivarCuentaIn, db: Session = Depends(get_db)):
+    clave = "cli-act:" + payload.identificador.strip()
+    if lockout.segundos_bloqueado(clave):
+        raise HTTPException(status_code=429, detail="Demasiados intentos. Pide al taller una invitación nueva.")
     cliente = _buscar_por_identificador(db, payload.identificador)
+    # Mismo mensaje en todos los fallos: no se revela si el cliente existe ni si el código está cerca
     if not cliente or not cliente.codigo_invitacion:
-        raise HTTPException(status_code=400, detail="No encontramos una invitación pendiente con esos datos. Pide al taller que te genere una nueva.")
+        lockout.registrar_fallo(clave)
+        raise HTTPException(status_code=400, detail=_MSJ_ACTIVAR)
+    if cliente.fecha_invitacion and datetime.utcnow() - cliente.fecha_invitacion > timedelta(hours=VIGENCIA_INVITACION_HORAS):
+        cliente.codigo_invitacion = None  # caducó
+        db.commit()
+        raise HTTPException(status_code=400, detail=_MSJ_ACTIVAR)
     if cliente.codigo_invitacion != payload.codigo_invitacion.strip():
-        raise HTTPException(status_code=400, detail="El código no coincide.")
+        if lockout.registrar_fallo(clave):
+            cliente.codigo_invitacion = None  # demasiados intentos: se anula el código
+            db.commit()
+        raise HTTPException(status_code=400, detail=_MSJ_ACTIVAR)
     if len(payload.password_nueva) < 6:
         raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres.")
 
     cliente.hashed_password = hash_password(payload.password_nueva)
     cliente.cuenta_activada = True
     cliente.codigo_invitacion = None  # de un solo uso
+    lockout.limpiar(clave)
     db.commit()
 
     token = create_client_access_token(cliente.id_cliente)
@@ -55,12 +75,17 @@ def activar_cuenta(payload: schemas.ActivarCuentaIn, db: Session = Depends(get_d
 
 
 @router.post("/login", response_model=schemas.ClienteTokenOut)
-def login(payload: schemas.ClienteLoginIn, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, payload: schemas.ClienteLoginIn, db: Session = Depends(get_db)):
+    clave = "cli:" + payload.identificador.strip()
+    espera = lockout.segundos_bloqueado(clave)
+    if espera:
+        raise HTTPException(status_code=429, detail=f"Cuenta bloqueada temporalmente. Intenta de nuevo en {max(1, espera // 60)} min.", headers={"Retry-After": str(espera)})
     cliente = _buscar_por_identificador(db, payload.identificador)
-    if not cliente or not cliente.cuenta_activada or not cliente.hashed_password:
+    if not cliente or not cliente.cuenta_activada or not cliente.hashed_password or not verify_password(payload.password, cliente.hashed_password):
+        lockout.registrar_fallo(clave)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos.")
-    if not verify_password(payload.password, cliente.hashed_password):
-        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos.")
+    lockout.limpiar(clave)
 
     token = create_client_access_token(cliente.id_cliente)
     return schemas.ClienteTokenOut(access_token=token, id_cliente=cliente.id_cliente, nombre_cliente=cliente.nombre_cliente)

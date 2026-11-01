@@ -2,6 +2,7 @@ import { contiene, norm } from "../lib/texto";
 import { IconoAuto } from "../components/Icono";
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import Combo, { opMarca } from "../components/Combo";
 import DataTable from "../components/DataTable";
 import FiltroChips, { colorGrupo, contarPor } from "../components/FiltroChips";
 import FormModal from "../components/FormModal";
@@ -44,6 +45,7 @@ export default function Inventario() {
   const [fMarca, setFMarca] = useState("");
   const [fModelo, setFModelo] = useState("");
   const [fRefaccion, setFRefaccion] = useState("");
+  const [soloBajoStock, setSoloBajoStock] = useState(false);
   const [vista, setVista] = useState("cuadros"); // cuadros | lista
   const [fotos, setFotos] = useState({}); // { id_inventario_refaccion: ruta de su foto más reciente }
   const [fotosDe, setFotosDe] = useState(null); // registro cuyas fotos se están viendo
@@ -96,7 +98,8 @@ export default function Inventario() {
     const coincideRefaccion = !fRefaccion || String(r.id_refaccion) === fRefaccion;
     const coincideVehiculo = (!fMarca && !fModelo) || (r.compatibilidades || []).some((c) =>
       (!fMarca || String(c.id_marca_vehiculo) === fMarca) && (!fModelo || !c.id_modelo_vehiculo || String(c.id_modelo_vehiculo) === fModelo));
-    return coincideTexto && coincideCategoria && coincideRefaccion && coincideVehiculo;
+    const coincideStock = !soloBajoStock || (r.cantidad || 0) <= (r.umbral_naranja ?? 4);
+    return coincideTexto && coincideCategoria && coincideRefaccion && coincideVehiculo && coincideStock;
   });
   // Agrupadas por categoría — igual que el modal de "Agregar refacciones"
   // en la orden, para que ambas pantallas se vean y se naveguen igual.
@@ -245,10 +248,9 @@ export default function Inventario() {
     return (
       <div className="field full inv-compat">
         <div className="inv-compat-combos">
-          <select value={compatNueva.id_marca_vehiculo} onChange={(e) => setCompatNueva({ id_marca_vehiculo: e.target.value, id_modelo_vehiculo: "" })}>
-            <option value="">-- Marca --</option>
-            {marcasVehiculo.map((m) => <option key={m.id_marca_vehiculo} value={m.id_marca_vehiculo}>{m.nombre_marca}</option>)}
-          </select>
+          <Combo placeholder="-- Marca --" value={compatNueva.id_marca_vehiculo}
+            onChange={(v) => setCompatNueva({ id_marca_vehiculo: v == null ? "" : String(v), id_modelo_vehiculo: "" })}
+            opciones={[{ value: "", label: "-- Marca --" }, ...marcasVehiculo.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) }))]} />
           <select value={compatNueva.id_modelo_vehiculo} disabled={!compatNueva.id_marca_vehiculo} onChange={(e) => setCompatNueva({ ...compatNueva, id_modelo_vehiculo: e.target.value })}>
             <option value="">-- Modelo (opcional) --</option>
             {modelosVehiculo.filter((mo) => mo.id_marca_vehiculo === Number(compatNueva.id_marca_vehiculo)).map((mo) => <option key={mo.id_modelo_vehiculo} value={mo.id_modelo_vehiculo}>{mo.nombre_modelo}</option>)}
@@ -279,7 +281,7 @@ export default function Inventario() {
       },
       {
         name: "id_marca_refaccion", label: "Marca", type: "select", grupo: "general",
-        options: marcasRefaccion.map((m) => ({ value: m.id_marca_refaccion, label: m.nombre_marca })),
+        options: marcasRefaccion.map((m) => ({ value: m.id_marca_refaccion, label: m.nombre_marca, ...opMarca(m) })),
         creatable: hasPermission("catalogos.crear")
           ? { endpoint: "/refacciones-marcas/", createField: "nombre_marca", idField: "id_marca_refaccion", label: "marca", onCreated: (n) => setMarcasRefaccion((prev) => [...prev, n]) }
           : null,
@@ -361,12 +363,15 @@ export default function Inventario() {
             onChange={(e) => setQ(e.target.value)}
             style={{ flex: 1, minWidth: 220 }}
           />
+          <button type="button" className={`btn-stock-bajo ${soloBajoStock ? "activo" : ""}`} aria-pressed={soloBajoStock} onClick={() => setSoloBajoStock((v) => !v)}>
+            <Icono nombre="warning" size={17} /> Solo stock bajo
+          </button>
         </div>
         <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-          <select style={{ flex: 1, minWidth: 160 }} value={fMarca} onChange={(e) => { setFMarca(e.target.value); setFModelo(""); }}>
-            <option value="">Todas las marcas</option>
-            {marcasVehiculo.map((m) => <option key={m.id_marca_vehiculo} value={m.id_marca_vehiculo}>{m.nombre_marca}</option>)}
-          </select>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <Combo placeholder="Todas las marcas" value={fMarca} onChange={(v) => { setFMarca(v == null ? "" : String(v)); setFModelo(""); }}
+              opciones={[{ value: "", label: "Todas las marcas" }, ...marcasVehiculo.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) }))]} />
+          </div>
           <select style={{ flex: 1, minWidth: 160 }} value={fModelo} disabled={!fMarca} onChange={(e) => setFModelo(e.target.value)}>
             <option value="">Todos los modelos</option>
             {modelosVehiculo.filter((mo) => String(mo.id_marca_vehiculo) === fMarca).map((mo) => <option key={mo.id_modelo_vehiculo} value={mo.id_modelo_vehiculo}>{mo.nombre_modelo}</option>)}

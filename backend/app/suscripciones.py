@@ -28,8 +28,9 @@ MODULO_POR_PERMISO = {
     "nomina": "nomina",
     "roles": "roles_permisos",
     "facturacion": "facturacion",
-    "promociones": "app_movil",
-    "citas": "app_movil",
+    "promociones": "promociones",
+    "citas": "citas",
+    "auditoria": "auditoria",
     "chatbot": "app_movil",
 }
 

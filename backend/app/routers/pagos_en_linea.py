@@ -15,6 +15,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from ..rate_limit import limiter
 from .. import models
 from ..database import get_db, sesion_global
 from ..security import get_current_user_sin_taller
@@ -185,6 +186,7 @@ def checkout(payload: dict, request: Request, db: Session = Depends(get_db), use
 
 
 @router.post("/webhook")
+@limiter.limit("60/minute")
 async def webhook(request: Request):
     """Aviso de Mercado Pago. Siempre responde 200 para que no reintente sin
     fin; el pago se valida consultándolo directo a su API."""

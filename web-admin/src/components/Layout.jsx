@@ -23,7 +23,7 @@ import { useActualizacionGlobal } from "../useActualizacionGlobal";
 // igual y llevaba a un redirect confuso).
 const NAV = [
   // moduloRequerido: el enlace solo aparece si el paquete del taller incluye ese módulo
-  { group: "General", items: [{ to: "/", label: "Panel", end: true }, { to: "/citas", label: "Citas solicitadas", moduloRequerido: "app_movil" }, { to: "/mi-dashboard", label: "Mi dashboard", moduloRequerido: "empleados" }] },
+  { group: "General", items: [{ to: "/", label: "Panel", end: true }, { to: "/citas", label: "Citas solicitadas", moduloRequerido: "citas" }, { to: "/mi-dashboard", label: "Mi dashboard", moduloRequerido: "empleados" }] },
   {
     group: "Operación",
     items: [
@@ -33,7 +33,7 @@ const NAV = [
       { to: "/cotizaciones", label: "Cotizaciones", permisoRequerido: "cotizaciones.ver" },
       { to: "/empleados", label: "Empleados", permisoRequerido: "empleados.ver" },
       { to: "/nomina", label: "Nómina", permisoRequerido: "nomina.ver" },
-      { to: "/auditoria", label: "Auditoría", permisoRequerido: "auditoria.ver" },
+      { to: "/auditoria", label: "Auditoría", permisoRequerido: "auditoria.ver", moduloRequerido: "auditoria" },
     ],
   },
   {
@@ -46,7 +46,7 @@ const NAV = [
     ],
   },
   { group: "Soporte", items: [{ to: "/errores", label: "Errores del sistema", permisoRequerido: "configuracion.editar" }] },
-  { group: "App de clientes", items: [{ to: "/promociones", label: "Promociones", permisoRequerido: "promociones.ver" }, { to: "/asistente", label: "Asistente (chatbot)", moduloRequerido: "app_movil" }] },
+  { group: "App de clientes", items: [{ to: "/promociones", label: "Promociones", permisoRequerido: "promociones.ver", moduloRequerido: "promociones" }, { to: "/asistente", label: "Asistente (chatbot)", moduloRequerido: "app_movil" }] },
 ];
 
 export default function Layout() {

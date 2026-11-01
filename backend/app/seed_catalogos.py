@@ -2,12 +2,15 @@
 en cada arranque solo agrega lo que falta (por nombre), nunca borra ni
 modifica lo que un administrador ya editó."""
 from . import models
+from .seed_vehiculos_data import VEHICULOS  # marcas y modelos (incluye eléctricos)
 
 COLORES = [
     "Blanco", "Negro", "Gris", "Plata", "Rojo", "Azul", "Verde", "Amarillo", "Café", "Dorado",
     "Naranja", "Vino", "Beige", "Champagne", "Morado", "Rosa", "Turquesa", "Azul marino",
     "Gris Oxford", "Blanco perla", "Bronce", "Arena", "Grafito", "Azul cielo", "Verde oscuro",
 ]
+
+HEX_COLORES = {"Blanco": "#F5F5F5", "Negro": "#111111", "Gris": "#8A8D8F", "Plata": "#C0C0C0", "Rojo": "#C8102E", "Azul": "#1F4E9C", "Verde": "#2E7D32", "Amarillo": "#F6C700", "Café": "#6F4E37", "Dorado": "#C9A227", "Naranja": "#F57C00", "Vino": "#6D1A36", "Beige": "#D9C7A3", "Champagne": "#E7D3B0", "Morado": "#6A3FA0", "Rosa": "#E77FA7", "Turquesa": "#26B3B0", "Azul marino": "#14213D", "Gris Oxford": "#3B3F45", "Blanco perla": "#F1EEE6", "Bronce": "#8C6A3F", "Arena": "#D2B48C", "Grafito": "#4A4D50", "Azul cielo": "#7EC8E3", "Verde oscuro": "#1B4D2E"}
 
 TIPOS_SERVICIO = [
     "Cambio de aceite", "Afinación", "Frenos", "Suspensión", "Diagnóstico eléctrico",
@@ -87,28 +90,6 @@ CIUDADES = {
 }
 
 
-VEHICULOS = {
-    "Nissan": ["Versa", "Sentra", "March", "Tsuru", "NP300", "Kicks", "X-Trail", "Frontier"],
-    "Chevrolet": ["Aveo", "Spark", "Onix", "Beat", "Silverado", "Tornado", "Tracker", "Cavalier"],
-    "Volkswagen": ["Jetta", "Vento", "Polo", "Gol", "Tiguan", "Sedan (Vocho)", "Saveiro"],
-    "Toyota": ["Corolla", "Yaris", "Hilux", "RAV4", "Camry", "Avanza", "Tacoma"],
-    "Ford": ["Fiesta", "Focus", "Ranger", "F-150", "Escape", "Figo", "Ikon"],
-    "Honda": ["Civic", "City", "CR-V", "Accord", "HR-V", "Fit"],
-    "Mazda": ["Mazda 2", "Mazda 3", "Mazda 6", "CX-5", "CX-30"],
-    "Kia": ["Rio", "Forte", "Sportage", "Seltos", "Soul"],
-    "Hyundai": ["Grand i10", "Accent", "Elantra", "Tucson", "Creta"],
-    "Suzuki": ["Swift", "Ignis", "Vitara", "Ertiga"],
-    "SEAT": ["Ibiza", "León", "Arona"],
-    "Renault": ["Kwid", "Sandero", "Duster", "Logan"],
-    "Dodge": ["Attitude", "Neon", "Journey", "RAM"],
-    "Jeep": ["Wrangler", "Compass", "Renegade"],
-    "Mitsubishi": ["L200", "Mirage", "Outlander"],
-    "BMW": ["Serie 1", "Serie 3", "X1", "X3"],
-    "Mercedes-Benz": ["Clase A", "Clase C", "GLA"],
-    "Audi": ["A3", "A4", "Q3"],
-}
-
-
 def _agregar_simples(db, modelo, campo, nombres):
     existentes = {(getattr(x, campo) or "").strip().lower() for x in db.query(modelo).all()}
     for n in nombres:
@@ -119,6 +100,11 @@ def _agregar_simples(db, modelo, campo, nombres):
 
 def asegurar_catalogos_base(db):
     _agregar_simples(db, models.ColorVehiculo, "nombre_color", COLORES)
+    # color de referencia de los colores base (solo si aún no tienen uno)
+    for col in db.query(models.ColorVehiculo).filter(models.ColorVehiculo.codigo_hex.is_(None)).all():
+        for nombre, hx in HEX_COLORES.items():
+            if (col.nombre_color or "").strip().lower() == nombre.lower():
+                col.codigo_hex = hx
     _agregar_simples(db, models.TipoServicio, "nombre_tipo", TIPOS_SERVICIO)
     _agregar_simples(db, models.RefaccionMarca, "nombre_marca", MARCAS_REFACCION)
     _agregar_simples(db, models.HerramientaMarca, "nombre_marca", MARCAS_HERRAMIENTA)

@@ -328,6 +328,7 @@ export default function Usuarios() {
                 ]}
                 rows={usuarios}
                 onEdit={hasPermission("usuarios.editar") ? (u) => setEditing({ ...u, id_rol: u.rol?.id_rol, id_empleado: empleados.find((e) => e.id_usuario === u.id_usuario)?.id_empleado || "" }) : undefined}
+                onRowClick={hasPermission("usuarios.editar") ? (u) => setEditing({ ...u, id_rol: u.rol?.id_rol, id_empleado: empleados.find((e) => e.id_usuario === u.id_usuario)?.id_empleado || "" }) : undefined}
                 onDelete={hasPermission("usuarios.eliminar") ? (u) => (u.activo && u.id_usuario !== usuarioActual?.id_usuario ? handleDesactivar(u) : null) : undefined}
                 emptyMessage="No hay usuarios registrados."
               />

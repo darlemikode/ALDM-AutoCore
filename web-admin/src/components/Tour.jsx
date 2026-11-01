@@ -13,6 +13,13 @@ const MARGEN = 14;     // aire entre lo iluminado y el globo
 const RELLENO = 8;     // aire alrededor de lo iluminado
 const ORILLA = 12;     // distancia mínima a las orillas de la ventana
 
+// La app usa html { zoom }: el navegador mide en pantalla y los estilos van dentro del zoom
+const zoomApp = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--zoom")) || 1;
+function medida(el) {
+  const r = el.getBoundingClientRect(), z = zoomApp();
+  return { left: r.left / z, top: r.top / z, width: r.width / z, height: r.height / z };
+}
+
 function visible(el) {
   if (!el) return false;
   const r = el.getBoundingClientRect();
@@ -32,7 +39,8 @@ function buscar(paso) {
 const seEnciman = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
 
 function ubicar(objetivo, globo) {
-  const vw = window.innerWidth, vh = window.innerHeight;
+  const z = zoomApp();
+  const vw = window.innerWidth / z, vh = window.innerHeight / z;
   if (!objetivo) return { x: (vw - globo.w) / 2, y: Math.max(ORILLA, (vh - globo.h) / 2) };
   const t = { x: objetivo.left - RELLENO, y: objetivo.top - RELLENO, w: objetivo.width + RELLENO * 2, h: objetivo.height + RELLENO * 2 };
   const centroY = t.y + t.h / 2 - globo.h / 2;
@@ -97,7 +105,7 @@ export default function Tour({ pasos, abierto, onTerminar }) {
       if (sig >= 0 && sig < pasos.length) setI(sig); else onTerminar(true);
       return;
     }
-    setRect(el ? el.getBoundingClientRect() : null);
+    setRect(el ? medida(el) : null);
     setMedido(i);
   }, [abierto, paso, i, pasos.length, onTerminar]);
 
@@ -118,13 +126,14 @@ export default function Tour({ pasos, abierto, onTerminar }) {
   useLayoutEffect(() => {
     if (!abierto || !globoRef.current || (!paso?.centro && medido !== i)) return;
     const g = globoRef.current.getBoundingClientRect();
-    const p = ubicar(paso?.centro ? null : rect, { w: g.width, h: g.height });
+    const zz = zoomApp();
+    const p = ubicar(paso?.centro ? null : rect, { w: g.width / zz, h: g.height / zz });
     if (!p.libre && p.desplazar && yaDesplazado.current !== i) {
       // Se mueve la página lo necesario para que el globo quepa sin tapar lo iluminado
       yaDesplazado.current = i;
       const el = buscar(paso);
-      if (el) contenedorConScroll(el).scrollBy({ top: p.desplazar, behavior: "instant" });
-      setTimeout(() => { const e2 = buscar(paso); if (e2) setRect(e2.getBoundingClientRect()); }, 60);
+      if (el) contenedorConScroll(el).scrollBy({ top: p.desplazar * zoomApp(), behavior: "instant" });
+      setTimeout(() => { const e2 = buscar(paso); if (e2) setRect(medida(e2)); }, 60);
       return;
     }
     setPos(p);

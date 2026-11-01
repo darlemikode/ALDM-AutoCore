@@ -19,7 +19,7 @@ class ErrorClienteIn(BaseModel):
 
 
 @router.post("/cliente")
-@limiter.limit("30/minute")
+@limiter.limit("10/minute")
 def reportar_desde_app(request: Request, payload: ErrorClienteIn, db: Session = Depends(get_db)):
     """Las apps reportan aquí los errores que atrapan (se guardan en el log del taller)."""
     codigo = registrar_error(
