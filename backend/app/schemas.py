@@ -1417,6 +1417,13 @@ class TallerOut(ORMBase):
     uso: Optional[UsoTallerOut] = None
     precio_periodo: Optional[float] = None
 
+    # Talleres creados antes de que existiera la columna traen NULL: ya estaban
+    # activos, así que no cuentan como "pendientes".
+    @field_validator("pendiente_activacion", mode="before")
+    @classmethod
+    def _pendiente_nulo(cls, v):
+        return False if v is None else v
+
 
 class TallerCreate(BaseModel):
     nombre_comercial: str

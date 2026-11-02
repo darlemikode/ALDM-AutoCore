@@ -28,19 +28,37 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
   const [guardando, setGuardando] = useState(false);
   const [verAuto, setVerAuto] = useState(false); // elegir la zona tocando el auto
   const [zona, setZona] = useState(null); // clave de ZONAS | "otras" | null
+  const [soloConStock, setSoloConStock] = useState(false);
+  const [soloMarcadas, setSoloMarcadas] = useState(false);
   const [creando, setCreando] = useState(false); // alta rápida de una refacción que no existe
 
   useEffect(() => {
-    if (visible) { setSeleccion({}); setCategoria(""); setBusqueda(""); setVerAuto(false); setZona(null); setLibre(VACIO); setModo(refacciones.length ? "catalogo" : "libre"); }
+    if (visible) { setSeleccion({}); setCategoria(""); setBusqueda(""); setVerAuto(false); setZona(null); setSoloConStock(false); setSoloMarcadas(false); setLibre(VACIO); setModo(refacciones.length ? "catalogo" : "libre"); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const precio = (r) => (precioDe ? precioDe(r) : (r.preciocliente_refaccion || r.preciopropio_refaccion)) || 0;
   const categorias = [...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort();
   const categoriasAlta = categoriasCatalogo || categorias;
-  const porBusqueda = refacciones.filter((r) => !busqueda || contiene(r.nombre_refaccion || "", busqueda));
-  const filtradas = porBusqueda.filter((r) => (!categoria || r.categoria === categoria)
-    && (!zona || (zona === "otras" ? zonasRefaccion(r).length === 0 : zonasRefaccion(r).includes(zona))));
+  const stockR = (r) => (stockDe ? stockDe(r) : r.cantidad_refaccion);
+  // Busca en nombre, categoría y cualquier código / marca / parte que traiga la refacción;
+  // cada palabra debe aparecer (en cualquier orden): "balata del" encuentra "Balata delantera".
+  const textoDe = (r) => [r.nombre_refaccion, r.categoria, r.codigo_refaccion, r.codigo, r.sku, r.marca, r.numero_parte, r.descripcion_refaccion].filter(Boolean).join(" ");
+  const palabras = busqueda.trim().split(/\s+/).filter(Boolean);
+  const porBusqueda = refacciones.filter((r) => palabras.every((p) => contiene(textoDe(r), p)));
+  const pasaExtras = (r) => (!soloConStock || (Number(stockR(r)) || 0) > 0) && (!soloMarcadas || !!seleccion[String(r.id_refaccion)]);
+  const filtradas = porBusqueda
+    .filter((r) => (!categoria || r.categoria === categoria) && pasaExtras(r)
+      && (!zona || (zona === "otras" ? zonasRefaccion(r).length === 0 : zonasRefaccion(r).includes(zona))))
+    .sort((x, y) => {
+      const mx = seleccion[String(x.id_refaccion)] ? 0 : 1, my = seleccion[String(y.id_refaccion)] ? 0 : 1;
+      return mx - my || String(x.nombre_refaccion || "").localeCompare(String(y.nombre_refaccion || ""), "es");
+    });
+  // Cuántas hay por categoría con la búsqueda actual
+  const conteoCat = {};
+  porBusqueda.filter(pasaExtras).forEach((r) => { if (r.categoria) conteoCat[r.categoria] = (conteoCat[r.categoria] || 0) + 1; });
+  const hayFiltros = !!(busqueda || categoria || zona || soloConStock || soloMarcadas);
+  function limpiarFiltros() { setBusqueda(""); setCategoria(""); setZona(null); setSoloConStock(false); setSoloMarcadas(false); }
   // Cuántas refacciones hay (y cuántas marcadas) por zona del auto
   const conteoZona = {}, marcadasZona = {};
   let sinZona = 0;
@@ -107,18 +125,33 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
             <View style={{ paddingHorizontal: spacing.lg, paddingTop: 10, gap: 8 }}>
               <View style={styles.buscador}>
                 <Ionicons name="search-outline" size={18} color={colors.ink500} />
-                <TextInput style={styles.buscadorInput} placeholder="Buscar refacción…" placeholderTextColor={colors.ink500} value={busqueda} onChangeText={setBusqueda} />
+                <TextInput style={styles.buscadorInput} placeholder="Buscar por nombre, categoría o código…" placeholderTextColor={colors.ink500} value={busqueda} onChangeText={setBusqueda} autoCorrect={false} />
+                {!!busqueda && <TouchableOpacity onPress={() => setBusqueda("")} hitSlop={8}><Ionicons name="close-circle-outline" size={18} color={colors.ink500} /></TouchableOpacity>}
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                 <TouchableOpacity style={[styles.chip, verAuto && styles.chipActivo]} onPress={() => { setVerAuto(!verAuto); setZona(null); }}>
                   <Text style={[styles.chipTexto, verAuto && styles.chipTextoActivo]}><Ionicons name="car-sport-outline" size={13} /> {verAuto ? "Ocultar auto" : "Elegir en el auto"}</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={[styles.chip, soloConStock && styles.chipActivo]} onPress={() => setSoloConStock(!soloConStock)}>
+                  <Text style={[styles.chipTexto, soloConStock && styles.chipTextoActivo]}>Con stock</Text>
+                </TouchableOpacity>
+                {n > 0 && (
+                  <TouchableOpacity style={[styles.chip, soloMarcadas && styles.chipActivo]} onPress={() => setSoloMarcadas(!soloMarcadas)}>
+                    <Text style={[styles.chipTexto, soloMarcadas && styles.chipTextoActivo]}>Marcadas ({n})</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                 {["", ...categorias].map((c) => (
                   <TouchableOpacity key={c || "todas"} style={[styles.chip, categoria === c && styles.chipActivo]} onPress={() => setCategoria(c)}>
-                    <Text style={[styles.chipTexto, categoria === c && styles.chipTextoActivo]}>{c || "Todas"}</Text>
+                    <Text style={[styles.chipTexto, categoria === c && styles.chipTextoActivo]}>{c || "Todas"}{c && conteoCat[c] != null ? ` (${conteoCat[c]})` : ""}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+              <View style={styles.resultadoBarra}>
+                <Text style={styles.meta}>{filtradas.length} {filtradas.length === 1 ? "refacción" : "refacciones"}</Text>
+                {hayFiltros && <TouchableOpacity onPress={limpiarFiltros} hitSlop={8}><Text style={styles.limpiar}>Limpiar filtros</Text></TouchableOpacity>}
+              </View>
             </View>
             <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 8 }}>
               {verAuto && (
@@ -142,7 +175,7 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
               )}
               {filtradas.length === 0 ? (
                 <View style={{ gap: 10 }}>
-                  <Text style={styles.vacio}>{refacciones.length ? "Nada coincide." : "Todavía no hay refacciones en el catálogo."}</Text>
+                  <Text style={styles.vacio}>{refacciones.length ? "Nada coincide con los filtros." : "Todavía no hay refacciones en el catálogo."}</Text>
                   {onCrearRefaccion && (
                     <TouchableOpacity style={styles.btnSecundario} onPress={() => setCreando(true)}>
                       <Text style={styles.btnSecundarioTexto}>＋ Agregar al catálogo{busqueda.trim() ? ` «${busqueda.trim()}»` : ""}</Text>
@@ -155,14 +188,15 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
               ) : filtradas.map((r) => {
                 const k = String(r.id_refaccion);
                 const marcada = !!seleccion[k];
-                const stock = stockDe ? stockDe(r) : r.cantidad_refaccion;
+                const stock = stockR(r);
+                const sinStock = stock != null && Number(stock) <= 0;
                 return (
-                  <TouchableOpacity key={k} style={[styles.tarjeta, marcada && styles.tarjetaActiva]} activeOpacity={0.8}
+                  <TouchableOpacity key={k} style={[styles.tarjeta, marcada && styles.tarjetaActiva, sinStock && !marcada && { opacity: 0.6 }]} activeOpacity={0.8}
                     onPress={() => setSeleccion((p) => { const c = { ...p }; if (c[k]) delete c[k]; else c[k] = { cantidad: 1 }; return c; })}>
                     <Ionicons name={marcada ? "checkbox" : "square-outline"} size={22} color={marcada ? colors.petrol500 : colors.ink500} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.nombre}>{r.nombre_refaccion}</Text>
-                      <Text style={styles.meta}>{[r.categoria, stock != null ? `Stock ${stock}` : null, precio(r) ? fmt(precio(r)) : "sin precio"].filter(Boolean).join(" · ")}</Text>
+                      <Text style={styles.meta}>{[r.categoria, stock != null ? (sinStock ? "Sin stock" : `Stock ${stock}`) : null, precio(r) ? fmt(precio(r)) : "sin precio"].filter(Boolean).join(" · ")}</Text>
                     </View>
                     {marcada && (
                       <View style={styles.contador}>
@@ -266,6 +300,8 @@ const styles = crearEstilos({
   meta: { fontSize: 12.5, color: colors.ink500, marginTop: 2 },
   contador: { flexDirection: "row", alignItems: "center", gap: 6 },
   contadorTexto: { fontSize: 16, fontWeight: "700", color: colors.ink900, minWidth: 20, textAlign: "center" },
+  resultadoBarra: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  limpiar: { fontSize: 13, fontWeight: "700", color: colors.petrol600 },
   vacio: { fontSize: 14, color: colors.ink500 },
   label: { fontSize: 12, fontWeight: "800", color: colors.ink900, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 7 },
   input: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, fontSize: 15, color: colors.ink900 },
