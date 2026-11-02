@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Switch, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "./estilos";
 
@@ -48,7 +48,7 @@ function Selector({ campo, valor, onCambiar, multiple }) {
           const activo = elegidos.includes(String(o.value));
           return (
             <TouchableOpacity key={String(o.value)} style={[styles.chip, activo && styles.chipActivo]} onPress={() => !campo.disabled && alternar(o.value)} activeOpacity={0.75}>
-              {activo && <Ionicons name="checkmark" size={14} color={colors.paper100} />}
+              {activo && <Ionicons name="checkmark-outline" size={14} color={colors.paper100} />}
               <Text style={[styles.chipTexto, activo && styles.chipTextoActivo]}>{o.label}</Text>
             </TouchableOpacity>
           );
@@ -66,16 +66,16 @@ function Selector({ campo, valor, onCambiar, multiple }) {
     <>
       <TouchableOpacity style={[styles.selectorBoton, campo.disabled && { opacity: 0.5 }]} onPress={() => !campo.disabled && setAbierto(true)}>
         <Text style={[styles.selectorTexto, !etiqueta && { color: colors.ink500 }]} numberOfLines={1}>{etiqueta || campo.placeholder || "Toca para elegir"}</Text>
-        <Ionicons name="chevron-down" size={18} color={colors.ink500} />
+        <Ionicons name="chevron-down-outline" size={18} color={colors.ink500} />
       </TouchableOpacity>
       <Modal visible={abierto} animationType="slide" onRequestClose={() => setAbierto(false)}>
         <View style={styles.listaPantalla}>
           <View style={styles.listaHeader}>
             <Text style={styles.titulo}>{campo.label}</Text>
-            <TouchableOpacity onPress={() => setAbierto(false)} hitSlop={10}><Ionicons name="close" size={24} color={colors.ink900} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setAbierto(false)} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink900} /></TouchableOpacity>
           </View>
           <View style={styles.buscador}>
-            <Ionicons name="search" size={18} color={colors.ink500} />
+            <Ionicons name="search-outline" size={18} color={colors.ink500} />
             <TextInput style={styles.buscadorInput} placeholder="Buscar…" placeholderTextColor={colors.ink500} value={buscando} onChangeText={setBuscando} autoFocus />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled">
@@ -243,7 +243,7 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
               <Text style={styles.titulo}>{titulo}</Text>
               {subtitulo ? <Text style={styles.subtitulo}>{subtitulo}</Text> : null}
             </View>
-            <TouchableOpacity onPress={onCerrar} hitSlop={10}><Ionicons name="close" size={24} color={colors.ink700} /></TouchableOpacity>
+            <TouchableOpacity onPress={onCerrar} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink700} /></TouchableOpacity>
           </View>
           <ScrollView ref={scrollRef} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
             {secciones.map((s) => (
@@ -254,7 +254,7 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
             ))}
             {error ? (
               <View style={styles.errorCaja}>
-                <Ionicons name="alert-circle" size={18} color={colors.red600} />
+                <Ionicons name="alert-circle-outline" size={18} color={colors.red600} />
                 <Text style={styles.errorTexto}>{error}</Text>
               </View>
             ) : null}

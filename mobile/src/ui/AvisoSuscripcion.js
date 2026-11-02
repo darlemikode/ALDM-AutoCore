@@ -2,7 +2,7 @@
 // solo consulta). Si está bloqueada, App.js muestra PantallaBloqueo.
 import { createContext, useContext, useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, Modal, Linking, ActivityIndicator } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { initialWindowMetrics } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
@@ -52,7 +52,7 @@ export function AvisoSuscripcion() {
       ) : null}
       {!grave ? (
         <TouchableOpacity onPress={() => setOculto(true)} hitSlop={10} accessibilityLabel="Ocultar aviso">
-          <Ionicons name="close" size={18} color={colors.warn600} />
+          <Ionicons name="close-outline" size={18} color={colors.warn600} />
         </TouchableOpacity>
       ) : null}
       <PagarSuscripcion visible={pagando} onCerrar={() => setPagando(false)} />
@@ -65,7 +65,7 @@ export function PantallaBloqueo() {
   const [pagando, setPagando] = useState(false);
   return (
     <View style={styles.bloqueo}>
-      <Ionicons name="lock-closed" size={44} color={colors.red600} />
+      <Ionicons name="lock-closed-outline" size={44} color={colors.red600} />
       <Text style={styles.bloqueoTitulo}>Acceso suspendido</Text>
       <Text style={styles.bloqueoTexto}>{estadoSuscripcion?.mensaje}</Text>
       <TouchableOpacity style={styles.boton} onPress={() => setPagando(true)}>

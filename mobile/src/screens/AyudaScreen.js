@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing, temaActivo } from "../theme";
 import { crearEstilos } from "../ui/estilos";
@@ -13,7 +13,7 @@ import { vistosSesion } from "../tutoriales/bienvenida";
 export default function AyudaScreen({ navigation }) {
   const { user, hasPermission } = useAuth();
   const [, refrescar] = useState(0);
-  useFocusEffect(useCallback(() => { refrescar((n) => n + 1); }, [])); // al volver se marca «Visto ✓»
+  useFocusEffect(useCallback(() => { refrescar((n) => n + 1); }, [])); // al volver se marca «Visto»
 
   const vistos = new Set([...(user?.tutoriales_vistos || []), ...vistosSesion]);
   const modulos = AYUDA

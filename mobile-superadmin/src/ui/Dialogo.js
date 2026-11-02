@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, Modal, Animated, Easing } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { colors, temaActivo } from "../theme";
 import { crearEstilos } from "./estilos";
 
@@ -30,7 +30,7 @@ export function alerta(titulo, mensaje, botones) {
   else if (/error|no se pudo|no pudimos|fall[oó]|inv[aá]lid|no coincide|no encontr/.test(texto)) tono = "peligro";
   else if (/falta|permiso|atenci[oó]n|cuidado|sin conexi|revisa|requier/.test(texto)) tono = "alerta";
   else if (/listo|guardad|cread|agregad|enviad|actualizad|registrad|aplicad|🎉|[eé]xito|confirmad/.test(texto)) tono = "exito";
-  const icono = { peligro: destructivo ? "trash-outline" : "close-circle-outline", alerta: "alert-circle-outline", exito: "checkmark-done", info: "information-circle-outline" }[tono];
+  const icono = { peligro: destructivo ? "trash-outline" : "close-circle-outline", alerta: "alert-circle-outline", exito: "checkmark-done-outline", info: "information-circle-outline" }[tono];
   const lista = (botones && botones.length ? botones : [{ text: "Entendido" }]).filter(Boolean);
   const principal = lista.find((b) => b.style === "destructive") || lista.find((b) => b.style !== "cancel") || lista[0];
   const acciones = [principal, ...lista.filter((b) => b !== principal)].map((b) => ({
@@ -42,10 +42,10 @@ export function alerta(titulo, mensaje, botones) {
 }
 
 const TONOS = {
-  exito: ["petrol500", "petrol600", "checkmark-done"],
+  exito: ["petrol500", "petrol600", "checkmark-done-outline"],
   info: ["blue600", "blue600", "information"],
   alerta: ["warn600", "warn600", "alert"],
-  peligro: ["red600", "red600", "trash"],
+  peligro: ["red600", "red600", "trash-outline"],
 };
 function alfa(hex, a) {
   const h = String(hex).replace("#", "");

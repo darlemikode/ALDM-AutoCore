@@ -5,7 +5,7 @@
 // servidor.
 import { useEffect, useState } from "react";
 import { View, Text } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { MODO_LOCAL, suscribirModoLocal } from "../localMode";
 import { colors } from "../theme";
 import { crearEstilos } from "./estilos";

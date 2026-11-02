@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -87,7 +87,7 @@ export default function RefaccionesScreen({ navigation }) {
       if (hasPermission("inventario.ver")) acciones.push({ texto: "Ver inventario", tipo: acciones.length ? "secundario" : "primario", icono: "cube-outline", onPress: () => navigation.navigate("InventarioDetalle", { id: r.id_refaccion }) });
       acciones.push({ texto: "Cancelar", tipo: "secundario" });
       mostrarDialogo({
-        tono: "alerta", icono: "cube", titulo: "No se puede eliminar",
+        tono: "alerta", icono: "cube-outline", titulo: "No se puede eliminar",
         mensaje: `"${r.nombre_refaccion}" tiene ${piezas} pieza(s) en inventario${inventario.length ? ` (${inventario.length} registro(s))` : ""}. Ajusta el inventario o edita la refacción.`,
         acciones,
       });
@@ -110,7 +110,7 @@ export default function RefaccionesScreen({ navigation }) {
     <View style={styles.screen}>
       <View style={styles.cabecera}>
         <View style={styles.buscador}>
-          <Ionicons name="search" size={18} color={colors.ink500} />
+          <Ionicons name="search-outline" size={18} color={colors.ink500} />
           <TextInput style={styles.buscadorInput} placeholder="Buscar refacción o número de parte…" placeholderTextColor={colors.ink500}
             value={q} onChangeText={(t) => { setQ(t); load(t); }} />
         </View>
@@ -173,7 +173,7 @@ export default function RefaccionesScreen({ navigation }) {
 
       {hasPermission("refacciones.crear") && (
         <TouchableOpacity style={styles.fab} onPress={() => setEditando({})} accessibilityLabel="Nueva refacción">
-          <Ionicons name="add" size={28} color={colors.paper100} />
+          <Ionicons name="add-outline" size={28} color={colors.paper100} />
         </TouchableOpacity>
       )}
 

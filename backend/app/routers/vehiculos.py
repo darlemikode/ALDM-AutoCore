@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas
@@ -18,15 +18,19 @@ def _con_ultimo_servicio(db: Session, vehiculos: list[models.Vehiculo]) -> list[
     ids = [v.id_vehiculo for v in vehiculos]
     if not ids:
         return vehiculos
-    servicios = (
-        db.query(models.Servicio)
-        .filter(models.Servicio.id_vehiculo.in_(ids))
-        .order_by(models.Servicio.id_vehiculo, models.Servicio.fecha_entrada_servicio.desc())
-        .all()
-    )
-    ultimos: dict[int, models.Servicio] = {}
+    # Solo las columnas necesarias (no órdenes completas) y por trozos: SQL
+    # Server admite ~2100 parámetros por consulta.
+    filas = []
+    for i in range(0, len(ids), 800):
+        filas += (
+            db.query(models.Servicio.id_vehiculo, models.Servicio.fecha_entrada_servicio, models.Servicio.etapa, models.Servicio.status)
+            .filter(models.Servicio.id_vehiculo.in_(ids[i:i + 800]))
+            .all()
+        )
+    filas.sort(key=lambda f: f.fecha_entrada_servicio or 0, reverse=True)
+    ultimos = {}
     conteos: dict[int, int] = {}
-    for s in servicios:
+    for s in filas:
         conteos[s.id_vehiculo] = conteos.get(s.id_vehiculo, 0) + 1
         if s.id_vehiculo not in ultimos:
             ultimos[s.id_vehiculo] = s
@@ -46,12 +50,14 @@ def _con_foto_principal(db: Session, vehiculos: list[models.Vehiculo]) -> list[m
     ids = [v.id_vehiculo for v in vehiculos]
     if not ids:
         return vehiculos
-    fotos = (
-        db.query(models.Foto)
-        .filter(models.Foto.entidad_tipo == "vehiculo", models.Foto.entidad_id.in_(ids))
-        .order_by(models.Foto.fecha.desc())
-        .all()
-    )
+    fotos = []
+    for i in range(0, len(ids), 800):
+        fotos += (
+            db.query(models.Foto)
+            .filter(models.Foto.entidad_tipo == "vehiculo", models.Foto.entidad_id.in_(ids[i:i + 800]))
+            .all()
+        )
+    fotos.sort(key=lambda f: f.fecha or 0, reverse=True)
     mas_reciente: dict[int, str] = {}
     for foto in fotos:
         mas_reciente.setdefault(foto.entidad_id, foto.ruta_archivo)
@@ -64,6 +70,8 @@ def _con_foto_principal(db: Session, vehiculos: list[models.Vehiculo]) -> list[m
 def listar(
     id_cliente: Optional[int] = None,
     q: Optional[str] = None,
+    limite: Optional[int] = Query(None, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     user=Depends(require_permission("vehiculos.ver")),
 ):
@@ -72,7 +80,10 @@ def listar(
         query = query.filter(models.Vehiculo.id_cliente == id_cliente)
     if q:
         query = query.filter(models.Vehiculo.placas_vehiculo.ilike(f"%{q}%"))
-    vehiculos = query.order_by(models.Vehiculo.id_vehiculo.desc()).all()
+    query = query.order_by(models.Vehiculo.id_vehiculo.desc())
+    if limite:
+        query = query.offset(offset).limit(limite)
+    vehiculos = query.all()
     vehiculos = _con_ultimo_servicio(db, vehiculos)
     return _con_foto_principal(db, vehiculos)
 

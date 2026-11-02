@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Share } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
@@ -187,7 +187,7 @@ export default function TallerDetalleScreen({ route, navigation }) {
                 <Text style={styles.pagoMonto}>{u.nombre_completo}</Text>
                 <Text style={styles.sub}>@{u.username} · {m?.rol?.nombre}{u.membresias.length > 1 ? ` · ${u.membresias.length} talleres` : ""}</Text>
               </View>
-              {m && !m.activo ? <Badge texto="sin acceso" tono="gris" /> : <Ionicons name="chevron-forward" size={18} color={colors.ink500} />}
+              {m && !m.activo ? <Badge texto="sin acceso" tono="gris" /> : <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />}
             </TouchableOpacity>
           );
         })}

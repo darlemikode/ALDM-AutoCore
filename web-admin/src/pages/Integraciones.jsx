@@ -4,6 +4,7 @@ import { useUI } from "../context/UIContext";
 import IconoModulo from "../components/IconoModulo";
 import ModalPortal from "../components/ModalPortal";
 import { Icono } from "../components/Icono";
+import QrTaller from "../components/QrTaller";
 
 const fecha = (f) => (f ? new Date(/Z$/.test(f) ? f : `${f}Z`).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "—");
 
@@ -17,9 +18,15 @@ export default function Integraciones() {
   const [nombre, setNombre] = useState("n8n WhatsApp");
   const [creando, setCreando] = useState(false);
   const [nueva, setNueva] = useState(null);
+  const [enlace, setEnlace] = useState(null); // enlace y QR automáticos del agente de WhatsApp
 
   const cargar = () => api.get("/integracion/llaves").then(setLlaves).catch((e) => notify(e.message, "error"));
-  useEffect(() => { cargar(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { cargar(); api.get("/integracion/mi-enlace").then(setEnlace).catch(() => setEnlace({ incluido: false })); /* eslint-disable-next-line */ }, []);
+
+  async function copiarEnlace() {
+    try { await navigator.clipboard.writeText(enlace.enlace); notify("Enlace copiado.", "success"); }
+    catch { notify("No se pudo copiar: selecciónalo y cópialo a mano.", "error"); }
+  }
 
   async function crear(e) {
     e.preventDefault();
@@ -64,6 +71,38 @@ export default function Integraciones() {
 
       <section className="cfg-card integ-card">
         <div className="cfg-card-header">
+          <span className="cfg-card-icono"><Icono nombre="chatbubble" size={20} /></span>
+          <div>
+            <h2>Agente de WhatsApp</h2>
+            <div className="cfg-card-desc">Ya está conectado: no tienes que configurar nada.</div>
+          </div>
+        </div>
+        {enlace === null ? <div className="loading-text">Cargando…</div> : !enlace.incluido ? (
+          <div className="empty-state">Tu paquete actual no incluye el Agente de WhatsApp. Cuando lo contrates, aquí aparecerá tu enlace y tu QR automáticamente.</div>
+        ) : !enlace.enlace ? (
+          <div className="empty-state">El agente está incluido en tu paquete y se está activando. Si en unas horas no aparece tu enlace, avisa a ALDM AutoCore.</div>
+        ) : (
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <QrTaller contenido={enlace.enlace} tamano={220} nombreArchivo={`whatsapp-${enlace.codigo}.png`} />
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <p style={{ marginTop: 0 }}>Imprime este QR (o comparte el enlace) para que tus clientes y tu personal hablen con el asistente. Al escribir con él, el sistema reconoce solo a qué taller pertenecen.</p>
+              <div className="integ-llave mono" onClick={(e) => window.getSelection()?.selectAllChildren(e.currentTarget)}>{enlace.enlace}</div>
+              <div style={{ display: "flex", gap: 8, margin: "10px 0 14px", flexWrap: "wrap" }}>
+                <button type="button" className="btn btn-primary" onClick={copiarEnlace}><Icono nombre="document" size={18} /> Copiar enlace</button>
+                <a className="btn btn-secondary" href={enlace.enlace} target="_blank" rel="noreferrer">Probar en WhatsApp</a>
+              </div>
+              {enlace.consumo && (
+                <div className="integ-sub">Interacciones este mes: <b>{enlace.consumo.usado}</b> de {enlace.consumo.tope} incluidas{enlace.consumo.excedente > 0 ? ` · ${enlace.consumo.excedente} de excedente ($${enlace.consumo.costo.toFixed(2)})` : ""}.</div>
+              )}
+              <div className="integ-sub">Código de tu taller: <b className="mono">{enlace.codigo}</b></div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <details className="cfg-card integ-card">
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>Avanzado: llaves de API propias</summary>
+        <div className="cfg-card-header">
           <span className="cfg-card-icono"><Icono nombre="key" size={20} /></span>
           <div>
             <h2>Llaves de API</h2>
@@ -99,7 +138,7 @@ export default function Integraciones() {
             </tbody>
           </table>
         )}
-      </section>
+      </details>
 
       <section className="cfg-card integ-card">
         <div className="cfg-card-header">

@@ -1105,6 +1105,20 @@ class LlaveIntegracion(TenantMixin, Base):
     ultimo_uso = Column(DateTime, nullable=True)
 
 
+class AgenteVinculo(Base):
+    """Con qué taller habla cada teléfono en el WhatsApp compartido de ALDM
+    (agente de WhatsApp). Se crea solo la primera vez que alguien escribe con
+    el código del taller (QR/enlace) o cuando su teléfono está registrado en
+    un único taller con el módulo. Tabla global: no lleva id_taller propio
+    porque lo que guarda es, justamente, a qué taller pertenece el teléfono."""
+    __tablename__ = "agente_vinculos"
+
+    id_vinculo = Column(Integer, primary_key=True, index=True)
+    telefono = Column(String(10), nullable=False, unique=True, index=True)  # últimos 10 dígitos
+    id_taller = Column(Integer, ForeignKey("talleres.id_taller"), nullable=False, index=True)
+    actualizado = Column(DateTime, default=datetime.utcnow)
+
+
 # ---------------------------------------------------------------------------
 # Super administración — catálogo de talleres/refaccionarias clientes de
 # ALDM AutoCore, paquetes de suscripción y qué módulos incluye cada uno.

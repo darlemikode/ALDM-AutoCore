@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { colors } from "../theme";
 import { crearEstilos } from "../ui/estilos";
@@ -160,7 +160,7 @@ export default function AgendarScreen({ route, navigation }) {
       </Paso>
 
       <TouchableOpacity style={[styles.boton, enviando && { opacity: 0.6 }]} onPress={enviarSolicitud} disabled={enviando}>
-        <Ionicons name="calendar" size={18} color="#fff" />
+        <Ionicons name="calendar-outline" size={18} color="#fff" />
         <Text style={styles.botonTexto}>{enviando ? "Enviando…" : "Solicitar cita"}</Text>
       </TouchableOpacity>
 
@@ -213,7 +213,7 @@ function Chip({ activo, onPress, texto, sub, icono }) {
         <Text style={[styles.chipTexto, activo && styles.textoActivo]} numberOfLines={1}>{texto}</Text>
         {sub ? <Text style={styles.chipSub}>{sub}</Text> : null}
       </View>
-      {activo ? <Ionicons name="checkmark" size={15} color={colors.petrol600} /> : null}
+      {activo ? <Ionicons name="checkmark-outline" size={15} color={colors.petrol600} /> : null}
     </TouchableOpacity>
   );
 }

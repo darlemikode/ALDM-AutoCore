@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import HojaFormulario from "../ui/HojaFormulario";
 import { alerta } from "../ui/Dialogo";
 import { colors } from "../theme";
@@ -59,7 +59,7 @@ const camposNomina = (v, empleados = []) => {
     { name: "fecha_inicio", label: "Empieza el", type: "date", required: true, onElegir: (_, n) => recalcular(n) },
     {
       name: "fecha_fin", label: "Termina el", type: "date", required: true,
-      hint: invalido ? "⚠ Debe ser igual o posterior a la fecha de inicio." : dias ? `Se calcula sola · ${dias} día(s) de periodo` : "Se calcula sola al elegir inicio y periodicidad.",
+      hint: invalido ? "Debe ser igual o posterior a la fecha de inicio." : dias ? `Se calcula sola · ${dias} día(s) de periodo` : "Se calcula sola al elegir inicio y periodicidad.",
     },
     {
       name: "empleados", label: "¿A quién se le paga?", type: "multiselect",

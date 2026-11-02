@@ -1,6 +1,7 @@
 import ScrollCampos from "../ui/ScrollCampos";
 import { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Image, ActivityIndicator } from "react-native";
+import { Ionicons } from "../ui/IconoWeb";
 import { Picker } from "../ui/Picker";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
@@ -13,15 +14,16 @@ import { urlFoto, elegirOrigenFoto, capturarFoto, subirFoto } from "../lib/fotos
 import { alerta } from "../ui/Dialogo";
 
 const ESTADOS = {
-  bien: { icono: "✅", texto: "Bien" },
-  regular: { icono: "⚠️", texto: "Regular" },
-  mal: { icono: "❌", texto: "Mal" },
+  bien: { icono: "checkmark-circle-outline", texto: "Bien", tono: "teal600", fondo: "teal100" },
+  regular: { icono: "alert-circle-outline", texto: "Regular", tono: "warn600", fondo: "warn100" },
+  mal: { icono: "close-circle-outline", texto: "Mal", tono: "red600", fondo: "red100" },
 };
 
-// Ícono por categoría del checklist (las que no estén aquí usan 🔍)
+// Ícono por categoría del checklist (las que no estén aquí usan una libreta)
 const ICONO_CATEGORIA = {
-  "Llantas": "🛞", "Frenos": "🛑", "Luces": "💡", "Fluidos": "💧",
-  "Batería y eléctrico": "🔋", "Suspensión y dirección": "🔩", "Carrocería": "🚘",
+  "Llantas": "disc-outline", "Frenos": "stop-circle-outline", "Luces": "bulb-outline", "Fluidos": "water-outline",
+  "Batería y eléctrico": "battery-charging-outline", "Suspensión y dirección": "build-outline", "Carrocería": "car-sport-outline",
+  "Enfriamiento y clima": "snow-outline", "Motor": "cog-outline",
 };
 
 /**
@@ -41,6 +43,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
   const [fotosPuntos, setFotosPuntos] = useState({}); // { id_item: [foto] } — fotos de puntos en Regular/Mal
   const [subiendoFoto, setSubiendoFoto] = useState(null);
   const [visor, setVisor] = useState(null); // { fotos: [url], indice }
+  const [soloProblemas, setSoloProblemas] = useState(false); // ver solo puntos en Regular/Mal
 
   const idRef = useRef(inspeccionExistente?.id_inspeccion || null);
   const datosRef = useRef({ resultados, comentarioGeneral });
@@ -192,7 +195,8 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
   const itemsPorZona = {};
   items.forEach((it) => zonasDe(it.categoria, it.nombre_item).forEach((z) => { (itemsPorZona[z] = itemsPorZona[z] || []).push(it); }));
   const estadoZona = (z) => peorEstado((itemsPorZona[z] || []).map((it) => resultados[it.id_item]?.estado || "bien"));
-  const itemsVisibles = zona && itemsPorZona[zona] ? itemsPorZona[zona] : items;
+  const itemsZona = zona && itemsPorZona[zona] ? itemsPorZona[zona] : items;
+  const itemsVisibles = soloProblemas ? itemsZona.filter((i) => (resultados[i.id_item]?.estado || "bien") !== "bien") : itemsZona;
   function marcarZona(z, estado) {
     if (!puedeEditar) return;
     setResultados((prev) => {
@@ -212,92 +216,137 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
   };
 
   const textoGuardado = {
-    guardando: "⏳ Guardando…",
-    guardado: "✓ Guardado",
-    error: "⚠️ No se guardó",
-  }[estadoGuardado] || (idInspeccion ? "✓ Guardado" : "Se guarda solo al tocar");
+    guardando: "Guardando…",
+    guardado: "Guardado",
+    error: "No se guardó",
+  }[estadoGuardado] || (idInspeccion ? "Guardado" : "Se guarda solo");
+  const iconoGuardado = estadoGuardado === "guardando" ? "time-outline" : estadoGuardado === "error" ? "alert-circle-outline" : "checkmark-outline";
+  const colorGuardado = estadoGuardado === "error" ? colors.red600 : colors.ink500;
+  const totalPuntos = Math.max(1, conteo.bien + conteo.regular + conteo.mal);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={cerrar}>
       <View style={styles.header}>
+        <View style={styles.headerIcono}><Ionicons name="clipboard-outline" size={18} color={colors.petrol600} /></View>
         <Text style={styles.headerTitulo}>Inspección digital</Text>
-        <TouchableOpacity onPress={cerrar} disabled={estadoGuardado === "guardando"}>
+        <TouchableOpacity onPress={cerrar} disabled={estadoGuardado === "guardando"} style={styles.botonListo}>
           <Text style={styles.cerrar}>{estadoGuardado === "guardando" ? "Guardando…" : "Listo"}</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.contadores}>
-        <Text style={[styles.cont, { color: colors.teal600 }]}>✅ {conteo.bien} Bien</Text>
-        <Text style={[styles.cont, { color: colors.warn600 }]}>⚠️ {conteo.regular} Regular</Text>
-        <Text style={[styles.cont, { color: colors.red600 }]}>❌ {conteo.mal} Mal</Text>
-        <Text style={styles.guardadoAuto}>{textoGuardado}</Text>
+      <View style={styles.resumen}>
+        <View style={styles.contadores}>
+          {Object.entries(ESTADOS).map(([k, e]) => (
+            <View key={k} style={[styles.chipCont, { backgroundColor: colors[e.fondo] }]}>
+              <Ionicons name={e.icono} size={14} color={colors[e.tono]} />
+              <Text style={[styles.cont, { color: colors[e.tono] }]}>{conteo[k]} {e.texto}</Text>
+            </View>
+          ))}
+          <View style={styles.guardadoFila}>
+            <Ionicons name={iconoGuardado} size={13} color={colorGuardado} />
+            <Text style={[styles.guardadoAuto, { color: colorGuardado }]}>{textoGuardado}</Text>
+          </View>
+        </View>
+        <View style={styles.progreso}>
+          {Object.entries(ESTADOS).map(([k, e]) => (conteo[k] ? <View key={k} style={{ flex: conteo[k] / totalPuntos, backgroundColor: colors[e.tono] }} /> : null))}
+        </View>
       </View>
 
       <ScrollCampos style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
-        <Text style={styles.hint}>Toca el estado de cada punto; se guarda al instante. Lo que quede en "Mal" lo puedes ligar a la refacción que se necesita.</Text>
-
         <View style={styles.mapa}>
           <Auto3D altura={250} compacto fps={18} estadoZona={(z) => (itemsPorZona[z] ? estadoZona(z) : "ninguno")} elegida={zona}
             onSelect={(z) => setZona(zona === z ? null : z)} ayuda="Gira el auto · toca una zona para ver solo sus puntos" />
           <View style={styles.leyenda}>
-            <Text style={[styles.leyendaItem, { color: colors.teal600 }]}>● Bien</Text>
-            <Text style={[styles.leyendaItem, { color: colors.warn600 }]}>● Regular</Text>
-            <Text style={[styles.leyendaItem, { color: colors.red600 }]}>● Mal</Text>
+            {Object.entries(ESTADOS).map(([k, e]) => (
+              <View key={k} style={styles.leyendaFila}>
+                <View style={[styles.leyendaPunto, { backgroundColor: colors[e.tono] }]} />
+                <Text style={[styles.leyendaItem, { color: colors[e.tono] }]}>{e.texto}</Text>
+              </View>
+            ))}
           </View>
           {zona && itemsPorZona[zona] && (
             <View style={styles.zonaBarra}>
               <Text style={styles.zonaNombre} numberOfLines={2}>{ZONAS[zona]}</Text>
               {puedeEditar && (
                 <TouchableOpacity style={styles.botonTodoBien} onPress={() => marcarZona(zona, "bien")}>
-                  <Text style={styles.botonTodoBienTexto}>✅ Todo bien aquí</Text>
+                  <Ionicons name="checkmark-done-outline" size={14} color={colors.teal600} />
+                  <Text style={styles.botonTodoBienTexto}>Todo bien aquí</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.botonTodoBien} onPress={() => setZona(null)}>
+                <Ionicons name="apps-outline" size={14} color={colors.ink700} />
                 <Text style={styles.botonTodoBienTexto}>Ver todos</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
+        <View style={styles.barraFiltro}>
+          <Text style={styles.hint} numberOfLines={2}>Toca el estado de cada punto; se guarda al instante.</Text>
+          <TouchableOpacity style={[styles.chipFiltro, soloProblemas && { backgroundColor: colors.petrol500, borderColor: colors.petrol500 }]} onPress={() => setSoloProblemas((v) => !v)} activeOpacity={0.8}>
+            <Ionicons name="funnel-outline" size={14} color={soloProblemas ? colors.sobreAcento : colors.ink700} />
+            <Text style={[styles.chipFiltroTexto, soloProblemas && { color: colors.sobreAcento }]}>Solo con problemas</Text>
+          </TouchableOpacity>
+        </View>
+
+        {categorias.length === 0 && (
+          <View style={styles.vacio}>
+            <Ionicons name="checkmark-done-outline" size={28} color={colors.teal600} />
+            <Text style={styles.vacioTexto}>Todo en orden: no hay puntos en Regular ni en Mal.</Text>
+          </View>
+        )}
+
         {categorias.map((cat) => {
           const delaCat = itemsVisibles.filter((i) => i.categoria === cat);
           const malos = delaCat.filter((i) => resultados[i.id_item]?.estado === "mal").length;
+          const regulares = delaCat.filter((i) => resultados[i.id_item]?.estado === "regular").length;
           return (
             <View key={cat} style={{ marginBottom: spacing.lg }}>
               <View style={styles.categoriaTitulo}>
-                <Text style={styles.categoriaIcono}>{ICONO_CATEGORIA[cat] || "🔍"}</Text>
-                <Text style={styles.categoria}>{cat}</Text>
+                <View style={styles.categoriaIconoCaja}><Ionicons name={ICONO_CATEGORIA[cat] || "clipboard-outline"} size={16} color={colors.petrol600} /></View>
+                <Text style={styles.categoria} numberOfLines={2}>{cat}</Text>
                 {malos > 0 && (
                   <View style={styles.badgeMal}><Text style={styles.badgeMalTexto}>{malos} mal</Text></View>
                 )}
+                {regulares > 0 && (
+                  <View style={styles.badgeReg}><Text style={styles.badgeRegTexto}>{regulares} regular</Text></View>
+                )}
                 {puedeEditar && (
                 <TouchableOpacity style={styles.botonTodoBien} onPress={() => marcarCategoria(cat, "bien")}>
-                  <Text style={styles.botonTodoBienTexto}>✅ Todo bien</Text>
+                  <Ionicons name="checkmark-done-outline" size={14} color={colors.teal600} />
+                  <Text style={styles.botonTodoBienTexto}>Todo bien</Text>
                 </TouchableOpacity>
                 )}
               </View>
               {delaCat.map((item) => {
                 const r = resultados[item.id_item] || { estado: "bien", comentario: "", id_refaccion_sugerida: null };
+                const est = ESTADOS[r.estado] || ESTADOS.bien;
+                const conProblema = r.estado !== "bien";
                 return (
-                  <View key={item.id_item} style={styles.itemCard}>
+                  <View key={item.id_item} style={[styles.itemCard, { borderLeftColor: conProblema ? colors[est.tono] : colors.ink300 }, conProblema && { backgroundColor: colors[est.fondo] }]}>
                     <Text style={styles.itemNombre}>{item.nombre_item}</Text>
                     <View style={styles.estadoRow}>
-                      {Object.entries(ESTADOS).map(([estado, e]) => (
-                        <TouchableOpacity
-                          key={estado}
-                          style={[styles.estadoBtn, r.estado === estado && styles.estadoBtnActivo]}
-                          onPress={() => actualizar(item.id_item, "estado", estado)}
-                        >
-                          <Text style={[styles.estadoBtnTexto, r.estado === estado && styles.estadoBtnTextoActivo]}>{e.icono} {e.texto}</Text>
-                        </TouchableOpacity>
-                      ))}
+                      {Object.entries(ESTADOS).map(([estado, e]) => {
+                        const activo = r.estado === estado;
+                        return (
+                          <TouchableOpacity
+                            key={estado}
+                            activeOpacity={0.8}
+                            style={[styles.estadoBtn, activo && { backgroundColor: colors[e.fondo], borderColor: colors[e.tono] }]}
+                            onPress={() => actualizar(item.id_item, "estado", estado)}
+                          >
+                            <Ionicons name={e.icono} size={16} color={activo ? colors[e.tono] : colors.ink500} />
+                            <Text style={[styles.estadoBtnTexto, activo && { color: colors[e.tono], fontWeight: "800" }]}>{e.texto}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                     {r.estado !== "bien" && (
-                      <View style={{ marginTop: 8 }}>
+                      <View style={{ marginTop: 10 }}>
                         <TextInput placeholderTextColor={colors.ink500}
                           editable={puedeEditar}
                           style={styles.input}
-                          placeholder="📝 Comentario (opcional)"
+                          placeholder="Comentario (opcional)"
                           value={r.comentario}
                           onChangeText={(v) => actualizar(item.id_item, "comentario", v)}
                         />
@@ -309,14 +358,19 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
                               </TouchableOpacity>
                               {puedeEditar && (
                                 <TouchableOpacity style={styles.fotoBorrar} onPress={() => borrarFotoPunto(item.id_item, foto)} accessibilityLabel="Eliminar foto">
-                                  <Text style={styles.fotoBorrarTexto}>✕</Text>
+                                  <Ionicons name="close-outline" size={13} color="#fff" />
                                 </TouchableOpacity>
                               )}
                             </View>
                           ))}
                           {puedeEditar && (
                             <TouchableOpacity style={styles.fotoAgregar} onPress={() => agregarFotoPunto(item.id_item)} disabled={subiendoFoto !== null}>
-                              {subiendoFoto === item.id_item ? <ActivityIndicator color={colors.petrol500} /> : <Text style={styles.fotoAgregarTexto}>📷 Foto</Text>}
+                              {subiendoFoto === item.id_item ? <ActivityIndicator color={colors.petrol500} /> : (
+                                <>
+                                  <Ionicons name="camera-outline" size={20} color={colors.ink700} />
+                                  <Text style={styles.fotoAgregarTexto}>Foto</Text>
+                                </>
+                              )}
                             </TouchableOpacity>
                           )}
                         </View>
@@ -326,7 +380,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
                               selectedValue={r.id_refaccion_sugerida || ""}
                               onValueChange={(v) => actualizar(item.id_item, "id_refaccion_sugerida", v || null)}
                             >
-                              <Picker.Item label="🔧 Sugerir refacción (opcional)" value="" />
+                              <Picker.Item label="Sugerir refacción (opcional)" value="" />
                               {refacciones.map((ref) => (
                                 <Picker.Item key={ref.id_refaccion} label={ref.nombre_refaccion} value={ref.id_refaccion} />
                               ))}
@@ -342,7 +396,10 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
           );
         })}
 
-        <Text style={styles.label}>📋 Comentario general</Text>
+        <View style={styles.labelFila}>
+          <Ionicons name="document-text-outline" size={15} color={colors.ink500} />
+          <Text style={styles.label}>Comentario general</Text>
+        </View>
         <TextInput placeholderTextColor={colors.ink500}
           editable={puedeEditar}
           style={[styles.input, styles.textarea]}
@@ -364,42 +421,55 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
 }
 
 const styles = crearEstilos({
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.ink300, backgroundColor: colors.paper100 },
-  headerTitulo: { fontSize: 16, fontWeight: "800", color: colors.ink900, textTransform: "uppercase" },
+  header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: spacing.lg, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.ink300, backgroundColor: colors.paper100 },
+  headerIcono: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center" },
+  headerTitulo: { flex: 1, fontSize: 17, fontWeight: "800", color: colors.ink900 },
+  botonListo: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, backgroundColor: colors.petrol100 },
   cerrar: { fontSize: 13, color: colors.petrol600, fontWeight: "700" },
-  contadores: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: colors.paper100, borderBottomWidth: 1, borderBottomColor: colors.ink300, alignItems: "center" },
+  resumen: { backgroundColor: colors.paper100, borderBottomWidth: 1, borderBottomColor: colors.ink300, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 10, gap: 8 },
+  contadores: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
+  chipCont: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 100, paddingVertical: 4, paddingHorizontal: 10 },
   cont: { fontSize: 12, fontWeight: "700" },
-  guardadoAuto: { fontSize: 11, color: colors.ink500, marginLeft: "auto" },
+  guardadoFila: { flexDirection: "row", alignItems: "center", gap: 4, marginLeft: "auto" },
+  guardadoAuto: { fontSize: 11.5 },
+  progreso: { flexDirection: "row", height: 5, borderRadius: 3, overflow: "hidden", gap: 2, backgroundColor: colors.ink300 },
   screen: { flex: 1, backgroundColor: colors.paper0 },
-  hint: { fontSize: 12, color: colors.ink500, marginBottom: spacing.md },
-  categoriaTitulo: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: spacing.sm, flexWrap: "wrap" },
-  categoriaIcono: { fontSize: 15 },
-  categoria: { fontSize: 12, fontWeight: "800", color: colors.petrol600, textTransform: "uppercase" },
+  barraFiltro: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: spacing.md },
+  hint: { flex: 1, fontSize: 12, color: colors.ink500 },
+  chipFiltro: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.ink300, backgroundColor: colors.paper100, borderRadius: 100, paddingVertical: 6, paddingHorizontal: 12 },
+  chipFiltroTexto: { fontSize: 12, fontWeight: "700", color: colors.ink700 },
+  vacio: { alignItems: "center", gap: 8, paddingVertical: 30 },
+  vacioTexto: { fontSize: 13, color: colors.ink500, textAlign: "center" },
+  categoriaTitulo: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: spacing.sm, flexWrap: "wrap" },
+  categoriaIconoCaja: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center" },
+  categoria: { flexShrink: 1, fontSize: 13, fontWeight: "800", color: colors.ink900, textTransform: "uppercase", letterSpacing: 0.3 },
   badgeMal: { backgroundColor: colors.red100, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 2 },
   badgeMalTexto: { fontSize: 10, fontWeight: "800", color: colors.red600 },
-  botonTodoBien: { marginLeft: "auto", backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  botonTodoBienTexto: { fontSize: 11, fontWeight: "700", color: colors.ink700 },
-  itemCard: { backgroundColor: colors.paper100, borderRadius: 8, padding: spacing.sm, marginBottom: spacing.sm },
-  itemNombre: { fontSize: 13, fontWeight: "600", color: colors.ink900, marginBottom: 8 },
+  badgeReg: { backgroundColor: colors.warn100, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 2 },
+  badgeRegTexto: { fontSize: 10, fontWeight: "800", color: colors.warn600 },
+  botonTodoBien: { marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  botonTodoBienTexto: { fontSize: 11.5, fontWeight: "700", color: colors.ink700 },
+  itemCard: { backgroundColor: colors.paper100, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: colors.ink300, paddingVertical: 12, paddingHorizontal: 12, marginBottom: spacing.sm },
+  itemNombre: { fontSize: 14, fontWeight: "600", color: colors.ink900, marginBottom: 10 },
   estadoRow: { flexDirection: "row", gap: 6 },
-  estadoBtn: { flex: 1, backgroundColor: colors.paper0, borderRadius: 8, paddingVertical: 8, alignItems: "center", borderWidth: 1, borderColor: colors.ink300 },
-  estadoBtnActivo: { backgroundColor: colors.petrol500, borderColor: colors.petrol500 },
-  estadoBtnTexto: { fontSize: 11, fontWeight: "700", color: colors.ink700 },
-  estadoBtnTextoActivo: { color: "#fff" },
+  estadoBtn: { flex: 1, flexDirection: "row", gap: 5, backgroundColor: colors.paper0, borderRadius: 8, paddingVertical: 9, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.ink300 },
+  estadoBtnTexto: { fontSize: 12, fontWeight: "600", color: colors.ink500 },
   input: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, padding: 10, fontSize: 13 },
   textarea: { minHeight: 70, textAlignVertical: "top" },
   pickerWrap: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, overflow: "hidden" },
-  label: { fontSize: 11, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 },
+  labelFila: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
+  label: { fontSize: 11.5, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.4 },
   mapa: { marginBottom: spacing.lg },
-  leyenda: { flexDirection: "row", justifyContent: "center", gap: 14, marginTop: 4 },
-  leyendaItem: { fontSize: 11, fontWeight: "700" },
+  leyenda: { flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 6 },
+  leyendaFila: { flexDirection: "row", alignItems: "center", gap: 6 },
+  leyendaPunto: { width: 9, height: 9, borderRadius: 5 },
+  leyendaItem: { fontSize: 11.5, fontWeight: "700" },
   zonaBarra: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: spacing.sm },
   zonaNombre: { flex: 1, minWidth: 140, fontSize: 13, fontWeight: "800", color: colors.petrol600 },
   fotosFila: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8, alignItems: "center" },
   fotoMini: { position: "relative" },
   fotoImg: { width: 64, height: 64, borderRadius: 8, backgroundColor: colors.paper0 },
   fotoBorrar: { position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: "rgba(20,24,28,0.85)", alignItems: "center", justifyContent: "center" },
-  fotoBorrarTexto: { color: "#fff", fontSize: 11, fontWeight: "800" },
-  fotoAgregar: { height: 64, minWidth: 84, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.ink300, alignItems: "center", justifyContent: "center" },
+  fotoAgregar: { height: 64, minWidth: 84, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.ink300, alignItems: "center", justifyContent: "center", gap: 2 },
   fotoAgregarTexto: { fontSize: 12, fontWeight: "700", color: colors.ink700 },
 });

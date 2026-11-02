@@ -9,9 +9,13 @@ usuario y contraseña. Todo lo que devuelve está acotado:
 El flujo de n8n pasa el teléfono directo del mensaje recibido, no lo decide la IA.
 """
 import hashlib
+import hmac
 import io
+import os
 import re
 import secrets
+import unicodedata
+from urllib.parse import quote
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -21,10 +25,11 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from .. import models
+from .. import consumo, models
 from ..database import SessionLocal, get_db
 from ..rate_limit import limiter
 from ..security import require_permission
+from ..suscripciones import estado_taller
 from ..tenancy import MODO_SUPERADMIN, MODO_TALLER, fijar_tenant, taller_actual
 
 router = APIRouter(prefix="/api/integracion", tags=["integracion"])
@@ -77,36 +82,189 @@ def revocar_llave(id_llave: int, db: Session = Depends(get_db), user=Depends(req
     return {"status": "revocada"}
 
 
-# --- Autenticación por llave ------------------------------------------------
-def db_por_llave(request: Request, x_api_key: Optional[str] = Header(None)):
-    """Sesión de BD acotada al taller dueño de la llave."""
-    if not x_api_key or not x_api_key.startswith("aldm_"):
+# --- Autenticación ----------------------------------------------------------
+# Dos formas de entrar, ambas sin usuario ni contraseña:
+#  1) Llave del taller (X-API-Key): la que se generaba a mano en Integraciones.
+#  2) Llave de la PLATAFORMA (X-Plataforma-Key) + código del taller (X-Taller):
+#     un solo flujo de n8n, configurado una vez por ALDM, atiende a todos los
+#     talleres que tengan el módulo «Agente WhatsApp»; el taller no hace nada.
+def _agente_incluido(info) -> bool:
+    return not info or info.get("modulos") is None or "agente_whatsapp" in info["modulos"]
+
+
+def _llave_plataforma_valida(llave: Optional[str]) -> bool:
+    esperada = os.getenv("AGENTE_PLATAFORMA_KEY", "")
+    return bool(esperada) and bool(llave) and hmac.compare_digest(llave.encode("utf-8"), esperada.encode("utf-8"))
+
+
+def _exigir_llave_plataforma(llave: Optional[str]):
+    if not os.getenv("AGENTE_PLATAFORMA_KEY"):
+        raise HTTPException(status_code=503, detail="El agente de WhatsApp no está configurado en el servidor.")
+    if not _llave_plataforma_valida(llave):
+        raise HTTPException(status_code=401, detail="Llave de plataforma no válida.")
+
+
+def db_por_llave(request: Request, x_api_key: Optional[str] = Header(None), x_plataforma_key: Optional[str] = Header(None), x_taller: Optional[str] = Header(None)):
+    """Sesión de BD acotada a UN taller: el dueño de la llave, o el taller
+    indicado en X-Taller cuando se entra con la llave de la plataforma."""
+    if not x_api_key and not x_plataforma_key:
         raise HTTPException(status_code=401, detail="Falta la llave de API (encabezado X-API-Key).")
     db = SessionLocal()
     try:
         fijar_tenant(db, MODO_SUPERADMIN)
-        llave = (
-            db.query(models.LlaveIntegracion).execution_options(sin_filtro_taller=True)
-            .filter(models.LlaveIntegracion.hash_llave == _hash(x_api_key), models.LlaveIntegracion.activa == True)
-            .first()
-        )
-        if not llave or llave.id_taller is None:
-            raise HTTPException(status_code=401, detail="Llave de API no válida o revocada.")
-        from ..suscripciones import estado_taller
-        info = estado_taller(db, llave.id_taller)
+        llave = None
+        if x_plataforma_key:
+            _exigir_llave_plataforma(x_plataforma_key)
+            codigo = re.sub(r"[^A-Z0-9]", "", (x_taller or "").upper())
+            taller = db.query(models.Taller).filter(models.Taller.codigo == codigo, models.Taller.activo == True).first() if codigo else None  # noqa: E712
+            if not taller:
+                raise HTTPException(status_code=404, detail="Taller no encontrado.")
+            id_taller = taller.id_taller
+        else:
+            if not x_api_key.startswith("aldm_"):
+                raise HTTPException(status_code=401, detail="Falta la llave de API (encabezado X-API-Key).")
+            llave = (
+                db.query(models.LlaveIntegracion).execution_options(sin_filtro_taller=True)
+                .filter(models.LlaveIntegracion.hash_llave == _hash(x_api_key), models.LlaveIntegracion.activa == True)  # noqa: E712
+                .first()
+            )
+            if not llave or llave.id_taller is None:
+                raise HTTPException(status_code=401, detail="Llave de API no válida o revocada.")
+            id_taller = llave.id_taller
+        info = estado_taller(db, id_taller)
         if info and info.get("bloqueado"):
             raise HTTPException(status_code=402, detail="La suscripción del taller está suspendida.")
+        if not _agente_incluido(info):
+            raise HTTPException(status_code=403, detail="El paquete del taller no incluye el Agente de WhatsApp.")
         if info and info.get("solo_lectura") and request.method not in ("GET", "HEAD"):
             raise HTTPException(status_code=402, detail="La suscripción del taller venció: solo consulta.")
-        if llave.ultimo_uso is None or datetime.utcnow() - llave.ultimo_uso > timedelta(minutes=5):
+        if llave is not None and (llave.ultimo_uso is None or datetime.utcnow() - llave.ultimo_uso > timedelta(minutes=5)):
             llave.ultimo_uso = datetime.utcnow()
             db.commit()
-        fijar_tenant(db, MODO_TALLER, llave.id_taller)
+        fijar_tenant(db, MODO_TALLER, id_taller)
         db.info["estado_suscripcion"] = info
-        request.state.id_taller = llave.id_taller
+        request.state.id_taller = id_taller
         yield db
     finally:
         db.close()
+
+
+def db_plataforma(x_plataforma_key: Optional[str] = Header(None)):
+    """Sesión sin filtro de taller, SOLO para decidir con qué taller habla un
+    teléfono (ver /plataforma/resolver). Exige la llave de la plataforma."""
+    _exigir_llave_plataforma(x_plataforma_key)
+    db = SessionLocal()
+    fijar_tenant(db, MODO_SUPERADMIN)
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# --- Enlace automático del taller (sin configurar nada) -----------------------
+@router.get("/mi-enlace")
+def mi_enlace(db: Session = Depends(get_db), user=Depends(require_permission("configuracion.editar"))):
+    """Enlace y QR de WhatsApp del taller: lo que sus clientes escanean para
+    hablar con el agente. Existe en cuanto el paquete incluye el módulo."""
+    tid = taller_actual(db)
+    taller = db.query(models.Taller).filter(models.Taller.id_taller == tid).first() if tid else None
+    info = estado_taller(db, tid) if tid else None
+    incluido = bool(taller) and _agente_incluido(info) and bool(info and info.get("modulos") is not None)
+    numero = re.sub(r"\D", "", os.getenv("AGENTE_WHATSAPP_NUMERO", ""))
+    r = {"incluido": incluido, "configurado": bool(numero and os.getenv("AGENTE_PLATAFORMA_KEY")),
+         "codigo": taller.codigo if taller else None, "nombre": taller.nombre_comercial if taller else None}
+    if incluido and numero and taller and taller.codigo:
+        texto = f"Hola, quiero ayuda de {taller.nombre_comercial}. Código: {taller.codigo}"
+        r.update(numero=numero, texto=texto, enlace=f"https://wa.me/{numero}?text={quote(texto)}")
+    if incluido:
+        r["consumo"] = consumo.resumen_mes(db, tid)["detalle"]["wp"]
+    return r
+
+
+# --- ¿Con qué taller habla este teléfono? (lo llama n8n primero) --------------
+def _codigos_en_texto(texto: str) -> list[str]:
+    t = unicodedata.normalize("NFD", texto or "").encode("ascii", "ignore").decode().upper()
+    m = re.search(r"CODIGO\W{0,3}([A-Z0-9]{3,40})", t)
+    candidatos = [m.group(1)] if m else []
+    candidatos += re.findall(r"\b[A-Z0-9]{4,40}\b", t)
+    return list(dict.fromkeys(candidatos))
+
+
+def _taller_disponible(db: Session, taller: models.Taller) -> bool:
+    if not taller or not taller.activo:
+        return False
+    info = estado_taller(db, taller.id_taller)
+    return not (info and info.get("bloqueado")) and _agente_incluido(info)
+
+
+def _talleres_del_telefono(db: Session, t10: str) -> list[models.Taller]:
+    ids = set()
+    for id_taller, t1, t2 in db.query(models.Cliente.id_taller, models.Cliente.telefono1, models.Cliente.telefono2).filter(
+        models.Cliente.status_cliente == 1, or_(models.Cliente.telefono1.like(f"%{t10}"), models.Cliente.telefono2.like(f"%{t10}"))
+    ).all():
+        if t10 in (_tel10(t1), _tel10(t2)):
+            ids.add(id_taller)
+    for id_taller, tel in (
+        db.query(models.UsuarioTaller.id_taller, models.Usuario.telefono)
+        .join(models.Usuario, models.Usuario.id_usuario == models.UsuarioTaller.id_usuario)
+        .filter(models.UsuarioTaller.activo == True, models.Usuario.activo == True, models.Usuario.telefono.like(f"%{t10}"))  # noqa: E712
+        .all()
+    ):
+        if _tel10(tel) == t10:
+            ids.add(id_taller)
+    ids.discard(None)
+    if not ids:
+        return []
+    talleres = db.query(models.Taller).filter(models.Taller.id_taller.in_(ids), models.Taller.codigo.isnot(None)).all()
+    return [t for t in talleres if _taller_disponible(db, t)]
+
+
+@router.get("/plataforma/resolver")
+@limiter.limit("600/minute")
+def resolver_taller(request: Request, telefono: str = Query(...), texto: str = Query(""), db: Session = Depends(db_plataforma)):
+    """Decide con qué taller habla quien escribe al WhatsApp compartido:
+      1) si el mensaje trae un código de taller (QR / enlace), se vincula;
+      2) si ya estaba vinculado, sigue con ese taller;
+      3) si su teléfono está en un solo taller con el agente, se vincula solo;
+      4) si está en varios, se le pide elegir; si en ninguno, se le pide el código.
+    Cada mensaje atendido cuenta como una interacción del taller (tope del plan)."""
+    t10 = _tel10(telefono)
+    if len(t10) != 10:
+        return {"estado": "pedir_codigo"}
+
+    def vincular(taller: models.Taller, nuevo: bool):
+        v = db.query(models.AgenteVinculo).filter(models.AgenteVinculo.telefono == t10).first()
+        if v:
+            v.id_taller, v.actualizado = taller.id_taller, datetime.utcnow()
+        else:
+            db.add(models.AgenteVinculo(telefono=t10, id_taller=taller.id_taller))
+        consumo.registrar_consumo(db, "wp", taller.id_taller)
+        db.commit()
+        return {"estado": "ok", "codigo": taller.codigo, "taller": taller.nombre_comercial, "nuevo": nuevo}
+
+    # 1) código en el mensaje
+    codigos = _codigos_en_texto(texto)
+    if codigos:
+        por_codigo = {t.codigo: t for t in db.query(models.Taller).filter(models.Taller.codigo.in_(codigos)).all()}
+        for c in codigos:
+            t = por_codigo.get(c)
+            if t:
+                return vincular(t, True) if _taller_disponible(db, t) else {"estado": "sin_servicio", "taller": t.nombre_comercial}
+    # 2) vínculo previo
+    v = db.query(models.AgenteVinculo).filter(models.AgenteVinculo.telefono == t10).first()
+    if v:
+        t = db.query(models.Taller).filter(models.Taller.id_taller == v.id_taller).first()
+        if t and _taller_disponible(db, t):
+            return vincular(t, False)
+        if t:
+            return {"estado": "sin_servicio", "taller": t.nombre_comercial}
+    # 3) y 4) por el teléfono registrado
+    candidatos = _talleres_del_telefono(db, t10)
+    if len(candidatos) == 1:
+        return vincular(candidatos[0], True)
+    if len(candidatos) > 1:
+        return {"estado": "elegir", "opciones": [{"codigo": t.codigo, "nombre": t.nombre_comercial} for t in candidatos[:5]]}
+    return {"estado": "pedir_codigo"}
 
 
 def _cliente_por_tel(db: Session, telefono: str) -> Optional[models.Cliente]:

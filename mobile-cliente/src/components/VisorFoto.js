@@ -1,3 +1,4 @@
+import { Ionicons } from "../ui/IconoWeb";
 import { Modal, View, Image, TouchableOpacity, Text, ScrollView, StyleSheet, useWindowDimensions } from "react-native";
 import { urlFoto } from "../lib/fotos";
 
@@ -15,7 +16,7 @@ export default function VisorFoto({ fotos = [], indice = 0, onClose }) {
             </TouchableOpacity>
           ))}
         </ScrollView>
-        <TouchableOpacity style={s.cerrar} onPress={onClose} accessibilityLabel="Cerrar"><Text style={s.cerrarTexto}>✕</Text></TouchableOpacity>
+        <TouchableOpacity style={s.cerrar} onPress={onClose} accessibilityLabel="Cerrar"><Ionicons name="close-outline" size={26} color="#fff" /></TouchableOpacity>
         {fotos.length > 1 && <Text style={s.pista}>Desliza para ver más ({fotos.length})</Text>}
       </View>
     </Modal>

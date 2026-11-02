@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, Modal, Pressable, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "./estilos";
 
@@ -62,20 +62,20 @@ export default function Calendario({ visible, valor, titulo = "Elige una fecha",
           {/* Selectores de mes y año */}
           <View style={styles.nav}>
             <TouchableOpacity onPress={() => (modo === "dias" ? mover(-1) : setVista((v) => ({ ...v, y: v.y - 1 })))} hitSlop={8} style={styles.flecha}>
-              <Ionicons name="chevron-back" size={22} color={colors.ink900} />
+              <Ionicons name="chevron-back-outline" size={22} color={colors.ink900} />
             </TouchableOpacity>
             <View style={styles.selectores}>
               <TouchableOpacity onPress={() => setModo(modo === "meses" ? "dias" : "meses")} style={[styles.pildora, modo === "meses" && styles.pildoraActiva]}>
                 <Text style={styles.pildoraTexto}>{MESES[vista.m]}</Text>
-                <Ionicons name={modo === "meses" ? "chevron-up" : "chevron-down"} size={16} color={colors.petrol500} />
+                <Ionicons name={modo === "meses" ? "chevron-up-outline" : "chevron-down-outline"} size={16} color={colors.petrol500} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setModo(modo === "anios" ? "dias" : "anios")} style={[styles.pildora, modo === "anios" && styles.pildoraActiva]}>
                 <Text style={styles.pildoraTexto}>{vista.y}</Text>
-                <Ionicons name={modo === "anios" ? "chevron-up" : "chevron-down"} size={16} color={colors.petrol500} />
+                <Ionicons name={modo === "anios" ? "chevron-up-outline" : "chevron-down-outline"} size={16} color={colors.petrol500} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity onPress={() => (modo === "dias" ? mover(1) : setVista((v) => ({ ...v, y: v.y + 1 })))} hitSlop={8} style={styles.flecha}>
-              <Ionicons name="chevron-forward" size={22} color={colors.ink900} />
+              <Ionicons name="chevron-forward-outline" size={22} color={colors.ink900} />
             </TouchableOpacity>
           </View>
 

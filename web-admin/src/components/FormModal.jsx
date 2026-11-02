@@ -442,7 +442,7 @@ function ComboBuscable({ options, value, onChange, disabled, placeholder }) {
           {filtradas.length === 0 ? (
             <div className="suggestion-item" style={{ color: "var(--ink-500)", cursor: "default" }}>Sin resultados</div>
           ) : (
-            filtradas.slice(0, 50).map((o) => (
+            filtradas.slice(0, 300).map((o) => (
               <div
                 key={o.value}
                 className="suggestion-item"

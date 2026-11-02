@@ -31,6 +31,9 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
   const [paso, setPaso] = useState(cli0 ? 2 : 1);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
+  const POR_PAGINA = 80;
+  const [limite, setLimite] = useState(POR_PAGINA); // se va ampliando al bajar en la lista
+  useEffect(() => { setLimite(POR_PAGINA); }, [q, paso]);
 
   async function cargar() {
     const [c, v, m, mo] = await Promise.all([
@@ -118,11 +121,14 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     }
   }
 
-  const lista = (paso === 1 ? opcionesCliente : opcionesVehiculo).filter((o) => !q.trim() || contiene(`${o.label} ${o.sub || ""}`, q.trim())).slice(0, 80);
+  const todas = (paso === 1 ? opcionesCliente : opcionesVehiculo).filter((o) => !q.trim() || contiene(`${o.label} ${o.sub || ""}`, q.trim()));
+  const lista = todas.slice(0, limite);
+  const hayMas = todas.length > lista.length;
+  const masResultados = () => setLimite((l) => Math.min(l + POR_PAGINA, todas.length));
   const valorActual = paso === 1 ? idCliente : idVehiculo;
   const elegir = (o) => (paso === 1 ? elegirCliente(o.value) : elegirVehiculo(o.value));
   function teclas(e) {
-    if (e.key === "ArrowDown") { e.preventDefault(); setSel((i) => Math.min(i + 1, lista.length - 1)); }
+    if (e.key === "ArrowDown") { e.preventDefault(); if (hayMas && sel >= lista.length - 2) masResultados(); setSel((i) => Math.min(i + 1, lista.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setSel((i) => Math.max(i - 1, 0)); }
     else if (e.key === "Enter") { e.preventDefault(); if (lista[sel]) elegir(lista[sel]); else if (idCliente) confirmar(); }
   }
@@ -156,7 +162,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
               <button type="button" className="btn btn-secondary" onClick={nuevo}><Icono nombre="add" size={18} /> {paso === 1 ? "Nuevo cliente" : "Nuevo vehículo"}</button>
             )}
           </div>
-          <div className="ecv2-lista">
+          <div className="ecv2-lista" onScroll={(e) => { const el = e.currentTarget; if (hayMas && el.scrollTop + el.clientHeight >= el.scrollHeight - 160) masResultados(); }}>
             {lista.length === 0 ? (
               <div className="ecv2-vacio">
                 {paso === 2 && !q.trim() ? "Este cliente aún no tiene vehículos." : "Sin resultados."}
@@ -170,7 +176,9 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
                 {String(o.value) === String(valorActual) && <span className="ecv2-ok">✓</span>}
               </button>
             ))}
+            {hayMas && <button type="button" className="btn btn-secondary" style={{ margin: "6px auto 2px", display: "block" }} onClick={masResultados}>Mostrar más ({todas.length - lista.length} restantes)</button>}
           </div>
+          <div style={{ fontSize: 12, opacity: .65, padding: "6px 4px 0" }}>{todas.length} {paso === 1 ? "cliente(s)" : "vehículo(s)"}{q.trim() ? " encontrados" : " en total"}{hayMas ? ` · mostrando ${lista.length}` : ""}</div>
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={onCerrar}>Cancelar</button>
             <button className="btn btn-primary" onClick={confirmar} disabled={guardando || !idCliente}>{guardando ? "Guardando…" : "Aceptar y continuar"}</button>

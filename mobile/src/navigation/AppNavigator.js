@@ -4,9 +4,10 @@ import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainer
 import { estadoGuardado, guardarEstado } from "./estadoNavegacion";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator, BottomTabBar } from "@react-navigation/bottom-tabs";
-import { createDrawerNavigator } from "@react-navigation/drawer";
-import { Text, View, TouchableOpacity, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { createDrawerNavigator, useDrawerStatus } from "@react-navigation/drawer";
+import { Text, View, TouchableOpacity, ScrollView, Animated, Easing } from "react-native";
+import { Ionicons } from "../ui/IconoWeb";
+import { useEffect, useRef } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import DashboardScreen from "../screens/DashboardScreen";
@@ -74,7 +75,7 @@ function BotonMenu({ navigation, lado = "izquierda" }) {
       style={{ paddingHorizontal: 4, marginRight: lado === "izquierda" ? 12 : 0 }}
       accessibilityLabel="Abrir menú"
     >
-      <Ionicons name="menu" size={24} color={colors.ink900} />
+      <Ionicons name="menu-outline" size={24} color={colors.ink900} />
     </TouchableOpacity>
   );
 }
@@ -184,11 +185,11 @@ const colorTab = (nombre) => ({
   Refacciones: colors.violet600, Más: colors.ink500,
 }[nombre]);
 const ICONOS_TAB = {
-  Panel: ["grid", "grid-outline"],
-  Clientes: ["people", "people-outline"],
-  Servicio: ["construct", "construct-outline"],
-  Refacciones: ["cube", "cube-outline"],
-  Más: ["ellipsis-horizontal-circle", "ellipsis-horizontal-circle-outline"],
+  Panel: ["grid-outline", "grid-outline"],
+  Clientes: ["people-outline", "people-outline"],
+  Servicio: ["construct-outline", "construct-outline"],
+  Refacciones: ["cube-outline", "cube-outline"],
+  Más: ["ellipsis-horizontal-circle-outline", "ellipsis-horizontal-circle-outline"],
 };
 
 // Botón central elevado: crea una nueva orden de servicio (acción del día a día).
@@ -198,7 +199,7 @@ function BotonServicioGrande({ onPress, accessibilityState }) {
   return (
     <TouchableOpacity style={styles.tabItemBig} onPress={onPress} activeOpacity={0.85}>
       <View ref={refTour} collapsable={false} style={[styles.iconWrapBig, { borderColor: colors.paper100 }, enfocado && styles.iconWrapBigActivo]}>
-        <Ionicons name="add" size={32} color={colors.sobreAcento} />
+        <Ionicons name="add-outline" size={32} color={colors.sobreAcento} />
       </View>
       <Text style={[styles.tabLabelBig, enfocado && { color: colors.petrol600 }]}>Nueva orden</Text>
     </TouchableOpacity>
@@ -234,10 +235,7 @@ function TallerTabs() {
         tabBarInactiveTintColor: colors.ink500,
         tabBarIcon: ({ focused, color }) => {
           const par = ICONOS_TAB[route.name];
-          const colorModulo = colorTab(route.name);
-          return par && colorModulo
-            ? <View style={{ opacity: focused ? 1 : 0.7 }}><BadgeIcono icono={par[1]} color={colorModulo} size={32} activo={focused} /></View>
-            : par ? <Ionicons name={focused ? par[0] : par[1]} size={22} color={color} /> : null;
+          return par ? <Ionicons name={focused ? par[0] : par[1]} size={22} color={color} /> : null;
         },
         tabBarStyle: { backgroundColor: colors.paper100, borderTopColor: colors.ink300, borderTopWidth: 1, height: 64, paddingBottom: 8, paddingTop: 6, elevation: 0 },
         tabBarLabelStyle: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
@@ -307,6 +305,21 @@ function ContenidoDrawer({ navigation, state }) {
   const insets = useSafeAreaInsets();
   const activa = rutaActiva(state);
 
+  // Énfasis al desplegar: el contenido entra deslizándose y con fundido, y
+  // cada vez que se abre se repite.
+  const abierto = useDrawerStatus() === "open";
+  const entrada = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (abierto) {
+      entrada.setValue(0);
+      Animated.timing(entrada, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    }
+  }, [abierto, entrada]);
+  const animado = {
+    opacity: entrada,
+    transform: [{ translateX: entrada.interpolate({ inputRange: [0, 1], outputRange: [-28, 0] }) }],
+  };
+
   const nav = [
     { grupo: "General", items: [
       { label: "Panel", icono: "grid-outline", ruta: "Panel", destino: ["Taller", "Panel"] },
@@ -331,13 +344,6 @@ function ContenidoDrawer({ navigation, state }) {
       hasPermission("promociones.ver") && { label: "Promociones", icono: "pricetag-outline", ruta: "Promociones", destino: ["Taller", "Más", "Promociones"] },
       hasPermission("promociones.ver") && { label: "Asistente (chatbot)", icono: "chatbubbles-outline", ruta: "Asistente", destino: ["Taller", "Más", "Asistente"] },
     ].filter(Boolean) },
-    { grupo: "Configuración", items: [
-      hasPermission("catalogos.ver") && { label: "Catálogos", icono: "list-outline", ruta: "CatalogosLista", destino: ["Taller", "Catálogos"] },
-      hasPermission("configuracion.editar") && { label: "Datos del taller", icono: "storefront-outline", ruta: "DatosTaller", destino: ["Taller", "Más", "DatosTaller"] },
-      hasPermission("configuracion.editar") && { label: "Comisiones", icono: "card-outline", ruta: "Comisiones", destino: ["Taller", "Más", "Comisiones"] },
-      hasPermission("usuarios.ver") && { label: "Usuarios de la aplicación", icono: "key-outline", ruta: "Usuarios", destino: ["Taller", "Más", "Usuarios"] },
-      hasPermission("roles.ver") && { label: "Roles y permisos", icono: "shield-checkmark-outline", ruta: "GestionRoles", destino: ["Taller", "Más", "GestionRoles"] },
-    ].filter(Boolean) },
   ].filter((seccion) => seccion.items.length > 0);
 
   const rol = typeof user?.rol === "string" ? user.rol : user?.rol?.nombre;
@@ -346,16 +352,23 @@ function ContenidoDrawer({ navigation, state }) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.sidebarBg, paddingTop: insets.top + 12 }}>
       <View style={[styles.brand, { borderBottomColor: colors.petrol500 }]}>
-        <Text style={[styles.brandTexto, { color: colors.sidebarTexto }]}>
-          ALDM <Text style={{ color: colors.petrol300 }}>AutoCore</Text>
-        </Text>
-        <TouchableOpacity onPress={() => navigation.closeDrawer()} hitSlop={10}>
-          <Ionicons name="close" size={22} color={colors.sidebarTextoTenue} />
+        <View style={[styles.brandTarjeta, { backgroundColor: colors.sidebarHover }]}>
+          <Text style={[styles.brandTexto, { color: colors.sidebarTexto }]}>
+            ALDM <Text style={{ color: colors.petrol300 }}>AutoCore</Text>
+          </Text>
+          {user ? (
+            <View style={{ marginTop: 4 }}>
+              <Text style={[styles.brandUsuario, { color: colors.sidebarTexto }]} numberOfLines={1}>{nombre}</Text>
+              <Text style={[styles.brandAlias, { color: colors.sidebarTextoTenue }]} numberOfLines={1}>@{user.username}</Text>
+            </View>
+          ) : null}
+        </View>
+        <TouchableOpacity onPress={() => navigation.closeDrawer()} hitSlop={10} style={{ alignSelf: "flex-start", marginLeft: 10 }}>
+          <Ionicons name="close-outline" size={22} color={colors.sidebarTextoTenue} />
         </TouchableOpacity>
       </View>
       {user?.taller ? (
         <View style={[styles.tallerActual, { backgroundColor: colors.sidebarHover }]}>
-          <Ionicons name="business-outline" size={16} color={colors.petrol300} />
           <Text style={[styles.tallerActualTexto, { color: colors.sidebarTexto }]} numberOfLines={1}>{user.taller}</Text>
           {talleres.length > 1 ? (
             <TouchableOpacity
@@ -368,6 +381,7 @@ function ContenidoDrawer({ navigation, state }) {
         </View>
       ) : null}
 
+      <Animated.View style={[{ flex: 1 }, animado]}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 16 }}>
         {nav.map((seccion) => (
           <View key={seccion.grupo}>
@@ -377,16 +391,13 @@ function ContenidoDrawer({ navigation, state }) {
               return (
                 <TouchableOpacity
                   key={item.label}
-                  style={[styles.link, esActiva && { backgroundColor: colors.petrol500 }]}
+                  style={[styles.link, esActiva && { backgroundColor: `${colors.petrol500}26`, borderLeftColor: colors.petrol500 }]}
                   onPress={() => { irA(navigation, item.destino); navigation.closeDrawer(); }}
                   activeOpacity={0.7}
                 >
-                  {(() => {
-                    const mod = moduloPorTitulo(item.label);
-                    return mod
-                      ? <BadgeIcono icono={mod.icono} color={mod.color} size={32} activo={esActiva} />
-                      : <Ionicons name={item.icono} size={19} color={esActiva ? colors.sidebarTexto : colors.sidebarTextoTenue} />;
-                  })()}
+                  <View style={[styles.linkIcono, esActiva && { backgroundColor: colors.petrol500 }]}>
+                    <Ionicons name={item.icono} size={18} color={esActiva ? "#ffffff" : colors.sidebarTextoTenue} />
+                  </View>
                   <Text style={[styles.linkTexto, { color: esActiva ? colors.sidebarTexto : colors.sidebarTextoTenue }, esActiva && styles.linkTextoActivo]}>
                     {item.label}
                   </Text>
@@ -395,7 +406,18 @@ function ContenidoDrawer({ navigation, state }) {
             })}
           </View>
         ))}
+        <TouchableOpacity
+          style={[styles.link, { marginTop: 14 }, activa === "MasMenu" && { backgroundColor: `${colors.petrol500}26`, borderLeftColor: colors.petrol500 }]}
+          onPress={() => { navigation.navigate("Taller", { screen: "Más", params: { screen: "MasMenu", params: { pop: true } } }); navigation.closeDrawer(); }}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.linkIcono, activa === "MasMenu" && { backgroundColor: colors.petrol500 }]}>
+            <Ionicons name="settings-outline" size={18} color={activa === "MasMenu" ? "#ffffff" : colors.sidebarTextoTenue} />
+          </View>
+          <Text style={[styles.linkTexto, { color: activa === "MasMenu" ? colors.sidebarTexto : colors.sidebarTextoTenue }, activa === "MasMenu" && styles.linkTextoActivo]}>Configuración</Text>
+        </TouchableOpacity>
       </ScrollView>
+      </Animated.View>
 
       {/* Pie: usuario, tema y salir (como .sidebar-footer de la web) */}
       <View style={[styles.pie, { borderTopColor: colors.sidebarHover, paddingBottom: insets.bottom + 12 }]}>
@@ -426,6 +448,13 @@ function ContenidoDrawer({ navigation, state }) {
           })}
         </View>
 
+        <TouchableOpacity
+          style={[styles.logoutBtn, { borderColor: colors.sidebarHover }]}
+          onPress={() => { navigation.navigate("Taller", { screen: "Más", params: { screen: "MasMenu", params: { abrirPassword: Date.now() } } }); navigation.closeDrawer(); }}
+        >
+          <Ionicons name="key-outline" size={17} color={colors.sidebarTexto} />
+          <Text style={[styles.logoutTexto, { color: colors.sidebarTexto }]}>Cambiar contraseña</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.logoutBtn, { borderColor: colors.sidebarHover }]}
           onPress={() => alerta("Cerrar sesión", "¿Seguro que quieres salir?", [
@@ -471,7 +500,7 @@ export default function AppNavigator() {
     >
       <Drawer.Navigator
         id="RootDrawer"
-        screenOptions={{ headerShown: false, drawerType: "front", drawerStyle: { width: 290, backgroundColor: colors.sidebarBg }, overlayColor: colors.velo }}
+        screenOptions={{ headerShown: false, drawerType: "front", drawerStyle: { width: 300, backgroundColor: colors.sidebarBg, borderRightWidth: 2, borderRightColor: colors.petrol500, elevation: 24, shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 24, shadowOffset: { width: 8, height: 0 } }, overlayColor: "rgba(0,0,0,0.68)" }}
         drawerContent={(props) => <ContenidoDrawer {...props} />}
       >
         <Drawer.Screen name="Taller" component={TallerTabs} />
@@ -482,8 +511,8 @@ export default function AppNavigator() {
 
 // Colores del menú lateral van en línea (tokens sidebar*) — ver ContenidoDrawer.
 const styles = crearEstilos({
-  tallerActual: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 14, marginTop: 10, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10 },
-  tallerActualTexto: { flex: 1, fontSize: 13, fontWeight: "600" },
+  tallerActual: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 14, marginTop: 10, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12 },
+  tallerActualTexto: { flex: 1, fontFamily: "Inter_600SemiBold", fontSize: 13.5 },
   tallerCambiar: { fontSize: 12.5, fontWeight: "700" },
   tabItemBig: { flex: 1, alignItems: "center", justifyContent: "flex-end", paddingBottom: 3 },
   iconWrapBig: {
@@ -492,12 +521,16 @@ const styles = crearEstilos({
   },
   iconWrapBigActivo: { backgroundColor: colors.petrol600 },
   tabLabelBig: { fontFamily: "Inter_600SemiBold", fontSize: 11, color: colors.ink500, marginTop: 2 },
-  brand: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 14, paddingHorizontal: 10, paddingBottom: 16, marginBottom: 6, borderBottomWidth: 2 },
+  brand: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginHorizontal: 14, paddingBottom: 14, marginBottom: 6, borderBottomWidth: 2 },
+  brandTarjeta: { flex: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  brandUsuario: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  brandAlias: { fontFamily: "Inter_400Regular", fontSize: 11.5 },
+  linkIcono: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   brandTexto: { fontFamily: "BarlowCondensed_700Bold", fontSize: 24 },
-  grupo: { fontFamily: "Inter_500Medium", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.9, paddingHorizontal: 12, paddingTop: 16, paddingBottom: 4 },
-  link: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10 },
-  linkTexto: { fontFamily: "BarlowCondensed_600SemiBold", fontSize: 16, textTransform: "uppercase", letterSpacing: 0.5 },
-  linkTextoActivo: { fontFamily: "BarlowCondensed_700Bold" },
+  grupo: { fontFamily: "Inter_600SemiBold", fontSize: 11, textTransform: "uppercase", letterSpacing: 1.1, paddingHorizontal: 12, paddingTop: 18, paddingBottom: 6 },
+  link: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 7, paddingHorizontal: 10, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: "transparent" },
+  linkTexto: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
+  linkTextoActivo: { fontFamily: "Inter_700Bold" },
   pie: { borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 14 },
   pieNombre: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
   rolBadge: { alignSelf: "flex-start", borderRadius: 100, paddingVertical: 2, paddingHorizontal: 9, marginTop: 5 },

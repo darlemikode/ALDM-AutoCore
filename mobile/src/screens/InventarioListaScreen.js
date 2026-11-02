@@ -2,7 +2,7 @@ import { contiene } from "../lib/texto";
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, Modal, ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -113,7 +113,7 @@ export default function InventarioListaScreen() {
     <View style={styles.screen}>
       <View style={styles.cabecera}>
         <View style={styles.buscador}>
-          <Ionicons name="search" size={18} color={colors.ink500} />
+          <Ionicons name="search-outline" size={18} color={colors.ink500} />
           <TextInput style={styles.buscadorInput} placeholder="Buscar refacción, número de parte o ubicación…" placeholderTextColor={colors.ink500} value={q} onChangeText={setQ} />
         </View>
       </View>
@@ -177,7 +177,7 @@ export default function InventarioListaScreen() {
 
       {hasPermission("inventario.crear") && (
         <TouchableOpacity style={styles.fab} onPress={() => setEditando({})} accessibilityLabel="Nuevo registro de inventario">
-          <Ionicons name="add" size={28} color={colors.paper100} />
+          <Ionicons name="add-outline" size={28} color={colors.paper100} />
         </TouchableOpacity>
       )}
 
@@ -200,14 +200,14 @@ export default function InventarioListaScreen() {
               <Text style={styles.modalTitulo}>Compatibilidades</Text>
               <Text style={styles.meta}>{compat?.refaccion?.nombre_refaccion}</Text>
             </View>
-            <TouchableOpacity onPress={() => setCompat(null)} hitSlop={10}><Ionicons name="close" size={24} color={colors.ink900} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setCompat(null)} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink900} /></TouchableOpacity>
           </View>
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: 10 }}>
             <View style={styles.chips}>
               {(compat?.compatibilidades || []).map((c) => (
                 <TouchableOpacity key={c.id_compatibilidad} style={styles.chipCompat} onPress={() => quitarCompat(c.id_compatibilidad)}>
                   <Text style={styles.chipCompatTexto}>{nombreMarca(c.id_marca_vehiculo)} {nombreModelo(c.id_modelo_vehiculo) || "(todos)"}</Text>
-                  <Ionicons name="close" size={13} color={colors.red600} />
+                  <Ionicons name="close-outline" size={13} color={colors.red600} />
                 </TouchableOpacity>
               ))}
               {(compat?.compatibilidades || []).length === 0 && <Text style={styles.meta}>Todavía no tiene. Elige marca y luego el modelo.</Text>}
@@ -215,7 +215,7 @@ export default function InventarioListaScreen() {
             <Text style={styles.paso}>{compatMarca ? `Modelos de ${nombreMarca(Number(compatMarca))}` : "1 · Elige la marca"}</Text>
             {!compatMarca && (
               <View style={styles.buscador}>
-                <Ionicons name="search" size={18} color={colors.ink500} />
+                <Ionicons name="search-outline" size={18} color={colors.ink500} />
                 <TextInput style={styles.buscadorInput} placeholder="Buscar marca…" placeholderTextColor={colors.ink500} value={buscarMarca} onChangeText={setBuscarMarca} />
               </View>
             )}
@@ -224,19 +224,19 @@ export default function InventarioListaScreen() {
             {!compatMarca ? marcasVeh.filter((m) => !buscarMarca || contiene(m.nombre_marca, buscarMarca)).map((m) => (
               <TouchableOpacity key={m.id_marca_vehiculo} style={styles.opcion} onPress={() => setCompatMarca(String(m.id_marca_vehiculo))}>
                 <Text style={styles.opcionTexto}>{m.nombre_marca}</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.ink500} />
+                <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />
               </TouchableOpacity>
             )) : (
               <>
                 <TouchableOpacity style={styles.opcion} onPress={() => setCompatMarca("")}>
-                  <Ionicons name="arrow-back" size={18} color={colors.petrol600} /><Text style={[styles.opcionTexto, { color: colors.petrol600 }]}>Otra marca</Text>
+                  <Ionicons name="arrow-back-outline" size={18} color={colors.petrol600} /><Text style={[styles.opcionTexto, { color: colors.petrol600 }]}>Otra marca</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.opcion, styles.opcionDestacada]} onPress={() => agregarCompat(null)}>
                   <Ionicons name="add-circle-outline" size={18} color={colors.petrol600} /><Text style={styles.opcionTexto}>Todos los modelos de la marca</Text>
                 </TouchableOpacity>
                 {modelosVeh.filter((m) => String(m.id_marca_vehiculo) === compatMarca).map((m) => (
                   <TouchableOpacity key={m.id_modelo_vehiculo} style={styles.opcion} onPress={() => agregarCompat(m.id_modelo_vehiculo)}>
-                    <Ionicons name="add" size={18} color={colors.petrol600} /><Text style={styles.opcionTexto}>{m.nombre_modelo}</Text>
+                    <Ionicons name="add-outline" size={18} color={colors.petrol600} /><Text style={styles.opcionTexto}>{m.nombre_modelo}</Text>
                   </TouchableOpacity>
                 ))}
               </>

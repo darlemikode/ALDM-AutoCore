@@ -2,7 +2,7 @@
 // entrar y con qué rol en cada uno.
 import { useState } from "react";
 import { View, Text, ScrollView, Switch, TouchableOpacity, RefreshControl } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";

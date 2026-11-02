@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { View, Text, Image, FlatList, ScrollView, TouchableOpacity, RefreshControl, Linking } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api, urlArchivo } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
@@ -38,13 +38,13 @@ export default function MisServiciosScreen({ navigation }) {
       <TouchableOpacity style={[styles.activa, lista && { borderColor: colors.teal600 }]} onPress={() => navigation.navigate("ServicioDetalle", { id: s.id_servicio })} activeOpacity={0.85}>
         <View style={styles.activaTop}>
           <View style={[styles.icono, lista && { backgroundColor: colors.teal100 }]}>
-            <Ionicons name={lista ? "checkmark-done" : "construct"} size={20} color={lista ? colors.teal600 : colors.petrol600} />
+            <Ionicons name={lista ? "checkmark-done-outline" : "construct-outline"} size={20} color={lista ? colors.teal600 : colors.petrol600} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.activaEtiqueta}>{lista ? "Tu vehículo está listo" : "En el taller ahora"}</Text>
             <Text style={styles.activaTitulo} numberOfLines={1}>{[s.vehiculo?.marca?.nombre_marca, s.vehiculo?.modelo?.nombre_modelo, s.vehiculo?.id_year_vehiculo].filter(Boolean).join(" ") || s.vehiculo?.placas_vehiculo || "Tu vehículo"}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.ink500} />
+          <Ionicons name="chevron-forward-outline" size={20} color={colors.ink500} />
         </View>
         <Text style={[styles.etapa, lista && { color: colors.teal600 }]}>{ETAPAS[idx][1]}</Text>
         <View style={styles.barra}>
@@ -86,7 +86,7 @@ export default function MisServiciosScreen({ navigation }) {
                 {promociones.map((p) => (
                   <TouchableOpacity key={p.id_promocion} style={styles.promo} activeOpacity={p.link ? 0.8 : 1} onPress={() => p.link && Linking.openURL(p.link).catch(() => {})}>
                     {p.ruta_imagen ? <Image source={{ uri: urlArchivo(p.ruta_imagen) }} style={styles.promoImagen} /> : (
-                      <View style={[styles.promoImagen, styles.promoSinImagen]}><Ionicons name="pricetag" size={28} color={colors.petrol600} /></View>
+                      <View style={[styles.promoImagen, styles.promoSinImagen]}><Ionicons name="pricetag-outline" size={28} color={colors.petrol600} /></View>
                     )}
                     <View style={{ padding: 12 }}>
                       <Text style={styles.promoTitulo} numberOfLines={1}>{p.titulo}</Text>
@@ -113,7 +113,7 @@ export default function MisServiciosScreen({ navigation }) {
             <Text style={styles.filaTitulo} numberOfLines={1}>{s.nombre_servicio}</Text>
             <Text style={styles.meta}>{s.vehiculo?.placas_vehiculo || "Vehículo"} · {new Date(s.fecha_entrada_servicio).toLocaleDateString("es-MX")} · {s.status === "cerrado" ? "entregado" : s.status}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.ink500} />
+          <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />
         </TouchableOpacity>
       )}
       ListEmptyComponent={<Text style={styles.vacio}>Aquí aparecerán tus servicios anteriores.</Text>}

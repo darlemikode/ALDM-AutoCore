@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,8 @@ router = APIRouter(prefix="/api/clientes", tags=["clientes"])
 def listar(
     q: Optional[str] = None,
     solo_activos: bool = False,
+    limite: Optional[int] = Query(None, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     user=Depends(require_permission("clientes.ver")),
 ):
@@ -36,7 +38,10 @@ def listar(
                 models.Cliente.numero_cuenta.ilike(like),
             )
         )
-    return query.order_by(models.Cliente.nombre_cliente).all()
+    query = query.order_by(models.Cliente.nombre_cliente, models.Cliente.id_cliente)
+    if limite:
+        query = query.offset(offset).limit(limite)
+    return query.all()
 
 
 @router.get("/{cliente_id}", response_model=schemas.ClienteOut)

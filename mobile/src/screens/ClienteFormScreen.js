@@ -184,11 +184,11 @@ export default function ClienteFormScreen({ navigation, route, onGuardado }) {
 
       if (editando || !hasPermission("vehiculos.crear")) { navigation.goBack(); return; }
       mostrarDialogo({
-        tono: "exito", icono: "person-add", etiqueta: nuevo.numero_cuenta ? `Cuenta ${nuevo.numero_cuenta}` : "Cliente registrado",
+        tono: "exito", icono: "person-add-outline", etiqueta: nuevo.numero_cuenta ? `Cuenta ${nuevo.numero_cuenta}` : "Cliente registrado",
         titulo: "¡Cliente creado!",
         mensaje: `${nuevo.nombre_cliente} ya está registrado. ¿Le damos de alta su vehículo ahora mismo?`,
         acciones: [
-          { texto: "Sí, agregar vehículo", tipo: "primario", icono: "car-sport", onPress: () => navigation.replace("VehiculoForm", { clienteFijo: nuevo }) },
+          { texto: "Sí, agregar vehículo", tipo: "primario", icono: "car-sport-outline", onPress: () => navigation.replace("VehiculoForm", { clienteFijo: nuevo }) },
           { texto: "Ahora no", tipo: "secundario", onPress: () => navigation.goBack() },
         ],
       });

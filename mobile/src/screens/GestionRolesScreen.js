@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { useFocusEffect } from "@react-navigation/native";
 import FormScroll from "../ui/FormScroll";
 import { api } from "../api";

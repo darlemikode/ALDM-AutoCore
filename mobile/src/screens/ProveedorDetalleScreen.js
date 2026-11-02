@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Linking } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -58,7 +58,7 @@ export default function ProveedorDetalleScreen({ route }) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}>
       <View style={styles.cabecera}>
-        <View style={styles.avatar}><Ionicons name="business" size={22} color={colors.petrol600} /></View>
+        <View style={styles.avatar}><Ionicons name="business-outline" size={22} color={colors.petrol600} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.nombre}>{proveedor.nombre_proveedor}</Text>
           <Text style={styles.meta}>{[proveedor.empresa_proveedor, proveedor.rfc_proveedor].filter(Boolean).join(" · ") || "Proveedor"}</Text>

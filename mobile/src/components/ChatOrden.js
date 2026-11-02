@@ -1,3 +1,4 @@
+import { Ionicons } from "../ui/IconoWeb";
 import { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Image, Modal, ActivityIndicator } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -174,7 +175,7 @@ export default function ChatOrden({ servicioId }) {
                   ]}
                 >
                   {!mio && <Text style={styles.autor}>{m.autor_nombre || "Cliente"}</Text>}
-                  {m.tipo === "alerta" && <Text style={styles.alertaEtiqueta}>🚨 AVISO URGENTE</Text>}
+                  {m.tipo === "alerta" && <Text style={styles.alertaEtiqueta}><Ionicons name="alert-circle-outline" size={12} color={colors.red600} /> AVISO URGENTE</Text>}
                   {m.ruta_foto && (
                     <TouchableOpacity onPress={() => setFotoGrande(urlArchivo(m.ruta_foto))}>
                       <Image source={{ uri: urlArchivo(m.ruta_foto) }} style={styles.fotoMensaje} />
@@ -193,7 +194,7 @@ export default function ChatOrden({ servicioId }) {
 
       <View style={styles.inputRow}>
         <TouchableOpacity style={styles.botonFoto} onPress={elegirOrigenFoto} disabled={subiendo}>
-          {subiendo ? <ActivityIndicator color={colors.petrol600} size="small" /> : <Text style={styles.botonFotoTexto}>📷</Text>}
+          {subiendo ? <ActivityIndicator color={colors.petrol600} size="small" /> : <Ionicons name="camera-outline" size={22} color={colors.petrol600} />}
         </TouchableOpacity>
         <TextInput placeholderTextColor={colors.ink500} style={styles.input} value={texto} onChangeText={setTexto} placeholder="Escribe un mensaje…" multiline />
         <TouchableOpacity style={styles.boton} onPress={enviar}>

@@ -2,7 +2,7 @@
 // taller (con la cámara de la app o la del teléfono) o se escribe su código.
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal, Image } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { API_URL, urlArchivo } from "../api";
 import { extraerCodigo, setTallerCodigo } from "../taller";
@@ -68,7 +68,7 @@ export default function TallerScreen({ onListo, codigoInicial }) {
             <>
               <Text style={styles.tagline}>Este es tu taller:</Text>
               <View style={styles.tallerBox}>
-                {taller.ruta_logo ? <Image source={{ uri: urlArchivo(taller.ruta_logo) }} style={styles.logo} /> : <Ionicons name="business" size={40} color={colors.petrol500} />}
+                {taller.ruta_logo ? <Image source={{ uri: urlArchivo(taller.ruta_logo) }} style={styles.logo} /> : <Ionicons name="business-outline" size={40} color={colors.petrol500} />}
                 <Text style={styles.tallerNombre}>{taller.nombre}</Text>
                 {taller.direccion ? <Text style={styles.tallerDato}>{taller.direccion}</Text> : null}
                 {taller.telefono ? <Text style={styles.tallerDato}>{taller.telefono}</Text> : null}
@@ -113,7 +113,7 @@ export default function TallerScreen({ onListo, codigoInicial }) {
           />
           <View style={styles.marcoQr} pointerEvents="none" />
           <TouchableOpacity style={styles.cerrarCamara} onPress={() => setEscaneando(false)}>
-            <Ionicons name="close" size={26} color="#fff" />
+            <Ionicons name="close-outline" size={26} color="#fff" />
             <Text style={{ color: "#fff", fontWeight: "700" }}>Cancelar</Text>
           </TouchableOpacity>
         </View>

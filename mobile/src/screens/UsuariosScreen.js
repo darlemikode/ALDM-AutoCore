@@ -1,7 +1,7 @@
 import ScrollCampos from "../ui/ScrollCampos";
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Modal, KeyboardAvoidingView, ScrollView, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { Picker } from "../ui/Picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
@@ -271,7 +271,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
       ) : (
         <>
           <View style={styles.buscadorClientes}>
-            <Ionicons name="search" size={17} color={colors.ink500} />
+            <Ionicons name="search-outline" size={17} color={colors.ink500} />
             <TextInput
               style={styles.buscadorClientesInput}
               placeholder="Buscar cliente"
@@ -281,7 +281,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
             />
             {qClientes ? (
               <TouchableOpacity onPress={() => { setQClientes(""); cargarClientes(""); }} hitSlop={8}>
-                <Ionicons name="close-circle" size={18} color={colors.ink500} />
+                <Ionicons name="close-circle-outline" size={18} color={colors.ink500} />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -328,7 +328,7 @@ Compártesela al cliente — puede cambiarla luego desde su app.`
             style={styles.fabExtendido}
             onPress={() => navigation.navigate("Clientes", { screen: "ClienteForm" })}
           >
-            <Ionicons name="person-add" size={18} color={colors.paper100} />
+            <Ionicons name="person-add-outline" size={18} color={colors.paper100} />
             <Text style={styles.fabExtendidoTexto}>Nuevo cliente</Text>
           </TouchableOpacity>
           )}

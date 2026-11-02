@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -45,9 +45,9 @@ export default function ServiciosScreen({ navigation }) {
     <View style={styles.screen}>
       <View style={styles.cabecera}>
         <View style={styles.buscador}>
-          <Ionicons name="search" size={18} color={colors.ink500} />
+          <Ionicons name="search-outline" size={18} color={colors.ink500} />
           <TextInput style={styles.buscadorInput} placeholder="Cliente, placas, vehículo o # de orden" placeholderTextColor={colors.ink500} value={busqueda} onChangeText={setBusqueda} />
-          {busqueda ? <TouchableOpacity onPress={() => setBusqueda("")} hitSlop={8}><Ionicons name="close-circle" size={18} color={colors.ink500} /></TouchableOpacity> : null}
+          {busqueda ? <TouchableOpacity onPress={() => setBusqueda("")} hitSlop={8}><Ionicons name="close-circle-outline" size={18} color={colors.ink500} /></TouchableOpacity> : null}
         </View>
         <View style={styles.segmentado}>
           {PESTANAS.map((p) => {
@@ -114,7 +114,7 @@ export default function ServiciosScreen({ navigation }) {
 
       {hasPermission("servicios.crear") && (
         <TouchableOpacity style={styles.fabExtendido} onPress={() => navigation.navigate("NuevaOrden", { resetear: Date.now() })}>
-          <Ionicons name="add" size={22} color={colors.paper100} />
+          <Ionicons name="add-outline" size={22} color={colors.paper100} />
           <Text style={styles.fabTexto}>Nueva orden</Text>
         </TouchableOpacity>
       )}

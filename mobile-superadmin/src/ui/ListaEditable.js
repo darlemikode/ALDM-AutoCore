@@ -2,7 +2,7 @@
 // tipos de cobro…).
 import { useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, RefreshControl } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "./estilos";
@@ -56,7 +56,7 @@ export default function ListaEditable({
               </View>
               {permitirEliminar ? (
                 <TouchableOpacity onPress={() => eliminar(item)} hitSlop={10}><Ionicons name="trash-outline" size={19} color={colors.red600} /></TouchableOpacity>
-              ) : <Ionicons name="chevron-forward" size={18} color={colors.ink500} />}
+              ) : <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />}
             </TouchableOpacity>
           );
         }}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
@@ -41,7 +41,7 @@ export default function NuevaRefaccionModal({ visible, nombreInicial = "", categ
         <View style={styles.hoja}>
           <View style={styles.header}>
             <Text style={styles.titulo}>Refacción nueva</Text>
-            <TouchableOpacity onPress={onCerrar} hitSlop={10}><Ionicons name="close" size={24} color={colors.ink900} /></TouchableOpacity>
+            <TouchableOpacity onPress={onCerrar} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink900} /></TouchableOpacity>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
             <Text style={styles.meta}>Se guarda en el catálogo y se agrega sola.</Text>

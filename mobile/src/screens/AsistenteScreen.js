@@ -1,3 +1,4 @@
+import { Ionicons } from "../ui/IconoWeb";
 import { useState } from "react";
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput,
@@ -7,12 +8,12 @@ import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 
 const CONSULTAS = [
-  { clave: "clientes_activos", etiqueta: "👥 Clientes activos" },
-  { clave: "ordenes_abiertas", etiqueta: "🔧 Órdenes abiertas" },
-  { clave: "pendientes_pago", etiqueta: "💵 Pendientes de pago" },
-  { clave: "stock_bajo", etiqueta: "📦 Stock bajo" },
-  { clave: "proximos_servicio", etiqueta: "🔔 Próximos a dar servicio" },
-  { clave: "deuda_proveedores", etiqueta: "🧾 Deuda con proveedores" },
+  { clave: "clientes_activos", etiqueta: "Clientes activos", icono: "people-outline" },
+  { clave: "ordenes_abiertas", etiqueta: "Órdenes abiertas", icono: "construct-outline" },
+  { clave: "pendientes_pago", etiqueta: "Pendientes de pago", icono: "cash-outline" },
+  { clave: "stock_bajo", etiqueta: "Stock bajo", icono: "cube-outline" },
+  { clave: "proximos_servicio", etiqueta: "Próximos a dar servicio", icono: "notifications-outline" },
+  { clave: "deuda_proveedores", etiqueta: "Deuda con proveedores", icono: "receipt-outline" },
 ];
 
 /**
@@ -39,7 +40,7 @@ export default function AsistenteScreen() {
       const r = await api.post("/asistente/diagnostico", { mensaje: texto });
       setMensajes((prev) => [...prev, { autor: "bot", texto: r.texto }]);
     } catch (err) {
-      setMensajes((prev) => [...prev, { autor: "bot", texto: `⚠️ ${err.message}` }]);
+      setMensajes((prev) => [...prev, { autor: "bot", texto: err.message }]);
     } finally {
       setCargando(null);
     }
@@ -52,7 +53,7 @@ export default function AsistenteScreen() {
       const texto = await resolver(consulta.clave);
       setMensajes((prev) => [...prev, { autor: "bot", texto }]);
     } catch (err) {
-      setMensajes((prev) => [...prev, { autor: "bot", texto: `⚠️ ${err.message}` }]);
+      setMensajes((prev) => [...prev, { autor: "bot", texto: err.message }]);
     } finally {
       setCargando(null);
     }
@@ -77,7 +78,7 @@ export default function AsistenteScreen() {
     if (clave === "pendientes_pago") {
       const ordenes = await api.get("/servicios/?status=abierto");
       const pendientes = ordenes.filter((s) => !s.pagado && s.costos?.saldo_pendiente > 0.01);
-      if (pendientes.length === 0) return "No hay ninguna orden con saldo pendiente. ✅";
+      if (pendientes.length === 0) return "No hay ninguna orden con saldo pendiente.";
       const total = pendientes.reduce((acc, s) => acc + s.costos.saldo_pendiente, 0);
       return `${pendientes.length} orden(es) con saldo pendiente, por un total de $${total.toFixed(2)}:\n` +
         pendientes.map((s) => `• #${s.id_servicio} — ${s.cliente?.nombre_cliente || "—"}: $${s.costos.saldo_pendiente.toFixed(2)}`).join("\n");
@@ -86,7 +87,7 @@ export default function AsistenteScreen() {
     if (clave === "stock_bajo") {
       const refacciones = await api.get("/refacciones/");
       const bajas = refacciones.filter((r) => (r.cantidad_refaccion ?? 0) <= (r.umbral_rojo ?? 1));
-      if (bajas.length === 0) return "No hay ninguna refacción en stock crítico. ✅";
+      if (bajas.length === 0) return "No hay ninguna refacción en stock crítico.";
       return `${bajas.length} refacción(es) con stock crítico:\n` +
         bajas.map((r) => `• ${r.nombre_refaccion}: ${r.cantidad_refaccion} pza(s)`).join("\n");
     }
@@ -101,7 +102,7 @@ export default function AsistenteScreen() {
     if (clave === "deuda_proveedores") {
       const resumen = await api.get("/dashboard/resumen");
       const deuda = resumen.deuda_con_proveedores || 0;
-      if (deuda <= 0.01) return "No tienes deuda pendiente con proveedores. ✅";
+      if (deuda <= 0.01) return "No tienes deuda pendiente con proveedores.";
       return `Deuda total con proveedores: $${deuda.toFixed(2)}.`;
     }
 
@@ -155,7 +156,7 @@ export default function AsistenteScreen() {
       <View style={styles.opcionesRow}>
         {CONSULTAS.map((c) => (
           <TouchableOpacity key={c.clave} style={styles.chip} onPress={() => consultar(c)} disabled={!!cargando}>
-            <Text style={styles.chipTexto}>{c.etiqueta}</Text>
+            <Text style={styles.chipTexto}><Ionicons name={c.icono} size={13} /> {c.etiqueta}</Text>
           </TouchableOpacity>
         ))}
       </View>

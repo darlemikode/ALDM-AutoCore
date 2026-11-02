@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
-import FiltroChips, { colorGrupo, contarPor } from "../components/FiltroChips";
+import { colorGrupo } from "../components/FiltroChips";
+import FiltrosVehiculos, { VACIOS, DIAS_PROXIMO, aplicarFiltros } from "../components/FiltrosVehiculos";
 import FormModal from "../components/FormModal";
 import ModalPortal from "../components/ModalPortal";
 import MensajeModal from "../components/MensajeModal";
@@ -56,7 +57,7 @@ export default function Vehiculos() {
   const [colores, setColores] = useState([]);
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [marcaSel, setMarcaSel] = useState("");
+  const [filtros, setFiltros] = useState(VACIOS);
   const [q, setQ] = useState("");
   const [vista, setVista] = useState("lista"); // lista | clientes
   const [fotosDe, setFotosDe] = useState(null); // vehículo cuyas fotos se están viendo
@@ -218,12 +219,29 @@ export default function Vehiculos() {
   const nomMarcaV = (v) => marcas.find((m) => m.id_marca_vehiculo === v.id_marca_vehiculo)?.nombre_marca || "Sin marca";
   function nombreMarca(id) { return marcas.find((m) => m.id_marca_vehiculo === id)?.nombre_marca || "—"; }
   function nombreModelo(id) { return modelos.find((m) => m.id_modelo_vehiculo === id)?.nombre_modelo || "—"; }
-  const porMarca = marcaSel ? vehiculos.filter((v) => nomMarcaV(v) === marcaSel) : vehiculos;
+  const porFiltros = useMemo(
+    () => aplicarFiltros(vehiculos, filtros, { nomMarca: (v) => nombreMarca(v.id_marca_vehiculo), nomModelo: (v) => nombreModelo(v.id_modelo_vehiculo) }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [vehiculos, filtros, marcas, modelos]);
+  const kpis = useMemo(() => {
+    const ahora = Date.now();
+    const k = { activos: 0, abiertos: 0, toca: 0, sin: 0 };
+    vehiculos.forEach((v) => {
+      if ((v.estado_vehiculo || "activo") !== "activo") return;
+      k.activos++;
+      const fecha = v.fecha_ultimo_servicio ? new Date(v.fecha_ultimo_servicio).getTime() : null;
+      if (v.status_ultimo_servicio === "abierto") k.abiertos++;
+      else if (fecha && ahora - fecha >= DIAS_PROXIMO * 86400000) k.toca++;
+      if (!v.total_servicios && !fecha) k.sin++;
+    });
+    return k;
+  }, [vehiculos]);
+  const alternarServicio = (clave) => setFiltros((f) => ({ ...f, servicio: f.servicio === clave ? "" : clave }));
   const visibles = useMemo(() => {
     const texto = q.trim().toLowerCase();
-    if (!texto) return porMarca;
+    if (!texto) return porFiltros;
     const soloDigitos = texto.replace(/\D/g, "");
-    return porMarca.filter((v) => {
+    return porFiltros.filter((v) => {
       const campos = [
         v.placas_vehiculo,
         nombreMarca(v.id_marca_vehiculo),
@@ -237,7 +255,7 @@ export default function Vehiculos() {
       return false;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [porMarca, q]);
+  }, [porFiltros, q, marcas, modelos]);
 
   return (
     <>
@@ -269,6 +287,22 @@ export default function Vehiculos() {
         </div>
       </div>
 
+      <div className="kpi-grid">
+        <div className="kpi-card kpi-card-link" role="button" tabIndex={0} title="Ver todos" onClick={() => setFiltros((f) => ({ ...f, servicio: "" }))}>
+          <span className="kpi-icono"><Icono nombre="car" size={22} /></span>
+          <div className="kpi-label">Vehículos activos</div><div className="kpi-value">{kpis.activos}</div></div>
+        <div className="kpi-card kpi-card-link ok" role="button" tabIndex={0} title="Ver los que tienen una orden abierta" style={filtros.servicio === "abierto" ? { outline: "2px solid var(--teal-600)" } : undefined} onClick={() => alternarServicio("abierto")}>
+          <span className="kpi-icono"><Icono nombre="clock" size={22} /></span>
+          <div className="kpi-label">Con orden abierta</div><div className="kpi-value">{kpis.abiertos}</div></div>
+        <div className="kpi-card kpi-card-link alert" role="button" tabIndex={0} title="Ver los vehículos que ya les toca servicio" style={filtros.servicio === "toca" ? { outline: "2px solid var(--red-600)" } : undefined} onClick={() => alternarServicio("toca")}>
+          <span className="kpi-icono"><Icono nombre="notifications" size={22} /></span>
+          <div className="kpi-label">Próximo servicio</div><div className="kpi-value">{kpis.toca}</div>
+          <div style={{ fontSize: 12, color: "var(--ink-500)", marginTop: 2 }}>{DIAS_PROXIMO}+ días desde su última visita</div></div>
+        <div className="kpi-card kpi-card-link" role="button" tabIndex={0} title="Ver los que nunca han tenido servicio" style={filtros.servicio === "sin" ? { outline: "2px solid var(--petrol-500)" } : undefined} onClick={() => alternarServicio("sin")}>
+          <span className="kpi-icono"><Icono nombre="calendar" size={22} /></span>
+          <div className="kpi-label">Sin servicios aún</div><div className="kpi-value">{kpis.sin}</div></div>
+      </div>
+
       <div className="panel">
         <div className="toolbar">
           <input
@@ -278,12 +312,12 @@ export default function Vehiculos() {
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <FiltroChips items={contarPor(vehiculos, nomMarcaV)} valor={marcaSel} onChange={setMarcaSel} total={vehiculos.length} etiquetaTodas="Todas las marcas" />
+        <FiltrosVehiculos vehiculos={vehiculos} marcas={marcas} modelos={modelos} colores={colores} filtros={filtros} setFiltros={setFiltros} mostrados={visibles.length} />
         {loading ? (
           <div className="loading-text">Cargando…</div>
         ) : vista === "clientes" ? (
           <div className="ordenes-lista">
-            {visibles.length === 0 && <div className="empty-state">No hay vehículos registrados todavía.</div>}
+            {visibles.length === 0 && <div className="empty-state">{vehiculos.length ? "Ningún vehículo coincide con los filtros." : "No hay vehículos registrados todavía."}</div>}
             {visibles.map((v) => (
               <div
                 key={v.id_vehiculo}
@@ -300,6 +334,7 @@ export default function Vehiculos() {
                     <span><Icono nombre="user" size={15} /> {v.cliente ? `${v.cliente.nombre_cliente} ${v.cliente.paterno_cliente || ""}`.trim() : "Sin cliente"}</span>
                     <span><Icono nombre="phone" size={15} /> {v.cliente?.telefono1 || "Sin teléfono"}</span>
                     <span><Icono nombre="chart" size={15} /> {v.km_vehiculo ? `${Number(v.km_vehiculo).toLocaleString("es-MX")} km` : "— km"}</span>
+                    <span><Icono nombre="clock" size={15} /> {v.fecha_ultimo_servicio ? `Última visita: ${hace(v.fecha_ultimo_servicio).toLowerCase()}` : "Sin visitas"}</span>
                   </div>
                 </div>
                 <div className="orden-estado">
@@ -325,7 +360,7 @@ export default function Vehiculos() {
           </div>
         ) : (
           <div className="veh-cuadros">
-            {visibles.length === 0 && <div className="empty-state">No hay vehículos registrados todavía.</div>}
+            {visibles.length === 0 && <div className="empty-state">{vehiculos.length ? "Ningún vehículo coincide con los filtros." : "No hay vehículos registrados todavía."}</div>}
             {visibles.map((v) => (
               <div key={v.id_vehiculo} className="veh-tarjeta" style={{ "--acc": colorGrupo(nomMarcaV(v)) }} onClick={() => hasPermission("vehiculos.editar") && setEditing(v)}>
                 <div className="veh-tarjeta-foto" onClick={(e) => { e.stopPropagation(); setFotosDe(v); }} title="Ver / agregar fotos">
@@ -349,6 +384,7 @@ export default function Vehiculos() {
                     <span><Icono nombre="hash" size={14} /> {v.placas_vehiculo || "Sin placas"}</span>
                     <span><Icono nombre="user" size={14} /> {v.cliente ? `${v.cliente.nombre_cliente} ${v.cliente.paterno_cliente || ""}` : "Sin cliente"}</span>
                     <span><Icono nombre="chart" size={14} /> {v.km_vehiculo ? `${Number(v.km_vehiculo).toLocaleString("es-MX")} km` : "— km"}</span>
+                    <span><Icono nombre="clock" size={14} /> {v.fecha_ultimo_servicio ? `Última visita: ${hace(v.fecha_ultimo_servicio).toLowerCase()}` : "Sin visitas"}</span>
                   </div>
                   <div className="veh-tarjeta-pie">
                     <div className="row-actions" onClick={(e) => e.stopPropagation()}>

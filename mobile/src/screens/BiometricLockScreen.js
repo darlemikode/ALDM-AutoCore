@@ -1,3 +1,4 @@
+import { Ionicons } from "../ui/IconoWeb";
 import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -29,7 +30,7 @@ export default function BiometricLockScreen() {
     <View style={styles.screen}>
       <StatusBar style="light" />
       <View style={styles.card}>
-        <Text style={styles.icon}>🔒</Text>
+        <Ionicons name="lock-closed-outline" size={44} color={colors.petrol600} style={{ marginBottom: 8 }} />
         <Text style={styles.title}>Sesión protegida</Text>
         <Text style={styles.subtitle}>Confirma tu huella o Face ID para continuar.</Text>
 

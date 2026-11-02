@@ -2,7 +2,7 @@
 import { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "./estilos";
 import { alerta } from "./Dialogo";

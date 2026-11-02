@@ -2,7 +2,7 @@ import BadgeIcono from "../ui/BadgeIcono";
 import { moduloPorTitulo } from "../iconosModulo";
 import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Switch, ActivityIndicator, TextInput, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { useAuth } from "../context/AuthContext";
 import { useTema } from "../context/TemaContext";
 import { colors, spacing } from "../theme";
@@ -33,12 +33,10 @@ const ITEMS = [
 function Fila({ icono, titulo, desc, onPress, derecha, primera, contador }) {
   const Contenedor = onPress ? TouchableOpacity : View;
   return (
-    <Contenedor style={[styles.fila, !primera && styles.divisor]} onPress={onPress} activeOpacity={0.6}>
+    <Contenedor style={styles.fila} onPress={onPress} activeOpacity={0.6}>
       {(() => {
         const mod = moduloPorTitulo(titulo);
-        return mod
-          ? <BadgeIcono icono={mod.icono} color={mod.color} size={36} />
-          : <View style={styles.filaIcono}><Ionicons name={icono} size={18} color={colors.petrol600} /></View>;
+        return <BadgeIcono icono={mod ? mod.icono : icono} size={38} />;
       })()}
       <View style={{ flex: 1 }}>
         <Text style={styles.rowTitle}>{titulo}</Text>
@@ -49,7 +47,7 @@ function Fila({ icono, titulo, desc, onPress, derecha, primera, contador }) {
           <Text style={styles.contadorBadgeTexto}>{contador > 99 ? "99+" : contador}</Text>
         </View>
       )}
-      {derecha !== undefined ? derecha : <Ionicons name="chevron-forward" size={18} color={colors.ink500} />}
+      {derecha !== undefined ? derecha : <Ionicons name="arrow-forward-outline" size={18} color={colors.ink500} />}
     </Contenedor>
   );
 }
@@ -68,7 +66,7 @@ function Grupo({ titulo, children }) {
 // Posición del scroll de Ajustes: al cambiar el tema la pantalla se vuelve a montar y se queda donde estabas
 let scrollGuardado = 0;
 
-export default function MasScreen({ navigation }) {
+export default function MasScreen({ navigation, route }) {
   const { user, logout, hasPermission } = useAuth();
   const { preferencia, cambiarPreferencia } = useTema();
   const [biometriaDisponible, setBiometriaDisponible] = useState(false);
@@ -82,6 +80,7 @@ export default function MasScreen({ navigation }) {
   const [passSubida, setPassSubida] = useState("");
   const [subiendo, setSubiendo] = useState(false);
   const [mostrarCambioPassword, setMostrarCambioPassword] = useState(false);
+  useEffect(() => { if (route?.params?.abrirPassword) setMostrarCambioPassword(true); }, [route?.params?.abrirPassword]);
   const [passwordActual, setPasswordActual] = useState("");
   const [passwordNueva, setPasswordNueva] = useState("");
   const [passwordNuevaConfirmar, setPasswordNuevaConfirmar] = useState("");
@@ -258,41 +257,28 @@ export default function MasScreen({ navigation }) {
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}
       contentOffset={{ x: 0, y: scrollGuardado }} scrollEventThrottle={64}
       onScroll={(e) => { scrollGuardado = e.nativeEvent.contentOffset.y; }}>
-      <View style={styles.perfil}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarTexto}>
-            {(user?.nombre_completo || user?.username || "?").split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
-          </Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.perfilNombre}>{user?.nombre_completo || user?.username}</Text>
-          {(() => {
-            const rol = typeof user?.rol === "string" ? user.rol : user?.rol?.nombre;
-            const nombre = user?.nombre_completo || user?.username;
-            return rol && rol !== nombre ? <View style={styles.rolBadge}><Text style={styles.rolBadgeTexto}>{rol}</Text></View> : null;
-          })()}
-        </View>
+      <View style={{ marginBottom: 4 }}>
+        <Text style={styles.titulo}>Configuración</Text>
+        <Text style={styles.subtitle}>Ajustes del taller, catálogos, personal y accesos</Text>
       </View>
 
       {taller.length > 0 && (
-        <Grupo titulo="Taller">
+        <Grupo titulo="Taller y facturación">
           {taller.map((c, i) => (
             <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
           ))}
         </Grupo>
       )}
 
-      {accesos.length > 0 && (
-        <Grupo titulo="Accesos">
-          {accesos.map((c, i) => (
-            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
-          ))}
+      {hasPermission("catalogos.ver") && (
+        <Grupo titulo="Catálogos">
+          <Fila primera icono="list-outline" titulo="Catálogos generales" desc="Listas usadas en clientes, vehículos y refacciones" onPress={() => navigation.navigate("Catálogos")} />
         </Grupo>
       )}
 
-      {personal.length > 0 && (
-        <Grupo titulo="Personal">
-          {personal.map((c, i) => (
+      {(personal.length + accesos.length) > 0 && (
+        <Grupo titulo="Personal y accesos">
+          {[...personal, ...accesos].map((c, i) => (
             <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
           ))}
         </Grupo>
@@ -311,7 +297,7 @@ export default function MasScreen({ navigation }) {
       </Grupo>
 
       <Grupo titulo="Módulos">
-        {ITEMS.filter((item) => !item.permiso || hasPermission(item.permiso)).map((item, i) => (
+        {ITEMS.filter((item) => item.to !== "Catálogos" && (!item.permiso || hasPermission(item.permiso))).map((item, i) => (
           <Fila
             key={item.to} primera={i === 0} icono={item.icono} titulo={item.label} desc={item.desc}
             contador={item.to === "Citas" ? citasPendientes : undefined}
@@ -321,7 +307,7 @@ export default function MasScreen({ navigation }) {
       </Grupo>
 
       <Grupo titulo="Apariencia">
-        <View style={styles.bloque}>
+        <View style={[styles.bloque, styles.tarjetaBloque]}>
           <View style={styles.segmentado}>
             {[
               { valor: "sistema", icono: "phone-portrait-outline", label: "Sistema" },
@@ -343,15 +329,15 @@ export default function MasScreen({ navigation }) {
 
       <Grupo titulo="Seguridad">
         <TouchableOpacity style={styles.fila} onPress={() => setMostrarCambioPassword((v) => !v)} activeOpacity={0.6}>
-          <View style={styles.filaIcono}><Ionicons name="key-outline" size={18} color={colors.petrol600} /></View>
+          <BadgeIcono icono="key-outline" size={38} />
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>Cambiar mi contraseña</Text>
             <Text style={styles.rowSubtitle}>Recomendado si sigues con la de fábrica</Text>
           </View>
-          <Ionicons name={mostrarCambioPassword ? "chevron-up" : "chevron-forward"} size={18} color={colors.ink500} />
+          <Ionicons name={mostrarCambioPassword ? "chevron-up-outline" : "chevron-forward-outline"} size={18} color={colors.ink500} />
         </TouchableOpacity>
         {mostrarCambioPassword && (
-          <View style={[styles.bloque, styles.divisor]}>
+          <View style={[styles.bloque, styles.tarjetaBloque]}>
             <TextInput style={styles.input} placeholder="Contraseña actual" placeholderTextColor={colors.ink500} secureTextEntry value={passwordActual} onChangeText={setPasswordActual} />
             <TextInput style={styles.input} placeholder="Contraseña nueva (mínimo 6 caracteres)" placeholderTextColor={colors.ink500} secureTextEntry value={passwordNueva} onChangeText={setPasswordNueva} />
             <TextInput style={styles.input} placeholder="Confirmar contraseña nueva" placeholderTextColor={colors.ink500} secureTextEntry value={passwordNuevaConfirmar} onChangeText={setPasswordNuevaConfirmar} />
@@ -398,8 +384,10 @@ const styles = crearEstilos({
   perfilNombre: { fontFamily: "Inter_600SemiBold", fontSize: 17, color: colors.ink900 },
   subtitle: { fontFamily: "Inter_400Regular", color: colors.ink500, fontSize: 14, marginTop: 2 },
   grupoTitulo: { fontFamily: "Inter_600SemiBold", fontSize: 11.5, color: colors.ink500, marginBottom: 8, marginLeft: 4, textTransform: "uppercase", letterSpacing: 0.8 },
-  grupo: { backgroundColor: colors.paper100, paddingHorizontal: 14 },
-  fila: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13 },
+  grupo: { gap: 8 },
+  titulo: { fontFamily: "Inter_700Bold", fontSize: 24, color: colors.ink900 },
+  tarjetaBloque: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.linea, borderRadius: 14, paddingHorizontal: 14 },
+  fila: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.linea, borderRadius: 14 },
   divisor: { borderTopWidth: 1, borderTopColor: colors.linea },
   filaIcono: { width: 34, height: 34, borderRadius: 10, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center" },
   rowTitle: { fontFamily: "Inter_500Medium", fontSize: 15, color: colors.ink900 },

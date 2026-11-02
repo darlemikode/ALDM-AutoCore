@@ -2,7 +2,7 @@ import ScrollCampos from "../ui/ScrollCampos";
 import { useCallback, useState } from "react";
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Switch, Platform } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { api, getToken, API_URL } from "../api";
@@ -155,7 +155,7 @@ export default function CotizacionDetalleScreen({ route }) {
       <View style={styles.barra}>
         {puedeEditar && (
           <TouchableOpacity style={styles.btnSecundario} onPress={() => setAgregando(true)}>
-            <Ionicons name="add" size={18} color={colors.ink900} /><Text style={styles.btnSecundarioTexto}>Agregar</Text>
+            <Ionicons name="add-outline" size={18} color={colors.ink900} /><Text style={styles.btnSecundarioTexto}>Agregar</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity style={[styles.btnPrimario, (detalles.length === 0 || descargando) && { opacity: 0.5 }]} onPress={pdf} disabled={detalles.length === 0 || descargando}>

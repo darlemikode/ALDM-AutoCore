@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Platform, Modal, Switch, Image, ActivityIndicator, KeyboardAvoidingView } from "react-native";
 import { Picker } from "../ui/Picker";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { api, getToken, API_URL, urlArchivo } from "../api";
@@ -956,7 +956,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               {fotoVehiculo && <Image source={{ uri: urlArchivo(fotoVehiculo.ruta_archivo) }} style={styles.fotoVehiculo} />}
               {servicio.diagnostico ? <Dato etiqueta="Diagnóstico" valor={servicio.diagnostico} /> : null}
               {servicio.operaciones ? <Dato etiqueta="Operaciones" valor={servicio.operaciones} /> : null}
-              {servicio.autorizado_cliente ? <Text style={styles.autorizado}>✓ Autorizado por el cliente</Text> : null}
+              {servicio.autorizado_cliente ? <Text style={styles.autorizado}><Ionicons name="checkmark-circle-outline" size={13} /> Autorizado por el cliente</Text> : null}
             </Bloque>
 
             <Bloque icono="create-outline" titulo="Comentarios finales">
@@ -964,7 +964,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               <TextInput style={[styles.textarea, { marginTop: 8 }]} value={comentariosFinales} onChangeText={setComentariosFinales} multiline editable={puedeEditar}
                 placeholder="Ej. Se recomienda revisar las balatas traseras en el próximo servicio." placeholderTextColor={colors.ink500} />
               <Text style={[styles.filaSub, { marginTop: 6, minHeight: 18 }]}>
-                {guardandoComentarios || comentariosFinales !== comentariosGuardados ? "Guardando…" : comentariosFinales ? "✓ Guardado automáticamente" : ""}
+                {guardandoComentarios || comentariosFinales !== comentariosGuardados ? "Guardando…" : comentariosFinales ? "Guardado automáticamente" : ""}
               </Text>
             </Bloque>
 
@@ -983,7 +983,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                       <Text style={styles.filaTitulo}>#{r.id_servicio} · {new Date(r.fecha_entrada_servicio).toLocaleDateString("es-MX")}</Text>
                       <Text style={styles.filaSub}>{r.motivo_garantia || "—"}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.ink500} />
+                    <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />
                   </TouchableOpacity>
                 ))}
               </Bloque>
@@ -1036,7 +1036,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       {abierta && puedeEditar && (
         <View style={styles.barra}>
           <Boton icono="construct-outline" texto="Agregar refacción" onPress={() => abrirAgregar(refacciones.length ? "catalogo" : "libre")} estilo={{ flex: 1.2 }} />
-          <Boton tipo="primario" icono="checkmark-done" texto={conSaldoFinal ? `Cobrar ${fmt(saldoFinal)}` : "Finalizar"} onPress={abrirModalCierre}
+          <Boton tipo="primario" icono="checkmark-done-outline" texto={conSaldoFinal ? `Cobrar ${fmt(saldoFinal)}` : "Finalizar"} onPress={abrirModalCierre}
             deshabilitado={detalles.length === 0} estilo={{ flex: 1.5 }} />
         </View>
       )}
@@ -1076,7 +1076,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitulo}>Chat de la orden #{servicio.id_servicio}</Text>
-            <TouchableOpacity onPress={() => setChatAbierto(false)} hitSlop={10}><Ionicons name="close" size={24} color={colors.ink900} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setChatAbierto(false)} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink900} /></TouchableOpacity>
           </View>
           <View style={{ flex: 1, padding: spacing.md }}>
             <ChatOrden servicioId={servicio.id_servicio} />
@@ -1089,7 +1089,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         <View style={styles.modalPantalla}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitulo}>Agregar a la orden #{servicio.id_servicio}</Text>
-            <TouchableOpacity onPress={() => setModalRefacciones(false)} hitSlop={10}><Ionicons name="close" size={24} color={colors.ink900} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setModalRefacciones(false)} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink900} /></TouchableOpacity>
           </View>
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
             <View style={styles.segmentado}>
@@ -1144,7 +1144,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               </ScrollCampos>
               <View style={styles.modalPie}>
                 <Boton texto="Cancelar" onPress={() => setModalRefacciones(false)} estilo={{ flex: 1 }} />
-                <Boton tipo="primario" icono="add" texto="Agregar a la orden" onPress={guardarConceptoLibre} cargando={guardandoRefacciones} estilo={{ flex: 1.6 }} />
+                <Boton tipo="primario" icono="add-outline" texto="Agregar a la orden" onPress={guardarConceptoLibre} cargando={guardandoRefacciones} estilo={{ flex: 1.6 }} />
               </View>
             </>
           ) : (
@@ -1153,7 +1153,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
             <TextInput style={styles.search} placeholder="Buscar refacción…" placeholderTextColor={colors.ink500} value={busquedaRef} onChangeText={setBusquedaRef} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
               <TouchableOpacity style={[styles.chip, verAutoRef && styles.chipActivo]} onPress={() => { setVerAutoRef(!verAutoRef); setZonaRef(null); }}>
-                <Text style={[styles.chipTexto, verAutoRef && styles.chipTextoActivo]}>🚗 {verAutoRef ? "Ocultar auto" : "Elegir en el auto"}</Text>
+                <Text style={[styles.chipTexto, verAutoRef && styles.chipTextoActivo]}><Ionicons name="car-sport-outline" size={13} /> {verAutoRef ? "Ocultar auto" : "Elegir en el auto"}</Text>
               </TouchableOpacity>
               {["", ...categoriasDisponibles].map((c) => (
                 <TouchableOpacity key={c || "todas"} style={[styles.chip, filtroCategoria === c && styles.chipActivo]} onPress={() => setFiltroCategoria(c)}>
@@ -1300,10 +1300,10 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
             <Text style={[styles.label, { marginTop: spacing.md }]}>Al continuar</Text>
             <View style={{ gap: 4 }}>
-              {conSaldoFinal ? <Text style={styles.ivaTexto}>✓ Se registra el cobro de {fmt(saldoFinal)}</Text> : null}
-              <Text style={styles.ivaTexto}>✓ La orden #{servicio.id_servicio} se cerrará (puedes reabrirla después)</Text>
-              <Text style={styles.ivaTexto}>✓ Se generará la nota de remisión para imprimir o enviar</Text>
-              {notificarFinal && cliente.cuenta_activada ? <Text style={styles.ivaTexto}>✓ Se avisará al cliente que su vehículo está listo</Text> : null}
+              {conSaldoFinal ? <Text style={styles.ivaTexto}><Ionicons name="checkmark-outline" size={13} /> Se registra el cobro de {fmt(saldoFinal)}</Text> : null}
+              <Text style={styles.ivaTexto}><Ionicons name="checkmark-outline" size={13} /> La orden #{servicio.id_servicio} se cerrará (puedes reabrirla después)</Text>
+              <Text style={styles.ivaTexto}><Ionicons name="checkmark-outline" size={13} /> Se generará la nota de remisión para imprimir o enviar</Text>
+              {notificarFinal && cliente.cuenta_activada ? <Text style={styles.ivaTexto}><Ionicons name="checkmark-outline" size={13} /> Se avisará al cliente que su vehículo está listo</Text> : null}
             </View>
 
             <View style={styles.modalAcciones}>

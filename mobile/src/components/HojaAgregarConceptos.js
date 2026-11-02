@@ -2,7 +2,7 @@ import { contiene } from "../lib/texto";
 import ScrollCampos from "../ui/ScrollCampos";
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
@@ -89,7 +89,7 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
       <View style={styles.pantalla}>
         <View style={styles.header}>
           <Text style={styles.titulo}>{titulo}</Text>
-          <TouchableOpacity onPress={onCerrar} hitSlop={10}><Ionicons name="close" size={24} color={colors.ink900} /></TouchableOpacity>
+          <TouchableOpacity onPress={onCerrar} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink900} /></TouchableOpacity>
         </View>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
           <View style={styles.segmentado}>
@@ -106,12 +106,12 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
           <>
             <View style={{ paddingHorizontal: spacing.lg, paddingTop: 10, gap: 8 }}>
               <View style={styles.buscador}>
-                <Ionicons name="search" size={18} color={colors.ink500} />
+                <Ionicons name="search-outline" size={18} color={colors.ink500} />
                 <TextInput style={styles.buscadorInput} placeholder="Buscar refacción…" placeholderTextColor={colors.ink500} value={busqueda} onChangeText={setBusqueda} />
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                 <TouchableOpacity style={[styles.chip, verAuto && styles.chipActivo]} onPress={() => { setVerAuto(!verAuto); setZona(null); }}>
-                  <Text style={[styles.chipTexto, verAuto && styles.chipTextoActivo]}>🚗 {verAuto ? "Ocultar auto" : "Elegir en el auto"}</Text>
+                  <Text style={[styles.chipTexto, verAuto && styles.chipTextoActivo]}><Ionicons name="car-sport-outline" size={13} /> {verAuto ? "Ocultar auto" : "Elegir en el auto"}</Text>
                 </TouchableOpacity>
                 {["", ...categorias].map((c) => (
                   <TouchableOpacity key={c || "todas"} style={[styles.chip, categoria === c && styles.chipActivo]} onPress={() => setCategoria(c)}>

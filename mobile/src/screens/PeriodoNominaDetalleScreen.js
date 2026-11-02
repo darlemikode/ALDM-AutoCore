@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { api, getToken, API_URL } from "../api";
@@ -157,9 +157,9 @@ export default function PeriodoNominaDetalleScreen({ route, navigation }) {
             <TouchableOpacity onPress={() => compartirRecibo(r)} style={styles.botonChico}><Text style={styles.botonChicoTexto}>Recibo PDF</Text></TouchableOpacity>
             {r.pagado ? (
               <TouchableOpacity disabled={!puedeEditar} onPress={() => reabrir(r)} activeOpacity={0.7} style={[styles.badgePagado, { flexDirection: "row", alignItems: "center", gap: 4 }]}>
-                <Ionicons name="checkmark-circle" size={15} color={colors.teal600} />
+                <Ionicons name="checkmark-circle-outline" size={15} color={colors.teal600} />
                 <Text style={styles.badgePagadoTexto}>Pagado</Text>
-                {puedeEditar && <Ionicons name="chevron-down" size={14} color={colors.teal600} />}
+                {puedeEditar && <Ionicons name="chevron-down-outline" size={14} color={colors.teal600} />}
               </TouchableOpacity>
             ) : (
               puedeEditar && (
@@ -182,7 +182,7 @@ export default function PeriodoNominaDetalleScreen({ route, navigation }) {
           <View style={styles.modalHoja}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitulo}>Ajustar recibo</Text>
-              <TouchableOpacity onPress={() => setEditando(null)} hitSlop={10}><Ionicons name="close" size={22} color={colors.ink700} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setEditando(null)} hitSlop={10}><Ionicons name="close-outline" size={22} color={colors.ink700} /></TouchableOpacity>
             </View>
             <ScrollCampos style={{ maxHeight: 460 }}>
             <Text style={styles.campoLabel}>Faltas (días)</Text>

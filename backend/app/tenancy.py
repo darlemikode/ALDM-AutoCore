@@ -94,6 +94,10 @@ def _asignar_taller(session, contexto, instancias):
     for obj in session.new:
         if isinstance(obj, TenantMixin) and obj.id_taller is None:
             if modo != MODO_TALLER:
+                # La bitácora de errores acepta filas sin taller: así se guardan
+                # los errores de las pantallas de súper admin (sesión global).
+                if getattr(obj, "__tablename__", "") == "errores_sistema":
+                    continue
                 raise RuntimeError(f"{type(obj).__name__} sin taller: la sesión no tiene un taller activo")
             obj.id_taller = tid
         elif isinstance(obj, CatalogoCompartidoMixin) and obj.id_taller is None and modo == MODO_TALLER:

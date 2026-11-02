@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
@@ -37,7 +37,7 @@ export default function UsuariosScreen({ navigation }) {
   return (
     <View style={styles.screen}>
       <View style={styles.buscador}>
-        <Ionicons name="search" size={18} color={colors.ink500} />
+        <Ionicons name="search-outline" size={18} color={colors.ink500} />
         <TextInput style={styles.buscadorInput} value={q} onChangeText={setQ} placeholder="Usuario, nombre, correo o taller" placeholderTextColor={colors.ink500} autoCapitalize="none" />
       </View>
       <View>

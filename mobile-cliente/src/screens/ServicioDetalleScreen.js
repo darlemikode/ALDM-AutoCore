@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, FlatList, ScrollView, Image,
   KeyboardAvoidingView, Platform, ActivityIndicator, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as ImagePicker from "expo-image-picker";
@@ -215,7 +215,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         <View style={{ flex: 1 }}><Text style={styles.cifraEtiqueta}>Total</Text><Text style={styles.cifra}>{fmt(c.total)}</Text></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cifraEtiqueta}>{c.saldo_pendiente > 0.005 ? "Saldo pendiente" : "Pagado"}</Text>
-          <Text style={[styles.cifra, { color: c.saldo_pendiente > 0.005 ? colors.red600 : colors.teal600 }]}>{c.saldo_pendiente > 0.005 ? fmt(c.saldo_pendiente) : "✓"}</Text>
+          <Text style={[styles.cifra, { color: c.saldo_pendiente > 0.005 ? colors.red600 : colors.teal600 }]}>{c.saldo_pendiente > 0.005 ? fmt(c.saldo_pendiente) : "Pagado"}</Text>
         </View>
       </View>
       {servicio.status === "cerrado" ? (
@@ -279,7 +279,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
             </TouchableOpacity>
             <TextInput style={styles.inputChat} placeholder="Escribe un mensaje…" placeholderTextColor={colors.ink500} value={texto} onChangeText={setTexto} multiline />
             <TouchableOpacity style={[styles.botonEnviar, (!texto.trim() || enviando) && { opacity: 0.5 }]} onPress={() => enviarMensaje("mensaje")} disabled={!texto.trim() || enviando}>
-              {enviando ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send" size={18} color="#fff" />}
+              {enviando ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send-outline" size={18} color="#fff" />}
             </TouchableOpacity>
           </View>
         ) : (
@@ -403,7 +403,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
             <Text style={styles.botonAlertaTexto}>Avisar al mecánico</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.botonPrimario} onPress={() => cambiarPestana("chat")}>
-            <Ionicons name="chatbubbles" size={18} color="#fff" />
+            <Ionicons name="chatbubbles-outline" size={18} color="#fff" />
             <Text style={styles.botonPrimarioTexto}>Chat{sinLeer ? ` (${sinLeer})` : ""}</Text>
           </TouchableOpacity>
         </View>

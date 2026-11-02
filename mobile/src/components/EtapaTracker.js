@@ -43,22 +43,22 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
     if (nuevaEtapa === actual) {
       if (!comentario.trim()) {
         mostrarDialogo({
-          tono: "alerta", icono: "repeat", etiqueta: "Mismo estatus",
+          tono: "alerta", icono: "repeat-outline", etiqueta: "Mismo estatus",
           titulo: `Ya está en "${etiqueta}"`,
           mensaje: "Elige otra etapa para avanzar la orden, o escribe un comentario si solo quieres dejar una nota en esta misma etapa.",
           acciones: [
-            { texto: `Pasar a "${ETIQUETAS_ETAPA[siguiente(actual)]}"`, tipo: "primario", icono: "arrow-forward", onPress: () => setNuevaEtapa(siguiente(actual)) },
+            { texto: `Pasar a "${ETIQUETAS_ETAPA[siguiente(actual)]}"`, tipo: "primario", icono: "arrow-forward-outline", onPress: () => setNuevaEtapa(siguiente(actual)) },
             { texto: "Entendido", tipo: "secundario" },
           ],
         });
         return;
       }
       mostrarDialogo({
-        tono: "info", icono: "chatbox-ellipses", etiqueta: "Mismo estatus",
+        tono: "info", icono: "chatbox-ellipses-outline", etiqueta: "Mismo estatus",
         titulo: "¿Registrar solo la nota?",
         mensaje: `La orden seguirá en "${etiqueta}" y se agregará tu comentario a la bitácora.`,
         acciones: [
-          { texto: "Sí, registrar nota", tipo: "primario", icono: "checkmark", onPress: guardarEtapa },
+          { texto: "Sí, registrar nota", tipo: "primario", icono: "checkmark-outline", onPress: guardarEtapa },
           { texto: "Cancelar", tipo: "secundario" },
         ],
       });

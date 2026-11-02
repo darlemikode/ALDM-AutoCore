@@ -2,10 +2,10 @@ import io
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from ..vehiculo_utils import orden_abierta_del_vehiculo
 from .. import models, schemas
@@ -77,12 +77,16 @@ def _adjuntar_foto_vehiculo(db: Session, servicios: list[models.Servicio]):
     ids_vehiculo = {s.id_vehiculo for s in servicios if s.vehiculo}
     if not ids_vehiculo:
         return
-    fotos = (
-        db.query(models.Foto)
-        .filter(models.Foto.entidad_tipo == "vehiculo", models.Foto.entidad_id.in_(ids_vehiculo))
-        .order_by(models.Foto.fecha.desc())
-        .all()
-    )
+    ids_lista = list(ids_vehiculo)
+    fotos = []
+    for i in range(0, len(ids_lista), 800):
+        fotos += (
+            db.query(models.Foto)
+            .filter(models.Foto.entidad_tipo == "vehiculo", models.Foto.entidad_id.in_(ids_lista[i:i + 800]))
+            .order_by(models.Foto.fecha.desc())
+            .all()
+        )
+    fotos.sort(key=lambda f: f.fecha or 0, reverse=True)
     mas_reciente = {}
     for foto in fotos:
         mas_reciente.setdefault(foto.entidad_id, foto.ruta_archivo)
@@ -180,12 +184,16 @@ def listar(
     status: Optional[str] = None,
     id_cliente: Optional[int] = None,
     solo_sin_pagar: bool = False,
+    limite: Optional[int] = Query(None, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     user=Depends(require_permission("servicios.ver")),
 ):
+    # Colecciones con selectinload (una consulta extra cada una) en vez de
+    # joinedload: evita multiplicar filas (detalles x abonos) en la consulta.
     query = db.query(models.Servicio).options(
-        joinedload(models.Servicio.detalles),
-        joinedload(models.Servicio.abonos),
+        selectinload(models.Servicio.detalles),
+        selectinload(models.Servicio.abonos),
         joinedload(models.Servicio.cliente),
         joinedload(models.Servicio.vehiculo),
     )
@@ -195,7 +203,10 @@ def listar(
         query = query.filter(models.Servicio.id_cliente == id_cliente)
     if solo_sin_pagar:
         query = query.filter(models.Servicio.pagado == False)
-    servicios = query.order_by(models.Servicio.fecha_entrada_servicio.desc()).all()
+    query = query.order_by(models.Servicio.fecha_entrada_servicio.desc())
+    if limite:
+        query = query.offset(offset).limit(limite)
+    servicios = query.all()
     _adjuntar_foto_vehiculo(db, servicios)
     return [_para(user, _con_costos(s)) for s in servicios]
 

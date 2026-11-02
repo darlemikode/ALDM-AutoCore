@@ -3,7 +3,7 @@
 // taller") en cualquier momento.
 import { useEffect, useState } from "react";
 import { Modal, View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { useAuth } from "../context/AuthContext";
 import { colors } from "../theme";
 import { crearEstilos } from "./estilos";
@@ -56,7 +56,7 @@ export default function SelectorTaller() {
                     <Text style={styles.nombre}>{t.nombre}</Text>
                     <Text style={styles.detalle}>{detalle}</Text>
                   </View>
-                  {cambiando === t.id_taller ? <ActivityIndicator color={colors.petrol500} /> : actual ? <Text style={styles.marca}>ACTUAL</Text> : <Ionicons name="chevron-forward" size={18} color={colors.ink500} />}
+                  {cambiando === t.id_taller ? <ActivityIndicator color={colors.petrol500} /> : actual ? <Text style={styles.marca}>ACTUAL</Text> : <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />}
                 </TouchableOpacity>
               );
             })}
