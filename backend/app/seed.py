@@ -299,6 +299,29 @@ def _sincronizar_columnas_faltantes():
                 print(f"[migración automática] agregada columna faltante: {tabla.name}.{columna.name}")
         conn.commit()
 
+        # Autorreparación de datos: una columna booleana con valor por defecto nunca
+        # debe quedar en NULL (filas viejas, inserciones directas, migraciones previas
+        # sin "WITH VALUES"). Un NULL ahí hace reventar los schemas al leer la fila
+        # (p. ej. talleres.pendiente_activacion en el panel de súper admin). Se rellena
+        # con el valor por defecto del modelo en cada arranque; es idempotente.
+        for tabla in Base.metadata.sorted_tables:
+            if tabla.name not in tablas_existentes:
+                continue
+            for columna in tabla.columns:
+                if columna.primary_key or columna.type.__class__.__name__ != "Boolean":
+                    continue
+                if columna.default is None or not getattr(columna.default, "is_scalar", False) or not isinstance(columna.default.arg, bool):
+                    continue
+                try:
+                    valor = int(columna.default.arg) if (es_sqlite or es_mssql) else ("TRUE" if columna.default.arg else "FALSE")
+                    r = conn.execute(text(f'UPDATE "{tabla.name}" SET "{columna.name}" = {valor} WHERE "{columna.name}" IS NULL'))
+                    conn.commit()
+                    if r.rowcount:
+                        print(f"[autorreparación] {tabla.name}.{columna.name}: {r.rowcount} fila(s) en NULL corregidas")
+                except Exception as error:  # noqa: BLE001 — nunca debe impedir el arranque
+                    conn.rollback()
+                    print(f"[autorreparación] omitida {tabla.name}.{columna.name}: {error.__class__.__name__}")
+
 
 # Restricciones que cambiaron al pasar a multi-taller: lo que antes era
 # único en todo el sistema ahora es único POR TALLER (dos talleres pueden
