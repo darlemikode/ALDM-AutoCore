@@ -1,6 +1,6 @@
 // Personas que pidieron información o demo desde la página informativa.
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, Linking } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";

@@ -5,7 +5,7 @@ import { api } from "../api";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import BadgeIcono from "../ui/BadgeIcono";
 import ScrollCampos from "../ui/ScrollCampos";
 

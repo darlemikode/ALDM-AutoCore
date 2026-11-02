@@ -3,7 +3,7 @@
 // hoy solo mensajes/alertas del chat del cliente que nadie vio en vivo).
 import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, Modal, FlatList } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { colors } from "../theme";
 import { crearEstilos } from "./estilos";
 import { suscribirNotificaciones, cargarNotificaciones, marcarNotificacionesVistas } from "../notificaciones";
@@ -64,7 +64,7 @@ export default function CampanaNotificaciones({ navigation }) {
             <View style={styles.encabezado}>
               <Text style={styles.titulo}>Notificaciones</Text>
               <TouchableOpacity onPress={cerrarYMarcarVistas} hitSlop={10}>
-                <Ionicons name="close" size={22} color={colors.ink700} />
+                <Ionicons name="close-outline" size={22} color={colors.ink700} />
               </TouchableOpacity>
             </View>
             <FlatList

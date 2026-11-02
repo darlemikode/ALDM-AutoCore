@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { useAuth } from "../context/AuthContext";
 import { useTema } from "../context/TemaContext";
 import { api, servidorActual, setToken } from "../api";
@@ -68,7 +68,7 @@ export default function MasScreen({ navigation }) {
               <Text style={styles.contadorBadgeTexto}>{solicitudesPendientes > 99 ? "99+" : solicitudesPendientes}</Text>
             </View>
           )}
-          <Ionicons name="chevron-forward" size={18} color={colors.ink500} />
+          <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />
         </TouchableOpacity>
       ))}
 
@@ -90,7 +90,7 @@ export default function MasScreen({ navigation }) {
           <Text style={styles.titulo}>Cambiar mi contraseña</Text>
           <Text style={styles.desc}>Necesitas tu contraseña actual</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.ink500} />
+        <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.salir} onPress={() => confirmar("Cerrar sesión", "¿Seguro que quieres salir?", "Salir", logout)}>
         <Ionicons name="log-out-outline" size={18} color={colors.red600} />

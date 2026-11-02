@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, Image, ScrollView, ActivityIndicator, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { crearEstilos } from "../ui/estilos";
 import { api, urlArchivo } from "../api";
 import { colors, spacing } from "../theme";

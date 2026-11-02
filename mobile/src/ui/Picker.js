@@ -1,6 +1,6 @@
 import { Children, isValidElement, useMemo, useState, Fragment } from "react";
 import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, Pressable, KeyboardAvoidingView, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { colors, temaActivo } from "../theme";
 import { crearEstilos } from "./estilos";
 
@@ -73,7 +73,7 @@ export function Picker({ selectedValue, onValueChange, enabled = true, children,
         <Text style={[styles.disparadorTexto, !elegida && styles.disparadorVacio, style?.color && elegida ? { color: colors.ink900 } : null]} numberOfLines={1}>
           {elegida ? elegida.label : textoMarcador}
         </Text>
-        <Ionicons name="chevron-down" size={18} color={colors.ink500} />
+        <Ionicons name="chevron-down-outline" size={18} color={colors.ink500} />
       </TouchableOpacity>
 
       <Modal visible={abierto} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setAbierto(false)}>
@@ -88,15 +88,15 @@ export function Picker({ selectedValue, onValueChange, enabled = true, children,
                 <Text style={styles.subtitulo}>{opciones.length} {opciones.length === 1 ? "opción" : "opciones"}{ordenar ? " · A–Z" : ""}</Text>
               </View>
               <TouchableOpacity onPress={() => setAbierto(false)} hitSlop={10} style={[styles.cerrar, { backgroundColor: alfa(colors.ink500, 0.14) }]}>
-                <Ionicons name="close" size={20} color={colors.ink700} />
+                <Ionicons name="close-outline" size={20} color={colors.ink700} />
               </TouchableOpacity>
             </View>
 
             {largo ? (
               <View style={[styles.buscador, { backgroundColor: alfa(colors.ink500, 0.12) }]}>
-                <Ionicons name="search" size={17} color={colors.ink500} />
+                <Ionicons name="search-outline" size={17} color={colors.ink500} />
                 <TextInput style={styles.buscadorTexto} value={q} onChangeText={setQ} placeholder="Buscar…" placeholderTextColor={colors.ink500} autoCorrect={false} />
-                {q ? <TouchableOpacity onPress={() => setQ("")} hitSlop={8}><Ionicons name="close-circle" size={17} color={colors.ink500} /></TouchableOpacity> : null}
+                {q ? <TouchableOpacity onPress={() => setQ("")} hitSlop={8}><Ionicons name="close-circle-outline" size={17} color={colors.ink500} /></TouchableOpacity> : null}
               </View>
             ) : null}
 
@@ -122,7 +122,7 @@ export function Picker({ selectedValue, onValueChange, enabled = true, children,
                     onPress={() => elegir(f.o)}
                   >
                     <Text style={[styles.opcionTexto, activa && styles.opcionActiva]} numberOfLines={2}>{f.o.label}</Text>
-                    {activa ? <Ionicons name="checkmark-circle" size={20} color={colors.petrol600} /> : null}
+                    {activa ? <Ionicons name="checkmark-circle-outline" size={20} color={colors.petrol600} /> : null}
                   </TouchableOpacity>
                 );
               }}

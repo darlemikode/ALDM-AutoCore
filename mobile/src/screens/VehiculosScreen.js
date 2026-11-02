@@ -2,7 +2,7 @@ import { contiene } from "../lib/texto";
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -74,7 +74,7 @@ export default function VehiculosScreen({ navigation }) {
     <View style={styles.screen}>
       <View style={styles.cabecera}>
         <View style={styles.buscador}>
-          <Ionicons name="search" size={18} color={colors.ink500} />
+          <Ionicons name="search-outline" size={18} color={colors.ink500} />
           <TextInput style={styles.buscadorInput} placeholder="Placas, marca, modelo, VIN o dueño" placeholderTextColor={colors.ink500} value={q} onChangeText={setQ} />
         </View>
         <Text style={styles.contador}>{filtrados.length} de {vehiculos.length} vehículo(s)</Text>
@@ -95,7 +95,7 @@ export default function VehiculosScreen({ navigation }) {
                   <Text style={styles.meta}>{[v.color?.nombre_color, v.km_vehiculo ? `${Number(v.km_vehiculo).toLocaleString("es-MX")} km` : null, v.numero_cuenta].filter(Boolean).join(" · ")}</Text>
                   <Text style={styles.meta}>Dueño: {v.cliente ? `${v.cliente.nombre_cliente} ${v.cliente.paterno_cliente || ""}` : "—"}</Text>
                 </View>
-                <Ionicons name={abierto ? "chevron-up" : "chevron-down"} size={18} color={colors.ink500} />
+                <Ionicons name={abierto ? "chevron-up-outline" : "chevron-down-outline"} size={18} color={colors.ink500} />
               </TouchableOpacity>
               {abierto && (
                 <View style={styles.extra}>
@@ -139,7 +139,7 @@ export default function VehiculosScreen({ navigation }) {
       />
       {hasPermission("vehiculos.crear") && (
         <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("VehiculoForm")} accessibilityLabel="Nuevo vehículo">
-          <Ionicons name="add" size={28} color={colors.paper100} />
+          <Ionicons name="add-outline" size={28} color={colors.paper100} />
         </TouchableOpacity>
       )}
     </View>

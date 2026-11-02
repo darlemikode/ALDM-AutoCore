@@ -132,11 +132,11 @@ export default function VehiculoFormScreen({ navigation, route, onGuardado }) {
       if (editando || !hasPermission("servicios.crear")) { navigation.goBack(); return; }
       const dueno = clienteFijo || clientes.find((c) => c.id_cliente === Number(clienteId));
       mostrarDialogo({
-        tono: "exito", icono: "car-sport", etiqueta: nuevo.numero_cuenta || "Vehículo registrado",
+        tono: "exito", icono: "car-sport-outline", etiqueta: nuevo.numero_cuenta || "Vehículo registrado",
         titulo: "¡Vehículo agregado!",
         mensaje: `${[nuevo.placas_vehiculo, dueno?.nombre_cliente].filter(Boolean).join(" · ") || "El vehículo"} ya quedó registrado. ¿Abrimos de una vez su orden de servicio?`,
         acciones: [
-          { texto: "Sí, crear orden", tipo: "primario", icono: "construct", onPress: () => { navigation.goBack(); abrirOrdenDeVehiculo(navigation, dueno, nuevo); } },
+          { texto: "Sí, crear orden", tipo: "primario", icono: "construct-outline", onPress: () => { navigation.goBack(); abrirOrdenDeVehiculo(navigation, dueno, nuevo); } },
           { texto: "Ahora no", tipo: "secundario", onPress: () => navigation.goBack() },
         ],
       });

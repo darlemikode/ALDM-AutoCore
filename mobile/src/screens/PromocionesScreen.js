@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, FlatList, ScrollView, StyleShe
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { api, urlArchivo, archivoParaForm } from "../api";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import HojaFormulario from "../ui/HojaFormulario";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
@@ -101,7 +101,7 @@ export default function PromocionesScreen() {
           <Text style={styles.subtitle}>Así se ven en el inicio de la app de tus clientes</Text>
         </View>
         <TouchableOpacity style={styles.botonPreview} onPress={() => setPrevisualizando(true)}>
-          <Text style={styles.botonPreviewTexto}>👁️ Ver como cliente</Text>
+          <Text style={styles.botonPreviewTexto}><Ionicons name="eye-outline" size={14} /> Ver como cliente</Text>
         </TouchableOpacity>
       </View>
 

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { colors } from "../theme";
 import { crearEstilos } from "../ui/estilos";
@@ -44,7 +44,7 @@ export default function MisVehiculosScreen({ navigation }) {
         return (
           <View style={styles.tarjeta}>
             <TouchableOpacity style={styles.cabecera} onPress={() => setAbierto(expandido ? null : v.id_vehiculo)} activeOpacity={0.8}>
-              <View style={styles.icono}><Ionicons name="car-sport" size={22} color={colors.petrol600} /></View>
+              <View style={styles.icono}><Ionicons name="car-sport-outline" size={22} color={colors.petrol600} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.nombre} numberOfLines={1}>{[v.marca?.nombre_marca, v.modelo?.nombre_modelo].filter(Boolean).join(" ") || "Vehículo"}</Text>
                 <Text style={styles.meta}>{[v.id_year_vehiculo, v.color?.nombre_color].filter(Boolean).join(" · ") || "Sin datos de modelo"}</Text>
@@ -54,9 +54,9 @@ export default function MisVehiculosScreen({ navigation }) {
 
             {activo ? (
               <TouchableOpacity style={styles.enTaller} onPress={() => irAServicio(activo.id_servicio)}>
-                <Ionicons name="construct" size={16} color={colors.petrol600} />
+                <Ionicons name="construct-outline" size={16} color={colors.petrol600} />
                 <Text style={styles.enTallerTexto} numberOfLines={1}>En el taller · {ETIQUETA[activo.etapa] || activo.etapa}</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.petrol600} />
+                <Ionicons name="chevron-forward-outline" size={16} color={colors.petrol600} />
               </TouchableOpacity>
             ) : null}
 

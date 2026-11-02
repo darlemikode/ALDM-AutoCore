@@ -1,3 +1,4 @@
+import { Ionicons } from "../ui/IconoWeb";
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { api } from "../api";
@@ -202,12 +203,12 @@ export default function RecepcionAutoModal({ visible, idServicio, puedeEditar = 
                             <TouchableOpacity onPress={() => setVisor({ fotos: d.fotos.map((x) => urlFoto(x.url)), indice: k })}>
                               <Image source={{ uri: urlFoto(f.url) }} style={s.foto} />
                             </TouchableOpacity>
-                            {puedeEditar && <TouchableOpacity style={s.fotoX} onPress={() => borrarFoto(f)} accessibilityLabel="Eliminar foto"><Text style={s.fotoXTexto}>✕</Text></TouchableOpacity>}
+                            {puedeEditar && <TouchableOpacity style={s.fotoX} onPress={() => borrarFoto(f)} accessibilityLabel="Eliminar foto"><Ionicons name="close-outline" size={13} color="#fff" /></TouchableOpacity>}
                           </View>
                         ))}
                         {puedeEditar && (
                           <TouchableOpacity style={s.fotoMas} onPress={() => agregarFotoADano(d)} disabled={subiendoDano !== null}>
-                            {subiendoDano === d.id_dano ? <ActivityIndicator color={colors.petrol500} /> : <Text style={s.fotoMasTexto}>📷 Foto</Text>}
+                            {subiendoDano === d.id_dano ? <ActivityIndicator color={colors.petrol500} /> : <Text style={s.fotoMasTexto}><Ionicons name="camera-outline" size={14} color={colors.ink700} /> Foto</Text>}
                           </TouchableOpacity>
                         )}
                       </View>
@@ -241,10 +242,10 @@ export default function RecepcionAutoModal({ visible, idServicio, puedeEditar = 
                         {fotosNuevas.map((f, i) => (
                           <View key={i} style={{ position: "relative" }}>
                             <Image source={{ uri: f.uri }} style={s.foto} />
-                            <TouchableOpacity style={s.fotoX} onPress={() => setFotosNuevas(fotosNuevas.filter((_, j) => j !== i))} accessibilityLabel="Quitar foto"><Text style={s.fotoXTexto}>✕</Text></TouchableOpacity>
+                            <TouchableOpacity style={s.fotoX} onPress={() => setFotosNuevas(fotosNuevas.filter((_, j) => j !== i))} accessibilityLabel="Quitar foto"><Ionicons name="close-outline" size={13} color="#fff" /></TouchableOpacity>
                           </View>
                         ))}
-                        <TouchableOpacity style={s.fotoMas} onPress={agregarFotoNueva}><Text style={s.fotoMasTexto}>📷 Foto</Text></TouchableOpacity>
+                        <TouchableOpacity style={s.fotoMas} onPress={agregarFotoNueva}><Text style={s.fotoMasTexto}><Ionicons name="camera-outline" size={14} color={colors.ink700} /> Foto</Text></TouchableOpacity>
                       </View>
                       <TouchableOpacity style={[s.guardar, guardando && { opacity: 0.6 }]} onPress={guardarDano} disabled={guardando}>
                         <Text style={s.guardarTexto}>{guardando ? "Guardando…" : "Guardar daño"}</Text>

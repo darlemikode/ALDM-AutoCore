@@ -1,3 +1,4 @@
+import { Ionicons } from "../ui/IconoWeb";
 import { useCallback, useState } from "react";
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -125,7 +126,7 @@ export default function FotoGaleria({ entidadTipo, entidadId, soloLectura = fals
               <Image source={{ uri: urlArchivo(foto.ruta_archivo) }} style={styles.imagen} />
               {puedeEditar && (
                 <TouchableOpacity style={styles.botonBorrar} onPress={() => eliminar(foto)}>
-                  <Text style={styles.botonBorrarTexto}>✕</Text>
+                  <Ionicons name="close-outline" size={14} color="#fff" />
                 </TouchableOpacity>
               )}
             </View>

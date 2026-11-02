@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Linking } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
 import { useAuth } from "../context/AuthContext";
@@ -100,13 +100,13 @@ export default function ClienteDetalleScreen({ route, navigation }) {
       <View style={styles.seccionFila}>
         <Text style={styles.seccion}>Vehículos</Text>
         {hasPermission("vehiculos.crear") && (
-          <TouchableOpacity style={styles.btnAgregar} onPress={() => navigation.navigate("VehiculoForm", { clienteFijo: cliente })} activeOpacity={0.8}><Ionicons name="add" size={20} color="#fff" /><Text style={styles.agregar}>Agregar</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.btnAgregar} onPress={() => navigation.navigate("VehiculoForm", { clienteFijo: cliente })} activeOpacity={0.8}><Ionicons name="add-outline" size={20} color="#fff" /><Text style={styles.agregar}>Agregar</Text></TouchableOpacity>
         )}
       </View>
       {vehiculos.length === 0 ? <Text style={styles.vacio}>Sin vehículos registrados.</Text> : vehiculos.map((v) => (
         <View key={v.id_vehiculo} style={styles.tarjeta}>
           <TouchableOpacity style={styles.vehiculoFila} onPress={() => navigation.navigate("VehiculoForm", { vehiculoExistente: v })}>
-            <View style={styles.icono}><Ionicons name="car" size={18} color={colors.petrol600} /></View>
+            <View style={styles.icono}><Ionicons name="car-outline" size={18} color={colors.petrol600} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.titulo}>{[v.marca?.nombre_marca, v.modelo?.nombre_modelo].filter(Boolean).join(" ") || "Vehículo"}</Text>
               <Text style={styles.meta}>{[v.placas_vehiculo ? `Placas ${v.placas_vehiculo}` : "Sin placas", v.color?.nombre_color, v.km_vehiculo ? `${Number(v.km_vehiculo).toLocaleString("es-MX")} km` : null].filter(Boolean).join(" · ")}</Text>

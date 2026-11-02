@@ -26,18 +26,35 @@ def resumen(db: Session = Depends(get_db), user=Depends(get_current_user)):
     refacciones_bajo_stock = db.query(func.count(models.Refaccion.id_refaccion)).filter(models.Refaccion.cantidad_refaccion <= models.Refaccion.umbral_rojo).scalar()
 
     # Una orden cancelada ya no se le cobra a nadie: no debe contar como por cobrar.
-    servicios_sin_pagar = (
-        db.query(models.Servicio)
-        .options(selectinload(models.Servicio.detalles), selectinload(models.Servicio.abonos))
-        .filter(models.Servicio.pagado == False, models.Servicio.status != "cancelado")
+    # El total y los abonos se suman en la base (una sola consulta), no en Python.
+    det = (
+        db.query(
+            models.ServicioDetalle.id_servicio.label("id_servicio"),
+            func.sum(
+                func.coalesce(models.ServicioDetalle.costo_mano_obra, 0)
+                + func.coalesce(models.ServicioDetalle.costo_refaccion, 0)
+                + func.coalesce(models.ServicioDetalle.costo_extra, 0)
+            ).label("subtotal"),
+        )
+        .group_by(models.ServicioDetalle.id_servicio)
+        .subquery()
+    )
+    abo = (
+        db.query(models.ServicioAbono.id_servicio.label("id_servicio"), func.sum(models.ServicioAbono.monto_abono).label("abonado"))
+        .group_by(models.ServicioAbono.id_servicio)
+        .subquery()
+    )
+    filas_sin_pagar = (
+        db.query(models.Servicio.iva_porcentaje, det.c.subtotal, abo.c.abonado)
+        .outerjoin(det, det.c.id_servicio == models.Servicio.id_servicio)
+        .outerjoin(abo, abo.c.id_servicio == models.Servicio.id_servicio)
+        .filter(models.Servicio.pagado == False, models.Servicio.status != "cancelado")  # noqa: E712
         .all()
     )
     saldo_pendiente_total = 0.0
-    for s in servicios_sin_pagar:
-        subtotal = sum((d.costo_mano_obra or 0) + (d.costo_refaccion or 0) + (d.costo_extra or 0) for d in s.detalles)
-        total = subtotal * (1 + (s.iva_porcentaje or 0) / 100)
-        abonado = sum(a.monto_abono or 0 for a in s.abonos)
-        saldo_pendiente_total += max(total - abonado, 0)
+    for iva, subtotal, abonado in filas_sin_pagar:
+        total = float(subtotal or 0) * (1 + float(iva or 0) / 100)
+        saldo_pendiente_total += max(total - float(abonado or 0), 0)
 
     deuda_proveedores = db.query(func.coalesce(func.sum(models.ProveedorDeuda.saldo_total), 0)).scalar()
 
@@ -92,7 +109,7 @@ def servicios_mensuales(meses: int = 6, db: Session = Depends(get_db), user=Depe
     desde = datetime(periodos[0][0], periodos[0][1], 1)
     servicios = (
         db.query(models.Servicio)
-        .options(joinedload(models.Servicio.detalles))
+        .options(selectinload(models.Servicio.detalles))
         .filter(models.Servicio.fecha_entrada_servicio >= desde)
         .all()
     )

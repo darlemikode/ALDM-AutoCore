@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Image } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api, archivoParaForm } from "../api";
 import { colors, spacing } from "../theme";
 import ClienteFormScreen from "./ClienteFormScreen";
@@ -136,11 +136,11 @@ export default function NuevaOrdenScreen({ navigation, route }) {
       // Cliente sin vehículos: se sugiere registrar uno de una vez
       if (lista.length === 0 && puedeCrearVehiculo) {
         mostrarDialogo({
-          tono: "info", icono: "car-sport", etiqueta: c.numero_cuenta || "Cliente",
+          tono: "info", icono: "car-sport-outline", etiqueta: c.numero_cuenta || "Cliente",
           titulo: "Este cliente no tiene vehículos",
           mensaje: `Para abrir la orden, registra el vehículo que dejó ${c.nombre_cliente || "el cliente"}.`,
           acciones: [
-            { texto: "Registrar vehículo", tipo: "primario", icono: "car-sport", onPress: () => navigation.navigate("Clientes", { screen: "VehiculoForm", params: { clienteFijo: c }, initial: false }) },
+            { texto: "Registrar vehículo", tipo: "primario", icono: "car-sport-outline", onPress: () => navigation.navigate("Clientes", { screen: "VehiculoForm", params: { clienteFijo: c }, initial: false }) },
             { texto: "Ahora no", tipo: "secundario" },
           ],
         });
@@ -163,11 +163,11 @@ export default function NuevaOrdenScreen({ navigation, route }) {
       const abierta = (abiertas || []).find((s) => Number(s.id_vehiculo) === Number(v.id_vehiculo) && s.status === "abierto");
       if (abierta) {
         mostrarDialogo({
-          tono: "alerta", icono: "construct", etiqueta: `Orden #${abierta.id_servicio} abierta`,
+          tono: "alerta", icono: "construct-outline", etiqueta: `Orden #${abierta.id_servicio} abierta`,
           titulo: "Este vehículo ya está en el taller",
           mensaje: `Tiene la orden "${abierta.nombre_servicio}" sin cerrar. ¿Vamos a esa orden o abres una nueva de todos modos?`,
           acciones: [
-            { texto: "Ir a la orden abierta", tipo: "primario", icono: "arrow-forward", onPress: () => navigation.navigate("ServicioDetalle", { id: abierta.id_servicio }) },
+            { texto: "Ir a la orden abierta", tipo: "primario", icono: "arrow-forward-outline", onPress: () => navigation.navigate("ServicioDetalle", { id: abierta.id_servicio }) },
             { texto: "Crear otra orden", tipo: "secundario" },
           ],
         });
@@ -307,7 +307,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
     return (
       <View style={{ flex: 1 }}>
         <TouchableOpacity style={styles.volverAlta} onPress={() => setMostrarAgregarCliente(false)}>
-          <Ionicons name="arrow-back" size={18} color={colors.petrol600} />
+          <Ionicons name="arrow-back-outline" size={18} color={colors.petrol600} />
           <Text style={styles.volverAltaTexto}>Volver a la orden</Text>
         </TouchableOpacity>
         <ClienteFormScreen onGuardado={clienteCreado} />
@@ -339,7 +339,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
             {!cliente ? (
               <>
                 <View style={styles.buscador}>
-                  <Ionicons name="search" size={18} color={colors.ink500} />
+                  <Ionicons name="search-outline" size={18} color={colors.ink500} />
                   <TextInput style={styles.buscadorInput} placeholder="Nombre, teléfono o cuenta" placeholderTextColor={colors.ink500} value={busqueda} onChangeText={setBusqueda} />
                 </View>
                 {puedeCrearCliente && (
@@ -357,7 +357,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
                       <Text style={styles.opcionTitulo}>{nombreCliente(c)}</Text>
                       <Text style={styles.opcionSub}>{[c.numero_cuenta, c.telefono1].filter(Boolean).join(" · ") || "Sin datos de contacto"}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.ink500} />
+                    <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />
                   </TouchableOpacity>
                 ))}
               </>
@@ -419,7 +419,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
             <View key={f.uri + i}>
               <Image source={{ uri: f.uri }} style={styles.fotoMini} />
               <TouchableOpacity style={styles.fotoQuitar} onPress={() => setFotos((p) => p.filter((_, j) => j !== i))} hitSlop={6}>
-                <Ionicons name="close" size={14} color="#fff" />
+                <Ionicons name="close-outline" size={14} color="#fff" />
               </TouchableOpacity>
             </View>
           ))}
@@ -440,7 +440,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
 
         {error ? (
           <View style={styles.errorCaja}>
-            <Ionicons name="alert-circle" size={18} color={colors.red600} />
+            <Ionicons name="alert-circle-outline" size={18} color={colors.red600} />
             <Text style={styles.errorTexto}>{error}</Text>
           </View>
         ) : null}
@@ -450,7 +450,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
       <View style={styles.barra}>
         {paso > (fijos ? 1 : 0) ? (
           <TouchableOpacity style={styles.btnSecundario} onPress={atras}>
-            <Ionicons name="arrow-back" size={17} color={colors.ink900} />
+            <Ionicons name="arrow-back-outline" size={17} color={colors.ink900} />
             <Text style={styles.btnSecundarioTexto}>Atrás</Text>
           </TouchableOpacity>
         ) : (
@@ -462,7 +462,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
           {guardando ? <ActivityIndicator color={colors.paper100} /> : (
             <>
               <Text style={styles.btnPrimarioTexto}>Crear orden</Text>
-              <Ionicons name="checkmark" size={17} color={colors.paper100} />
+              <Ionicons name="checkmark-outline" size={17} color={colors.paper100} />
             </>
           )}
         </TouchableOpacity>

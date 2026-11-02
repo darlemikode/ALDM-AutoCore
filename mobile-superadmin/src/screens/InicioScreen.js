@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -39,7 +39,7 @@ export default function InicioScreen({ navigation }) {
           <Text style={styles.botonSolicitudesSub}>{pendientes > 0 ? `${pendientes} sin atender` : "Quién pidió información desde la página"}</Text>
         </View>
         {pendientes > 0 ? <View style={styles.botonSolicitudesBadge}><Text style={styles.botonSolicitudesBadgeTexto}>{pendientes}</Text></View> : null}
-        <Ionicons name="chevron-forward" size={20} color={colors.ink500} />
+        <Ionicons name="chevron-forward-outline" size={20} color={colors.ink500} />
       </TouchableOpacity>
 
       <View style={styles.hero}>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -47,7 +47,7 @@ const saludo = () => { const h = new Date().getHours(); return h < 12 ? "Buenos 
 
 // Tarjeta KPI con ícono en círculo de color; tocable como el Link de la web.
 function Kpi({ icono, label, value, tono = "petrol500", alerta, onPress }) {
-  const c = colors[alerta ? "red600" : tono];
+  const c = alerta ? colors.red600 : colors.ink500;
   return (
     <TouchableOpacity style={styles.kpi} onPress={onPress} disabled={!onPress} activeOpacity={0.75}>
       <View style={styles.kpiTop}>
@@ -163,7 +163,7 @@ export default function DashboardScreen({ navigation }) {
       <View style={styles.topbar}>
         <View ref={refMenu} collapsable={false}>
           <TouchableOpacity onPress={() => navigation.getParent("RootDrawer")?.openDrawer()} hitSlop={10} accessibilityLabel="Abrir menú" style={styles.menuBoton}>
-            <Ionicons name="menu" size={24} color={colors.ink900} />
+            <Ionicons name="menu-outline" size={24} color={colors.ink900} />
           </TouchableOpacity>
         </View>
         <View style={{ flex: 1 }}>
@@ -185,12 +185,12 @@ export default function DashboardScreen({ navigation }) {
           {/* Botón principal: orden rápida */}
           {hasPermission("servicios.crear") && (
             <TouchableOpacity style={styles.heroOrden} onPress={() => ir("Servicio", "NuevaOrden")} activeOpacity={0.85} accessibilityLabel="Nueva orden de servicio">
-              <View style={styles.heroOrdenIcono}><Ionicons name="add" size={38} color={colors.paper100} /></View>
+              <View style={styles.heroOrdenIcono}><Ionicons name="create-outline" size={34} color={colors.paper100} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroOrdenTitulo}>Nueva orden</Text>
                 <Text style={styles.heroOrdenSub}>Toca aquí para abrir una orden rápida</Text>
               </View>
-              <Ionicons name="arrow-forward" size={28} color={colors.paper100} />
+              <Ionicons name="arrow-forward-outline" size={28} color={colors.paper100} />
             </TouchableOpacity>
           )}
 
@@ -219,9 +219,9 @@ export default function DashboardScreen({ navigation }) {
             )}
             <View style={[styles.heroFila, { borderTopColor: alfa(colors.sidebarTexto, 0.12) }]}>
               {[
-                ["construct", data.servicios_abiertos, "abiertas", () => ir("Servicio", "HistorialServicios")],
-                ["checkmark-done", listas, "listas p/ entregar", () => ir("Servicio", "HistorialServicios")],
-                ["calendar", data.servicios_este_mes, "este mes", () => ir("Servicio", "HistorialServicios")],
+                ["construct-outline", data.servicios_abiertos, "abiertas", () => ir("Servicio", "HistorialServicios")],
+                ["checkmark-done-outline", listas, "listas p/ entregar", () => ir("Servicio", "HistorialServicios")],
+                ["calendar-outline", data.servicios_este_mes, "este mes", () => ir("Servicio", "HistorialServicios")],
               ].map(([ic, n, t, fn]) => (
                 <TouchableOpacity key={t} style={styles.heroDato} onPress={fn}>
                   <Ionicons name={ic} size={15} color={colors.petrol300} />
@@ -244,19 +244,19 @@ export default function DashboardScreen({ navigation }) {
           {/* KPIs */}
           <View style={styles.grid}>
             {hasPermission("clientes.ver") && (
-              <Kpi icono="people" label="Clientes activos" value={data.total_clientes} onPress={() => ir("Clientes")} />
+              <Kpi icono="people-outline" label="Clientes activos" value={data.total_clientes} onPress={() => ir("Clientes")} />
             )}
             {hasPermission("vehiculos.ver") && (
-              <Kpi icono="car-sport" label="Vehículos registrados" value={data.total_vehiculos} tono="blue600" onPress={() => navigation.navigate("Vehículos")} />
+              <Kpi icono="car-sport-outline" label="Vehículos registrados" value={data.total_vehiculos} tono="blue600" onPress={() => navigation.navigate("Vehículos")} />
             )}
             {hasPermission("refacciones.ver") && (
-              <Kpi icono="alert-circle" label="Refacciones con poco stock" value={data.refacciones_bajo_stock} tono="teal600" alerta={data.refacciones_bajo_stock > 0} onPress={() => ir("Refacciones")} />
+              <Kpi icono="cube-outline" label="Refacciones con poco stock" value={data.refacciones_bajo_stock} tono="teal600" alerta={data.refacciones_bajo_stock > 0} onPress={() => ir("Refacciones")} />
             )}
             {hasPermission("proveedores.ver") && (
-              <Kpi icono="business" label="Deuda con proveedores" value={fmt(data.deuda_con_proveedores)} tono="teal600" alerta={data.deuda_con_proveedores > 0} onPress={() => ir("Más", "Proveedores")} />
+              <Kpi icono="business-outline" label="Deuda con proveedores" value={fmt(data.deuda_con_proveedores)} tono="teal600" alerta={data.deuda_con_proveedores > 0} onPress={() => ir("Más", "Proveedores")} />
             )}
             {data.solicitudes_recuperacion_pendientes > 0 && hasPermission("usuarios.ver") && (
-              <Kpi icono="key" label="Solicitudes de acceso" value={data.solicitudes_recuperacion_pendientes} alerta onPress={() => ir("Más", "Usuarios")} />
+              <Kpi icono="key-outline" label="Solicitudes de acceso" value={data.solicitudes_recuperacion_pendientes} alerta onPress={() => ir("Más", "Usuarios")} />
             )}
           </View>
 
@@ -379,7 +379,7 @@ export default function DashboardScreen({ navigation }) {
             </View>
             {bajos.length === 0 ? (
               <View style={styles.todoBien}>
-                <Ionicons name="checkmark-circle" size={20} color={colors.teal600} />
+                <Ionicons name="checkmark-circle-outline" size={20} color={colors.teal600} />
                 <Text style={styles.todoBienTexto}>Todo el inventario está por encima de su mínimo.</Text>
               </View>
             ) : bajos.map((r) => {

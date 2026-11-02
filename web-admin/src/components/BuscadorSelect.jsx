@@ -20,7 +20,7 @@ export default function BuscadorSelect({ label, opciones, value, onChange, place
 
   const filtradas = useMemo(() => {
     const t = q.trim();
-    return opciones.filter((o) => !t || contiene(`${o.label} ${o.sub || ""}`, t)).slice(0, 60);
+    return opciones.filter((o) => !t || contiene(`${o.label} ${o.sub || ""}`, t)).slice(0, 300);
   }, [opciones, q]);
 
   useEffect(() => { setSel(0); }, [q, abierto]);

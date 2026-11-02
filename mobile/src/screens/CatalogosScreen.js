@@ -2,7 +2,7 @@ import { contiene } from "../lib/texto";
 import { useCallback, useEffect, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -136,7 +136,7 @@ export default function CatalogosScreen({ navigation }) {
             <TouchableOpacity key={k} style={[styles.tab, styles.tabAcceso]} onPress={() => navigation.navigate("Taller", { screen: "Refacciones", params: { screen: "RefaccionesLista" } })}>
               <Ionicons name="cube-outline" size={15} color={colors.petrol600} />
               <Text style={[styles.tabTexto, { color: colors.petrol600 }]}>Catálogo de refacciones</Text>
-              <Ionicons name="arrow-forward" size={14} color={colors.petrol600} />
+              <Ionicons name="arrow-forward-outline" size={14} color={colors.petrol600} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity key={k} style={[styles.tab, clave === k && styles.tabActiva]} onPress={() => setClave(k)}>
@@ -147,7 +147,7 @@ export default function CatalogosScreen({ navigation }) {
           ))}
         </ScrollView>
         <View style={styles.buscador}>
-          <Ionicons name="search" size={18} color={colors.ink500} />
+          <Ionicons name="search-outline" size={18} color={colors.ink500} />
           <TextInput style={styles.buscadorInput} placeholder={`Buscar en ${cfg.etiqueta.toLowerCase()}…`} placeholderTextColor={colors.ink500} value={q} onChangeText={setQ} />
         </View>
         {cfg.padre && (
@@ -184,7 +184,7 @@ export default function CatalogosScreen({ navigation }) {
 
       {puedeCrear && (
         <TouchableOpacity style={styles.fab} onPress={() => setEditando(cfg.padre && filtroPadre ? { [cfg.padre.campo]: filtroPadre } : {})} accessibilityLabel="Agregar">
-          <Ionicons name="add" size={28} color={colors.paper100} />
+          <Ionicons name="add-outline" size={28} color={colors.paper100} />
         </TouchableOpacity>
       )}
 

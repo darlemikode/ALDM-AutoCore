@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import Constants from "expo-constants";
 import { useAuth } from "../context/AuthContext";
 import { useTema } from "../context/TemaContext";
@@ -81,7 +81,7 @@ function Renglon({ icono, color = colors.petrol600, etiqueta, valor, onPress, ul
         <Text style={styles.renglonEtiqueta}>{etiqueta}</Text>
         {valor ? <Text style={styles.meta} selectable>{valor}</Text> : null}
       </View>
-      {onPress ? <Ionicons name="chevron-forward" size={17} color={colors.ink500} /> : null}
+      {onPress ? <Ionicons name="chevron-forward-outline" size={17} color={colors.ink500} /> : null}
     </Cont>
   );
 }

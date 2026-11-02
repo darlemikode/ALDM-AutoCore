@@ -1,15 +1,16 @@
 import { View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { colors } from "../theme";
+import { Ionicons } from "./IconoWeb";
 
-// Insignia con el ícono del módulo: fondo y borde suaves del color propio
-// (igual que .h1-icono / el menú lateral de la web).
-export default function BadgeIcono({ icono, color, size = 34, activo = false }) {
+// Insignia neutra como en la web: ícono gris sobre fondo suave; si está
+// activa, cuadro de acento con el ícono en blanco. `color` se ignora.
+export default function BadgeIcono({ icono, size = 34, activo = false }) {
   return (
     <View style={{
       width: size, height: size, borderRadius: Math.round(size * 0.3), alignItems: "center", justifyContent: "center",
-      backgroundColor: `${color}26`, borderWidth: 1, borderColor: `${color}${activo ? "aa" : "55"}`,
+      backgroundColor: activo ? colors.petrol500 : `${colors.ink500}22`,
     }}>
-      <Ionicons name={icono} size={Math.round(size * 0.55)} color={color} />
+      <Ionicons name={icono} size={Math.round(size * 0.55)} color={activo ? "#ffffff" : colors.ink500} />
     </View>
   );
 }

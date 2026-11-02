@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
@@ -34,9 +34,9 @@ export default function TalleresScreen({ navigation, route }) {
     <View style={styles.screen}>
       <View style={styles.cabecera}>
         <View style={styles.buscador}>
-          <Ionicons name="search" size={18} color={colors.ink500} />
+          <Ionicons name="search-outline" size={18} color={colors.ink500} />
           <TextInput style={styles.buscadorInput} value={q} onChangeText={setQ} placeholder="Nombre, código, contacto o ciudad" placeholderTextColor={colors.ink500} />
-          {q ? <TouchableOpacity onPress={() => setQ("")} hitSlop={8}><Ionicons name="close-circle" size={18} color={colors.ink500} /></TouchableOpacity> : null}
+          {q ? <TouchableOpacity onPress={() => setQ("")} hitSlop={8}><Ionicons name="close-circle-outline" size={18} color={colors.ink500} /></TouchableOpacity> : null}
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 10 }}>
           {FILTROS.map(([v, t]) => (

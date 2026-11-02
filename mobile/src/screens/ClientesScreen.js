@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, Linking, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -24,9 +24,9 @@ export default function ClientesScreen({ navigation }) {
     <View style={styles.screen}>
       <View style={styles.cabecera}>
         <View style={styles.buscador}>
-          <Ionicons name="search" size={18} color={colors.ink500} />
+          <Ionicons name="search-outline" size={18} color={colors.ink500} />
           <TextInput style={styles.buscadorInput} placeholder="Nombre, teléfono o cuenta" placeholderTextColor={colors.ink500} value={q} onChangeText={(t) => { setQ(t); load(t); }} />
-          {q ? <TouchableOpacity onPress={() => { setQ(""); load(""); }} hitSlop={8}><Ionicons name="close-circle" size={18} color={colors.ink500} /></TouchableOpacity> : null}
+          {q ? <TouchableOpacity onPress={() => { setQ(""); load(""); }} hitSlop={8}><Ionicons name="close-circle-outline" size={18} color={colors.ink500} /></TouchableOpacity> : null}
         </View>
         <Text style={styles.contador}>{clientes.length} cliente(s)</Text>
       </View>
@@ -44,10 +44,10 @@ export default function ClientesScreen({ navigation }) {
             </View>
             {c.telefono1 ? (
               <TouchableOpacity style={styles.llamar} onPress={() => Linking.openURL(`tel:${c.telefono1}`)} hitSlop={6} accessibilityLabel="Llamar">
-                <Ionicons name="call" size={17} color={colors.petrol600} />
+                <Ionicons name="call-outline" size={17} color={colors.petrol600} />
               </TouchableOpacity>
             ) : null}
-            <Ionicons name="chevron-forward" size={18} color={colors.ink500} />
+            <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />
           </TouchableOpacity>
         )}
         ListEmptyComponent={
@@ -59,7 +59,7 @@ export default function ClientesScreen({ navigation }) {
       />
       {hasPermission("clientes.crear") && (
         <TouchableOpacity style={styles.fabExtendido} onPress={() => navigation.navigate("ClienteForm")}>
-          <Ionicons name="person-add" size={19} color={colors.paper100} />
+          <Ionicons name="person-add-outline" size={19} color={colors.paper100} />
           <Text style={styles.fabTexto}>Nuevo cliente</Text>
         </TouchableOpacity>
       )}

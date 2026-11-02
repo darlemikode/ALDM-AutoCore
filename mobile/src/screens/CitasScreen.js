@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, FlatList, RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing } from "../theme";
@@ -107,10 +107,10 @@ export default function CitasScreen({ navigation }) {
               {puedeResolver && c.estado === "pendiente" ? (
                 <View style={styles.acciones}>
                   <TouchableOpacity style={styles.botonRechazar} onPress={() => resolver(c, "rechazar")}>
-                    <Ionicons name="close" size={17} color={colors.red600} /><Text style={styles.botonRechazarTexto}>Rechazar</Text>
+                    <Ionicons name="close-outline" size={17} color={colors.red600} /><Text style={styles.botonRechazarTexto}>Rechazar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.botonConfirmar} onPress={() => resolver(c, "confirmar")}>
-                    <Ionicons name="checkmark" size={17} color={colors.paper100} /><Text style={styles.botonConfirmarTexto}>Confirmar</Text>
+                    <Ionicons name="checkmark-outline" size={17} color={colors.paper100} /><Text style={styles.botonConfirmarTexto}>Confirmar</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}

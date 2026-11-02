@@ -3,17 +3,17 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   KeyboardAvoidingView, Platform } from "react-native";
 import { API_URL } from "../api";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "../ui/IconoWeb";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
 
 const OPCIONES = [
-  { clave: "alta", etiqueta: "🆕 Dar de alta mi cuenta" },
-  { clave: "servicio", etiqueta: "🚗 Estatus de mi servicio" },
-  { clave: "reclamacion", etiqueta: "🛡️ Reclamar garantía" },
-  { clave: "seguimiento", etiqueta: "📍 Seguimiento" },
-  { clave: "facturacion", etiqueta: "💵 Facturación / saldo" },
+  { clave: "alta", etiqueta: "Dar de alta mi cuenta", icono: "person-add-outline" },
+  { clave: "servicio", etiqueta: "Estatus de mi servicio", icono: "car-sport-outline" },
+  { clave: "reclamacion", etiqueta: "Reclamar garantía", icono: "shield-checkmark-outline" },
+  { clave: "seguimiento", etiqueta: "Seguimiento", icono: "location-outline" },
+  { clave: "facturacion", etiqueta: "Facturación / saldo", icono: "cash-outline" },
 ];
 
 /**
@@ -52,7 +52,7 @@ export default function ChatbotScreen({ onClose }) {
       setToken(data.token);
       setNombreCliente(data.nombre_cliente);
       setMensajes([
-        { autor: "bot", texto: `Hola, ${data.nombre_cliente} 👋 Ya confirmé quién eres. ¿En qué te ayudo?` },
+        { autor: "bot", texto: `Hola, ${data.nombre_cliente}. Ya confirmé quién eres. ¿En qué te ayudo?` },
       ]);
     } catch (err) {
       alerta("No pudimos verificarte", err.message);
@@ -72,7 +72,7 @@ export default function ChatbotScreen({ onClose }) {
       if (!res.ok) throw new Error(data?.detail || "No se pudo obtener la respuesta.");
       setMensajes((prev) => [...prev, { autor: "bot", texto: data.texto }]);
     } catch (err) {
-      setMensajes((prev) => [...prev, { autor: "bot", texto: `⚠️ ${err.message}` }]);
+      setMensajes((prev) => [...prev, { autor: "bot", texto: err.message }]);
     } finally {
       setCargandoOpcion(null);
     }
@@ -82,14 +82,14 @@ export default function ChatbotScreen({ onClose }) {
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <View style={styles.botIcono}><Ionicons name="chatbubble-ellipses" size={18} color={colors.petrol600} /></View>
+          <View style={styles.botIcono}><Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.petrol600} /></View>
           <View>
             <Text style={styles.headerTitulo}>Asistente</Text>
             <Text style={styles.headerSub}>{token ? `Verificado · ${nombreCliente}` : "Respuestas al instante"}</Text>
           </View>
         </View>
         <TouchableOpacity onPress={onClose} style={styles.cerrarBoton} hitSlop={10}>
-          <Ionicons name="close" size={22} color={colors.ink700} />
+          <Ionicons name="close-outline" size={22} color={colors.ink700} />
         </TouchableOpacity>
       </View>
 
@@ -122,7 +122,7 @@ export default function ChatbotScreen({ onClose }) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {OPCIONES.map((op) => (
                 <TouchableOpacity key={op.clave} style={styles.chip} onPress={() => elegirOpcion(op)} disabled={!!cargandoOpcion}>
-                  <Text style={styles.chipTexto}>{op.etiqueta}</Text>
+                  <Text style={styles.chipTexto}><Ionicons name={op.icono} size={13} /> {op.etiqueta}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>

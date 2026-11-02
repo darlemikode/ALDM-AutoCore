@@ -4,7 +4,7 @@ import { colorPorIcono } from "../iconosModulo";
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl, Modal, ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "./IconoWeb";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "./estilos";
@@ -93,9 +93,9 @@ export default function ListaCrud(props) {
     <View style={styles.screen}>
       <View style={styles.cabecera}>
         <View style={styles.buscador}>
-          <Ionicons name="search" size={18} color={colors.ink500} />
+          <Ionicons name="search-outline" size={18} color={colors.ink500} />
           <TextInput style={styles.buscadorInput} placeholder={`Buscar ${etiqueta}…`} placeholderTextColor={colors.ink500} value={q} onChangeText={setQ} />
-          {q ? <TouchableOpacity onPress={() => setQ("")} hitSlop={8}><Ionicons name="close-circle" size={18} color={colors.ink500} /></TouchableOpacity> : null}
+          {q ? <TouchableOpacity onPress={() => setQ("")} hitSlop={8}><Ionicons name="close-circle-outline" size={18} color={colors.ink500} /></TouchableOpacity> : null}
         </View>
         <Text style={styles.contador}>{visibles.length} {visibles.length === 1 ? etiqueta : `${etiqueta}s`}</Text>
         {resumen ? (
@@ -137,7 +137,7 @@ export default function ListaCrud(props) {
                 {puede(permisos.eliminar) && permisos.eliminar !== false && (
                   <TouchableOpacity onPress={() => eliminar(item)} hitSlop={8}><Ionicons name="trash-outline" size={20} color={colors.red600} /></TouchableOpacity>
                 )}
-                {alTocar && <Ionicons name="chevron-forward" size={18} color={colors.ink500} />}
+                {alTocar && <Ionicons name="chevron-forward-outline" size={18} color={colors.ink500} />}
               </View>
             </TouchableOpacity>
           );
@@ -152,7 +152,7 @@ export default function ListaCrud(props) {
 
       {puede(permisos.crear) && permisos.crear !== false && (
         <TouchableOpacity style={styles.fab} onPress={() => setEditando({})} accessibilityLabel={`Nuevo ${etiqueta}`}>
-          <Ionicons name="add" size={28} color={colors.paper100} />
+          <Ionicons name="add-outline" size={28} color={colors.paper100} />
         </TouchableOpacity>
       )}
 
@@ -161,7 +161,7 @@ export default function ListaCrud(props) {
           <View style={styles.hojaFotos}>
             <View style={styles.hojaCabecera}>
               <Text style={styles.hojaTitulo} numberOfLines={1}>Fotos · {fotosDe ? titulo(fotosDe) : ""}</Text>
-              <TouchableOpacity onPress={() => setFotosDe(null)} hitSlop={10}><Ionicons name="close" size={24} color={colors.ink700} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setFotosDe(null)} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink700} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
               {fotosDe ? <FotoGaleria entidadTipo={fotos} entidadId={fotosDe[idCampo]} /> : null}
