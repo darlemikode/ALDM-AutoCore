@@ -52,6 +52,13 @@ import { contiene } from "../lib/texto";
 // Un renglón es «mano de obra» cuando solo lleva importe de mano de obra (sin refacción ni precio de refacción) — igual que la web.
 const esManoObra = (d) => (Number(d.costo_mano_obra) || 0) > 0 && !d.id_refaccion && !d.id_inventario_refaccion && !((Number(d.costo_refaccion) || 0) > 0);
 
+// Precio de venta de una refacción: el del inventario del vehículo si lo tiene capturado;
+// si no (o está en 0), el del catálogo. Antes un inventario con precio 0 tapaba el del catálogo.
+const precioVentaRef = (inv, ref) => {
+  const n = (v) => Number(v) || 0;
+  return n(inv?.preciocliente) || n(ref?.preciocliente_refaccion) || n(inv?.preciopropio) || n(ref?.preciopropio_refaccion) || 0;
+};
+
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const TIPOS_PAGO = [
   { valor: "efectivo", texto: "Efectivo", icono: "cash-outline" },
@@ -99,6 +106,19 @@ function Dato({ etiqueta, valor }) {
   );
 }
 
+// Ficha de ícono para los accesos de la pestaña Estatus: ícono relleno + insignia pequeña
+function IconoAcceso({ nombre, insignia, fondo, cargando, grande }) {
+  const base = fondo || colors.petrol500;
+  return (
+    <View style={[styles.accesoIcono, { backgroundColor: base, shadowColor: base }]}>
+      {cargando ? <ActivityIndicator color="#fff" /> : <Ionicons name={nombre} size={25} color="#fff" />}
+      {!!insignia && !cargando && (
+        <View style={[styles.accesoInsignia, grande && { width: 24, height: 24, borderRadius: 12, right: -7, bottom: -7 }]}><Ionicons name={insignia} size={grande ? 16 : 11} color={base} /></View>
+      )}
+    </View>
+  );
+}
+
 function Boton({ texto, icono, onPress, tipo = "secundario", deshabilitado, cargando, chico, estilo }) {
   const t = {
     primario: [styles.btnPrimario, styles.btnPrimarioTexto, colors.paper100],
@@ -136,13 +156,32 @@ function TarjetaConcepto({ d, refaccion, mo, editable, tipos, actualizar, quitar
     LayoutAnimation.configureNext(LayoutAnimation.create(180, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
     setAbierta((v) => !v);
   }
+  // Lo que el usuario ya escribió en los campos pero aún no se confirma (el teclado sigue abierto):
+  // al tocar +/- se guarda junto con la nueva cantidad, para que no se pierda ni deje el total en 0.
+  const pendUnit = useRef(null);
+  const pendMO = useRef(null);
+  const numPend = (ref, actual) => {
+    if (ref.current == null) return null;
+    const n = Number(String(ref.current).replace(",", "."));
+    return Number.isNaN(n) || n === actual ? null : n;
+  };
   function cambiarCantidad(delta) {
+    const pu = numPend(pendUnit, unitario);
+    const pm = mo ? null : numPend(pendMO, Number(d.costo_mano_obra) || 0);
     actualizar(d.id_servicio_detalle, (x) => {
       const c = x?.cantidad || 1;
       const n = c + delta;
       if (n < 1) return null;
-      return mo ? { cantidad: n, costo_mano_obra: redondea(((Number(x.costo_mano_obra) || 0) / c) * n) } : { cantidad: n };
+      if (mo) {
+        const u = pu != null && pu > 0 ? pu : (Number(x.costo_mano_obra) || 0) / c;
+        return { cantidad: n, costo_mano_obra: redondea(u * n) };
+      }
+      const out = { cantidad: n };
+      if (pu != null) out.costo_refaccion = redondea(pu * n);
+      if (pm != null) out.costo_mano_obra = pm;
+      return out;
     });
+    pendUnit.current = null; pendMO.current = null;
   }
   function guardarUnitario(v) {
     if (mo) {
@@ -183,13 +222,13 @@ function TarjetaConcepto({ d, refaccion, mo, editable, tipos, actualizar, quitar
             {(mo || d.id_refaccion || Number(d.costo_refaccion) > 0) && (
               <View style={{ flex: 1 }}>
                 <Text style={styles.conceptoEtiqueta} numberOfLines={1}>Precio unitario</Text>
-                <NumeroEditable key={`u${mo ? d.costo_mano_obra : d.costo_refaccion}-${cant}`} valor={unitario} editable={editable} onGuardar={guardarUnitario} />
+                <NumeroEditable key={`u${mo ? d.costo_mano_obra : d.costo_refaccion}-${cant}`} valor={unitario} editable={editable} onGuardar={guardarUnitario} pendienteRef={pendUnit} />
               </View>
             )}
             {!mo && (!d.id_refaccion || Number(d.costo_mano_obra) > 0) && (
               <View style={{ flex: 1 }}>
                 <Text style={styles.conceptoEtiqueta} numberOfLines={1}>Mano de obra</Text>
-                <NumeroEditable key={`m${d.costo_mano_obra}`} valor={d.costo_mano_obra || 0} editable={editable} onGuardar={(v) => actualizar(d.id_servicio_detalle, { costo_mano_obra: v })} />
+                <NumeroEditable key={`m${d.costo_mano_obra}`} valor={d.costo_mano_obra || 0} editable={editable} onGuardar={(v) => actualizar(d.id_servicio_detalle, { costo_mano_obra: v })} pendienteRef={pendMO} />
               </View>
             )}
           </View>
@@ -220,7 +259,7 @@ function TarjetaConcepto({ d, refaccion, mo, editable, tipos, actualizar, quitar
 }
 
 // Campo numérico que guarda al terminar de editar (como el onBlur de la tabla web)
-function NumeroEditable({ valor, onGuardar, editable, ancho }) {
+function NumeroEditable({ valor, onGuardar, editable, ancho, pendienteRef }) {
   const [texto, setTexto] = useState(String(valor ?? 0));
 
   // Se sincroniza si el valor cambia desde afuera (otra pantalla, u otro
@@ -231,6 +270,7 @@ function NumeroEditable({ valor, onGuardar, editable, ancho }) {
   }, [valor]);
 
   function confirmar() {
+    if (pendienteRef) pendienteRef.current = null;
     const n = Number(String(texto).replace(",", "."));
     if (Number.isNaN(n)) { setTexto(String(valor ?? 0)); return; }
     if (n !== Number(valor)) onGuardar(n);
@@ -240,7 +280,7 @@ function NumeroEditable({ valor, onGuardar, editable, ancho }) {
     <TextInput placeholderTextColor={colors.ink500}
       style={[styles.numInput, ancho ? { width: ancho } : { alignSelf: "stretch" }, !editable && { opacity: 0.55 }]}
       value={texto}
-      onChangeText={setTexto}
+      onChangeText={(v) => { setTexto(v); if (pendienteRef) pendienteRef.current = v; }}
       keyboardType="decimal-pad"
       editable={editable}
       selectTextOnFocus
@@ -295,6 +335,11 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   // Modal: registrar abono
   const [modalAbono, setModalAbono] = useState(false);
   const [modalPagos, setModalPagos] = useState(false);
+  const [paquetes, setPaquetes] = useState([]);
+  const [cargandoPaq, setCargandoPaq] = useState(false);
+  const [aplicandoPaq, setAplicandoPaq] = useState(null);
+  const [modalNuevoPaq, setModalNuevoPaq] = useState(null); // { nombre }
+  const [guardandoPaq, setGuardandoPaq] = useState(false);
   const [calendarioFecha, setCalendarioFecha] = useState(null); // "fecha_entrada_servicio" | "fecha_salida_servicio"
   const [tipoPago, setTipoPago] = useState("efectivo");
   const [monto, setMonto] = useState("");
@@ -627,7 +672,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       return copia;
     });
   }
-  const cambiarCantidadSel = (idRef, delta) => setSeleccion((prev) => ({ ...prev, [idRef]: { cantidad: Math.max(1, (prev[idRef]?.cantidad || 1) + delta) } }));
+  const cambiarCantidadSel = (idRef, delta) => setSeleccion((prev) => ({ ...prev, [idRef]: { ...prev[idRef], cantidad: Math.max(1, (prev[idRef]?.cantidad || 1) + delta) } }));
 
   function procesarVoz(texto) {
     const segmentos = normVoz(texto).split(/ y | e |,| con | luego | tambien /).map((x) => x.trim()).filter(Boolean);
@@ -709,13 +754,22 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         return;
       }
     }
+    const sinPrecio = ids.filter((idRef) => (seleccion[idRef].precio ?? precioVentaRef(inventarioDe(idRef), refacciones.find((r) => r.id_refaccion === idRef))) <= 0);
+    if (sinPrecio.length) {
+      const nombres = sinPrecio.map((idRef) => refacciones.find((r) => r.id_refaccion === idRef)?.nombre_refaccion || "Refacción").join(", ");
+      const seguir = await new Promise((res) => alerta("Sin precio", `${nombres} no tiene precio y se agregará en $0.00. Después puedes capturarlo en la orden (Precio unitario).`, [
+        { text: "Cancelar", style: "cancel", onPress: () => res(false) },
+        { text: "Agregar así", onPress: () => res(true) },
+      ]));
+      if (!seguir) return;
+    }
     setGuardandoRefacciones(true);
     try {
       // Una tras otra para que el descuento de inventario de cada una se aplique en orden
       for (const idRef of ids) {
         const ref = refacciones.find((r) => r.id_refaccion === idRef);
         const inv = inventarioDe(idRef);
-        const precio = (inv ? inv.preciocliente : ref?.preciocliente_refaccion) || (inv ? inv.preciopropio : ref?.preciopropio_refaccion) || 0;
+        const precio = seleccion[idRef].precio ?? precioVentaRef(inv, ref);
         await api.post(`/servicios/${id}/detalles`, {
           id_refaccion: idRef,
           descripcion: ref?.nombre_refaccion || null,
@@ -733,6 +787,87 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     } finally {
       setGuardandoRefacciones(false);
     }
+  }
+
+  // --- Paquetes de servicio (Afinación, Frenos…) ---
+  async function cargarPaquetes() {
+    setCargandoPaq(true);
+    try { setPaquetes((await api.get("/paquetes-servicio/")) || []); } catch (e) { setPaquetes([]); } finally { setCargandoPaq(false); }
+  }
+  useEffect(() => {
+    if (modalRefacciones && modoAgregar === "paquetes") cargarPaquetes();
+  }, [modalRefacciones, modoAgregar]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const precioRefActual = (idRef) => {
+    const inv = inventarioDe(idRef);
+    const ref = refacciones.find((r) => r.id_refaccion === idRef);
+    return precioVentaRef(inv, ref);
+  };
+  const totalPaquete = (paq) => (paq.conceptos || []).reduce((t, c) => {
+    const cant = c.cantidad || 1;
+    return t + (c.id_refaccion ? precioRefActual(c.id_refaccion) * cant : (Number(c.costo_refaccion) || 0) * cant) + (Number(c.costo_mano_obra) || 0) * cant;
+  }, 0);
+
+  function aplicarPaquete(paq) {
+    alerta(`Agregar «${paq.nombre}»`, `Se agregarán ${paq.conceptos.length} concepto(s) a la orden por aprox. ${fmt(totalPaquete(paq))}. Podrás editar o quitar cada uno después.`, [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Agregar todo", onPress: async () => {
+        setAplicandoPaq(paq.id_paquete);
+        const faltantes = [];
+        try {
+          for (const c of paq.conceptos) {
+            const cant = c.cantidad || 1;
+            const mo = (Number(c.costo_mano_obra) || 0) * cant;
+            if (c.id_refaccion) {
+              const ref = refacciones.find((r) => r.id_refaccion === c.id_refaccion);
+              if (!ref) { faltantes.push(c.descripcion || "Refacción"); continue; }
+              await api.post(`/servicios/${id}/detalles`, { id_refaccion: c.id_refaccion, descripcion: ref.nombre_refaccion, cantidad: cant, costo_refaccion: precioRefActual(c.id_refaccion) * cant, costo_mano_obra: mo, costo_extra: 0 });
+            } else {
+              await api.post(`/servicios/${id}/detalles`, { id_refaccion: null, descripcion: c.descripcion || "Mano de obra", cantidad: cant, costo_mano_obra: mo, costo_refaccion: (Number(c.costo_refaccion) || 0) * cant, costo_extra: 0 });
+            }
+          }
+          setModalRefacciones(false);
+          await load();
+          alerta("Paquete agregado", faltantes.length ? `Se agregó «${paq.nombre}», pero ya no existen en el catálogo: ${faltantes.join(", ")}.` : `«${paq.nombre}» quedó en la orden.`);
+        } catch (err) {
+          await load();
+          alerta("Error", err.message);
+        } finally {
+          setAplicandoPaq(null);
+        }
+      } },
+    ]);
+  }
+
+  async function guardarPaqueteDesdeOrden() {
+    const nombre = (modalNuevoPaq?.nombre || "").trim();
+    if (!nombre) { alerta("Falta el nombre", "Escribe cómo se llamará el paquete (ej. Afinación mayor)."); return; }
+    const conceptos = detalles.map((d) => {
+      const cant = Math.max(1, d.cantidad || 1);
+      const mo = Math.round(((Number(d.costo_mano_obra) || 0) / cant) * 100) / 100;
+      if (d.id_refaccion) return { id_refaccion: d.id_refaccion, descripcion: d.descripcion || null, cantidad: cant, costo_mano_obra: mo, costo_refaccion: 0 };
+      return { id_refaccion: null, descripcion: d.descripcion || "Concepto", cantidad: cant, costo_mano_obra: mo, costo_refaccion: Math.round(((Number(d.costo_refaccion) || 0) / cant) * 100) / 100 };
+    });
+    setGuardandoPaq(true);
+    try {
+      await api.post("/paquetes-servicio/", { nombre, conceptos });
+      setModalNuevoPaq(null);
+      cargarPaquetes();
+      alerta("Paquete guardado", `«${nombre}» ya está disponible para cualquier orden.`);
+    } catch (err) {
+      alerta("Error", err.message);
+    } finally {
+      setGuardandoPaq(false);
+    }
+  }
+
+  function borrarPaquete(paq) {
+    alerta("Borrar paquete", `¿Borrar «${paq.nombre}»? Las órdenes que ya lo usaron no cambian.`, [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Borrar", style: "destructive", onPress: async () => {
+        try { await api.del(`/paquetes-servicio/${paq.id_paquete}`); cargarPaquetes(); } catch (err) { alerta("Error", err.message); }
+      } },
+    ]);
   }
 
   async function guardarConceptoLibre() {
@@ -772,7 +907,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       setRefacciones((p) => [...p, r]);
     }
     setBusquedaRef(""); setFiltroCategoria(""); setZonaRef(null);
-    setSeleccion((p) => ({ ...p, [r.id_refaccion]: { cantidad: 1 } }));
+    setSeleccion((p) => ({ ...p, [r.id_refaccion]: { cantidad: 1, precio: Number(precio) || undefined } }));
   }
 
   function abrirAgregar(modo = "catalogo") {
@@ -1106,9 +1241,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
             <View style={styles.accesos}>
               {(inspeccionActual || (puedeEditar && hasPermission("servicios.crear"))) && (
                 <TouchableOpacity style={styles.accesoFila} onPress={() => setMostrandoInspeccion(true)} disabled={!abierta && !inspeccionActual} activeOpacity={0.8}>
-                  <View style={[styles.accesoIcono, inspeccionActual && { backgroundColor: colors.teal600 }]}>
-                    <Ionicons name={inspeccionActual ? "checkmark-done-outline" : "clipboard-outline"} size={22} color="#fff" />
-                  </View>
+                  <IconoAcceso nombre="car-sport" insignia={inspeccionActual ? "checkmark" : "search"} grande fondo={inspeccionActual ? colors.teal600 : undefined} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.accesoTitulo}>{inspeccionActual ? "Inspección realizada" : "Nueva inspección"}</Text>
                     <Text style={styles.accesoSub}>{inspeccionActual ? "Toca para ver o editar el resultado" : "Revisa el vehículo y registra su estado"}</Text>
@@ -1117,7 +1250,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.accesoFila} onPress={() => setMostrandoRecepcion(true)} activeOpacity={0.8}>
-                <View style={styles.accesoIcono}><Ionicons name="car-sport-outline" size={22} color="#fff" /></View>
+                <IconoAcceso nombre="car-sport" insignia="log-in" />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.accesoTitulo}>Recepción y avance</Text>
                   <Text style={styles.accesoSub}>Daños del auto en 3D y progreso de la orden</Text>
@@ -1126,9 +1259,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               </TouchableOpacity>
               {puedeCompartirSeguimiento && (
                 <TouchableOpacity style={styles.accesoFila} onPress={enviarSeguimientoWhatsApp} disabled={enviandoSeg} activeOpacity={0.8}>
-                  <View style={[styles.accesoIcono, { backgroundColor: "#25D366" }]}>
-                    {enviandoSeg ? <ActivityIndicator color="#fff" /> : <Ionicons name="logo-whatsapp" size={22} color="#fff" />}
-                  </View>
+                  <IconoAcceso nombre="logo-whatsapp" insignia="link" fondo="#25D366" cargando={enviandoSeg} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.accesoTitulo}>Enviar seguimiento</Text>
                     <Text style={styles.accesoSub}>Link para que el cliente vea el avance, por WhatsApp</Text>
@@ -1138,7 +1269,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               )}
               {!!cliente.cuenta_activada && (
                 <TouchableOpacity style={styles.accesoFila} onPress={() => setChatAbierto(true)} activeOpacity={0.8}>
-                  <View style={styles.accesoIcono}><Ionicons name="chatbubbles-outline" size={22} color="#fff" /></View>
+                  <IconoAcceso nombre="chatbubbles" insignia="person" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.accesoTitulo}>Chat con el cliente</Text>
                     <Text style={styles.accesoSub}>Mensajes de esta orden en su app</Text>
@@ -1398,7 +1529,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
           </View>
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
             <View style={styles.segmentado}>
-              {[{ v: "catalogo", t: "Del catálogo", i: "cube-outline" }, { v: "libre", t: "Concepto libre", i: "create-outline" }].map((m) => (
+              {[{ v: "catalogo", t: "Catálogo", i: "cube-outline" }, { v: "paquetes", t: "Paquetes", i: "layers-outline" }, { v: "libre", t: "Libre", i: "create-outline" }].map((m) => (
                 <TouchableOpacity key={m.v} style={[styles.segmento, modoAgregar === m.v && [styles.segmentoActivo, { backgroundColor: tonoRojo().base }]]} onPress={() => setModoAgregar(m.v)}>
                   <Ionicons name={m.i} size={15} color={modoAgregar === m.v ? colors.paper100 : colors.ink700} />
                   <Text style={[styles.segmentoTexto, modoAgregar === m.v && styles.segmentoTextoActivo]}>{m.t}</Text>
@@ -1450,6 +1581,35 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               <View style={styles.modalPie}>
                 <Boton texto="Cancelar" onPress={() => setModalRefacciones(false)} estilo={{ flex: 1 }} />
                 <Boton tipo="primario" icono="add-outline" texto="Agregar a la orden" onPress={guardarConceptoLibre} cargando={guardandoRefacciones} estilo={{ flex: 1.6 }} />
+              </View>
+            </>
+          ) : modoAgregar === "paquetes" ? (
+            <>
+              <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 10 }}>
+                <Text style={styles.filaSub}>Toca un paquete para agregar todos sus conceptos de una vez. Mantén presionado para borrarlo.</Text>
+                {cargandoPaq ? <ActivityIndicator color={colors.petrol500} style={{ marginTop: 20 }} /> : paquetes.length === 0 ? (
+                  <Text style={styles.vacio}>Todavía no tienes paquetes. {detalles.length > 0 ? "Guarda esta orden como paquete con el botón de abajo." : "Arma una orden con sus refacciones y mano de obra, y guárdala como paquete."}</Text>
+                ) : paquetes.map((paq) => (
+                  <TouchableOpacity key={paq.id_paquete} style={styles.paqueteFila} onPress={() => aplicarPaquete(paq)} onLongPress={() => borrarPaquete(paq)} disabled={aplicandoPaq !== null} activeOpacity={0.8}>
+                    <View style={styles.accesoIcono}>
+                      {aplicandoPaq === paq.id_paquete ? <ActivityIndicator color="#fff" /> : <Ionicons name="layers" size={24} color="#fff" />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.accesoTitulo} numberOfLines={1}>{paq.nombre}</Text>
+                      <Text style={styles.accesoSub} numberOfLines={2}>{paq.conceptos.length} concepto(s) · {paq.conceptos.map((c) => c.descripcion || "Refacción").slice(0, 3).join(", ")}{paq.conceptos.length > 3 ? "…" : ""}</Text>
+                    </View>
+                    <Text style={styles.paqueteTotal}>{fmt(totalPaquete(paq))}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <View style={styles.modalPie}>
+                <TouchableOpacity style={[styles.pieBtn, { flex: 1, borderWidth: 1.5, borderColor: tonoRojo().base }]} onPress={() => setModalRefacciones(false)} activeOpacity={0.8}>
+                  <Text style={[styles.pieBtnTexto, { color: tonoRojo().base }]}>Cerrar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.pieBtn, { flex: 1.5, paddingHorizontal: 10, backgroundColor: tonoRojo().base, opacity: detalles.length ? 1 : 0.55 }]} onPress={() => setModalNuevoPaq({ nombre: "" })} disabled={!detalles.length} activeOpacity={0.85}>
+                  <Ionicons name="save-outline" size={18} color="#fff" />
+                  <Text style={[styles.pieBtnTexto, { color: "#fff", flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit>Guardar paquete</Text>
+                </TouchableOpacity>
               </View>
             </>
           ) : (
@@ -1520,7 +1680,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                   const inv = inventarioDe(r.id_refaccion);
                   const marcada = !!seleccion[r.id_refaccion];
                   const stock = inv ? inv.cantidad : (r.cantidad_refaccion ?? 0);
-                  const precio = (inv ? inv.preciocliente : r.preciocliente_refaccion) || (inv ? inv.preciopropio : r.preciopropio_refaccion) || 0;
+                  const precio = seleccion[r.id_refaccion]?.precio ?? precioVentaRef(inv, r);
                   const tonoR = tonoRojo();
                   return (
                     <TouchableOpacity
@@ -1564,6 +1724,21 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       </Modal>
       <NuevaRefaccionModal visible={creandoRef} nombreInicial={busquedaRef.trim()} onCerrar={() => setCreandoRef(false)} onCrear={crearRefaccionRapida}
         categorias={[...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort()} />
+
+      {/* Nuevo paquete desde la orden */}
+      <Modal visible={!!modalNuevoPaq} transparent animationType="fade" onRequestClose={() => setModalNuevoPaq(null)}>
+        <View style={[styles.modalBackdrop, { justifyContent: "center", padding: 20 }]}>
+          <View style={[styles.modalSheet, { borderRadius: 18 }]}>
+            <Text style={styles.modalTitulo}>Guardar como paquete</Text>
+            <Text style={styles.filaSub}>Se guardan los {detalles.length} concepto(s) de esta orden. Las refacciones toman el precio vigente cada vez que lo uses.</Text>
+            <TextInput style={[styles.input, { marginTop: 12 }]} placeholder="Nombre (ej. Afinación mayor)" placeholderTextColor={colors.ink500} value={modalNuevoPaq?.nombre || ""} onChangeText={(v) => setModalNuevoPaq({ nombre: v })} autoFocus maxLength={100} />
+            <View style={styles.modalAcciones}>
+              <Boton texto="Cancelar" onPress={() => setModalNuevoPaq(null)} estilo={{ flex: 1 }} />
+              <Boton tipo="primario" texto="Guardar" onPress={guardarPaqueteDesdeOrden} cargando={guardandoPaq} estilo={{ flex: 1.4 }} />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Pagos de la orden */}
       <Modal visible={modalPagos} transparent animationType="slide" onRequestClose={() => setModalPagos(false)}>
@@ -1813,6 +1988,8 @@ const styles = crearEstilos({
   pulsoVoz: { position: "absolute", width: 46, height: 46, borderRadius: 23, backgroundColor: colors.petrol500 },
   vozPanel: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.petrol500, borderRadius: 10, paddingVertical: 8, paddingLeft: 12, paddingRight: 28, gap: 3 },
   vozTexto: { fontSize: 13, color: colors.ink900 },
+  paqueteFila: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 14, padding: 12 },
+  paqueteTotal: { fontSize: 15, fontWeight: "800", color: colors.ink900 },
   rejillaRef: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   tileRef: { width: "48%", flexGrow: 1, backgroundColor: colors.paper100, borderWidth: 2, borderColor: colors.ink300, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 10, gap: 2 },
   tileNombre: { fontSize: 14, fontWeight: "700", color: colors.ink900, lineHeight: 18 },
@@ -1917,7 +2094,8 @@ const styles = crearEstilos({
   vacioTexto: { fontSize: 14, color: colors.ink500, textAlign: "center", lineHeight: 20 },
   accesos: { gap: 8, marginBottom: 14 },
   accesoFila: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 14, padding: 12 },
-  accesoIcono: { width: 42, height: 42, borderRadius: 12, backgroundColor: colors.petrol500, alignItems: "center", justifyContent: "center" },
+  accesoIcono: { width: 48, height: 48, borderRadius: 15, backgroundColor: colors.petrol500, alignItems: "center", justifyContent: "center", shadowOpacity: 0.35, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+  accesoInsignia: { position: "absolute", right: -5, bottom: -5, width: 20, height: 20, borderRadius: 10, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.paper100 },
   accesoTitulo: { fontSize: 15, fontWeight: "700", color: colors.ink900 },
   accesoSub: { fontSize: 12, color: colors.ink500, marginTop: 1 },
   acceso: { flex: 1, alignItems: "center", gap: 6, backgroundColor: colors.paper100, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8 },

@@ -1471,6 +1471,19 @@ class SeguimientoOrden(TenantMixin, Base):
     accesos = Column(Integer, default=0)
 
 
+class PaqueteServicio(TenantMixin, Base):
+    """Plantilla de servicio reutilizable (Afinación, Frenos…): lista de
+    conceptos en JSON que se agrega de golpe a una orden."""
+    __tablename__ = "paquetes_servicio"
+
+    id_paquete = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), nullable=False)
+    descripcion = Column(String(255), nullable=True)
+    conceptos = Column(Text, nullable=False, default="[]")  # JSON: [{id_refaccion, descripcion, cantidad, costo_mano_obra, costo_refaccion}]
+    creado_por = Column(String(50), nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
 class BitacoraAuditoria(TenantMixin, Base):
     """Bitácora de auditoría: cambios sensibles (fechas de órdenes, cierres,
     cancelaciones, citas retroactivas). Solo se agrega: NADIE puede editarla ni

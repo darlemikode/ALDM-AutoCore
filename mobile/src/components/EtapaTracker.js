@@ -8,6 +8,11 @@ import { crearEstilos } from "../ui/estilos";
 import { mostrarDialogo, alerta } from "../ui/Dialogo";
 
 // Catálogo unificado de estatus — mismo catálogo que ETAPAS_SERVICIO en el backend
+const ICONO_ETAPA = {
+  en_proceso: "log-in", abierto: "build", pendiente: "hourglass", espera_refacciones: "cube",
+  en_reparacion: "hammer", listo_entrega: "checkmark-circle", cerrado: "flag", garantia: "shield-checkmark", cancelado: "close-circle",
+};
+
 const ETIQUETAS_ETAPA = {
   en_proceso: "Recibido",
   abierto: "En piso",
@@ -102,6 +107,7 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
   return (
     <View style={styles.contenedor}>
       <View style={styles.cabecera}>
+        <View style={styles.cabIcono}><Ionicons name={ICONO_ETAPA[actual] || "ellipse"} size={24} color="#fff" /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cabEtiqueta}>Estatus actual</Text>
           <Text style={styles.cabEtapa} numberOfLines={1}>{ETIQUETAS_ETAPA[actual] || actual}</Text>
@@ -129,7 +135,7 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
               const es = actual === e.clave;
               return (
                 <TouchableOpacity key={e.clave} onPress={() => setNuevaEtapa(e.clave)} activeOpacity={0.8} style={[styles.chip, sel && styles.chipSel, es && !sel && styles.chipActual]}>
-                  {es && <Ionicons name="location" size={13} color={sel ? "#fff" : colors.petrol500} />}
+                  <Ionicons name={ICONO_ETAPA[e.clave] || "ellipse"} size={15} color={sel ? "#fff" : es ? colors.petrol500 : colors.ink500} />
                   <Text style={[styles.chipTexto, sel && styles.chipTextoSel]}>{e.etiqueta}</Text>
                 </TouchableOpacity>
               );
@@ -155,7 +161,9 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
         ) : (
           historial.map((h, i) => (
             <View key={h.id_registro ?? `${h.etapa}-${i}`} style={styles.item}>
-              <View style={[styles.punto, i === 0 && styles.puntoActual]} />
+              <View style={[styles.punto, i === 0 && styles.puntoActual]}>
+                <Ionicons name={ICONO_ETAPA[h.etapa] || "ellipse"} size={i === 0 ? 11 : 9} color={i === 0 ? "#fff" : colors.ink500} />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.itemTitulo, i > 0 && { color: colors.ink700 }]}>{ETIQUETAS_ETAPA[h.etapa] || h.etapa}</Text>
                 <Text style={styles.itemFecha}>
@@ -174,6 +182,7 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
 const styles = crearEstilos({
   contenedor: { backgroundColor: colors.paper100, borderRadius: 16, padding: spacing.md, marginTop: spacing.sm, borderWidth: 1, borderColor: colors.ink300 },
   cabecera: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  cabIcono: { width: 46, height: 46, borderRadius: 14, backgroundColor: colors.petrol500, alignItems: "center", justifyContent: "center" },
   cabEtiqueta: { fontSize: 11, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.6 },
   cabEtapa: { fontFamily: "BarlowCondensed_700Bold", fontSize: 26, color: colors.ink900 },
   paso: { backgroundColor: colors.petrol100, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
@@ -195,11 +204,11 @@ const styles = crearEstilos({
   input: { backgroundColor: colors.paper0, borderWidth: 1, borderColor: colors.ink300, borderRadius: 10, padding: 11, fontSize: 14, color: colors.ink900 },
   boton: { flexDirection: "row", gap: 8, backgroundColor: colors.petrol500, borderRadius: 24, height: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
   botonTexto: { color: "#fff", fontWeight: "800", fontSize: 14, flexShrink: 1 },
-  linea: { borderLeftWidth: 2, borderLeftColor: colors.ink300, paddingLeft: 16, marginLeft: 4 },
+  linea: { borderLeftWidth: 2, borderLeftColor: colors.ink300, paddingLeft: 24, marginLeft: 12 },
   vacio: { fontSize: 12, color: colors.ink500 },
   item: { flexDirection: "row", marginBottom: 14, position: "relative" },
-  punto: { position: "absolute", left: -22, top: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.ink300 },
-  puntoActual: { backgroundColor: colors.petrol500, borderWidth: 3, borderColor: colors.petrol100, width: 14, height: 14, borderRadius: 7, left: -24, top: 3 },
+  punto: { position: "absolute", left: -29, top: 1, width: 20, height: 20, borderRadius: 10, backgroundColor: colors.paper0, borderWidth: 1.5, borderColor: colors.ink300, alignItems: "center", justifyContent: "center" },
+  puntoActual: { backgroundColor: colors.petrol500, borderColor: colors.petrol100, borderWidth: 3, width: 26, height: 26, borderRadius: 13, left: -32, top: -2 },
   itemTitulo: { fontWeight: "800", fontSize: 14, color: colors.ink900 },
   itemFecha: { fontSize: 11, color: colors.ink500, marginTop: 1 },
   nota: { backgroundColor: colors.paper0, borderRadius: 8, padding: 8, marginTop: 6 },
