@@ -754,15 +754,6 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         return;
       }
     }
-    const sinPrecio = ids.filter((idRef) => (seleccion[idRef].precio ?? precioVentaRef(inventarioDe(idRef), refacciones.find((r) => r.id_refaccion === idRef))) <= 0);
-    if (sinPrecio.length) {
-      const nombres = sinPrecio.map((idRef) => refacciones.find((r) => r.id_refaccion === idRef)?.nombre_refaccion || "Refacción").join(", ");
-      const seguir = await new Promise((res) => alerta("Sin precio", `${nombres} no tiene precio y se agregará en $0.00. Después puedes capturarlo en la orden (Precio unitario).`, [
-        { text: "Cancelar", style: "cancel", onPress: () => res(false) },
-        { text: "Agregar así", onPress: () => res(true) },
-      ]));
-      if (!seguir) return;
-    }
     setGuardandoRefacciones(true);
     try {
       // Una tras otra para que el descuento de inventario de cada una se aplique en orden
