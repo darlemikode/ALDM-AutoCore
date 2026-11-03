@@ -50,7 +50,17 @@
       "expo-sqlite",
       "expo-status-bar",
       "expo-font",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Usamos el micrófono para que dictes las refacciones de la orden.",
+          "speechRecognitionPermission": "Usamos el reconocimiento de voz para transcribir lo que dictes.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ]
     ]
   }
 }

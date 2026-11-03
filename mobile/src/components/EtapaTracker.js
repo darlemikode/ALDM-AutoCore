@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
-import { Picker } from "../ui/Picker";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Animated, Easing, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
@@ -30,6 +30,8 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
   useEffect(() => { setNuevaEtapa(siguiente(servicio.etapa)); }, [servicio.etapa]); // eslint-disable-line react-hooks/exhaustive-deps
   const [comentario, setComentario] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [anchoPista, setAnchoPista] = useState(0);
+  const avance = useRef(new Animated.Value(0)).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -43,22 +45,22 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
     if (nuevaEtapa === actual) {
       if (!comentario.trim()) {
         mostrarDialogo({
-          tono: "alerta", icono: "repeat-outline", etiqueta: "Mismo estatus",
+          tono: "alerta", icono: "repeat", etiqueta: "Mismo estatus",
           titulo: `Ya está en "${etiqueta}"`,
           mensaje: "Elige otra etapa para avanzar la orden, o escribe un comentario si solo quieres dejar una nota en esta misma etapa.",
           acciones: [
-            { texto: `Pasar a "${ETIQUETAS_ETAPA[siguiente(actual)]}"`, tipo: "primario", icono: "arrow-forward-outline", onPress: () => setNuevaEtapa(siguiente(actual)) },
+            { texto: `Pasar a "${ETIQUETAS_ETAPA[siguiente(actual)]}"`, tipo: "primario", icono: "arrow-forward", onPress: () => setNuevaEtapa(siguiente(actual)) },
             { texto: "Entendido", tipo: "secundario" },
           ],
         });
         return;
       }
       mostrarDialogo({
-        tono: "info", icono: "chatbox-ellipses-outline", etiqueta: "Mismo estatus",
+        tono: "info", icono: "chatbox-ellipses", etiqueta: "Mismo estatus",
         titulo: "¿Registrar solo la nota?",
         mensaje: `La orden seguirá en "${etiqueta}" y se agregará tu comentario a la bitácora.`,
         acciones: [
-          { texto: "Sí, registrar nota", tipo: "primario", icono: "checkmark-outline", onPress: guardarEtapa },
+          { texto: "Sí, registrar nota", tipo: "primario", icono: "checkmark", onPress: guardarEtapa },
           { texto: "Cancelar", tipo: "secundario" },
         ],
       });
@@ -82,45 +84,84 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
 
   const catalogo = etapas.length ? etapas : Object.entries(ETIQUETAS_ETAPA).map(([clave, etiqueta]) => ({ clave, etiqueta }));
   const historial = (servicio.historial_etapas || []).slice().reverse();
+  const actual = servicio.etapa || "en_proceso";
+  const FLUJO = ORDEN.filter((k) => k !== "garantia" && k !== "cancelado");
+  const idx = FLUJO.indexOf(actual);
+  const pct = actual === "cancelado" ? 0 : idx < 0 ? 1 : idx / (FLUJO.length - 1);
+  const CARRO = 34;
+
+  useEffect(() => {
+    Animated.timing(avance, { toValue: pct, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+  }, [pct]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const izq = avance.interpolate({ inputRange: [0, 1], outputRange: [0, Math.max(0, anchoPista - CARRO)] });
+  const ancho = avance.interpolate({ inputRange: [0, 1], outputRange: [CARRO / 2, Math.max(CARRO / 2, anchoPista - CARRO / 2)] });
+  const etiquetaNueva = ETIQUETAS_ETAPA[nuevaEtapa] || nuevaEtapa;
+  const mismaEtapa = nuevaEtapa === actual;
 
   return (
     <View style={styles.contenedor}>
-      <Text style={styles.titulo}>Estatus del servicio</Text>
+      <View style={styles.cabecera}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cabEtiqueta}>Estatus actual</Text>
+          <Text style={styles.cabEtapa} numberOfLines={1}>{ETIQUETAS_ETAPA[actual] || actual}</Text>
+        </View>
+        {idx >= 0 && <View style={styles.paso}><Text style={styles.pasoTexto}>Paso {idx + 1} de {FLUJO.length}</Text></View>}
+      </View>
+
+      <View style={styles.pista} onLayout={(e) => setAnchoPista(e.nativeEvent.layout.width)}>
+        <View style={styles.carretera} />
+        <Animated.View style={[styles.recorrido, { width: ancho }]} />
+        <View style={styles.marcas} pointerEvents="none">
+          {FLUJO.map((k, n) => <View key={k} style={[styles.marca, n <= idx && styles.marcaHecha]} />)}
+        </View>
+        <Animated.View style={[styles.carro, { width: CARRO, height: CARRO, borderRadius: CARRO / 2, left: izq }]}>
+          <Ionicons name="car-sport" size={19} color="#fff" />
+        </Animated.View>
+      </View>
 
       {puedeEditar && (
         <View style={styles.formulario}>
-          <View style={styles.pickerWrap}>
-            <Picker titulo="Cambiar etapa" ordenar={false} style={{ color: colors.ink900 }} dropdownIconColor={colors.ink500} selectedValue={nuevaEtapa} onValueChange={setNuevaEtapa}>
-              {catalogo.map((e) => (
-                <Picker.Item key={e.clave} label={e.etiqueta} value={e.clave} />
-              ))}
-            </Picker>
-          </View>
+          <Text style={styles.subtitulo}>Mover la orden a…</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>
+            {catalogo.map((e) => {
+              const sel = nuevaEtapa === e.clave;
+              const es = actual === e.clave;
+              return (
+                <TouchableOpacity key={e.clave} onPress={() => setNuevaEtapa(e.clave)} activeOpacity={0.8} style={[styles.chip, sel && styles.chipSel, es && !sel && styles.chipActual]}>
+                  {es && <Ionicons name="location" size={13} color={sel ? "#fff" : colors.petrol500} />}
+                  <Text style={[styles.chipTexto, sel && styles.chipTextoSel]}>{e.etiqueta}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
           <TextInput placeholderTextColor={colors.ink500}
             style={styles.input}
-            placeholder="Comentario (opcional)"
+            placeholder="Comentario para la bitácora (opcional)"
             value={comentario}
             onChangeText={setComentario}
           />
-          <TouchableOpacity style={styles.boton} onPress={actualizar} disabled={guardando}>
-            <Text style={styles.botonTexto}>{guardando ? "Guardando…" : "Actualizar estatus"}</Text>
+          <TouchableOpacity style={[styles.boton, guardando && { opacity: 0.6 }]} onPress={actualizar} disabled={guardando} activeOpacity={0.85}>
+            <Ionicons name={mismaEtapa ? "chatbox-ellipses-outline" : "arrow-forward-outline"} size={18} color="#fff" />
+            <Text style={styles.botonTexto} numberOfLines={1}>{guardando ? "Guardando…" : mismaEtapa ? "Solo agregar nota" : `Pasar a «${etiquetaNueva}»`}</Text>
           </TouchableOpacity>
         </View>
       )}
 
+      <Text style={styles.subtitulo}>Bitácora</Text>
       <View style={styles.linea}>
         {historial.length === 0 ? (
           <Text style={styles.vacio}>Sin movimientos registrados todavía.</Text>
         ) : (
           historial.map((h, i) => (
             <View key={h.id_registro ?? `${h.etapa}-${i}`} style={styles.item}>
-              <View style={styles.punto} />
+              <View style={[styles.punto, i === 0 && styles.puntoActual]} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitulo}>{ETIQUETAS_ETAPA[h.etapa] || h.etapa}</Text>
+                <Text style={[styles.itemTitulo, i > 0 && { color: colors.ink700 }]}>{ETIQUETAS_ETAPA[h.etapa] || h.etapa}</Text>
                 <Text style={styles.itemFecha}>
                   {new Date(h.fecha).toLocaleString("es-MX")} {h.actualizado_por ? `· ${h.actualizado_por}` : ""}
                 </Text>
-                {h.comentario ? <Text style={styles.itemComentario}>{h.comentario}</Text> : null}
+                {h.comentario ? <View style={styles.nota}><Text style={styles.itemComentario}>{h.comentario}</Text></View> : null}
               </View>
             </View>
           ))
@@ -131,18 +172,36 @@ export default function EtapaTracker({ servicio, puedeEditar, onActualizado }) {
 }
 
 const styles = crearEstilos({
-  contenedor: { backgroundColor: colors.paper100, borderRadius: 10, padding: spacing.md, marginTop: spacing.lg },
-  titulo: { fontSize: 14, fontWeight: "800", color: colors.ink900, textTransform: "uppercase", marginBottom: spacing.sm },
-  formulario: { marginBottom: spacing.md, gap: 8 },
-  pickerWrap: { backgroundColor: colors.paper0, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, overflow: "hidden" },
-  input: { backgroundColor: colors.paper0, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, padding: 10, fontSize: 13 },
-  boton: { backgroundColor: colors.petrol500, borderRadius: 8, padding: 12, alignItems: "center" },
-  botonTexto: { color: "#fff", fontWeight: "800", fontSize: 13, textTransform: "uppercase" },
-  linea: { borderLeftWidth: 2, borderLeftColor: colors.petrol100, paddingLeft: 14 },
+  contenedor: { backgroundColor: colors.paper100, borderRadius: 16, padding: spacing.md, marginTop: spacing.sm, borderWidth: 1, borderColor: colors.ink300 },
+  cabecera: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  cabEtiqueta: { fontSize: 11, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.6 },
+  cabEtapa: { fontFamily: "BarlowCondensed_700Bold", fontSize: 26, color: colors.ink900 },
+  paso: { backgroundColor: colors.petrol100, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
+  pasoTexto: { fontSize: 12, fontWeight: "700", color: colors.petrol600 },
+  pista: { height: 34, justifyContent: "center", marginBottom: 16 },
+  carretera: { position: "absolute", left: 0, right: 0, height: 6, borderRadius: 3, backgroundColor: colors.ink300 },
+  recorrido: { position: "absolute", left: 0, height: 6, borderRadius: 3, backgroundColor: colors.petrol500 },
+  marcas: { position: "absolute", left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 15 },
+  marca: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.paper100, borderWidth: 2, borderColor: colors.ink300 },
+  marcaHecha: { borderColor: colors.petrol500, backgroundColor: colors.paper100 },
+  carro: { position: "absolute", backgroundColor: colors.petrol500, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.paper100 },
+  subtitulo: { fontSize: 12, fontWeight: "800", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 },
+  formulario: { marginBottom: spacing.md, gap: 10 },
+  chip: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1.5, borderColor: colors.ink300, borderRadius: 100, paddingVertical: 8, paddingHorizontal: 14, backgroundColor: colors.paper0 },
+  chipSel: { backgroundColor: colors.petrol500, borderColor: colors.petrol500 },
+  chipActual: { borderColor: colors.petrol500 },
+  chipTexto: { fontSize: 13, fontWeight: "700", color: colors.ink700 },
+  chipTextoSel: { color: "#fff" },
+  input: { backgroundColor: colors.paper0, borderWidth: 1, borderColor: colors.ink300, borderRadius: 10, padding: 11, fontSize: 14, color: colors.ink900 },
+  boton: { flexDirection: "row", gap: 8, backgroundColor: colors.petrol500, borderRadius: 24, height: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
+  botonTexto: { color: "#fff", fontWeight: "800", fontSize: 14, flexShrink: 1 },
+  linea: { borderLeftWidth: 2, borderLeftColor: colors.ink300, paddingLeft: 16, marginLeft: 4 },
   vacio: { fontSize: 12, color: colors.ink500 },
-  item: { flexDirection: "row", marginBottom: 12, position: "relative" },
-  punto: { position: "absolute", left: -19, top: 4, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.petrol500 },
-  itemTitulo: { fontWeight: "700", fontSize: 13, color: colors.ink900 },
+  item: { flexDirection: "row", marginBottom: 14, position: "relative" },
+  punto: { position: "absolute", left: -22, top: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.ink300 },
+  puntoActual: { backgroundColor: colors.petrol500, borderWidth: 3, borderColor: colors.petrol100, width: 14, height: 14, borderRadius: 7, left: -24, top: 3 },
+  itemTitulo: { fontWeight: "800", fontSize: 14, color: colors.ink900 },
   itemFecha: { fontSize: 11, color: colors.ink500, marginTop: 1 },
-  itemComentario: { fontSize: 12, color: colors.ink700, marginTop: 2 },
+  nota: { backgroundColor: colors.paper0, borderRadius: 8, padding: 8, marginTop: 6 },
+  itemComentario: { fontSize: 12.5, color: colors.ink700 },
 });

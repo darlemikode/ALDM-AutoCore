@@ -9,6 +9,7 @@ import { alerta } from "../ui/Dialogo";
 import Auto3D from "./Auto3D";
 import { ZONAS, zonasRefaccion } from "../lib/zonas";
 import NuevaRefaccionModal from "./NuevaRefaccionModal";
+import FiltroCategoria from "../ui/FiltroCategoria";
 
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const VACIO = { descripcion: "", id_tipo_servicio: "", cantidad: "1", costo_mano_obra: "", costo_refaccion: "", costo_extra: "" };
@@ -141,13 +142,11 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
                   </TouchableOpacity>
                 )}
               </ScrollView>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                {["", ...categorias].map((c) => (
-                  <TouchableOpacity key={c || "todas"} style={[styles.chip, categoria === c && styles.chipActivo]} onPress={() => setCategoria(c)}>
-                    <Text style={[styles.chipTexto, categoria === c && styles.chipTextoActivo]}>{c || "Todas"}{c && conteoCat[c] != null ? ` (${conteoCat[c]})` : ""}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <FiltroCategoria
+                categorias={categorias.map((c) => ({ nombre: c, cuenta: conteoCat[c] || 0 }))}
+                valor={categoria}
+                onChange={setCategoria}
+              />
               <View style={styles.resultadoBarra}>
                 <Text style={styles.meta}>{filtradas.length} {filtradas.length === 1 ? "refacción" : "refacciones"}</Text>
                 {hayFiltros && <TouchableOpacity onPress={limpiarFiltros} hitSlop={8}><Text style={styles.limpiar}>Limpiar filtros</Text></TouchableOpacity>}

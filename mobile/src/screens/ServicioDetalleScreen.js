@@ -1,6 +1,7 @@
 import ScrollCampos from "../ui/ScrollCampos";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Platform, Modal, Switch, Image, ActivityIndicator, KeyboardAvoidingView } from "react-native";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Platform, Modal, Switch, Image, ActivityIndicator, KeyboardAvoidingView, Linking, Animated, Easing, LayoutAnimation, UIManager } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { Picker } from "../ui/Picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "../ui/IconoWeb";
@@ -20,8 +21,19 @@ import { ZONAS, zonasRefaccion } from "../lib/zonas";
 import { useAuth } from "../context/AuthContext";
 import { crearEstilos } from "../ui/estilos";
 import { alerta } from "../ui/Dialogo";
+import { telefonoValido } from "../validaciones";
 import { useBarraInferior } from "../ui/AvisoSuscripcion";
 import Calendario from "../ui/Calendario";
+import FiltroCategoria from "../ui/FiltroCategoria";
+import DeslizarCobrar, { tonoPetroleo } from "../ui/DeslizarCobrar";
+const tonoRojo = () => ({ base: colors.petrol500, oscuro: colors.petrol600 });
+// Voz (requiere módulo nativo; en Expo Go no existe)
+let RecVoz = null;
+try { RecVoz = require("expo-speech-recognition").ExpoSpeechRecognitionModule; } catch (e) { RecVoz = null; }
+const NUM_VOZ = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
+const STOP_VOZ = new Set(["de", "del", "la", "el", "los", "las", "para", "al", "agrega", "agregar", "pon", "poner", "ponle", "quiero", "necesito", "mas"]);
+const normVoz = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const singVoz = (w) => (w.length > 4 && w.endsWith("es") ? w.slice(0, -2) : w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w);
 import { contiene } from "../lib/texto";
 
 /*
@@ -36,6 +48,9 @@ import { contiene } from "../lib/texto";
  *   9. Estatus del servicio
  *   Botones flotantes: inspección del vehículo y chat de la orden.
  */
+
+// Un renglón es «mano de obra» cuando solo lleva importe de mano de obra (sin refacción ni precio de refacción) — igual que la web.
+const esManoObra = (d) => (Number(d.costo_mano_obra) || 0) > 0 && !d.id_refaccion && !d.id_inventario_refaccion && !((Number(d.costo_refaccion) || 0) > 0);
 
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const TIPOS_PAGO = [
@@ -100,6 +115,107 @@ function Boton({ texto, icono, onPress, tipo = "secundario", deshabilitado, carg
       {cargando ? <ActivityIndicator size="small" color={t[2]} /> : icono ? <Ionicons name={icono} size={chico ? 14 : 17} color={t[2]} /> : null}
       <Text style={[t[1], chico && styles.btnChicoTexto]}>{texto}</Text>
     </TouchableOpacity>
+  );
+}
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) UIManager.setLayoutAnimationEnabledExperimental(true);
+
+// Concepto de la orden con interacción natural: toque = abrir/cerrar los controles,
+// deslizar a la izquierda = quitar. Cerrada solo muestra lo esencial.
+function TarjetaConcepto({ d, refaccion, mo, editable, tipos, actualizar, quitar }) {
+  const [abierta, setAbierta] = useState(false);
+  const swipe = useRef(null);
+  const cant = d.cantidad || 1;
+  const redondea = (v) => Math.round(v * 100) / 100;
+  const importe = (Number(d.costo_mano_obra) || 0) + (Number(d.costo_refaccion) || 0) + (Number(d.costo_extra) || 0);
+  const tipo = tipos.find((t) => t.id_tipo_servicio === d.id_tipo_servicio)?.nombre_tipo;
+  const sub = [mo ? null : refaccion?.categoria, tipo].filter(Boolean).join(" · ");
+  const unitario = redondea(((Number(mo ? d.costo_mano_obra : d.costo_refaccion) || 0) / cant));
+
+  function alternar() {
+    LayoutAnimation.configureNext(LayoutAnimation.create(180, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+    setAbierta((v) => !v);
+  }
+  function cambiarCantidad(delta) {
+    actualizar(d.id_servicio_detalle, (x) => {
+      const c = x?.cantidad || 1;
+      const n = c + delta;
+      if (n < 1) return null;
+      return mo ? { cantidad: n, costo_mano_obra: redondea(((Number(x.costo_mano_obra) || 0) / c) * n) } : { cantidad: n };
+    });
+  }
+  function guardarUnitario(v) {
+    if (mo) {
+      if (!(v > 0)) { alerta("Precio inválido", "El precio debe ser mayor a cero. Para quitarla desliza la tarjeta a la izquierda."); return; }
+      actualizar(d.id_servicio_detalle, (x) => ({ costo_mano_obra: redondea(v * (x?.cantidad || 1)) }));
+    } else {
+      actualizar(d.id_servicio_detalle, (x) => (v === 0 ? { costo_refaccion: 0, cantidad: 1 } : { costo_refaccion: redondea(v * (x?.cantidad || 1)) }));
+    }
+  }
+
+  const contenido = (
+    <View style={styles.nuiCard}>
+      <TouchableOpacity activeOpacity={0.8} onPress={alternar} style={styles.nuiFila}>
+        <View style={[styles.nuiIcono, mo && { backgroundColor: colors.warn100 }]}>
+          <Ionicons name={mo ? "hammer-outline" : "cube-outline"} size={18} color={mo ? colors.warn600 : colors.petrol600} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.nuiTitulo} numberOfLines={abierta ? 3 : 1}>{d.descripcion || refaccion?.nombre_refaccion || (mo ? "Mano de obra" : "Concepto")}</Text>
+          {sub ? <Text style={styles.nuiSub} numberOfLines={1}>{sub}</Text> : null}
+        </View>
+        {cant > 1 && <View style={styles.nuiCant}><Text style={styles.nuiCantTexto}>×{cant}</Text></View>}
+        <Text style={styles.nuiImporte}>{fmt(importe)}</Text>
+        <Ionicons name={abierta ? "chevron-up-outline" : "chevron-down-outline"} size={16} color={colors.ink500} />
+      </TouchableOpacity>
+
+      {abierta && (
+        <View style={styles.nuiExtra}>
+          <View style={styles.nuiControles}>
+            <View style={styles.nuiStepper}>
+              <TouchableOpacity disabled={!editable || cant <= 1} onPress={() => cambiarCantidad(-1)} hitSlop={8}>
+                <Ionicons name="remove-circle-outline" size={32} color={editable && cant > 1 ? colors.petrol600 : colors.ink300} />
+              </TouchableOpacity>
+              <Text style={styles.nuiStepperNum}>{cant}</Text>
+              <TouchableOpacity disabled={!editable} onPress={() => cambiarCantidad(1)} hitSlop={8}>
+                <Ionicons name="add-circle-outline" size={32} color={editable ? colors.petrol600 : colors.ink300} />
+              </TouchableOpacity>
+            </View>
+            {(mo || d.id_refaccion || Number(d.costo_refaccion) > 0) && (
+              <View style={{ flex: 1 }}>
+                <Text style={styles.conceptoEtiqueta} numberOfLines={1}>Precio unitario</Text>
+                <NumeroEditable key={`u${mo ? d.costo_mano_obra : d.costo_refaccion}-${cant}`} valor={unitario} editable={editable} onGuardar={guardarUnitario} />
+              </View>
+            )}
+            {!mo && (!d.id_refaccion || Number(d.costo_mano_obra) > 0) && (
+              <View style={{ flex: 1 }}>
+                <Text style={styles.conceptoEtiqueta} numberOfLines={1}>Mano de obra</Text>
+                <NumeroEditable key={`m${d.costo_mano_obra}`} valor={d.costo_mano_obra || 0} editable={editable} onGuardar={(v) => actualizar(d.id_servicio_detalle, { costo_mano_obra: v })} />
+              </View>
+            )}
+          </View>
+          {editable && <Text style={styles.nuiPista}>Desliza la tarjeta a la izquierda para quitarla</Text>}
+        </View>
+      )}
+    </View>
+  );
+
+  if (!editable) return contenido;
+  return (
+    <Swipeable
+      ref={swipe}
+      overshootRight={false}
+      rightThreshold={60}
+      friction={1.6}
+      renderRightActions={() => (
+        <View style={styles.nuiQuitar}>
+          <Ionicons name="trash-outline" size={22} color="#ffffff" />
+          <Text style={styles.nuiQuitarTexto}>Quitar</Text>
+        </View>
+      )}
+      onSwipeableOpen={() => { swipe.current?.close(); quitar(d.id_servicio_detalle, !!mo); }}
+    >
+      {contenido}
+    </Swipeable>
   );
 }
 
@@ -173,11 +289,12 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   // Si llegamos aquí desde la campanita (con params.abrirChat), se abre el
   // chat aunque la pantalla ya estuviera montada (mismo componente, params nuevos).
   useEffect(() => {
-    if (route.params?.abrirChat) setChatAbierto(true);
+    if (route.params?.abrirChat && servicio?.cliente?.cuenta_activada !== false) setChatAbierto(true);
   }, [route.params?.abrirChat]);
 
   // Modal: registrar abono
   const [modalAbono, setModalAbono] = useState(false);
+  const [modalPagos, setModalPagos] = useState(false);
   const [calendarioFecha, setCalendarioFecha] = useState(null); // "fecha_entrada_servicio" | "fecha_salida_servicio"
   const [tipoPago, setTipoPago] = useState("efectivo");
   const [monto, setMonto] = useState("");
@@ -190,10 +307,46 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
   // Hoja "Agregar": del catálogo (selección múltiple) o concepto libre
   const [modalRefacciones, setModalRefacciones] = useState(false);
+  // Entrada animada del resumen (se repite al volver a la pestaña de refacciones)
+  const entradaResumen = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (pestana !== "refacciones") return;
+    entradaResumen.setValue(0);
+    Animated.timing(entradaResumen, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [pestana, entradaResumen]);
+  // Título de la barra superior: número, estatus y saldo de la orden (así no ocupan otra fila)
+  useLayoutEffect(() => {
+    if (!servicio) return;
+    const debe = (servicio.costos?.saldo_pendiente || 0) > 0.005;
+    const etiqueta = servicio.status === "cerrado" ? "finalizada" : servicio.status;
+    const estiloEstatus = servicio.status === "abierto" ? [styles.badgePetrol, styles.badgePetrolTexto] : servicio.status === "cerrado" ? [styles.badgeTeal, styles.badgeTealTexto] : [styles.badgeRojo, styles.badgeRojoTexto];
+    navigation.setOptions({
+      headerTitle: () => (
+        <View style={styles.hdrTitulo}>
+          <Text style={styles.hdrId}>Orden #{servicio.id_servicio}</Text>
+          <View style={[styles.badge, estiloEstatus[0]]}><Text style={[styles.badgeTexto, estiloEstatus[1]]}>{etiqueta}</Text></View>
+          <View style={[styles.cabSaldo, { backgroundColor: debe ? colors.red100 : colors.teal100 }]}>
+            <Text style={[styles.cabSaldoTexto, { color: debe ? colors.red600 : colors.teal600 }]} numberOfLines={1}>
+              {debe ? `Debe ${fmt(servicio.costos.saldo_pendiente)}` : servicio.status === "cerrado" ? "Liquidado" : "Sin saldo"}
+            </Text>
+          </View>
+        </View>
+      ),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, servicio?.id_servicio, servicio?.status, servicio?.costos?.saldo_pendiente]);
+  const [modalMO, setModalMO] = useState(null); // { descripcion, cantidad, precio } | null
+  const [guardandoMO, setGuardandoMO] = useState(false);
   const [creandoRef, setCreandoRef] = useState(false); // alta rápida de una refacción que no existe
   const [modoAgregar, setModoAgregar] = useState("catalogo");
   const [libre, setLibre] = useState({ descripcion: "", id_tipo_servicio: "", cantidad: "1", costo_mano_obra: "", costo_refaccion: "", costo_extra: "" });
   const [seleccion, setSeleccion] = useState({});
+  const [escuchando, setEscuchando] = useState(false);
+  const [enviandoSeg, setEnviandoSeg] = useState(false);
+  const [textoVoz, setTextoVoz] = useState("");
+  const [avisoVoz, setAvisoVoz] = useState(null);
+  const procVozRef = useRef(null);
+  const pulsoVoz = useRef(new Animated.Value(0)).current;
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [busquedaRef, setBusquedaRef] = useState("");
   const [guardandoRefacciones, setGuardandoRefacciones] = useState(false);
@@ -395,6 +548,28 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
   // Manda la nota en PDF por WhatsApp: se genera el PDF y se abre el menú de compartir;
   // al elegir WhatsApp aparece la vista previa del documento para agregar un comentario.
+  // Genera (o reutiliza) el enlace público de seguimiento y abre WhatsApp con el mensaje listo.
+  async function enviarSeguimientoWhatsApp() {
+    if (enviandoSeg) return;
+    setEnviandoSeg(true);
+    try {
+      const est = await api.post(`/seguimiento-orden/${servicio.id_servicio}`, {});
+      if (!est?.url) { alerta("Seguimiento", "No se pudo generar el enlace. Intenta regenerarlo desde el panel web."); return; }
+      const url = /^https?:/i.test(est.url) ? est.url : `https://app.aldmautocore.com${est.url}`;
+      let taller = {};
+      try { taller = (await api.get("/configuracion-taller/")) || {}; } catch (e) { /* sin firma */ }
+      const veh = [vehiculo.marca?.nombre_marca, vehiculo.modelo?.nombre_modelo].filter(Boolean).join(" ");
+      const texto = `Hola ${cliente.nombre_cliente || ""}, sigue en tiempo real el avance de tu ${veh || "vehículo"} (orden #${servicio.id_servicio}) aquí:\n${url}${taller.nombre_taller ? `\n— ${taller.nombre_taller}` : ""}`.replace(/\s+,/, ",");
+      const digitos = String(cliente.telefono1 || "").replace(/\D/g, "").slice(-10);
+      const destino = telefonoValido(digitos) ? `https://wa.me/52${digitos}` : "https://wa.me/";
+      await Linking.openURL(`${destino}?text=${encodeURIComponent(texto)}`);
+    } catch (err) {
+      alerta("Seguimiento", err?.message || "No se pudo abrir WhatsApp. Verifica que esté instalado.");
+    } finally {
+      setEnviandoSeg(false);
+    }
+  }
+
   async function enviarNotaWhatsApp() {
     const tipo = servicio.status === "cerrado" ? "remision" : "recibo";
     setDescargando("whatsapp");
@@ -410,8 +585,31 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     } catch (err) { alerta("Error", err.message); } finally { setDescargando(null); }
   }
 
-  function quitarDetalle(idDetalle) {
-    alerta("Quitar refacción", "¿Quitar esta refacción de la orden? Si estaba ligada al inventario, la pieza regresa al stock.", [
+  async function guardarManoObra() {
+    const cantidad = Math.max(1, Math.round(Number(String(modalMO.cantidad).replace(",", ".")) || 1));
+    const unitario = Number(String(modalMO.precio).replace(",", ".")) || 0;
+    if (!(unitario > 0)) { alerta("Falta el precio", "Captura un precio mayor a cero."); return; }
+    setGuardandoMO(true);
+    try {
+      const actualizado = await api.post(`/servicios/${id}/detalles`, {
+        descripcion: (modalMO.descripcion || "").trim() || "Mano de obra",
+        id_refaccion: null,
+        cantidad,
+        costo_mano_obra: Math.round(unitario * cantidad * 100) / 100,
+        costo_refaccion: 0,
+        costo_extra: 0,
+      });
+      setServicio(actualizado);
+      setModalMO(null);
+    } catch (err) {
+      alerta("Error", err.message);
+    } finally {
+      setGuardandoMO(false);
+    }
+  }
+
+  function quitarDetalle(idDetalle, manoObra = false) {
+    alerta(manoObra ? "Quitar mano de obra" : "Quitar refacción", manoObra ? "¿Quitar esta mano de obra de la orden?" : "¿Quitar esta refacción de la orden? Si estaba ligada al inventario, la pieza regresa al stock.", [
       { text: "Cancelar", style: "cancel" },
       { text: "Quitar", style: "destructive", onPress: async () => {
         try { await api.del(`/servicios/${id}/detalles/${idDetalle}`); load(); } catch (err) { alerta("Error", err.message); }
@@ -422,6 +620,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   // --- Refacciones (selección múltiple) ---
   const inventarioDe = (idRef) => inventarioVehiculo.find((i) => i.id_refaccion === idRef);
   function alternarSeleccion(idRef) {
+    try { LayoutAnimation.configureNext(LayoutAnimation.create(160, "easeInEaseOut", "opacity")); } catch (e) {}
     setSeleccion((prev) => {
       const copia = { ...prev };
       if (copia[idRef]) delete copia[idRef]; else copia[idRef] = { cantidad: 1 };
@@ -429,6 +628,75 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     });
   }
   const cambiarCantidadSel = (idRef, delta) => setSeleccion((prev) => ({ ...prev, [idRef]: { cantidad: Math.max(1, (prev[idRef]?.cantidad || 1) + delta) } }));
+
+  function procesarVoz(texto) {
+    const segmentos = normVoz(texto).split(/ y | e |,| con | luego | tambien /).map((x) => x.trim()).filter(Boolean);
+    const ok = []; const fallo = []; const nuevos = {};
+    segmentos.forEach((seg) => {
+      let cant = 1; const toks = [];
+      seg.split(" ").forEach((w) => {
+        if (/^\d+$/.test(w)) cant = Math.max(1, Number(w));
+        else if (NUM_VOZ[w] && toks.length === 0) cant = NUM_VOZ[w];
+        else if (!STOP_VOZ.has(w)) toks.push(singVoz(w));
+      });
+      if (!toks.length) return;
+      let mejor = null; let mejorPts = 0;
+      refacciones.forEach((r) => {
+        const nom = normVoz(r.nombre_refaccion).split(" ").filter((w) => !STOP_VOZ.has(w)).map(singVoz);
+        const cat = normVoz(r.categoria).split(" ").map(singVoz);
+        let pts = 0;
+        toks.forEach((t) => {
+          if (nom.some((n) => n.startsWith(t) || (n.length > 3 && t.startsWith(n)))) pts += 1;
+          else if (cat.some((n) => n.length > 3 && (n.startsWith(t) || t.startsWith(n)))) pts += 0.4;
+        });
+        const score = pts / toks.length - 0.03 * Math.max(0, nom.length - pts);
+        if (score > mejorPts) { mejorPts = score; mejor = r; }
+      });
+      if (mejor && mejorPts >= 0.6) { nuevos[mejor.id_refaccion] = { cantidad: cant }; ok.push(`${cant} × ${mejor.nombre_refaccion}`); }
+      else fallo.push(seg);
+    });
+    if (Object.keys(nuevos).length) {
+      try { LayoutAnimation.configureNext(LayoutAnimation.create(160, "easeInEaseOut", "opacity")); } catch (e) {}
+      setSeleccion((prev) => ({ ...prev, ...nuevos }));
+    }
+    setAvisoVoz({ ok, fallo, texto });
+  }
+  procVozRef.current = procesarVoz;
+
+  useEffect(() => {
+    if (!RecVoz || !modalRefacciones) return undefined;
+    const subs = [
+      RecVoz.addListener("result", (e) => {
+        const t = e?.results?.[0]?.transcript || "";
+        setTextoVoz(t);
+        if (e?.isFinal && t) procVozRef.current && procVozRef.current(t);
+      }),
+      RecVoz.addListener("end", () => setEscuchando(false)),
+      RecVoz.addListener("error", () => setEscuchando(false)),
+    ];
+    return () => { subs.forEach((x) => x && x.remove && x.remove()); try { RecVoz.abort(); } catch (e) {} };
+  }, [modalRefacciones]);
+
+  useEffect(() => {
+    if (!escuchando) { pulsoVoz.setValue(0); return undefined; }
+    const lazo = Animated.loop(Animated.sequence([
+      Animated.timing(pulsoVoz, { toValue: 1, duration: 650, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      Animated.timing(pulsoVoz, { toValue: 0, duration: 650, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+    ]));
+    lazo.start();
+    return () => lazo.stop();
+  }, [escuchando]);
+
+  async function alternarVoz() {
+    if (!RecVoz) { alerta("Voz no disponible", "Esta función necesita la app instalada con el módulo de voz (no funciona en Expo Go)."); return; }
+    if (escuchando) { try { RecVoz.stop(); } catch (e) {} return; }
+    try {
+      const perm = await RecVoz.requestPermissionsAsync();
+      if (!perm.granted) { alerta("Permiso requerido", "Activa micrófono y reconocimiento de voz para usar esta función."); return; }
+      setTextoVoz(""); setAvisoVoz(null); setEscuchando(true);
+      RecVoz.start({ lang: "es-MX", interimResults: true, continuous: false });
+    } catch (err) { setEscuchando(false); alerta("Voz", err.message || "No se pudo iniciar el micrófono."); }
+  }
 
   async function guardarRefacciones() {
     const ids = Object.keys(seleccion).map(Number);
@@ -621,7 +889,10 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   if (!servicio) return <Text style={styles.cargando}>Cargando orden…</Text>;
 
   const abierta = servicio.status === "abierto";
+  const puedeCompartirSeguimiento = abierta && hasPermission("servicios.editar") && hasPermission("servicios.ver_precios");
   const detalles = servicio.detalles || [];
+  const detallesRef = detalles.filter((d) => !esManoObra(d));
+  const detallesMO = detalles.filter(esManoObra);
   const abonos = servicio.abonos || [];
   const cliente = servicio.cliente || {};
   const vehiculo = servicio.vehiculo || {};
@@ -630,7 +901,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
   // Conceptos agrupados por categoría de la refacción (igual que la web)
   const grupos = {};
-  detalles.forEach((d) => {
+  detallesRef.forEach((d) => {
     const ref = refacciones.find((r) => r.id_refaccion === d.id_refaccion);
     const clave = ref?.categoria ? `${ref.categoria}${ref.subcategoria ? " / " + ref.subcategoria : ""}` : "Sin categoría";
     (grupos[clave] = grupos[clave] || []).push({ d, ref });
@@ -658,48 +929,31 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
   const PESTANAS = [
     { clave: "refacciones", texto: "Refacciones", icono: "construct-outline", contador: detalles.length },
-    { clave: "pagos", texto: "Pagos", icono: "wallet-outline", contador: abonos.length },
-    { clave: "estatus", texto: "Estatus", icono: "git-commit-outline" },
+    { clave: "estatus", texto: "Estatus", icono: "car-sport-outline" },
     { clave: "datos", texto: "Datos", icono: "information-circle-outline" },
   ];
 
   return (
     <View style={styles.screen}>
-      {/* ===== Encabezado fijo: de quién es la orden y cuánto va ===== */}
+      {/* ===== Barra fija compacta: cliente, llamar y vista previa en una sola línea ===== */}
       <View style={styles.cabecera}>
-        <View style={styles.cabeceraFila}>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <Text style={styles.heroTitulo}>#{servicio.id_servicio}</Text>
-              <View style={[styles.badge, badgeStatus[0]]}><Text style={[styles.badgeTexto, badgeStatus[1]]}>{servicio.status === "cerrado" ? "finalizada" : servicio.status}</Text></View>
-              {servicio.pagado && <View style={[styles.badge, styles.badgeTeal]}><Text style={[styles.badgeTexto, styles.badgeTealTexto]}>pagada</Text></View>}
-              {servicio.es_garantia && <View style={[styles.badge, styles.badgeAmbar]}><Text style={[styles.badgeTexto, styles.badgeAmbarTexto]}>garantía</Text></View>}
-            </View>
-            <Text style={styles.cabeceraServicio} numberOfLines={1}>{servicio.nombre_servicio}</Text>
-            <Text style={styles.cabeceraMeta} numberOfLines={1}>
-              {`${cliente.nombre_cliente || "—"} ${cliente.paterno_cliente || ""}`.trim()} · {[vehiculo.marca?.nombre_marca, vehiculo.modelo?.nombre_modelo].filter(Boolean).join(" ") || "vehículo"} {vehiculo.placas_vehiculo ? `(${vehiculo.placas_vehiculo})` : ""}
-            </Text>
-          </View>
-          <View style={styles.cabeceraTotales}>
-            <Text style={styles.totalEtiqueta}>Total</Text>
-            <Text style={styles.totalValor}>{fmt(servicio.costos.total)}</Text>
-            <Text style={[styles.saldoTexto, { color: servicio.costos.saldo_pendiente > 0.005 ? colors.red600 : colors.teal600 }]}>
-              {servicio.costos.saldo_pendiente > 0.005 ? `Debe ${fmt(servicio.costos.saldo_pendiente)}` : "Sin saldo"}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.cabeceraFechas}>
-          <TouchableOpacity style={styles.fechaChip} disabled={!puedeEditar} onPress={() => setCalendarioFecha("fecha_entrada_servicio")}>
-            <Ionicons name="log-in-outline" size={15} color={colors.petrol600} />
-            <Text style={styles.fechaChipTexto}>Entrada {fechaTexto(fechaLocal(servicio.fecha_entrada_servicio)) || "—"}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.fechaChip} disabled={!puedeEditar} onPress={() => setCalendarioFecha("fecha_salida_servicio")}>
-            <Ionicons name="log-out-outline" size={15} color={colors.petrol600} />
-            <Text style={styles.fechaChipTexto}>Salida {fechaTexto(fechaLocal(servicio.fecha_salida_servicio)) || "por definir"}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.fechaChip, styles.previaChip]} disabled={detalles.length === 0 || !!descargando} onPress={() => descargarPdf(servicio.status === "cerrado" ? "remision" : "recibo")} accessibilityLabel="Vista previa de la nota">
-            {descargando === "recibo" || descargando === "remision" ? <ActivityIndicator size="small" color={colors.petrol600} /> : <Ionicons name="eye-outline" size={16} color={colors.petrol600} />}
-            <Text style={[styles.fechaChipTexto, { color: colors.petrol600 }]}>Vista previa</Text>
+        <View style={[styles.cabFila, { flexWrap: "nowrap" }]}>
+          {servicio.es_garantia && <View style={[styles.badge, styles.badgeAmbar]}><Text style={[styles.badgeTexto, styles.badgeAmbarTexto]}>garantía</Text></View>}
+          <Ionicons name="person-outline" size={16} color={colors.ink500} />
+          <Text style={styles.cabClienteTexto} numberOfLines={1}>{`${cliente.nombre_cliente || "—"} ${cliente.paterno_cliente || ""}`.trim()}</Text>
+          {cliente.telefono1 ? (
+            <TouchableOpacity style={styles.cabLlamar} onPress={() => Linking.openURL(`tel:${cliente.telefono1}`).catch(() => {})} hitSlop={6}>
+              <Ionicons name="call-outline" size={14} color={colors.petrol600} />
+              <Text style={styles.cabLlamarTexto}>{cliente.telefono1}</Text>
+            </TouchableOpacity>
+          ) : null}
+          {puedeCompartirSeguimiento && (
+            <TouchableOpacity style={[styles.cabIconoBtn, { backgroundColor: "#25D366" }]} onPress={enviarSeguimientoWhatsApp} disabled={enviandoSeg} accessibilityLabel="Enviar seguimiento por WhatsApp" hitSlop={6}>
+              {enviandoSeg ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="logo-whatsapp" size={18} color="#fff" />}
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.cabIconoBtn} disabled={detalles.length === 0 || !!descargando} onPress={() => descargarPdf(servicio.status === "cerrado" ? "remision" : "recibo")} accessibilityLabel="Vista previa de la nota" hitSlop={6}>
+            {descargando === "recibo" || descargando === "remision" ? <ActivityIndicator size="small" color={colors.petrol600} /> : <Ionicons name="eye-outline" size={18} color={detalles.length === 0 ? colors.ink300 : colors.petrol600} />}
           </TouchableOpacity>
         </View>
 
@@ -717,6 +971,55 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       </View>
 
       <ScrollCampos contentContainerStyle={{ padding: spacing.lg, paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
+        {pestana === "refacciones" && (
+          <Animated.View style={[styles.resumenCard, { opacity: entradaResumen, transform: [{ translateY: entradaResumen.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }]}>
+            <View style={styles.resFila}>
+              <View style={styles.resAvatar}><Ionicons name="car-sport-outline" size={20} color={colors.petrol600} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.resMarca} numberOfLines={1}>{[vehiculo.marca?.nombre_marca, vehiculo.modelo?.nombre_modelo].filter(Boolean).join(" ") || "Vehículo"}</Text>
+                {vehiculo.color?.nombre_color ? <Text style={styles.resColor} numberOfLines={1}>{vehiculo.color.nombre_color}</Text> : null}
+              </View>
+              {vehiculo.placas_vehiculo ? <View style={styles.cabPlacas}><Text style={styles.cabPlacasTexto}>{vehiculo.placas_vehiculo}</Text></View> : null}
+            </View>
+
+            <View style={styles.resTira}>
+              <View style={styles.resDato}>
+                <Text style={styles.resDatoEtq}>Total</Text>
+                <Text style={styles.resDatoVal} numberOfLines={1} adjustsFontSizeToFit>{fmt(servicio.costos.total)}</Text>
+              </View>
+              <View style={styles.resSep} />
+              <TouchableOpacity style={styles.resDato} onPress={() => setModalPagos(true)} activeOpacity={0.7} accessibilityLabel="Ver pagos de la orden">
+                <Text style={styles.resDatoEtq}>Pagado{abonos.length ? ` · ${abonos.length}` : ""} ›</Text>
+                <Text style={[styles.resDatoVal, { color: colors.teal600 }]} numberOfLines={1} adjustsFontSizeToFit>{fmt(servicio.costos.total_abonado)}</Text>
+              </TouchableOpacity>
+              <View style={styles.resSep} />
+              <View style={styles.resDato}>
+                <Text style={styles.resDatoEtq}>{servicio.costos.saldo_pendiente > 0.005 ? "Debe" : "Saldo"}</Text>
+                <Text style={[styles.resDatoVal, { color: servicio.costos.saldo_pendiente > 0.005 ? colors.red600 : colors.teal600 }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {servicio.costos.saldo_pendiente > 0.005 ? fmt(servicio.costos.saldo_pendiente) : servicio.status === "cerrado" ? "Liquidado" : "Sin saldo"}
+                </Text>
+              </View>
+              {puedeEditar && abierta && !servicio.pagado && (
+                <TouchableOpacity style={styles.resMasAbono} onPress={abrirAbono} accessibilityLabel="Registrar abono" hitSlop={6}>
+                  <Ionicons name="add" size={20} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.resFechas}>
+              <TouchableOpacity style={styles.resFecha} disabled={!puedeEditar} onPress={() => setCalendarioFecha("fecha_entrada_servicio")}>
+                <Ionicons name="log-in-outline" size={14} color={colors.petrol600} />
+                <Text style={styles.resFechaTexto} numberOfLines={1}>{fechaTexto(fechaLocal(servicio.fecha_entrada_servicio)) || "Entrada —"}</Text>
+              </TouchableOpacity>
+              <Ionicons name="arrow-forward-outline" size={12} color={colors.ink500} />
+              <TouchableOpacity style={styles.resFecha} disabled={!puedeEditar} onPress={() => setCalendarioFecha("fecha_salida_servicio")}>
+                <Ionicons name="log-out-outline" size={14} color={colors.petrol600} />
+                <Text style={styles.resFechaTexto} numberOfLines={1}>{fechaTexto(fechaLocal(servicio.fecha_salida_servicio)) || "Salida por definir"}</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        )}
+
         {!abierta && (
           <View style={[styles.aviso, { borderLeftColor: colors.red600 }]}>
             <Text style={styles.avisoTexto}>
@@ -730,86 +1033,56 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         {pestana === "refacciones" && (
           <>
             {detalles.length === 0 ? (
-              <View style={styles.vacioGrande}>
-                <View style={styles.vacioIcono}><Ionicons name="construct-outline" size={30} color={colors.petrol600} /></View>
-                <Text style={styles.vacioTitulo}>La orden está vacía</Text>
-                <Text style={styles.vacioTexto}>Agrega las refacciones que se usaron o la mano de obra. El total se calcula solo.</Text>
-                {puedeEditar && abierta && (
-                  <View style={{ gap: 10, alignSelf: "stretch", marginTop: 8 }}>
-                    <Boton tipo="primario" icono="cube-outline" texto="Agregar refacción del catálogo" onPress={() => abrirAgregar("catalogo")} />
-                    <Boton icono="create-outline" texto="Agregar mano de obra u otro cargo" onPress={() => abrirAgregar("libre")} />
-                  </View>
-                )}
-              </View>
-            ) : clavesGrupos.map((clave) => (
-              <View key={clave}>
-                {clavesGrupos.length > 1 && <Text style={styles.grupoTitulo}>{clave}</Text>}
-                {grupos[clave].map(({ d, ref }) => {
-                  const importe = (Number(d.costo_mano_obra) || 0) + (Number(d.costo_refaccion) || 0) + (Number(d.costo_extra) || 0);
-                  const editable = puedeEditar && abierta;
+              <View style={styles.vacioNuevo}>
+                <View style={styles.vacioHalo}>
+                  <View style={styles.vacioDisco}><Ionicons name="cube-outline" size={30} color="#ffffff" /></View>
+                  <View style={styles.vacioDiscoMini}><Ionicons name="hammer-outline" size={17} color="#ffffff" /></View>
+                </View>
+                <Text style={styles.vacioNuevoTitulo}>Empieza a armar la orden</Text>
+                <Text style={styles.vacioNuevoTexto}>El total se calcula solo.</Text>
+                {puedeEditar && abierta && (() => {
+                  const tono = tonoPetroleo();
                   return (
-                    <View key={d.id_servicio_detalle} style={styles.itemCard}>
-                      <View style={styles.conceptoTop}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.filaTitulo}>{d.descripcion || ref?.nombre_refaccion || "Concepto"}</Text>
-                          <Text style={styles.filaSub}>
-                            {[tipos.find((t) => t.id_tipo_servicio === d.id_tipo_servicio)?.nombre_tipo, d.id_refaccion ? "Refacción" : "Concepto libre"].filter(Boolean).join(" · ")}
-                          </Text>
-                        </View>
-                        <Text style={styles.importe}>{fmt(importe)}</Text>
-                      </View>
-                      <View style={styles.conceptoBarra}>
-                        <View style={styles.contador}>
-                          <TouchableOpacity disabled={!editable || (d.cantidad || 1) <= 1} onPress={() => actualizarDetalle(d.id_servicio_detalle, (x) => ((x?.cantidad || 1) > 1 ? { cantidad: (x.cantidad || 1) - 1 } : null))} hitSlop={8}>
-                            <Ionicons name="remove-circle-outline" size={28} color={editable && (d.cantidad || 1) > 1 ? colors.petrol600 : colors.ink300} />
-                          </TouchableOpacity>
-                          <Text style={styles.contadorTexto}>{d.cantidad || 1}</Text>
-                          <TouchableOpacity disabled={!editable} onPress={() => actualizarDetalle(d.id_servicio_detalle, (x) => ({ cantidad: (x?.cantidad || 1) + 1 }))} hitSlop={8}>
-                            <Ionicons name="add-circle-outline" size={28} color={editable ? colors.petrol600 : colors.ink300} />
-                          </TouchableOpacity>
-                          <Text style={styles.contadorUnidad}>{(d.cantidad || 1) === 1 ? "pieza" : "piezas"}</Text>
-                        </View>
-                        {editable && (
-                          <TouchableOpacity style={styles.quitar} onPress={() => quitarDetalle(d.id_servicio_detalle)} hitSlop={8}>
-                            <Ionicons name="trash-outline" size={16} color={colors.red600} />
-                            <Text style={styles.quitarTexto}>Quitar</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                      <View style={styles.conceptoCampos}>
-                        {ref ? (
-                          <View style={styles.conceptoCampo}>
-                            <Text style={styles.conceptoEtiqueta} numberOfLines={1}>Costo original</Text>
-                            <Text style={styles.conceptoValorFijo}>{fmt((ref.preciopropio_refaccion || 0) * (d.cantidad || 1))}</Text>
-                          </View>
-                        ) : null}
-                        {d.id_refaccion || Number(d.costo_refaccion) > 0 ? (
-                          <>
-                            <View style={styles.conceptoCampo}>
-                              <Text style={styles.conceptoEtiqueta} numberOfLines={1}>Precio unitario</Text>
-                              <NumeroEditable
-                                key={`u${d.costo_refaccion}-${d.cantidad || 1}`}
-                                valor={Math.round(((Number(d.costo_refaccion) || 0) / (d.cantidad || 1)) * 100) / 100}
-                                editable={editable}
-                                onGuardar={(v) => actualizarDetalle(d.id_servicio_detalle, (x) => (v === 0
-                                  ? { costo_refaccion: 0, cantidad: 1 }
-                                  : { costo_refaccion: Math.round(v * (x?.cantidad || 1) * 100) / 100 }))}
-                              />
-                            </View>
-                          </>
-                        ) : null}
-                        {!d.id_refaccion || Number(d.costo_mano_obra) > 0 ? (
-                          <View style={styles.conceptoCampo}>
-                            <Text style={styles.conceptoEtiqueta} numberOfLines={1}>Mano de obra</Text>
-                            <NumeroEditable key={`m${d.costo_mano_obra}`} valor={d.costo_mano_obra || 0} editable={editable} onGuardar={(v) => actualizarDetalle(d.id_servicio_detalle, { costo_mano_obra: v })} />
-                          </View>
-                        ) : null}
-                      </View>
+                    <View style={styles.vacioOpciones}>
+                      <TouchableOpacity style={[styles.vacioOpcion, { borderColor: tono.base, backgroundColor: `${tono.base}1f` }]} activeOpacity={0.8} onPress={() => abrirAgregar("catalogo")}>
+                        <Ionicons name="cube-outline" size={26} color={tono.base} />
+                        <Text style={[styles.vacioOpcionTitulo, { color: tono.base }]}>Refacción</Text>
+                        <Text style={styles.vacioOpcionSub}>Del catálogo</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.vacioOpcion, { borderColor: colors.ink300, backgroundColor: colors.paper100 }]} activeOpacity={0.8} onPress={() => setModalMO({ descripcion: "Mano de obra", cantidad: "1", precio: "" })}>
+                        <Ionicons name="hammer-outline" size={26} color={colors.ink900} />
+                        <Text style={[styles.vacioOpcionTitulo, { color: colors.ink900 }]}>Mano de obra</Text>
+                        <Text style={styles.vacioOpcionSub}>O cualquier cargo</Text>
+                      </TouchableOpacity>
                     </View>
                   );
-                })}
+                })()}
+              </View>
+            ) : (<>
+            {/* ----- Mano de obra (apartado propio, como en la web) ----- */}
+            <View style={styles.seccionFila}>
+              <Text style={[styles.seccion, { marginTop: 0, marginBottom: 0 }]}>Mano de obra</Text>
+              {puedeEditar && abierta && (
+                <Boton chico icono="add-outline" texto="Agregar mano de obra" onPress={() => setModalMO({ descripcion: "Mano de obra", cantidad: "1", precio: "" })} />
+              )}
+            </View>
+            {detallesMO.length === 0 ? (
+              <Text style={{ fontSize: 11.5, color: colors.ink500, paddingVertical: 2 }}>Sin mano de obra.</Text>
+            ) : detallesMO.map((d) => (
+              <TarjetaConcepto key={d.id_servicio_detalle} d={d} mo editable={puedeEditar && abierta} tipos={tipos} actualizar={actualizarDetalle} quitar={quitarDetalle} />
+            ))}
+
+            {detallesRef.length > 0 && <Text style={[styles.seccion, { marginTop: 10, marginBottom: 6 }]}>Refacciones</Text>}
+            {clavesGrupos.map((clave) => (
+              <View key={clave}>
+                {clavesGrupos.length > 1 && <Text style={styles.grupoTitulo}>{clave}</Text>}
+                {grupos[clave].map(({ d, ref }) => (
+                  <TarjetaConcepto key={d.id_servicio_detalle} d={d} refaccion={ref} editable={puedeEditar && abierta} tipos={tipos} actualizar={actualizarDetalle} quitar={quitarDetalle} />
+                ))}
               </View>
             ))}
+
+            </>)}
             {detalles.length > 0 && (
               <View style={styles.subtotalFila}>
                 <View style={{ flex: 1, gap: 6 }}>
@@ -827,78 +1100,52 @@ export default function ServicioDetalleScreen({ route, navigation }) {
           </>
         )}
 
-        {/* ===== PAGOS ===== */}
-        {pestana === "pagos" && (
-          <>
-            <View style={styles.kpiGrid}>
-              {[
-                ["Subtotal", servicio.costos.subtotal],
-                [`IVA (${servicio.iva_porcentaje ?? 0}%)`, servicio.costos.iva],
-                ["Pagado", servicio.costos.total_abonado, colors.teal600],
-                ["Saldo", servicio.costos.saldo_pendiente, servicio.costos.saldo_pendiente > 0.005 ? colors.red600 : colors.teal600],
-              ].map(([etq, val, acento]) => (
-                <View key={etq} style={[styles.kpi, acento && { borderLeftColor: acento }]}>
-                  <Text style={styles.kpiEtiqueta}>{etq}</Text>
-                  <Text style={styles.kpiValor} numberOfLines={1} adjustsFontSizeToFit>{fmt(val)}</Text>
-                </View>
-              ))}
-            </View>
-            {puedeEditar && abierta && (
-              <View style={[styles.itemCard, styles.ivaFila]}>
-                <Text style={styles.ivaTexto}>Aplicar IVA (16%)</Text>
-                <Switch value={(servicio.iva_porcentaje ?? 0) > 0} onValueChange={cambiarIva} trackColor={{ true: colors.petrol500 }} />
-              </View>
-            )}
-            {puedeEditar && abierta && !servicio.pagado && (
-              <Boton icono="add-circle-outline" texto="Registrar abono (anticipo o pago parcial)" onPress={abrirAbono} estilo={{ marginTop: 12 }} />
-            )}
-            <Text style={styles.seccion}>Pagos registrados</Text>
-            {abonos.length === 0 ? <Text style={styles.vacio}>Todavía no hay pagos.</Text> : abonos.map((a, i) => {
-              const comision = comisiones.find((c) => c.tipo_pago === a.tipo_pago);
-              return (
-                <View key={a.id_abono || i} style={styles.itemCard}>
-                  <View style={styles.conceptoTop}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.filaTitulo}>Pago {a.numero_abono || i + 1} · {etiquetaPago(a.tipo_pago)}</Text>
-                      <Text style={styles.filaSub}>
-                        {new Date(a.fecha_pago).toLocaleDateString("es-MX")}
-                        {comision?.porcentaje > 0 ? ` · comisión ${comision.porcentaje}%` : ""}
-                        {a.tipo_pago === "mixto" ? ` · efvo ${fmt(a.desglose_mixto_efectivo)} / tarj ${fmt(a.desglose_mixto_tarjeta)}` : ""}
-                        {a.cambio > 0 ? ` · cambio ${fmt(a.cambio)}` : ""}
-                      </Text>
-                      {a.comentario ? <Text style={styles.filaSub}>{a.comentario}</Text> : null}
-                    </View>
-                    <Text style={styles.importe}>{fmt(a.monto_abono)}</Text>
-                    {puedeEditar && abierta && !servicio.pagado && a.id_abono ? (
-                      <TouchableOpacity onPress={() => borrarAbono(a.id_abono)} style={{ marginLeft: 10, padding: 6 }} accessibilityLabel="Borrar abono">
-                        <Ionicons name="trash-outline" size={20} color={colors.red600} />
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
-          </>
-        )}
-
         {/* ===== ESTATUS ===== */}
         {pestana === "estatus" && (
           <>
             <View style={styles.accesos}>
               {(inspeccionActual || (puedeEditar && hasPermission("servicios.crear"))) && (
-              <TouchableOpacity style={styles.acceso} onPress={() => setMostrandoInspeccion(true)} disabled={!abierta && !inspeccionActual}>
-                <Ionicons name="clipboard-outline" size={24} color={colors.petrol600} />
-                <Text style={styles.accesoTexto}>{inspeccionActual ? "Ver inspección" : "Nueva inspección"}</Text>
-              </TouchableOpacity>
+                <TouchableOpacity style={styles.accesoFila} onPress={() => setMostrandoInspeccion(true)} disabled={!abierta && !inspeccionActual} activeOpacity={0.8}>
+                  <View style={[styles.accesoIcono, inspeccionActual && { backgroundColor: colors.teal600 }]}>
+                    <Ionicons name={inspeccionActual ? "checkmark-done-outline" : "clipboard-outline"} size={22} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.accesoTitulo}>{inspeccionActual ? "Inspección realizada" : "Nueva inspección"}</Text>
+                    <Text style={styles.accesoSub}>{inspeccionActual ? "Toca para ver o editar el resultado" : "Revisa el vehículo y registra su estado"}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward-outline" size={20} color={colors.ink500} />
+                </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.acceso} onPress={() => setMostrandoRecepcion(true)}>
-                <Ionicons name="car-sport-outline" size={24} color={colors.petrol600} />
-                <Text style={styles.accesoTexto}>Recepción y avance</Text>
+              <TouchableOpacity style={styles.accesoFila} onPress={() => setMostrandoRecepcion(true)} activeOpacity={0.8}>
+                <View style={styles.accesoIcono}><Ionicons name="car-sport-outline" size={22} color="#fff" /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.accesoTitulo}>Recepción y avance</Text>
+                  <Text style={styles.accesoSub}>Daños del auto en 3D y progreso de la orden</Text>
+                </View>
+                <Ionicons name="chevron-forward-outline" size={20} color={colors.ink500} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.acceso} onPress={() => setChatAbierto(true)}>
-                <Ionicons name="chatbubbles-outline" size={24} color={colors.petrol600} />
-                <Text style={styles.accesoTexto}>Chat con el cliente</Text>
-              </TouchableOpacity>
+              {puedeCompartirSeguimiento && (
+                <TouchableOpacity style={styles.accesoFila} onPress={enviarSeguimientoWhatsApp} disabled={enviandoSeg} activeOpacity={0.8}>
+                  <View style={[styles.accesoIcono, { backgroundColor: "#25D366" }]}>
+                    {enviandoSeg ? <ActivityIndicator color="#fff" /> : <Ionicons name="logo-whatsapp" size={22} color="#fff" />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.accesoTitulo}>Enviar seguimiento</Text>
+                    <Text style={styles.accesoSub}>Link para que el cliente vea el avance, por WhatsApp</Text>
+                  </View>
+                  <Ionicons name="chevron-forward-outline" size={20} color={colors.ink500} />
+                </TouchableOpacity>
+              )}
+              {!!cliente.cuenta_activada && (
+                <TouchableOpacity style={styles.accesoFila} onPress={() => setChatAbierto(true)} activeOpacity={0.8}>
+                  <View style={styles.accesoIcono}><Ionicons name="chatbubbles-outline" size={22} color="#fff" /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.accesoTitulo}>Chat con el cliente</Text>
+                    <Text style={styles.accesoSub}>Mensajes de esta orden en su app</Text>
+                  </View>
+                  <Ionicons name="chevron-forward-outline" size={20} color={colors.ink500} />
+                </TouchableOpacity>
+              )}
             </View>
             {abierta ? (
               <EtapaTracker servicio={servicio} puedeEditar={puedeEditar} onActualizado={setServicio} />
@@ -914,6 +1161,15 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         {/* ===== DATOS ===== */}
         {pestana === "datos" && (
           <>
+            {puedeEditar && abierta && (
+              <View style={[styles.itemCard, styles.ivaFila]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ivaTexto}>Aplicar IVA (16%)</Text>
+                  <Text style={styles.filaSub}>Subtotal {fmt(servicio.costos.subtotal)} · IVA {fmt(servicio.costos.iva)}</Text>
+                </View>
+                <Switch value={(servicio.iva_porcentaje ?? 0) > 0} onValueChange={cambiarIva} trackColor={{ true: colors.petrol500 }} />
+              </View>
+            )}
             <Bloque icono="construct-outline" titulo="Responsable">
               {puedeEditar ? (
                 <View style={styles.pickerWrap}>
@@ -1035,9 +1291,21 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       {/* ===== Barra de acciones fija ===== */}
       {abierta && puedeEditar && (
         <View style={styles.barra}>
-          <Boton icono="construct-outline" texto="Agregar refacción" onPress={() => abrirAgregar(refacciones.length ? "catalogo" : "libre")} estilo={{ flex: 1.2 }} />
-          <Boton tipo="primario" icono="checkmark-done-outline" texto={conSaldoFinal ? `Cobrar ${fmt(saldoFinal)}` : "Finalizar"} onPress={abrirModalCierre}
-            deshabilitado={detalles.length === 0} estilo={{ flex: 1.5 }} />
+          {(() => {
+            const tono = tonoPetroleo();
+            return (
+              <TouchableOpacity style={[styles.barraAgregar, { borderColor: tono.base, backgroundColor: `${tono.base}1f` }]} activeOpacity={0.8} onPress={() => abrirAgregar(refacciones.length ? "catalogo" : "libre")} accessibilityLabel="Agregar refacción">
+                <View style={[styles.barraMas, { backgroundColor: tono.base }]}><Ionicons name="add-outline" size={22} color="#ffffff" /></View>
+                <Text style={[styles.barraAgregarTexto, { color: tono.base }]}>Agregar</Text>
+              </TouchableOpacity>
+            );
+          })()}
+          <DeslizarCobrar
+            etiqueta={conSaldoFinal ? "Desliza para cobrar" : "Desliza para finalizar"}
+            monto={conSaldoFinal ? fmt(saldoFinal) : null}
+            deshabilitado={detalles.length === 0}
+            onConfirmar={abrirModalCierre}
+          />
         </View>
       )}
 
@@ -1084,6 +1352,43 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Agregar mano de obra */}
+      <Modal visible={!!modalMO} animationType="slide" onRequestClose={() => setModalMO(null)}>
+        <View style={styles.modalPantalla}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitulo}>Agregar mano de obra</Text>
+            <TouchableOpacity onPress={() => setModalMO(null)} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink900} /></TouchableOpacity>
+          </View>
+          {modalMO && (
+            <>
+              <ScrollCampos contentContainerStyle={{ padding: spacing.lg, gap: 12 }} keyboardShouldPersistTaps="handled">
+                <View>
+                  <Text style={styles.label}>Descripción *</Text>
+                  <TextInput style={styles.input} value={modalMO.descripcion} onChangeText={(v) => setModalMO((p) => ({ ...p, descripcion: v }))} placeholder="Ej. Cambio de balatas, afinación mayor…" placeholderTextColor={colors.ink500} autoFocus />
+                </View>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.label}>Cantidad</Text>
+                    <TextInput style={styles.input} value={modalMO.cantidad} onChangeText={(v) => setModalMO((p) => ({ ...p, cantidad: v }))} keyboardType="number-pad" placeholderTextColor={colors.ink500} />
+                  </View>
+                  <View style={{ flex: 1.4 }}>
+                    <Text style={styles.label}>Precio unitario *</Text>
+                    <TextInput style={styles.input} value={modalMO.precio} onChangeText={(v) => setModalMO((p) => ({ ...p, precio: v }))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.ink500} />
+                  </View>
+                </View>
+                <Text style={styles.resultadoPago}>
+                  Importe: {fmt((Number(String(modalMO.precio).replace(",", ".")) || 0) * Math.max(1, Math.round(Number(String(modalMO.cantidad).replace(",", ".")) || 1)))}
+                </Text>
+              </ScrollCampos>
+              <View style={styles.modalPie}>
+                <Boton texto="Cancelar" onPress={() => setModalMO(null)} estilo={{ flex: 1 }} />
+                <Boton tipo="primario" icono="add-outline" texto="Agregar a la orden" onPress={guardarManoObra} cargando={guardandoMO} estilo={{ flex: 1.6 }} />
+              </View>
+            </>
+          )}
+        </View>
+      </Modal>
+
       {/* Agregar refacciones */}
       <Modal visible={modalRefacciones} animationType="slide" onRequestClose={() => setModalRefacciones(false)}>
         <View style={styles.modalPantalla}>
@@ -1094,7 +1399,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
             <View style={styles.segmentado}>
               {[{ v: "catalogo", t: "Del catálogo", i: "cube-outline" }, { v: "libre", t: "Concepto libre", i: "create-outline" }].map((m) => (
-                <TouchableOpacity key={m.v} style={[styles.segmento, modoAgregar === m.v && styles.segmentoActivo]} onPress={() => setModoAgregar(m.v)}>
+                <TouchableOpacity key={m.v} style={[styles.segmento, modoAgregar === m.v && [styles.segmentoActivo, { backgroundColor: tonoRojo().base }]]} onPress={() => setModoAgregar(m.v)}>
                   <Ionicons name={m.i} size={15} color={modoAgregar === m.v ? colors.paper100 : colors.ink700} />
                   <Text style={[styles.segmentoTexto, modoAgregar === m.v && styles.segmentoTextoActivo]}>{m.t}</Text>
                 </TouchableOpacity>
@@ -1150,19 +1455,42 @@ export default function ServicioDetalleScreen({ route, navigation }) {
           ) : (
           <>
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: 8 }}>
-            <TextInput style={styles.search} placeholder="Buscar refacción…" placeholderTextColor={colors.ink500} value={busquedaRef} onChangeText={setBusquedaRef} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-              <TouchableOpacity style={[styles.chip, verAutoRef && styles.chipActivo]} onPress={() => { setVerAutoRef(!verAutoRef); setZonaRef(null); }}>
-                <Text style={[styles.chipTexto, verAutoRef && styles.chipTextoActivo]}><Ionicons name="car-sport-outline" size={13} /> {verAutoRef ? "Ocultar auto" : "Elegir en el auto"}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <TextInput style={[styles.search, { flex: 1 }]} placeholder="Buscar refacción…" placeholderTextColor={colors.ink500} value={busquedaRef} onChangeText={setBusquedaRef} />
+              <TouchableOpacity onPress={alternarVoz} activeOpacity={0.8} style={styles.btnVoz}>
+                {escuchando && <Animated.View pointerEvents="none" style={[styles.pulsoVoz, { opacity: pulsoVoz.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }), transform: [{ scale: pulsoVoz.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] }) }] }]} />}
+                <Ionicons name={escuchando ? "stop" : "mic"} size={22} color="#fff" />
               </TouchableOpacity>
-              {["", ...categoriasDisponibles].map((c) => (
-                <TouchableOpacity key={c || "todas"} style={[styles.chip, filtroCategoria === c && styles.chipActivo]} onPress={() => setFiltroCategoria(c)}>
-                  <Text style={[styles.chipTexto, filtroCategoria === c && styles.chipTextoActivo]}>{c || "Todas"}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            </View>
+            {(escuchando || avisoVoz) && (
+              <View style={styles.vozPanel}>
+                {escuchando ? (
+                  <Text style={styles.vozTexto}>{textoVoz ? `“${textoVoz}”` : "Escuchando… di por ejemplo: «aceite de motor, dos amortiguadores delanteros y aditivos»"}</Text>
+                ) : (
+                  <>
+                    {avisoVoz.ok.length > 0 && <Text style={styles.vozTexto}>Seleccionado: {avisoVoz.ok.join(" · ")}</Text>}
+                    {avisoVoz.fallo.length > 0 && <Text style={[styles.vozTexto, { color: colors.warn600 }]}>No encontré: {avisoVoz.fallo.join(" · ")}</Text>}
+                    {avisoVoz.ok.length === 0 && avisoVoz.fallo.length === 0 && <Text style={styles.vozTexto}>No te entendí, intenta de nuevo.</Text>}
+                  </>
+                )}
+                {!escuchando && <TouchableOpacity onPress={() => setAvisoVoz(null)} hitSlop={8} style={{ position: "absolute", top: 6, right: 8 }}><Ionicons name="close-outline" size={18} color={colors.ink500} /></TouchableOpacity>}
+              </View>
+            )}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <FiltroCategoria
+                  categorias={categoriasDisponibles.map((c) => ({ nombre: c, cuenta: refPorBusqueda.filter((r) => r.categoria === c).length }))}
+                  valor={filtroCategoria}
+                  onChange={setFiltroCategoria}
+                />
+              </View>
+              <TouchableOpacity style={[styles.chip, verAutoRef && styles.chipActivo, { flexDirection: "row", alignItems: "center", gap: 5 }]} onPress={() => { setVerAutoRef(!verAutoRef); setZonaRef(null); }}>
+                <Ionicons name="car-sport-outline" size={15} color={verAutoRef ? colors.sobreAcento : colors.ink700} />
+                <Text style={[styles.chipTexto, verAutoRef && styles.chipTextoActivo]}>{verAutoRef ? "Ocultar auto" : "En el auto"}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 8 }}>
+          <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 8 }} keyboardShouldPersistTaps="handled">
             {verAutoRef && (
               <View style={{ marginBottom: 6 }}>
                 <Auto3D compacto altura={230} fps={18} estadoZona={(z) => (marcadasZona[z] ? "refsel" : conteoZona[z] ? "ref" : "ninguno")}
@@ -1186,34 +1514,49 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                 {hasPermission("refacciones.crear") && <Boton icono="add-circle-outline" texto={`Agregar al catálogo${busquedaRef.trim() ? ` «${busquedaRef.trim()}»` : ""}`} onPress={() => setCreandoRef(true)} />}
                 <Boton icono="create-outline" texto="Agregarla como concepto libre" onPress={() => { setLibre((p) => ({ ...p, descripcion: busquedaRef })); setModoAgregar("libre"); }} />
               </View>
-            ) : refFiltradas.map((r) => {
-              const inv = inventarioDe(r.id_refaccion);
-              const marcada = !!seleccion[r.id_refaccion];
-              const precio = (inv ? inv.preciocliente : r.preciocliente_refaccion) || (inv ? inv.preciopropio : r.preciopropio_refaccion) || 0;
-              return (
-                <TouchableOpacity key={r.id_refaccion} style={[styles.tarjetaRef, marcada && styles.tarjetaRefActiva]} onPress={() => alternarSeleccion(r.id_refaccion)} activeOpacity={0.8}>
-                  <Ionicons name={marcada ? "checkbox" : "square-outline"} size={22} color={marcada ? colors.petrol500 : colors.ink500} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.filaTitulo}>{r.nombre_refaccion}</Text>
-                    <Text style={styles.filaSub}>
-                      {r.categoria ? `${r.categoria} · ` : ""}Stock: {inv ? inv.cantidad : (r.cantidad_refaccion ?? 0)}{precio ? ` · ${fmt(precio)}` : ""}
-                    </Text>
-                    {!inv && inventarioVehiculo.length > 0 && <Text style={styles.advertencia}>Sin inventario para este vehículo</Text>}
-                  </View>
-                  {marcada && (
-                    <View style={styles.contador}>
-                      <TouchableOpacity onPress={() => cambiarCantidadSel(r.id_refaccion, -1)} hitSlop={6}><Ionicons name="remove-circle-outline" size={24} color={colors.petrol600} /></TouchableOpacity>
-                      <Text style={styles.contadorTexto}>{seleccion[r.id_refaccion].cantidad}</Text>
-                      <TouchableOpacity onPress={() => cambiarCantidadSel(r.id_refaccion, 1)} hitSlop={6}><Ionicons name="add-circle-outline" size={24} color={colors.petrol600} /></TouchableOpacity>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+            ) : (
+              <View style={styles.rejillaRef}>
+                {refFiltradas.map((r) => {
+                  const inv = inventarioDe(r.id_refaccion);
+                  const marcada = !!seleccion[r.id_refaccion];
+                  const stock = inv ? inv.cantidad : (r.cantidad_refaccion ?? 0);
+                  const precio = (inv ? inv.preciocliente : r.preciocliente_refaccion) || (inv ? inv.preciopropio : r.preciopropio_refaccion) || 0;
+                  const tonoR = tonoRojo();
+                  return (
+                    <TouchableOpacity
+                      key={r.id_refaccion}
+                      style={[styles.tileRef, marcada && { borderColor: tonoR.base, backgroundColor: `${tonoR.base}1F`, shadowColor: tonoR.base, shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 4 }]}
+                      onPress={() => alternarSeleccion(r.id_refaccion)} activeOpacity={0.85}
+                    >
+                      <Text style={styles.tileNombre} numberOfLines={2}>{r.nombre_refaccion}</Text>
+                      <Text style={styles.tileCat} numberOfLines={1}>{r.categoria || "Sin categoría"}</Text>
+                      <Text style={[styles.tilePrecio, marcada && { color: tonoR.base }, !precio && { fontSize: 14, color: colors.ink500, fontWeight: "600" }]} numberOfLines={1} adjustsFontSizeToFit>{precio ? fmt(precio) : "Sin precio"}</Text>
+                      {!inv && inventarioVehiculo.length > 0 && <Text style={styles.advertencia} numberOfLines={1}>Sin inv. del vehículo</Text>}
+                      {marcada && (
+                        <View style={[styles.tileContador, { backgroundColor: tonoR.base }]}>
+                          <TouchableOpacity onPress={() => cambiarCantidadSel(r.id_refaccion, -1)} hitSlop={8}><Ionicons name="remove-outline" size={20} color="#fff" /></TouchableOpacity>
+                          <Text style={styles.tileContadorTexto}>{seleccion[r.id_refaccion].cantidad}</Text>
+                          <TouchableOpacity onPress={() => cambiarCantidadSel(r.id_refaccion, 1)} hitSlop={8}><Ionicons name="add-outline" size={20} color="#fff" /></TouchableOpacity>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </ScrollView>
           <View style={styles.modalPie}>
-            <Boton texto="Cancelar" onPress={() => setModalRefacciones(false)} estilo={{ flex: 1 }} />
-            <Boton tipo="primario" texto={seleccionadas ? `Agregar ${seleccionadas}` : "Toca para elegir"} onPress={guardarRefacciones} cargando={guardandoRefacciones} deshabilitado={!seleccionadas} estilo={{ flex: 1.4 }} />
+            <TouchableOpacity style={[styles.pieBtn, { flex: 1, borderWidth: 1.5, borderColor: tonoRojo().base }]} onPress={() => setModalRefacciones(false)} activeOpacity={0.8}>
+              <Text style={[styles.pieBtnTexto, { color: tonoRojo().base }]}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.pieBtn, { flex: 1.5, backgroundColor: tonoRojo().base, opacity: seleccionadas ? 1 : 0.55 }]} onPress={guardarRefacciones} disabled={!seleccionadas || guardandoRefacciones} activeOpacity={0.85}>
+              {guardandoRefacciones ? <ActivityIndicator color="#fff" /> : (
+                <>
+                  <Ionicons name={seleccionadas ? "checkmark-circle-outline" : "hand-left-outline"} size={18} color="#fff" />
+                  <Text style={[styles.pieBtnTexto, { color: "#fff" }]}>{seleccionadas ? `Agregar ${seleccionadas}` : "Toca para elegir"}</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
           </>
           )}
@@ -1221,6 +1564,48 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       </Modal>
       <NuevaRefaccionModal visible={creandoRef} nombreInicial={busquedaRef.trim()} onCerrar={() => setCreandoRef(false)} onCrear={crearRefaccionRapida}
         categorias={[...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort()} />
+
+      {/* Pagos de la orden */}
+      <Modal visible={modalPagos} transparent animationType="slide" onRequestClose={() => setModalPagos(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <Text style={styles.modalTitulo}>Pagos de la orden #{servicio.id_servicio}</Text>
+              <TouchableOpacity onPress={() => setModalPagos(false)} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink900} /></TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ gap: 8 }}>
+            {abonos.length === 0 ? <Text style={styles.vacio}>Todavía no hay pagos.</Text> : abonos.map((a, i) => {
+              const comision = comisiones.find((c) => c.tipo_pago === a.tipo_pago);
+              return (
+                <View key={a.id_abono || i} style={styles.itemCard}>
+                  <View style={styles.conceptoTop}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.filaTitulo}>Pago {a.numero_abono || i + 1} · {etiquetaPago(a.tipo_pago)}</Text>
+                      <Text style={styles.filaSub}>
+                        {new Date(a.fecha_pago).toLocaleDateString("es-MX")}
+                        {comision?.porcentaje > 0 ? ` · comisión ${comision.porcentaje}%` : ""}
+                        {a.tipo_pago === "mixto" ? ` · efvo ${fmt(a.desglose_mixto_efectivo)} / tarj ${fmt(a.desglose_mixto_tarjeta)}` : ""}
+                        {a.cambio > 0 ? ` · cambio ${fmt(a.cambio)}` : ""}
+                      </Text>
+                      {a.comentario ? <Text style={styles.filaSub}>{a.comentario}</Text> : null}
+                    </View>
+                    <Text style={styles.importe}>{fmt(a.monto_abono)}</Text>
+                    {puedeEditar && abierta && !servicio.pagado && a.id_abono ? (
+                      <TouchableOpacity onPress={() => borrarAbono(a.id_abono)} style={{ marginLeft: 10, padding: 6 }} accessibilityLabel="Borrar abono">
+                        <Ionicons name="trash-outline" size={20} color={colors.red600} />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })}
+            </ScrollView>
+            {puedeEditar && abierta && !servicio.pagado && (
+              <Boton tipo="primario" icono="add-circle-outline" texto="Registrar abono" onPress={() => { setModalPagos(false); setTimeout(abrirAbono, 250); }} estilo={{ marginTop: 12 }} />
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Registrar abono */}
       <Modal visible={modalAbono} transparent animationType="slide" onRequestClose={() => setModalAbono(false)}>
@@ -1422,13 +1807,80 @@ const styles = crearEstilos({
   chipTextoActivo: { color: colors.sobreAcento },
   tarjetaRef: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.paper100, borderWidth: 1.5, borderColor: colors.ink300, borderRadius: 10, padding: 12 },
   tarjetaRefActiva: { borderColor: colors.petrol500, backgroundColor: colors.petrol100 },
+  pieBtn: { height: 48, borderRadius: 24, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
+  pieBtnTexto: { fontSize: 15, fontWeight: "700" },
+  btnVoz: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.petrol500, alignItems: "center", justifyContent: "center" },
+  pulsoVoz: { position: "absolute", width: 46, height: 46, borderRadius: 23, backgroundColor: colors.petrol500 },
+  vozPanel: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.petrol500, borderRadius: 10, paddingVertical: 8, paddingLeft: 12, paddingRight: 28, gap: 3 },
+  vozTexto: { fontSize: 13, color: colors.ink900 },
+  rejillaRef: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  tileRef: { width: "48%", flexGrow: 1, backgroundColor: colors.paper100, borderWidth: 2, borderColor: colors.ink300, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 10, gap: 2 },
+  tileNombre: { fontSize: 14, fontWeight: "700", color: colors.ink900, lineHeight: 18 },
+  tileCat: { fontSize: 11.5, color: colors.ink500 },
+  tilePie: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: 6 },
+  tilePrecio: { marginTop: 6, fontSize: 20, fontWeight: "800", color: colors.ink900, letterSpacing: -0.3 },
+  tileStock: { backgroundColor: colors.ink300 + "55", borderRadius: 100, paddingHorizontal: 8, paddingVertical: 2 },
+  tileStockTexto: { fontSize: 10.5, fontWeight: "700", color: colors.ink700 },
+  tileContador: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4, marginTop: 6 },
+  tileContadorTexto: { fontSize: 15, fontWeight: "800", color: "#fff" },
   advertencia: { fontSize: 11.5, color: colors.warn600, marginTop: 3 },
   contador: { flexDirection: "row", alignItems: "center", gap: 6 },
   cabecera: { backgroundColor: colors.paper100, paddingHorizontal: spacing.lg, paddingTop: 12, borderBottomWidth: 1, borderBottomColor: colors.ink300 },
+  cabId: { fontFamily: "BarlowCondensed_700Bold", fontSize: 22, color: colors.ink900 },
+  cabCompactoAuto: { flex: 1, minWidth: 60, fontSize: 13.5, fontWeight: "700", color: colors.ink900 },
+  cabSaldo: { borderRadius: 100, paddingVertical: 4, paddingHorizontal: 10 },
+  cabSaldoTexto: { fontSize: 12, fontWeight: "800" },
+  resumenCard: { backgroundColor: colors.paper100, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 6, borderWidth: 1, borderColor: colors.ink300 },
+  resFila: { flexDirection: "row", alignItems: "center", gap: 8 },
+  resAvatar: { width: 36, height: 36, borderRadius: 11, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center" },
+  resMarca: { fontFamily: "Inter_700Bold", fontSize: 15.5, color: colors.ink900 },
+  resColor: { fontSize: 11.5, color: colors.ink500, marginTop: -1 },
+  resTira: { flexDirection: "row", alignItems: "center", marginTop: 9, paddingVertical: 6, borderRadius: 10, backgroundColor: colors.paper0 },
+  resDato: { flex: 1, paddingHorizontal: 10 },
+  resDatoEtq: { fontSize: 9.5, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.5 },
+  resDatoVal: { fontFamily: "Inter_700Bold", fontSize: 14.5, color: colors.ink900 },
+  resMasAbono: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.petrol500, alignItems: "center", justifyContent: "center", marginHorizontal: 8 },
+  resSep: { width: 1, height: 26, backgroundColor: colors.ink300 },
+  resFechas: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
+  resFecha: { flex: 1, flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 5, paddingHorizontal: 9, borderRadius: 100, borderWidth: 1, borderColor: colors.ink300 },
+  resFechaTexto: { flex: 1, fontSize: 12, fontWeight: "600", color: colors.ink700 },
+  nuiCard: { backgroundColor: colors.paper100, borderRadius: 14, marginBottom: 8, borderWidth: 1, borderColor: colors.ink300, overflow: "hidden" },
+  nuiFila: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, paddingHorizontal: 12 },
+  nuiIcono: { width: 36, height: 36, borderRadius: 11, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center" },
+  nuiTitulo: { fontFamily: "Inter_600SemiBold", fontSize: 14.5, color: colors.ink900 },
+  nuiSub: { fontSize: 11.5, color: colors.ink500, marginTop: 1 },
+  nuiCant: { backgroundColor: colors.paper0, borderRadius: 100, paddingVertical: 2, paddingHorizontal: 8 },
+  nuiCantTexto: { fontSize: 12, fontWeight: "800", color: colors.ink700 },
+  nuiImporte: { fontFamily: "Inter_700Bold", fontSize: 15, color: colors.ink900 },
+  nuiExtra: { paddingHorizontal: 12, paddingBottom: 12, paddingTop: 2, borderTopWidth: 1, borderTopColor: colors.ink300 },
+  nuiControles: { flexDirection: "row", alignItems: "flex-end", gap: 10, marginTop: 10 },
+  nuiStepper: { flexDirection: "row", alignItems: "center", gap: 6 },
+  nuiStepperNum: { fontFamily: "Inter_700Bold", fontSize: 18, minWidth: 26, textAlign: "center", color: colors.ink900 },
+  nuiPista: { fontSize: 11, color: colors.ink500, marginTop: 10, textAlign: "center" },
+  nuiQuitar: { width: 92, marginBottom: 8, marginLeft: 8, borderRadius: 14, backgroundColor: colors.red600, alignItems: "center", justifyContent: "center", gap: 2 },
+  nuiQuitarTexto: { color: "#ffffff", fontSize: 12, fontWeight: "800" },
+  hdrTitulo: { flexDirection: "row", alignItems: "center", gap: 7 },
+  hdrId: { fontFamily: "BarlowCondensed_700Bold", fontSize: 20, color: colors.ink900 },
+  cabFila: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  cabIconoBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.ink300, backgroundColor: colors.paper0 },
+  cabVehiculo: { flexDirection: "row", alignItems: "center", gap: 12 },
+  cabAvatar: { width: 46, height: 46, borderRadius: 14, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center" },
+  cabMarca: { fontFamily: "Inter_700Bold", fontSize: 18, color: colors.ink900 },
+  cabPlacas: { borderWidth: 1.5, borderColor: colors.ink700, borderRadius: 6, paddingVertical: 1, paddingHorizontal: 8, backgroundColor: colors.paper0 },
+  cabPlacasTexto: { fontFamily: "Inter_700Bold", fontSize: 12.5, letterSpacing: 1, color: colors.ink900 },
+  cabMeta: { fontSize: 12.5, color: colors.ink500, flexShrink: 1 },
+  cabCliente: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
+  cabClienteTexto: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.ink900 },
+  cabLlamar: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 4, paddingHorizontal: 9, borderRadius: 100, backgroundColor: colors.petrol100 },
+  cabLlamarTexto: { fontSize: 12.5, fontWeight: "700", color: colors.petrol600 },
+  cabKpis: { flexDirection: "row", gap: 8, marginTop: 10 },
+  cabKpi: { flex: 1, borderRadius: 12, backgroundColor: colors.paper0, paddingVertical: 7, paddingHorizontal: 10 },
+  cabKpiEtq: { fontSize: 10.5, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.5 },
+  cabKpiVal: { fontFamily: "Inter_700Bold", fontSize: 16, color: colors.ink900, marginTop: 1 },
   cabeceraFila: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   cabeceraServicio: { fontSize: 14, fontWeight: "600", color: colors.ink900, marginTop: 2 },
   cabeceraMeta: { fontSize: 12.5, color: colors.ink500, marginTop: 1 },
-  cabeceraFechas: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  cabeceraFechas: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 },
   fechaChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 11, borderRadius: 100, borderWidth: 1, borderColor: colors.ink300, backgroundColor: colors.paper0 },
   previaChip: { borderColor: colors.petrol500 },
   fechaChipTexto: { fontSize: 13, fontWeight: "700", color: colors.ink700 },
@@ -1447,18 +1899,37 @@ const styles = crearEstilos({
   quitar: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingLeft: 8 },
   quitarTexto: { fontSize: 12.5, fontWeight: "600", color: colors.red600 },
   subtotalFila: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 4, paddingTop: 6 },
+  seccionFila: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10, marginBottom: 6 },
   seccion: { fontSize: 12.5, fontWeight: "700", color: colors.ink500, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 20, marginBottom: 8 },
+  vacioNuevo: { alignItems: "center", paddingTop: 18, paddingBottom: 8 },
+  vacioHalo: { width: 96, height: 96, borderRadius: 48, backgroundColor: "rgba(14,116,144,0.14)", alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  vacioDisco: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#0e7490", alignItems: "center", justifyContent: "center" },
+  vacioDiscoMini: { position: "absolute", right: 4, bottom: 6, width: 32, height: 32, borderRadius: 16, backgroundColor: "#0a5266", borderWidth: 2, borderColor: colors.paper0, alignItems: "center", justifyContent: "center" },
+  vacioNuevoTitulo: { fontFamily: "Inter_700Bold", fontSize: 18, color: colors.ink900 },
+  vacioNuevoTexto: { fontSize: 13, color: colors.ink500, marginTop: 2 },
+  vacioOpciones: { flexDirection: "row", gap: 10, alignSelf: "stretch", marginTop: 16 },
+  vacioOpcion: { flex: 1, alignItems: "center", gap: 3, paddingVertical: 16, paddingHorizontal: 8, borderRadius: 16, borderWidth: 1.5 },
+  vacioOpcionTitulo: { fontSize: 14.5, fontWeight: "800", marginTop: 4 },
+  vacioOpcionSub: { fontSize: 11.5, color: colors.ink500 },
   vacioGrande: { alignItems: "center", paddingVertical: 28, paddingHorizontal: 8, gap: 6 },
   vacioIcono: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center", marginBottom: 6 },
   vacioTitulo: { fontFamily: "BarlowCondensed_600SemiBold", fontSize: 22, color: colors.ink900 },
   vacioTexto: { fontSize: 14, color: colors.ink500, textAlign: "center", lineHeight: 20 },
-  accesos: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  accesos: { gap: 8, marginBottom: 14 },
+  accesoFila: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 14, padding: 12 },
+  accesoIcono: { width: 42, height: 42, borderRadius: 12, backgroundColor: colors.petrol500, alignItems: "center", justifyContent: "center" },
+  accesoTitulo: { fontSize: 15, fontWeight: "700", color: colors.ink900 },
+  accesoSub: { fontSize: 12, color: colors.ink500, marginTop: 1 },
   acceso: { flex: 1, alignItems: "center", gap: 6, backgroundColor: colors.paper100, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8 },
   accesoTexto: { fontSize: 13, fontWeight: "600", color: colors.ink900, textAlign: "center" },
   barra: {
-    position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", gap: 10,
-    paddingHorizontal: spacing.lg, paddingTop: 10, paddingBottom: 14, backgroundColor: colors.paper100,
-    borderTopWidth: 1, borderTopColor: colors.ink300, elevation: 8, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: -3 },
+    position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: spacing.lg, paddingTop: 12, paddingBottom: 16, backgroundColor: colors.paper100,
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    elevation: 14, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: -4 },
   },
+  barraAgregar: { flexDirection: "row", alignItems: "center", gap: 8, height: 54, paddingLeft: 7, paddingRight: 18, borderRadius: 27, borderWidth: 1.5 },
+  barraMas: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  barraAgregarTexto: { fontSize: 14.5, fontWeight: "800", letterSpacing: 0.3 },
   contadorTexto: { fontSize: 16, fontWeight: "700", color: colors.ink900, minWidth: 20, textAlign: "center" },
 });

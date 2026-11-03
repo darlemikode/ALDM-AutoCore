@@ -349,29 +349,44 @@ export default function ServicioDetalleScreen({ route, navigation }) {
 
         {pestana === "costos" ? (
           <>
-            <View style={styles.tarjeta}>
-              <Text style={styles.tarjetaTitulo}>Conceptos</Text>
-              {(servicio.detalles || []).length ? servicio.detalles.map((d) => {
+            {(() => {
+              const esMO = (d) => (d.costo_mano_obra || 0) > 0 && !d.id_refaccion && !d.id_inventario_refaccion && !((d.costo_refaccion || 0) > 0);
+              const todos = servicio.detalles || [];
+              const refs = todos.filter((d) => !esMO(d));
+              const mo = todos.filter(esMO);
+              const fila = (d) => {
                 const importe = (d.costo_mano_obra || 0) + (d.costo_refaccion || 0) + (d.costo_extra || 0);
                 return (
                   <View key={d.id_servicio_detalle} style={styles.concepto}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.conceptoNombre}>{d.descripcion || "Concepto"}</Text>
                       <Text style={styles.meta}>
-                        {d.cantidad > 1 ? `${d.cantidad} pzas · ` : ""}
-                        {[d.costo_mano_obra ? `M.O. ${fmt(d.costo_mano_obra)}` : null, d.costo_refaccion ? `Ref. ${fmt(d.costo_refaccion)}` : null, d.costo_extra ? `Extra ${fmt(d.costo_extra)}` : null].filter(Boolean).join(" · ")}
+                        {d.cantidad > 1 ? `${d.cantidad} ${esMO(d) ? "" : "pzas "}· ` : ""}
+                        {[d.costo_mano_obra && !esMO(d) ? `M.O. ${fmt(d.costo_mano_obra)}` : null, d.costo_refaccion ? `Ref. ${fmt(d.costo_refaccion)}` : null, d.costo_extra ? `Extra ${fmt(d.costo_extra)}` : null].filter(Boolean).join(" · ")}
                       </Text>
                     </View>
                     <Text style={styles.importe}>{fmt(importe)}</Text>
                   </View>
                 );
-              }) : <Text style={styles.meta}>El taller aún no agrega conceptos a tu orden.</Text>}
-              <View style={styles.totales}>
-                <Fila etiqueta="Subtotal" valor={fmt(c.subtotal)} />
-                <Fila etiqueta={`IVA (${servicio.iva_porcentaje ?? 16}%)`} valor={fmt(c.iva)} />
-                <Fila etiqueta="Total" valor={fmt(c.total)} fuerte />
-              </View>
-            </View>
+              };
+              return (
+                <>
+                  <View style={styles.tarjeta}>
+                    <Text style={styles.tarjetaTitulo}>Refacciones</Text>
+                    {refs.length ? refs.map(fila) : <Text style={styles.meta}>{mo.length ? "Esta orden no lleva refacciones." : "El taller aún no agrega conceptos a tu orden."}</Text>}
+                  </View>
+                  <View style={styles.tarjeta}>
+                    <Text style={styles.tarjetaTitulo}>Mano de obra</Text>
+                    {mo.length ? mo.map(fila) : <Text style={styles.meta}>Sin mano de obra en esta orden.</Text>}
+                    <View style={styles.totales}>
+                      <Fila etiqueta="Subtotal" valor={fmt(c.subtotal)} />
+                      <Fila etiqueta={`IVA (${servicio.iva_porcentaje ?? 16}%)`} valor={fmt(c.iva)} />
+                      <Fila etiqueta="Total" valor={fmt(c.total)} fuerte />
+                    </View>
+                  </View>
+                </>
+              );
+            })()}
 
             <View style={styles.tarjeta}>
               <Text style={styles.tarjetaTitulo}>Pagos</Text>
