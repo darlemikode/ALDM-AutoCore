@@ -826,10 +826,35 @@ def sembrar_taller(id_taller: int):
             cats = {c.id_categoria_refaccion: c.nombre_categoria for c in db.query(models.RefaccionCategoria).all()}
             for sub in db.query(models.RefaccionSubcategoria).all():
                 db.add(models.Refaccion(nombre_refaccion=sub.nombre_subcategoria, categoria=cats.get(sub.id_categoria_refaccion)))
+        _sembrar_refacciones_base(db)
         _sincronizar_items_inspeccion(db)
         db.commit()
     finally:
         db.close()
+
+
+def _sembrar_refacciones_base(db):
+    """Amplía el catálogo de refacciones del taller (afinación, suspensión, frenos…).
+    Una sola vez por versión: agrega lo que falta (nombre + categoría), sin precios ni
+    stock, y si el taller borra una refacción no se vuelve a crear."""
+    from .seed_refacciones import REFACCIONES_BASE, VERSION_CATALOGO_REFACCIONES
+    config = db.query(models.ConfiguracionTaller).first()
+    if not config or (config.catalogo_refacciones_version or 0) >= VERSION_CATALOGO_REFACCIONES:
+        return
+    def clave(nombre, categoria):
+        return ((nombre or "").strip().lower(), (categoria or "").strip().lower())
+    existentes = {clave(r.nombre_refaccion, r.categoria) for r in db.query(models.Refaccion).all()}
+    nuevas = 0
+    for categoria, nombres in REFACCIONES_BASE.items():
+        for nombre in nombres:
+            if clave(nombre, categoria) in existentes:
+                continue
+            db.add(models.Refaccion(nombre_refaccion=nombre, categoria=categoria))
+            existentes.add(clave(nombre, categoria))
+            nuevas += 1
+    config.catalogo_refacciones_version = VERSION_CATALOGO_REFACCIONES
+    if nuevas:
+        print(f"[catálogo] {nuevas} refacción(es) base agregadas al taller {config.id_taller}")
 
 
 def rol_admin_de(db, id_taller: int):

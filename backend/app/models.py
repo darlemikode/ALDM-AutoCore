@@ -1073,6 +1073,7 @@ class ConfiguracionTaller(TenantMixin, Base):
     correo2 = Column(String(120), nullable=True)
     rfc = Column(String(20), nullable=True)
     ruta_logo = Column(String(255), nullable=True)  # dentro de app/uploads/, igual que fotos/promociones
+    catalogo_refacciones_version = Column(Integer, default=0)  # versión del catálogo base de refacciones ya sembrado en este taller
     cp = Column(String(5), nullable=True)
     calle = Column(String(150), nullable=True)
     numero_taller = Column(String(20), nullable=True)  # número exterior / de sucursal

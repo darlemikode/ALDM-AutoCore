@@ -40,6 +40,10 @@ CATEGORIAS_REFACCION = {
     "Lubricantes y químicos": ["Aceite de motor", "Grasa", "Limpiadores", "Aditivos", "Líquido limpiaparabrisas"],
 }
 
+# Categorías nuevas del catálogo ampliado (sin subcategorías: las refacciones viven en seed_refacciones.py)
+for _cat in ("Encendido", "Combustible", "Iluminación"):
+    CATEGORIAS_REFACCION.setdefault(_cat, [])
+
 MARCAS_REFACCION = [
     "Bosch", "Brembo", "NGK", "Denso", "ACDelco", "Motorcraft", "Mobil", "Castrol", "Valvoline", "Shell",
     "Fram", "Mann", "Mahle", "Gates", "Dayco", "Monroe", "KYB", "Moog", "Sachs", "TRW", "Fritec", "Wagner",

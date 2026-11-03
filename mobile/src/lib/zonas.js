@@ -25,7 +25,7 @@ export function zonasDe(categoria, nombre) {
   if (c.startsWith("fluidos")) return /transmision|diferencial/.test(n) ? ["transmision"] : ["motor"];
   if (c.startsWith("transmision")) return lado ? [`d${lado}`] : ["transmision"];
   if (c.startsWith("escape")) return ["escape"];
-  if (c.startsWith("bateria")) return /bateria|alternador|marcha|fusibles/.test(n) ? ["motor"] : ["cabina"];
+  if (c.startsWith("bateria")) return /bateria|alternador|marcha|fusibles|bujia|bobina|sensor|inyector|encendido/.test(n) ? ["motor"] : ["cabina"];
   if (c.startsWith("carroceria")) {
     if (/espejo/.test(n)) return ["espejos"];
     if (/cofre/.test(n)) return ["motor", "cajuela"];
