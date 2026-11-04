@@ -382,6 +382,21 @@ export default function Inventario() {
           </select>
           {(fMarca || fModelo || fRefaccion) && <button type="button" className="btn btn-secondary" onClick={() => { setFMarca(""); setFModelo(""); setFRefaccion(""); }}>Limpiar filtros</button>}
         </div>
+        <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+          <select style={{ flex: 1, minWidth: 160 }} value={fMarca} onChange={(e) => { setFMarca(e.target.value); setFModelo(""); }}>
+            <option value="">Todas las marcas</option>
+            {marcasVehiculo.map((m) => <option key={m.id_marca_vehiculo} value={m.id_marca_vehiculo}>{m.nombre_marca}</option>)}
+          </select>
+          <select style={{ flex: 1, minWidth: 160 }} value={fModelo} disabled={!fMarca} onChange={(e) => setFModelo(e.target.value)}>
+            <option value="">Todos los modelos</option>
+            {modelosVehiculo.filter((mo) => String(mo.id_marca_vehiculo) === fMarca).map((mo) => <option key={mo.id_modelo_vehiculo} value={mo.id_modelo_vehiculo}>{mo.nombre_modelo}</option>)}
+          </select>
+          <select style={{ flex: 1, minWidth: 160 }} value={fRefaccion} onChange={(e) => setFRefaccion(e.target.value)}>
+            <option value="">Todas las refacciones</option>
+            {refacciones.slice().sort((a, b) => a.nombre_refaccion.localeCompare(b.nombre_refaccion)).map((x) => <option key={x.id_refaccion} value={x.id_refaccion}>{x.nombre_refaccion}</option>)}
+          </select>
+          {(fMarca || fModelo || fRefaccion) && <button type="button" className="btn btn-secondary" onClick={() => { setFMarca(""); setFModelo(""); setFRefaccion(""); }}>Limpiar filtros</button>}
+        </div>
         <FiltroChips items={contarPor(filas, (r) => r.refaccion?.categoria || "Sin categoría")} valor={filtroCategoria} onChange={setFiltroCategoria} total={filas.length} />
         {loading ? (
           <div className="loading-text">Cargando…</div>
