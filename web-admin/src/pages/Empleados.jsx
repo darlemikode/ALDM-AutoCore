@@ -78,12 +78,12 @@ function SueldoCampo({ emp, value, onChange, notify }) {
       <>
         <input type="number" value={value ?? ""} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} />
         <div className="sueldo-previa" aria-live="polite">
-          <div><small>Semanal</small><b>{f(mm * 7 / 30)}</b></div>
-          <div><small>Quincenal</small><b>{f(mm * 15 / 30)}</b></div>
+          <div><small>Semanal</small><b>{f(mm / 4)}</b></div>
+          <div><small>Quincenal</small><b>{f(mm / 2)}</b></div>
           <div><small>Mensual</small><b>{f(mm)}</b></div>
           <div><small>Por día</small><b>{f(mm / 30)}</b></div>
         </div>
-        <div className="field-hint">El mes se toma de 30 días (como la ley): semana = 7/30, quincena = 15/30. Ver «Avisos legales» en Nómina.</div>
+        <div className="field-hint">El mes se reparte en 4 pagos semanales, 2 quincenales o 1 mensual. Ver «Avisos legales» en Nómina.</div>
       </>
     );
   }

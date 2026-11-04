@@ -11,6 +11,7 @@ import { Icono } from "../components/Icono";
 import { useMontos, ControlMontos, OjoMontos } from "../components/MontosNomina";
 
 const CAMPOS_AJUSTE = [
+  { name: "sueldo_base", label: "Sueldo del periodo", type: "number", grupo: "sueldo", full: true, hint: "Cambia el sueldo solo de este recibo; no modifica el sueldo del empleado." },
   { name: "faltas", label: "Faltas (días)", type: "number", grupo: "asistencia", hint: "Se descuenta el día de sueldo por cada falta." },
   { name: "horas_extra", label: "Horas extra", type: "number", grupo: "asistencia", hint: "Se pagan dobles." },
   { name: "comisiones", label: "Comisiones por órdenes", type: "number", grupo: "ingresos", hint: "Viene de las órdenes cerradas; puedes corregirla." },
@@ -25,6 +26,7 @@ const CAMPOS_AJUSTE = [
 ];
 
 const GRUPOS_AJUSTE = {
+  sueldo: { icono: "💰", titulo: "Sueldo", acento: "acento-teal" },
   asistencia: { icono: "🗓️", titulo: "Asistencia", acento: "acento-ambar" },
   ingresos: { icono: "💵", titulo: "Ingresos extra", acento: "acento-teal" },
   descuentos: { icono: "➖", titulo: "Descuentos" },
@@ -52,7 +54,7 @@ export default function NominaDetalle() {
   async function guardarAjuste(values) {
     const n = (v) => Number(v) || 0;
     await api.put(`/nomina/recibos/${editando.id_recibo}`, {
-      faltas: n(values.faltas), horas_extra: n(values.horas_extra), comisiones: n(values.comisiones),
+      sueldo_base: n(values.sueldo_base), faltas: n(values.faltas), horas_extra: n(values.horas_extra), comisiones: n(values.comisiones),
       destajo: n(values.destajo), destajo_nota: values.destajo_nota || null,
       bonos: n(values.bonos), bonos_nota: values.bonos_nota || null,
       prestamo: n(values.prestamo), prestamo_nota: values.prestamo_nota || null,
@@ -148,7 +150,7 @@ export default function NominaDetalle() {
       </div>
       <details className="nom-ayuda">
         <summary>¿Cómo se calcula el neto?</summary>
-        <p><b>Sueldo del periodo</b> = sueldo neto mensual × días del periodo ÷ 30 (semana 7/30, quincena 15/30). Horas extra = horas × (sueldo mensual ÷ 30 ÷ 8) × 2.
+        <p><b>Sueldo del periodo</b> = sueldo neto mensual ÷ 4 (semanal), ÷ 2 (quincenal) o ÷ 1 (mensual). Horas extra = horas × (sueldo del periodo ÷ días del periodo ÷ 8) × 2.
           Más detalle en <Link to="/avisos-legales">Avisos legales</Link>.</p>
         <p><b>Neto</b> = Sueldo + Extras (horas extra dobles, comisiones, destajo, bonos) − Descuentos (faltas, préstamos, otras deducciones) − Retenciones (ISR e IMSS).
           Este periodo: percepciones {m(percepcionesTotal)} · retenciones {m(retenciones)}. Las comisiones salen de las órdenes cerradas y se pueden editar en «Ajustar».</p>
@@ -191,7 +193,7 @@ export default function NominaDetalle() {
           fields={CAMPOS_AJUSTE}
           grupos={GRUPOS_AJUSTE}
           initialValues={{
-            faltas: editando.faltas || 0, horas_extra: editando.horas_extra || 0, comisiones: editando.comisiones || 0,
+            sueldo_base: editando.sueldo_base || 0, faltas: editando.faltas || 0, horas_extra: editando.horas_extra || 0, comisiones: editando.comisiones || 0,
             destajo: editando.destajo || 0, destajo_nota: editando.destajo_nota || "",
             bonos: editando.bonos || 0, bonos_nota: editando.bonos_nota || "",
             prestamo: editando.prestamo || 0, prestamo_nota: editando.prestamo_nota || "",

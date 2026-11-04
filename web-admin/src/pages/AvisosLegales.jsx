@@ -22,17 +22,17 @@ export default function AvisosLegales() {
           laborales y de seguridad social del patrón. El taller es el único responsable de revisar y validar cada recibo antes de pagarlo.
         </p>
 
-        <h3>1. Sueldo neto mensual y mes de 30 días</h3>
+        <h3>1. Sueldo neto mensual y reparto en pagos</h3>
         <p>
-          El sueldo se captura <b>neto, por mes</b>. Para el pago de cada periodo se toma el mes como de <b>30 días</b>, igual que en la Ley Federal del Trabajo:
+          El sueldo se captura <b>neto, por mes</b> (o directamente por periodo en la app). El mes se reparte en <b>4 pagos semanales, 2 quincenales o 1 mensual</b>:
         </p>
         <ul>
-          <li><b>Sueldo diario</b> = sueldo mensual ÷ 30</li>
-          <li><b>Pago semanal</b> = sueldo mensual × 7 ÷ 30</li>
-          <li><b>Pago quincenal</b> = sueldo mensual × 15 ÷ 30 (la mitad del mes)</li>
+          <li><b>Sueldo diario</b> = sueldo del periodo ÷ días del periodo</li>
+          <li><b>Pago semanal</b> = sueldo mensual ÷ 4</li>
+          <li><b>Pago quincenal</b> = sueldo mensual ÷ 2 (la mitad del mes)</li>
           <li><b>Pago mensual</b> = sueldo mensual</li>
         </ul>
-        <p>Ejemplo: con $12,000 al mes, el pago semanal es $2,800.00, el quincenal $6,000.00 y el diario $400.00.</p>
+        <p>Ejemplo: con $12,000 al mes, el pago semanal es $3,000.00 y el quincenal $6,000.00.</p>
 
         <h3>2. Horas extra</h3>
         <p>

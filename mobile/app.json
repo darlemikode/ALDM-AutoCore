@@ -2,7 +2,7 @@
   "expo": {
     "name": "ALDM Taller",
     "slug": "sistema-mecanico-admin",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
@@ -20,6 +20,7 @@
       }
     },
     "android": {
+      "versionCode": 2,
       "package": "com.tutaller.mecanicoadmin",
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
