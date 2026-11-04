@@ -53,7 +53,7 @@ export default function EmpleadosScreen({ navigation }) {
   const [usuarios, setUsuarios] = useState([]);
 
   // Sueldo capturado POR PERIODO (lo que se paga cada semana / quincena / mes); el servidor guarda el equivalente mensual
-  const DIAS = { semanal: 7, quincenal: 15, mensual: 30 };
+  const PAGOS = { semanal: 4, quincenal: 2, mensual: 1 }; // pagos al mes
   const UNIDAD = { semanal: "semana", quincenal: "quincena", mensual: "mes" };
   const camposDe = (v) => {
     const per = v?.periodicidad_pago || "semanal";
@@ -79,7 +79,7 @@ export default function EmpleadosScreen({ navigation }) {
       icono="id-card-outline"
       campos={camposDe}
       valoresNuevo={{ periodicidad_pago: "semanal", estatus: "activo" }}
-      valoresParaEditar={(e) => ({ ...e, periodicidad_pago: e.periodicidad_pago || "semanal", sueldo_periodo: e.sueldo_mensual != null ? String(Math.round(e.sueldo_mensual * (DIAS[e.periodicidad_pago || "semanal"] || 7) / 30 * 100) / 100) : "" })}
+      valoresParaEditar={(e) => ({ ...e, periodicidad_pago: e.periodicidad_pago || "semanal", sueldo_periodo: e.sueldo_mensual != null ? String(Math.round(e.sueldo_mensual / (PAGOS[e.periodicidad_pago || "semanal"] || 4) * 100) / 100) : "" })}
       grupos={GRUPOS}
       permisos={{ crear: "empleados.crear", editar: "empleados.editar", eliminar: false }}
       cargarExtra={() => api.get("/auth/usuarios").then(setUsuarios).catch(() => setUsuarios([]))}
@@ -101,8 +101,8 @@ export default function EmpleadosScreen({ navigation }) {
       prepararGuardar={(v) => {
         const { sueldo_periodo, ...resto } = v;
         const hay = sueldo_periodo !== "" && sueldo_periodo != null;
-        // el servidor trabaja con el equivalente mensual (mes de 30 días); null = no tocar el sueldo
-        const mensual = hay ? Number(sueldo_periodo) * 30 / (DIAS[v.periodicidad_pago || "semanal"] || 7) : null;
+        // el servidor trabaja con el equivalente mensual (4 semanales, 2 quincenales, 1 mensual); null = no tocar el sueldo
+        const mensual = hay ? Number(sueldo_periodo) * (PAGOS[v.periodicidad_pago || "semanal"] || 4) : null;
         return { ...resto, periodicidad_pago: v.periodicidad_pago || "semanal", estatus: v.estatus || "activo", id_usuario: v.id_usuario ? Number(v.id_usuario) : null, fecha_ingreso: v.fecha_ingreso || null, sueldo_mensual: mensual };
       }}
     />

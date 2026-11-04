@@ -1005,9 +1005,9 @@ def _migrar_sueldo_mensual():
     from sqlalchemy import text
     with engine.begin() as conn:
         filas = conn.execute(text("SELECT id_empleado, sueldo_base, periodicidad_pago FROM empleados WHERE (sueldo_mensual IS NULL OR sueldo_mensual = 0) AND sueldo_base > 0")).fetchall()
-        dias = {"semanal": 7, "quincenal": 15, "mensual": 30}
+        dias = {"semanal": 4, "quincenal": 2, "mensual": 1}
         for id_emp, base, per in filas:
-            mensual = round(float(base) * 30 / dias.get((per or "quincenal").lower(), 15), 2)
+            mensual = round(float(base) * dias.get((per or "quincenal").lower(), 2), 2)
             conn.execute(text("UPDATE empleados SET sueldo_mensual = :m WHERE id_empleado = :i"), {"m": mensual, "i": id_emp})
         if filas:
             print(f"[migración automática] sueldo mensual deducido para {len(filas)} empleado(s)")

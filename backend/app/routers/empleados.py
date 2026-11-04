@@ -69,7 +69,7 @@ def crear(payload: schemas.EmpleadoIn, db: Session = Depends(get_db), user=Depen
     mensual = datos.pop("sueldo_mensual", None) or 0
     datos.pop("sueldo_base", None)
     datos["sueldo_mensual"] = mensual
-    datos["sueldo_base"] = round(mensual * nomina_calculo.dias_nominales(datos.get("periodicidad_pago")) / nomina_calculo.DIAS_LEY_MES, 2)
+    datos["sueldo_base"] = round(mensual / nomina_calculo.pagos_por_mes(datos.get("periodicidad_pago")), 2)
     empleado = models.Empleado(**datos)
     _aplicar_estatus(empleado, estatus)
     db.add(empleado)
@@ -95,7 +95,7 @@ def actualizar(empleado_id: int, payload: schemas.EmpleadoIn, db: Session = Depe
             registrar_auditoria(db, user, "empleado", empleado_id, "cambio_sueldo", "sueldo_mensual", anterior, nuevo_mensual)
         empleado.sueldo_mensual = nuevo_mensual
         periodicidad = datos.get("periodicidad_pago") or empleado.periodicidad_pago
-        empleado.sueldo_base = round(nuevo_mensual * nomina_calculo.dias_nominales(periodicidad) / nomina_calculo.DIAS_LEY_MES, 2)
+        empleado.sueldo_base = round(nuevo_mensual / nomina_calculo.pagos_por_mes(periodicidad), 2)
     for key, value in datos.items():
         setattr(empleado, key, value)
     _aplicar_estatus(empleado, estatus)

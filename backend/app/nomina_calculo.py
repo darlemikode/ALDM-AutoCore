@@ -1,9 +1,10 @@
 """
 Cálculo de nómina (México, estimado).
 
-Sueldo: se captura NETO MENSUAL y el pago del periodo es mensual × días ÷ 30
-(semana 7/30, quincena 15/30, mes completo). Sueldo diario = mensual ÷ 30 y la
-hora = diario ÷ 8; las horas extra se pagan dobles.
+Sueldo: el mes se reparte en 4 pagos semanales, 2 quincenales o 1 mensual
+(equivalente mensual = sueldo del periodo × pagos al mes). Sueldo diario =
+sueldo del periodo ÷ días del periodo y la hora = diario ÷ 8; las horas extra
+se pagan dobles.
 Percepciones: sueldo (según esquema) - faltas + horas extra (dobles) +
 comisiones por órdenes cerradas + destajo + bonos.
 Deducciones: ISR (tarifa mensual art. 96 LISR 2026, proporcional al periodo)
@@ -53,21 +54,27 @@ def dias_nominales(periodicidad: str) -> int:
     return DIAS_NOMINALES.get((periodicidad or "quincenal").lower(), 15)
 
 
-DIAS_LEY_MES = 30  # el mes se toma de 30 días (como en la LFT) para dividir el sueldo mensual
+DIAS_LEY_MES = 30
+PAGOS_POR_MES = {"semanal": 4, "quincenal": 2, "mensual": 1}
+
+
+def pagos_por_mes(periodicidad: str) -> int:
+    return PAGOS_POR_MES.get((periodicidad or "quincenal").lower(), 2)
 
 
 def sueldo_mensual_de(emp) -> float:
-    """Sueldo neto mensual del empleado (si aún no se capturó, se deduce del sueldo por periodo anterior)."""
+    """Sueldo mensual equivalente: lo capturado por periodo × pagos al mes (4 semanales, 2 quincenales, 1 mensual)."""
     if emp is None:
         return 0.0
-    if (getattr(emp, "sueldo_mensual", 0) or 0) > 0:
-        return float(emp.sueldo_mensual)
-    return round((emp.sueldo_base or 0) * DIAS_LEY_MES / dias_nominales(getattr(emp, "periodicidad_pago", "quincenal")), 2)
+    base = emp.sueldo_base or 0
+    if base > 0:
+        return round(base * pagos_por_mes(getattr(emp, "periodicidad_pago", "quincenal")), 2)
+    return float(getattr(emp, "sueldo_mensual", 0) or 0)
 
 
 def sueldo_del_periodo(emp, periodicidad: str) -> float:
-    """Sueldo que toca en el periodo: mensual × días del periodo ÷ 30 (semana = 7/30, quincena = 15/30, mes = 30/30)."""
-    return round(sueldo_mensual_de(emp) * dias_nominales(periodicidad) / DIAS_LEY_MES, 2)
+    """Sueldo que toca en el periodo: mensual ÷ 4 (semanal), ÷ 2 (quincenal) o ÷ 1 (mensual)."""
+    return round(sueldo_mensual_de(emp) / pagos_por_mes(periodicidad), 2)
 
 
 def isr_mensual(base: float) -> float:
