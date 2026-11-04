@@ -50,6 +50,7 @@ import { SelectorEstado } from "../ui/AvisoSuscripcion";
 import CampanaNotificaciones from "../ui/CampanaNotificaciones";
 import { useObjetivoTour } from "../ui/Tour";
 import { fijarPestanas } from "../tutoriales/bienvenida";
+import { menuBloqueado } from "../lib/bloqueoMenu";
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
@@ -67,6 +68,7 @@ function BotonMenu({ navigation, lado = "izquierda" }) {
   return (
     <TouchableOpacity
       onPress={() => {
+        if (menuBloqueado()) return;
         const drawer = navigation.getParent("RootDrawer");
         if (drawer) drawer.openDrawer();
         else navigation.openDrawer?.();
@@ -308,6 +310,8 @@ function ContenidoDrawer({ navigation, state }) {
   // Énfasis al desplegar: el contenido entra deslizándose y con fundido, y
   // cada vez que se abre se repite.
   const abierto = useDrawerStatus() === "open";
+  // Si el menú se abrió por un toque residual al cerrar un selector, se cierra solo
+  useEffect(() => { if (abierto && menuBloqueado()) navigation.closeDrawer(); }, [abierto]); // eslint-disable-line react-hooks/exhaustive-deps
   const entrada = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (abierto) {

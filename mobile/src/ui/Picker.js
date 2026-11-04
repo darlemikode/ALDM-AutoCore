@@ -1,4 +1,5 @@
-import { Children, isValidElement, useMemo, useRef, useState, Fragment } from "react";
+import { Children, isValidElement, useEffect, useMemo, useRef, useState, Fragment } from "react";
+import { modalAbierto, modalCerrado } from "../lib/bloqueoMenu";
 import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, Pressable, KeyboardAvoidingView, Platform, PanResponder } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Ionicons } from "./IconoWeb";
@@ -69,6 +70,11 @@ export function Picker({ selectedValue, onValueChange, enabled = true, children,
   const [abierto, setAbierto] = useState(false);
   const [q, setQ] = useState("");
   const lista = useRef(null);
+  useEffect(() => {
+    if (!abierto) return undefined;
+    modalAbierto();
+    return () => modalCerrado();
+  }, [abierto]);
   const todas = recolectar(children);
   const marcador = todas.find((o) => vacio(o.value));
   const opciones = useMemo(() => {

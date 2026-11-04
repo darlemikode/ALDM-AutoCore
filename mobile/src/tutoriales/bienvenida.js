@@ -15,7 +15,7 @@ export const PASOS_BIENVENIDA = (nombre, pestanas) => [
 ];
 
 const CLAVE = "bienvenida";
-const llaveLocal = (u) => `sm_tutorial_${CLAVE}_${u?.username || "x"}`;
+const llaveLocal = (u, clave = CLAVE) => `sm_tutorial_${clave}_${u?.username || "x"}`;
 let abiertoEnSesion = false;
 // Vistos en esta sesión (para marcar «Visto ✓» en Ayuda sin esperar al servidor)
 export const vistosSesion = new Set();
@@ -38,8 +38,8 @@ export async function bienvenidaSiFalta(user) {
   mostrarBienvenida(user);
 }
 
-async function marcarVisto(user) {
-  vistosSesion.add(CLAVE);
-  try { await AsyncStorage.setItem(llaveLocal(user), "1"); } catch { /* sin almacenamiento */ }
-  try { await api.put("/auth/tutoriales", { clave: CLAVE }); } catch { /* sin conexión: queda guardado en el celular */ }
+export async function marcarVisto(user, clave = CLAVE) {
+  vistosSesion.add(clave);
+  try { await AsyncStorage.setItem(llaveLocal(user, clave), "1"); } catch { /* sin almacenamiento */ }
+  try { await api.put("/auth/tutoriales", { clave }); } catch { /* sin conexión: queda guardado en el celular */ }
 }

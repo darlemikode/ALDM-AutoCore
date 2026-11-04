@@ -1,4 +1,6 @@
-import { mostrarBienvenida } from "./bienvenida";
+import { mostrarBienvenida, marcarVisto } from "./bienvenida";
+import { abrirTour } from "../ui/Tour";
+import { T } from "./modulos";
 
 // Ayuda (Más → Ayuda): recorridos con globos de texto, agrupados por módulo.
 // abrir = (user, navigation) => void  ·  sin abrir = "Próximamente".
@@ -17,6 +19,7 @@ export const AYUDA = [
     modulo: "Órdenes de servicio", icono: "construct-outline", permiso: "servicios.ver", tutoriales: [
       { clave: "orden-nueva", titulo: "Nueva orden", desc: "Cliente → vehículo → crear." },
       { clave: "orden-refacciones", titulo: "Agregar refacciones", desc: "Selección múltiple, cantidades y categorías." },
+      { clave: "orden-editar", titulo: "Editar precios y cantidades", desc: "Cambiar cantidades y quitar refacciones." },
       { clave: "orden-fechas", titulo: "Fechas y datos del vehículo", desc: "Entrada, salida y datos editables." },
       { clave: "orden-abonos", titulo: "Abonos y saldo", desc: "Registrar, pago mixto y borrar." },
       { clave: "orden-estatus", titulo: "Estatus, inspección y chat", desc: "Etapas, fotos y mensajes." },
@@ -54,9 +57,17 @@ export const AYUDA = [
     ],
   },
   {
+    modulo: "Administración", icono: "business-outline", tutoriales: [
+      { clave: "catalogos", titulo: "Catálogos generales", desc: "Marcas, modelos y listas que administra ALDM.", permiso: "catalogos.ver" },
+      { clave: "promociones", titulo: "Promociones", desc: "Lo que ven tus clientes en su app.", permiso: "promociones.ver" },
+    ],
+  },
+  {
     modulo: "Consulta", icono: "stats-chart-outline", tutoriales: [
-      { clave: "panel", titulo: "Panel general y Mi dashboard", desc: "Indicadores del día." },
+      { clave: "panel", titulo: "Panel general", desc: "Indicadores del día." },
+      { clave: "mi-dashboard", titulo: "Mi dashboard", desc: "Tus órdenes, comisiones y avance." },
       { clave: "asistente", titulo: "Asistente", desc: "Códigos de falla y manuales." },
+      { clave: "busqueda", titulo: "Búsqueda y filtros", desc: "Buscar sin acentos, chips y barra A–Z." },
     ],
   },
   {
@@ -67,3 +78,31 @@ export const AYUDA = [
     ],
   },
 ];
+
+// Pantalla a la que se navega antes de abrir cada recorrido: [ruta, parámetros]
+const IR = {
+  "config-taller": ["DatosTaller"], "usuarios-alta": ["Usuarios"],
+  "orden-nueva": ["Servicio", { screen: "HistorialServicios" }], "orden-refacciones": ["Servicio", { screen: "HistorialServicios" }],
+  "orden-editar": ["Servicio", { screen: "HistorialServicios" }], "orden-fechas": ["Servicio", { screen: "HistorialServicios" }],
+  "orden-abonos": ["Servicio", { screen: "HistorialServicios" }], "orden-estatus": ["Servicio", { screen: "HistorialServicios" }],
+  "orden-finalizar": ["Servicio", { screen: "HistorialServicios" }], "orden-nota": ["Servicio", { screen: "HistorialServicios" }],
+  cotizaciones: ["Cotizaciones"], citas: ["Citas"],
+  "cliente-alta": ["Clientes", { screen: "ClientesLista" }], "cliente-app": ["Clientes", { screen: "ClientesLista" }],
+  "vehiculo-alta": ["Vehículos", { screen: "VehiculosLista" }],
+  refacciones: ["Refacciones", { screen: "RefaccionesLista" }], inventario: ["InventarioLista"],
+  proveedores: ["Proveedores"], herramientas: ["Herramientas"],
+  empleados: ["Empleados"], nomina: ["Nomina"], comisiones: ["Comisiones"], roles: ["GestionRoles"],
+  catalogos: ["Catálogos", { screen: "CatalogosLista" }], promociones: ["Promociones"],
+  panel: ["Panel"], "mi-dashboard": ["MiDashboard"], asistente: ["Asistente"], busqueda: ["Clientes", { screen: "ClientesLista" }],
+};
+
+for (const m of AYUDA) {
+  for (const x of m.tutoriales) {
+    if (x.abrir || !T[x.clave]) continue;
+    x.abrir = (user, navigation) => {
+      const ir = IR[x.clave];
+      if (ir) navigation.navigate(...ir);
+      setTimeout(() => abrirTour(T[x.clave](), () => marcarVisto(user, x.clave)), ir ? 700 : 150);
+    };
+  }
+}
