@@ -1,7 +1,8 @@
 import { contiene } from "../lib/texto";
 import ScrollCampos from "../ui/ScrollCampos";
-import { useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Animated, Easing } from "react-native";
+import { api } from "../api";
 import { Ionicons } from "../ui/IconoWeb";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
@@ -10,6 +11,14 @@ import Auto3D from "./Auto3D";
 import { ZONAS, zonasRefaccion } from "../lib/zonas";
 import NuevaRefaccionModal from "./NuevaRefaccionModal";
 import FiltroCategoria from "../ui/FiltroCategoria";
+
+// Voz (requiere módulo nativo; en Expo Go no existe)
+let RecVoz = null;
+try { RecVoz = require("expo-speech-recognition").ExpoSpeechRecognitionModule; } catch (e) { RecVoz = null; }
+const NUM_VOZ = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
+const STOP_VOZ = new Set(["de", "del", "la", "el", "los", "las", "para", "al", "agrega", "agregar", "pon", "poner", "ponle", "quiero", "necesito", "mas"]);
+const normVoz = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const singVoz = (w) => (w.length > 4 && w.endsWith("es") ? w.slice(0, -2) : w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w);
 
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const VACIO = { descripcion: "", id_tipo_servicio: "", cantidad: "1", costo_mano_obra: "", costo_refaccion: "", costo_extra: "" };
@@ -20,7 +29,7 @@ const VACIO = { descripcion: "", id_tipo_servicio: "", cantidad: "1", costo_mano
  *  - Concepto libre: mano de obra o cualquier cargo fuera del catálogo.
  * onAgregarCatalogo([{ refaccion, cantidad, precio }])  onAgregarLibre(concepto)
  */
-export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refacciones = [], tipos = [], precioDe, stockDe, onAgregarCatalogo, onAgregarLibre, onCerrar, onCrearRefaccion = null, categoriasCatalogo = null }) {
+export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refacciones = [], tipos = [], precioDe, stockDe, onAgregarCatalogo, onAgregarLibre, onCerrar, onCrearRefaccion = null, categoriasCatalogo = null, onAplicarPaquete = null }) {
   const [modo, setModo] = useState("catalogo");
   const [seleccion, setSeleccion] = useState({});
   const [categoria, setCategoria] = useState("");
@@ -32,6 +41,14 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
   const [soloConStock, setSoloConStock] = useState(false);
   const [soloMarcadas, setSoloMarcadas] = useState(false);
   const [creando, setCreando] = useState(false); // alta rápida de una refacción que no existe
+  const [paquetes, setPaquetes] = useState([]);
+  const [cargandoPaq, setCargandoPaq] = useState(false);
+  const [aplicandoPaq, setAplicandoPaq] = useState(null);
+  const [escuchando, setEscuchando] = useState(false);
+  const [textoVoz, setTextoVoz] = useState("");
+  const [avisoVoz, setAvisoVoz] = useState(null);
+  const procVozRef = useRef(null);
+  const pulsoVoz = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) { setSeleccion({}); setCategoria(""); setBusqueda(""); setVerAuto(false); setZona(null); setSoloConStock(false); setSoloMarcadas(false); setLibre(VACIO); setModo(refacciones.length ? "catalogo" : "libre"); }
@@ -74,6 +91,110 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
   const set = (k) => (v) => setLibre((p) => ({ ...p, [k]: v }));
   const importeLibre = (Number(libre.costo_mano_obra) || 0) + (Number(libre.costo_refaccion) || 0) + (Number(libre.costo_extra) || 0);
 
+  function procesarVoz(texto) {
+    const esNumV = (w) => /^\d+$/.test(w) || !!NUM_VOZ[w];
+    const segmentos = [];
+    normVoz(texto).split(/ y | e |,| con | luego | tambien | mas | ademas | otro | otra /).map((x) => x.trim()).filter(Boolean).forEach((seg) => {
+      // un número después de palabras empieza otro renglón: "aceite dos bujías" → aceite | dos bujías
+      let cur = [];
+      seg.split(" ").forEach((w) => {
+        if (esNumV(w) && cur.some((x) => !esNumV(x))) { segmentos.push(cur.join(" ")); cur = []; }
+        cur.push(w);
+      });
+      if (cur.length) segmentos.push(cur.join(" "));
+    });
+    const ok = []; const fallo = []; const nuevos = {};
+    segmentos.forEach((seg) => {
+      let cant = 1; const toks = [];
+      seg.split(" ").forEach((w) => {
+        if (/^\d+$/.test(w)) cant = Math.max(1, Number(w));
+        else if (NUM_VOZ[w] && toks.length === 0) cant = NUM_VOZ[w];
+        else if (!STOP_VOZ.has(w)) toks.push(singVoz(w));
+      });
+      if (!toks.length) return;
+      let mejor = null; let mejorPts = 0;
+      refacciones.forEach((r) => {
+        const nom = normVoz(r.nombre_refaccion).split(" ").filter((w) => !STOP_VOZ.has(w)).map(singVoz);
+        const cat = normVoz(r.categoria).split(" ").map(singVoz);
+        let pts = 0;
+        toks.forEach((tk) => {
+          if (nom.some((x) => x.startsWith(tk) || (x.length > 3 && tk.startsWith(x)))) pts += 1;
+          else if (cat.some((x) => x.length > 3 && (x.startsWith(tk) || tk.startsWith(x)))) pts += 0.4;
+        });
+        const score = pts / toks.length - 0.03 * Math.max(0, nom.length - pts);
+        if (score > mejorPts) { mejorPts = score; mejor = r; }
+      });
+      if (mejor && mejorPts >= 0.6) {
+        const kk = String(mejor.id_refaccion);
+        if (nuevos[kk] || seleccion[kk]) return;
+        nuevos[kk] = { cantidad: cant }; ok.push(`${cant} × ${mejor.nombre_refaccion}`);
+      }
+      else fallo.push(seg);
+    });
+    if (Object.keys(nuevos).length) setSeleccion((prev) => ({ ...prev, ...nuevos }));
+    setAvisoVoz({ ok, fallo, texto });
+  }
+  procVozRef.current = procesarVoz;
+
+  useEffect(() => {
+    if (!RecVoz || !visible) return undefined;
+    const subs = [
+      RecVoz.addListener("result", (e) => {
+        const tx = e?.results?.[0]?.transcript || "";
+        setTextoVoz(tx);
+        if (e?.isFinal && tx) procVozRef.current && procVozRef.current(tx);
+      }),
+      RecVoz.addListener("end", () => setEscuchando(false)),
+      RecVoz.addListener("error", () => setEscuchando(false)),
+    ];
+    return () => { subs.forEach((x) => x && x.remove && x.remove()); try { RecVoz.abort(); } catch (e) {} };
+  }, [visible]);
+
+  useEffect(() => {
+    if (!escuchando) { pulsoVoz.setValue(0); return undefined; }
+    const anim = Animated.loop(Animated.sequence([
+      Animated.timing(pulsoVoz, { toValue: 1, duration: 650, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      Animated.timing(pulsoVoz, { toValue: 0, duration: 650, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+    ]));
+    anim.start();
+    return () => anim.stop();
+  }, [escuchando, pulsoVoz]);
+
+  async function alternarVoz() {
+    if (!RecVoz) { alerta("Voz no disponible", "Esta función necesita la app instalada con el módulo de voz (no funciona en Expo Go)."); return; }
+    if (escuchando) { try { RecVoz.stop(); } catch (e) {} return; }
+    try {
+      const perm = await RecVoz.requestPermissionsAsync();
+      if (!perm.granted) { alerta("Permiso requerido", "Activa micrófono y reconocimiento de voz para usar esta función."); return; }
+      setTextoVoz(""); setAvisoVoz(null); setEscuchando(true);
+      RecVoz.start({ lang: "es-MX", interimResults: true, continuous: false });
+    } catch (err) { setEscuchando(false); alerta("Voz", err.message || "No se pudo iniciar el micrófono."); }
+  }
+
+  useEffect(() => {
+    if (!visible || modo !== "paquetes" || !onAplicarPaquete) return;
+    setCargandoPaq(true);
+    api.get("/paquetes-servicio/").then((r) => setPaquetes(r || [])).catch(() => setPaquetes([])).finally(() => setCargandoPaq(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, modo]);
+
+  const totalPaquete = (paq) => (paq.conceptos || []).reduce((tt, cc) => {
+    const cant = cc.cantidad || 1;
+    const ref = cc.id_refaccion ? refacciones.find((r) => r.id_refaccion === cc.id_refaccion) : null;
+    const pr = ref ? precio(ref) : (Number(cc.costo_refaccion) || 0);
+    return tt + pr * cant + (Number(cc.costo_mano_obra) || 0) * cant;
+  }, 0);
+
+  function aplicarPaquete(paq) {
+    alerta(`Agregar «${paq.nombre}»`, `Se agregarán ${paq.conceptos.length} concepto(s) por aprox. ${fmt(totalPaquete(paq))}. Podrás editar o quitar cada uno después.`, [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Agregar todo", onPress: async () => {
+        setAplicandoPaq(paq.id_paquete);
+        try { await onAplicarPaquete(paq); } catch (err) { alerta("Error", err.message); } finally { setAplicandoPaq(null); }
+      } },
+    ]);
+  }
+
   async function agregar() {
     setGuardando(true);
     try {
@@ -112,7 +233,7 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
         </View>
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
           <View style={styles.segmentado}>
-            {[["catalogo", "Del catálogo", "cube-outline"], ["libre", "Concepto libre", "create-outline"]].map(([v, t, i]) => (
+            {[["catalogo", "Catálogo", "cube-outline"], ...(onAplicarPaquete ? [["paquetes", "Paquetes", "layers-outline"]] : []), ["libre", "Libre", "create-outline"]].map(([v, t, i]) => (
               <TouchableOpacity key={v} style={[styles.segmento, modo === v && styles.segmentoActivo]} onPress={() => setModo(v)}>
                 <Ionicons name={i} size={15} color={modo === v ? colors.paper100 : colors.ink700} />
                 <Text style={[styles.segmentoTexto, modo === v && styles.segmentoTextoActivo]}>{t}</Text>
@@ -124,11 +245,31 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
         {modo === "catalogo" ? (
           <>
             <View style={{ paddingHorizontal: spacing.lg, paddingTop: 10, gap: 8 }}>
-              <View style={styles.buscador}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={[styles.buscador, { flex: 1 }]}>
                 <Ionicons name="search-outline" size={18} color={colors.ink500} />
                 <TextInput style={styles.buscadorInput} placeholder="Buscar por nombre, categoría o código…" placeholderTextColor={colors.ink500} value={busqueda} onChangeText={setBusqueda} autoCorrect={false} />
                 {!!busqueda && <TouchableOpacity onPress={() => setBusqueda("")} hitSlop={8}><Ionicons name="close-circle-outline" size={18} color={colors.ink500} /></TouchableOpacity>}
               </View>
+              <TouchableOpacity onPress={alternarVoz} activeOpacity={0.8} style={styles.btnVoz}>
+                {escuchando && <Animated.View pointerEvents="none" style={[styles.pulsoVoz, { opacity: pulsoVoz.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }), transform: [{ scale: pulsoVoz.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] }) }] }]} />}
+                <Ionicons name={escuchando ? "stop" : "mic"} size={22} color="#fff" />
+              </TouchableOpacity>
+              </View>
+              {(escuchando || avisoVoz) && (
+                <View style={styles.vozPanel}>
+                  {escuchando ? (
+                    <Text style={styles.vozTexto}>{textoVoz ? `“${textoVoz}”` : "Escuchando… di por ejemplo: «aceite de motor, dos amortiguadores delanteros y aditivos»"}</Text>
+                  ) : (
+                    <>
+                      {avisoVoz.ok.length > 0 && <Text style={styles.vozTexto}>Seleccionado: {avisoVoz.ok.join(" · ")}</Text>}
+                      {avisoVoz.fallo.length > 0 && <Text style={[styles.vozTexto, { color: colors.warn600 }]}>No encontré: {avisoVoz.fallo.join(" · ")}</Text>}
+                      {avisoVoz.ok.length === 0 && avisoVoz.fallo.length === 0 && <Text style={styles.vozTexto}>No te entendí, intenta de nuevo.</Text>}
+                    </>
+                  )}
+                  {!escuchando && <TouchableOpacity onPress={() => setAvisoVoz(null)} hitSlop={8} style={{ position: "absolute", top: 6, right: 8 }}><Ionicons name="close-outline" size={18} color={colors.ink500} /></TouchableOpacity>}
+                </View>
+              )}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                 <TouchableOpacity style={[styles.chip, verAuto && styles.chipActivo]} onPress={() => { setVerAuto(!verAuto); setZona(null); }}>
                   <Text style={[styles.chipTexto, verAuto && styles.chipTextoActivo]}><Ionicons name="car-sport-outline" size={13} /> {verAuto ? "Ocultar auto" : "Elegir en el auto"}</Text>
@@ -152,7 +293,7 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
                 {hayFiltros && <TouchableOpacity onPress={limpiarFiltros} hitSlop={8}><Text style={styles.limpiar}>Limpiar filtros</Text></TouchableOpacity>}
               </View>
             </View>
-            <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 8 }}>
+            <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 8 }} keyboardShouldPersistTaps="handled">
               {verAuto && (
                 <View style={{ marginBottom: 6 }}>
                   <Auto3D compacto altura={230} fps={18} estadoZona={(z) => (marcadasZona[z] ? "refsel" : conteoZona[z] ? "ref" : "ninguno")}
@@ -184,33 +325,55 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
                     <Text style={styles.btnSecundarioTexto}>Agregarlo como concepto libre</Text>
                   </TouchableOpacity>
                 </View>
-              ) : filtradas.map((r) => {
-                const k = String(r.id_refaccion);
-                const marcada = !!seleccion[k];
-                const stock = stockR(r);
-                const sinStock = stock != null && Number(stock) <= 0;
-                return (
-                  <TouchableOpacity key={k} style={[styles.tarjeta, marcada && styles.tarjetaActiva, sinStock && !marcada && { opacity: 0.6 }]} activeOpacity={0.8}
-                    onPress={() => setSeleccion((p) => { const c = { ...p }; if (c[k]) delete c[k]; else c[k] = { cantidad: 1 }; return c; })}>
-                    <Ionicons name={marcada ? "checkbox" : "square-outline"} size={22} color={marcada ? colors.petrol500 : colors.ink500} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.nombre}>{r.nombre_refaccion}</Text>
-                      <Text style={styles.meta}>{[r.categoria, stock != null ? (sinStock ? "Sin stock" : `Stock ${stock}`) : null, precio(r) ? fmt(precio(r)) : "sin precio"].filter(Boolean).join(" · ")}</Text>
-                    </View>
-                    {marcada && (
-                      <View style={styles.contador}>
-                        <TouchableOpacity onPress={() => setSeleccion((p) => ({ ...p, [k]: { cantidad: Math.max(1, p[k].cantidad - 1) } }))} hitSlop={6}><Ionicons name="remove-circle-outline" size={24} color={colors.petrol600} /></TouchableOpacity>
-                        <Text style={styles.contadorTexto}>{seleccion[k].cantidad}</Text>
-                        <TouchableOpacity onPress={() => setSeleccion((p) => ({ ...p, [k]: { cantidad: p[k].cantidad + 1 } }))} hitSlop={6}><Ionicons name="add-circle-outline" size={24} color={colors.petrol600} /></TouchableOpacity>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+              ) : (
+                <View style={styles.rejilla}>
+                  {filtradas.map((r) => {
+                    const k = String(r.id_refaccion);
+                    const marcada = !!seleccion[k];
+                    const pr = precio(r);
+                    const stk = stockR(r);
+                    const sinStk = stk != null && Number(stk) <= 0;
+                    return (
+                      <TouchableOpacity key={k} activeOpacity={0.85}
+                        style={[styles.tile, sinStk && !marcada && { opacity: 0.6 }, marcada && { borderColor: colors.petrol500, backgroundColor: `${colors.petrol500}1F`, shadowColor: colors.petrol500, shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 4 }]}
+                        onPress={() => setSeleccion((p) => { const cc = { ...p }; if (cc[k]) delete cc[k]; else cc[k] = { cantidad: 1 }; return cc; })}>
+                        <Text style={styles.tileNombre} numberOfLines={2}>{r.nombre_refaccion}</Text>
+                        <Text style={styles.tileCat} numberOfLines={1}>{[r.categoria || "Sin categoría", stk != null ? (sinStk ? "Sin stock" : `Stock ${stk}`) : null].filter(Boolean).join(" · ")}</Text>
+                        <Text style={[styles.tilePrecio, marcada && { color: colors.petrol500 }, !pr && { fontSize: 14, color: colors.ink500, fontWeight: "600" }]} numberOfLines={1} adjustsFontSizeToFit>{pr ? fmt(pr) : "Sin precio"}</Text>
+                        {marcada && (
+                          <View style={styles.tileContador}>
+                            <TouchableOpacity onPress={() => setSeleccion((p) => ({ ...p, [k]: { cantidad: Math.max(1, p[k].cantidad - 1) } }))} hitSlop={8}><Ionicons name="remove-outline" size={20} color="#fff" /></TouchableOpacity>
+                            <Text style={styles.tileContadorTexto}>{seleccion[k].cantidad}</Text>
+                            <TouchableOpacity onPress={() => setSeleccion((p) => ({ ...p, [k]: { cantidad: p[k].cantidad + 1 } }))} hitSlop={8}><Ionicons name="add-outline" size={20} color="#fff" /></TouchableOpacity>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
             </ScrollView>
           </>
+        ) : modo === "paquetes" ? (
+          <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 10 }}>
+            <Text style={styles.meta}>Toca un paquete para agregar todos sus conceptos de una vez.</Text>
+            {cargandoPaq ? <ActivityIndicator color={colors.petrol500} style={{ marginTop: 20 }} /> : paquetes.length === 0 ? (
+              <Text style={styles.vacio}>Todavía no tienes paquetes. Guárdalos desde una orden de servicio.</Text>
+            ) : paquetes.map((paq) => (
+              <TouchableOpacity key={paq.id_paquete} style={styles.paqueteFila} onPress={() => aplicarPaquete(paq)} disabled={aplicandoPaq !== null} activeOpacity={0.8}>
+                <View style={styles.paqueteIcono}>
+                  {aplicandoPaq === paq.id_paquete ? <ActivityIndicator color="#fff" /> : <Ionicons name="layers" size={24} color="#fff" />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.nombre} numberOfLines={1}>{paq.nombre}</Text>
+                  <Text style={styles.meta} numberOfLines={2}>{paq.conceptos.length} concepto(s) · {paq.conceptos.map((cc) => cc.descripcion || "Refacción").slice(0, 3).join(", ")}{paq.conceptos.length > 3 ? "…" : ""}</Text>
+                </View>
+                <Text style={styles.paqueteTotal}>{fmt(totalPaquete(paq))}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         ) : (
-          <ScrollCampos contentContainerStyle={{ padding: spacing.lg, gap: 12 }} keyboardShouldPersistTaps="handled">
+          <ScrollCampos contentContainerStyle={{ padding: spacing.lg, gap: 12, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
             <Text style={styles.meta}>Para mano de obra, diagnósticos o cualquier cargo que no esté en el catálogo.</Text>
             <View>
               <Text style={styles.label}>Descripción *</Text>
@@ -254,12 +417,12 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
         )}
 
         <View style={styles.pie}>
-          <TouchableOpacity style={[styles.btnSecundario, { flex: 1 }]} onPress={onCerrar}><Text style={styles.btnSecundarioTexto}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.btnPrimario, (modo === "catalogo" && !n) && { opacity: 0.45 }]} onPress={agregar} disabled={guardando || (modo === "catalogo" && !n)}>
+          <TouchableOpacity style={[styles.btnSecundario, { flex: 1, borderColor: colors.petrol500 }]} onPress={onCerrar}><Text style={[styles.btnSecundarioTexto, { color: colors.petrol500 }]}>{modo === "paquetes" ? "Cerrar" : "Cancelar"}</Text></TouchableOpacity>
+          {modo !== "paquetes" && <TouchableOpacity style={[styles.btnPrimario, (modo === "catalogo" && !n) && { opacity: 0.45 }]} onPress={agregar} disabled={guardando || (modo === "catalogo" && !n)}>
             {guardando ? <ActivityIndicator color={colors.paper100} /> : (
               <Text style={styles.btnPrimarioTexto}>{modo === "catalogo" ? (n ? `Agregar ${n}` : "Toca para elegir") : "Agregar"}</Text>
             )}
-          </TouchableOpacity>
+          </TouchableOpacity>}
         </View>
       </View>
       {onCrearRefaccion && (
@@ -277,6 +440,20 @@ export default function HojaAgregarConceptos({ visible, titulo = "Agregar", refa
 }
 
 const styles = crearEstilos({
+  btnVoz: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.petrol500, alignItems: "center", justifyContent: "center" },
+  pulsoVoz: { position: "absolute", width: 46, height: 46, borderRadius: 23, backgroundColor: colors.petrol500 },
+  vozPanel: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.petrol500, borderRadius: 10, paddingVertical: 8, paddingLeft: 12, paddingRight: 28, gap: 3 },
+  vozTexto: { fontSize: 13, color: colors.ink900 },
+  rejilla: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tile: { width: "48%", flexGrow: 1, backgroundColor: colors.paper100, borderWidth: 2, borderColor: colors.ink300, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 10, gap: 2 },
+  tileNombre: { fontSize: 14, fontWeight: "700", color: colors.ink900, lineHeight: 18 },
+  tileCat: { fontSize: 11.5, color: colors.ink500 },
+  tilePrecio: { marginTop: 6, fontSize: 20, fontWeight: "800", color: colors.ink900, letterSpacing: -0.3 },
+  tileContador: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4, marginTop: 6, backgroundColor: colors.petrol500 },
+  tileContadorTexto: { fontSize: 15, fontWeight: "800", color: "#fff" },
+  paqueteFila: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 14, padding: 12 },
+  paqueteIcono: { width: 46, height: 46, borderRadius: 14, backgroundColor: colors.petrol500, alignItems: "center", justifyContent: "center" },
+  paqueteTotal: { fontSize: 15, fontWeight: "800", color: colors.ink900 },
   zonaBarra: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 8 },
   zonaNombre: { flex: 1, minWidth: 140, fontSize: 13, fontWeight: "800", color: colors.petrol600 },
   pantalla: { flex: 1, backgroundColor: colors.paper0, paddingTop: 36 },

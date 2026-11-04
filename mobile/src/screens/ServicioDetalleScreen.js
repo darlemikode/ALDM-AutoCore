@@ -16,6 +16,7 @@ import ChatOrden from "../components/ChatOrden";
 import InspeccionForm from "../components/InspeccionForm";
 import RecepcionAutoModal from "../components/RecepcionAutoModal";
 import NuevaRefaccionModal from "../components/NuevaRefaccionModal";
+import HojaAgregarConceptos from "../components/HojaAgregarConceptos";
 import Auto3D from "../components/Auto3D";
 import { ZONAS, zonasRefaccion } from "../lib/zonas";
 import { useAuth } from "../context/AuthContext";
@@ -149,8 +150,8 @@ function TarjetaConcepto({ d, refaccion, mo, editable, tipos, actualizar, quitar
   const redondea = (v) => Math.round(v * 100) / 100;
   const importe = (Number(d.costo_mano_obra) || 0) + (Number(d.costo_refaccion) || 0) + (Number(d.costo_extra) || 0);
   const tipo = tipos.find((t) => t.id_tipo_servicio === d.id_tipo_servicio)?.nombre_tipo;
-  const sub = [mo ? null : refaccion?.categoria, tipo].filter(Boolean).join(" · ");
   const unitario = redondea(((Number(mo ? d.costo_mano_obra : d.costo_refaccion) || 0) / cant));
+  const sub = [mo ? null : refaccion?.categoria, tipo, cant > 1 ? `${cant} × ${fmt(unitario)}` : null].filter(Boolean).join(" · ");
 
   function alternar() {
     LayoutAnimation.configureNext(LayoutAnimation.create(180, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
@@ -202,7 +203,7 @@ function TarjetaConcepto({ d, refaccion, mo, editable, tipos, actualizar, quitar
           <Text style={styles.nuiTitulo} numberOfLines={abierta ? 3 : 1}>{d.descripcion || refaccion?.nombre_refaccion || (mo ? "Mano de obra" : "Concepto")}</Text>
           {sub ? <Text style={styles.nuiSub} numberOfLines={1}>{sub}</Text> : null}
         </View>
-        {cant > 1 && <View style={styles.nuiCant}><Text style={styles.nuiCantTexto}>×{cant}</Text></View>}
+        {cant > 1 && <View style={styles.nuiCant}><Text style={styles.nuiCantTexto}>{cant}</Text><Text style={styles.nuiCantPzas}>{cant === 1 ? "pza" : "pzas"}</Text></View>}
         <Text style={styles.nuiImporte}>{fmt(importe)}</Text>
         <Ionicons name={abierta ? "chevron-up-outline" : "chevron-down-outline"} size={16} color={colors.ink500} />
       </TouchableOpacity>
@@ -340,6 +341,8 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   const [aplicandoPaq, setAplicandoPaq] = useState(null);
   const [modalNuevoPaq, setModalNuevoPaq] = useState(null); // { nombre }
   const [guardandoPaq, setGuardandoPaq] = useState(false);
+  const [armandoPaq, setArmandoPaq] = useState(null); // { nombre, conceptos: [] } — paquete armado desde el catálogo
+  const [hojaPaq, setHojaPaq] = useState(false);
   const [calendarioFecha, setCalendarioFecha] = useState(null); // "fecha_entrada_servicio" | "fecha_salida_servicio"
   const [tipoPago, setTipoPago] = useState("efectivo");
   const [monto, setMonto] = useState("");
@@ -458,6 +461,12 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   }
 
   const reasignarEmpleado = (idEmpleado) => actualizar({ id_empleado_responsable: idEmpleado ? Number(idEmpleado) : null });
+  const cambiarNombreOrden = (nombre) => { if (nombre && nombre !== servicio.nombre_servicio) actualizar({ nombre_servicio: nombre }); };
+  const alternarTipoMantenimiento = (idTipo) => {
+    const actuales = (servicio.tipos_mantenimiento || []).map((x) => x.id_tipo_servicio);
+    const nuevos = actuales.includes(idTipo) ? actuales.filter((x) => x !== idTipo) : [...actuales, idTipo];
+    actualizar({ tipos_mantenimiento_ids: nuevos });
+  };
   const cambiarIva = (aplicar) => actualizar({ iva_porcentaje: aplicar ? 16 : 0 });
 
   function cambiarStatus(nuevo) {
@@ -675,7 +684,17 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   const cambiarCantidadSel = (idRef, delta) => setSeleccion((prev) => ({ ...prev, [idRef]: { ...prev[idRef], cantidad: Math.max(1, (prev[idRef]?.cantidad || 1) + delta) } }));
 
   function procesarVoz(texto) {
-    const segmentos = normVoz(texto).split(/ y | e |,| con | luego | tambien /).map((x) => x.trim()).filter(Boolean);
+    const esNumV = (w) => /^\d+$/.test(w) || !!NUM_VOZ[w];
+    const segmentos = [];
+    normVoz(texto).split(/ y | e |,| con | luego | tambien | mas | ademas | otro | otra /).map((x) => x.trim()).filter(Boolean).forEach((seg) => {
+      // un número después de palabras empieza otro renglón: "aceite dos bujías" → aceite | dos bujías
+      let cur = [];
+      seg.split(" ").forEach((w) => {
+        if (esNumV(w) && cur.some((x) => !esNumV(x))) { segmentos.push(cur.join(" ")); cur = []; }
+        cur.push(w);
+      });
+      if (cur.length) segmentos.push(cur.join(" "));
+    });
     const ok = []; const fallo = []; const nuevos = {};
     segmentos.forEach((seg) => {
       let cant = 1; const toks = [];
@@ -697,7 +716,11 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         const score = pts / toks.length - 0.03 * Math.max(0, nom.length - pts);
         if (score > mejorPts) { mejorPts = score; mejor = r; }
       });
-      if (mejor && mejorPts >= 0.6) { nuevos[mejor.id_refaccion] = { cantidad: cant }; ok.push(`${cant} × ${mejor.nombre_refaccion}`); }
+      if (mejor && mejorPts >= 0.6) {
+        // si ya estaba elegida (o se repitió en la misma frase) no se vuelve a sumar
+        if (nuevos[mejor.id_refaccion] || seleccion[mejor.id_refaccion]) return;
+        nuevos[mejor.id_refaccion] = { cantidad: cant }; ok.push(`${cant} × ${mejor.nombre_refaccion}`);
+      }
       else fallo.push(seg);
     });
     if (Object.keys(nuevos).length) {
@@ -828,6 +851,35 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         }
       } },
     ]);
+  }
+
+  const redondeaP = (v) => Math.round(v * 100) / 100;
+  const agregarAPaquete = (nuevos) => setArmandoPaq((p) => {
+    const lista = [...(p?.conceptos || [])];
+    nuevos.forEach((n) => {
+      const i = n.id_refaccion ? lista.findIndex((x) => x.id_refaccion === n.id_refaccion) : -1;
+      if (i >= 0) lista[i] = { ...lista[i], cantidad: lista[i].cantidad + n.cantidad };
+      else lista.push({ ...n, key: `${Date.now()}-${Math.random()}` });
+    });
+    return { ...p, conceptos: lista };
+  });
+  const cambiarCantidadPaq = (key, delta) => setArmandoPaq((p) => ({ ...p, conceptos: p.conceptos.map((x) => (x.key === key ? { ...x, cantidad: Math.max(1, x.cantidad + delta) } : x)) }));
+  const quitarDePaquete = (key) => setArmandoPaq((p) => ({ ...p, conceptos: p.conceptos.filter((x) => x.key !== key) }));
+  async function guardarPaqueteArmado() {
+    const nombre = (armandoPaq?.nombre || "").trim();
+    if (!nombre) { alerta("Falta el nombre", "Escribe cómo se llamará el paquete (ej. Afinación mayor)."); return; }
+    if (!armandoPaq.conceptos.length) { alerta("Paquete vacío", "Agrega al menos una refacción o concepto."); return; }
+    setGuardandoPaq(true);
+    try {
+      await api.post("/paquetes-servicio/", { nombre, conceptos: armandoPaq.conceptos.map(({ key, ...x }) => x) });
+      setArmandoPaq(null);
+      cargarPaquetes();
+      alerta("Paquete guardado", `«${nombre}» ya está disponible para cualquier orden.`);
+    } catch (err) {
+      alerta("Error", err.message);
+    } finally {
+      setGuardandoPaq(false);
+    }
   }
 
   async function guardarPaqueteDesdeOrden() {
@@ -1292,6 +1344,27 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                 <Switch value={(servicio.iva_porcentaje ?? 0) > 0} onValueChange={cambiarIva} trackColor={{ true: colors.petrol500 }} />
               </View>
             )}
+            <Bloque icono="pricetags-outline" titulo="Tipo de orden">
+              {puedeEditar && abierta ? (
+                <>
+                  <TextInput
+                    style={styles.input}
+                    defaultValue={servicio.nombre_servicio || ""}
+                    key={`no-${servicio.nombre_servicio || ""}`}
+                    placeholder="Ej. Servicio general, Afinación mayor…"
+                    placeholderTextColor={colors.ink500}
+                    maxLength={120}
+                    onEndEditing={(e) => cambiarNombreOrden(e.nativeEvent.text.trim())}
+                    onSubmitEditing={(e) => cambiarNombreOrden(e.nativeEvent.text.trim())}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.filaTitulo}>{servicio.nombre_servicio || "Servicio general"}</Text>
+                </>
+              )}
+            </Bloque>
+
             <Bloque icono="construct-outline" titulo="Responsable">
               {puedeEditar ? (
                 <View style={styles.pickerWrap}>
@@ -1578,8 +1651,9 @@ export default function ServicioDetalleScreen({ route, navigation }) {
             <>
               <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 10 }}>
                 <Text style={styles.filaSub}>Toca un paquete para agregar todos sus conceptos de una vez. Mantén presionado para borrarlo.</Text>
+                <Boton tipo="primario" icono="add-circle-outline" texto="Nuevo paquete (elegir refacciones)" onPress={() => setArmandoPaq({ nombre: "", conceptos: [] })} />
                 {cargandoPaq ? <ActivityIndicator color={colors.petrol500} style={{ marginTop: 20 }} /> : paquetes.length === 0 ? (
-                  <Text style={styles.vacio}>Todavía no tienes paquetes. {detalles.length > 0 ? "Guarda esta orden como paquete con el botón de abajo." : "Arma una orden con sus refacciones y mano de obra, y guárdala como paquete."}</Text>
+                  <Text style={styles.vacio}>Todavía no tienes paquetes. Crea uno con «Nuevo paquete» o guarda esta orden como paquete con el botón de abajo.</Text>
                 ) : paquetes.map((paq) => (
                   <TouchableOpacity key={paq.id_paquete} style={styles.paqueteFila} onPress={() => aplicarPaquete(paq)} onLongPress={() => borrarPaquete(paq)} disabled={aplicandoPaq !== null} activeOpacity={0.8}>
                     <View style={styles.accesoIcono}>
@@ -1715,6 +1789,69 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       </Modal>
       <NuevaRefaccionModal visible={creandoRef} nombreInicial={busquedaRef.trim()} onCerrar={() => setCreandoRef(false)} onCrear={crearRefaccionRapida}
         categorias={[...new Set(refacciones.map((r) => r.categoria).filter(Boolean))].sort()} />
+
+      {/* Armar paquete eligiendo refacciones */}
+      <Modal visible={!!armandoPaq} animationType="slide" onRequestClose={() => setArmandoPaq(null)}>
+        <View style={styles.modalPantalla}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitulo}>Nuevo paquete</Text>
+            <TouchableOpacity onPress={() => setArmandoPaq(null)} hitSlop={10}><Ionicons name="close-outline" size={24} color={colors.ink900} /></TouchableOpacity>
+          </View>
+          <ScrollCampos contentContainerStyle={{ padding: spacing.lg, gap: 10, paddingBottom: 60 }}>
+            <View>
+              <Text style={styles.label}>Nombre del paquete *</Text>
+              <TextInput style={styles.input} placeholder="Ej. Afinación mayor" placeholderTextColor={colors.ink500} value={armandoPaq?.nombre || ""} onChangeText={(v) => setArmandoPaq((p) => ({ ...p, nombre: v }))} maxLength={100} />
+            </View>
+            <Text style={styles.filaSub}>Las refacciones toman el precio vigente cada vez que uses el paquete.</Text>
+            {(armandoPaq?.conceptos || []).map((x) => {
+              const unit = x.id_refaccion ? precioRefActual(x.id_refaccion) : (Number(x.costo_refaccion) || 0);
+              const imp = (unit + (Number(x.costo_mano_obra) || 0)) * x.cantidad;
+              return (
+                <View key={x.key} style={styles.nuiCard}>
+                  <View style={styles.nuiFila}>
+                    <View style={[styles.nuiIcono, !x.id_refaccion && { backgroundColor: colors.warn100 }]}>
+                      <Ionicons name={x.id_refaccion ? "cube-outline" : "hammer-outline"} size={18} color={x.id_refaccion ? colors.petrol600 : colors.warn600} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.nuiTitulo} numberOfLines={2}>{x.descripcion}</Text>
+                      <Text style={styles.nuiSub}>{fmt(imp)}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => cambiarCantidadPaq(x.key, -1)} disabled={x.cantidad <= 1} hitSlop={8}><Ionicons name="remove-circle-outline" size={28} color={x.cantidad > 1 ? colors.petrol600 : colors.ink300} /></TouchableOpacity>
+                    <Text style={styles.nuiStepperNum}>{x.cantidad}</Text>
+                    <TouchableOpacity onPress={() => cambiarCantidadPaq(x.key, 1)} hitSlop={8}><Ionicons name="add-circle-outline" size={28} color={colors.petrol600} /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => quitarDePaquete(x.key)} hitSlop={8}><Ionicons name="trash-outline" size={20} color={colors.red600} /></TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+            <Boton icono="add-circle-outline" texto="Agregar refacciones o mano de obra" onPress={() => setHojaPaq(true)} />
+            {(armandoPaq?.conceptos || []).length > 0 && (
+              <Text style={styles.resultadoPago}>Total aprox.: {fmt(totalPaquete({ conceptos: armandoPaq.conceptos }))}</Text>
+            )}
+          </ScrollCampos>
+          <View style={styles.modalPie}>
+            <Boton texto="Cancelar" onPress={() => setArmandoPaq(null)} estilo={{ flex: 1 }} />
+            <Boton tipo="primario" icono="save-outline" texto="Guardar paquete" onPress={guardarPaqueteArmado} cargando={guardandoPaq} estilo={{ flex: 1.6 }} />
+          </View>
+          <HojaAgregarConceptos
+            visible={hojaPaq}
+            titulo="Agregar al paquete"
+            refacciones={refacciones}
+            tipos={tipos}
+            precioDe={(r) => precioRefActual(r.id_refaccion)}
+            onAgregarCatalogo={(items) => {
+              agregarAPaquete(items.map((it) => ({ id_refaccion: it.refaccion.id_refaccion, descripcion: it.refaccion.nombre_refaccion, cantidad: it.cantidad, costo_mano_obra: 0, costo_refaccion: 0 })));
+              setHojaPaq(false);
+            }}
+            onAgregarLibre={(cc) => {
+              const cant = Math.max(1, cc.cantidad || 1);
+              agregarAPaquete([{ id_refaccion: null, descripcion: cc.descripcion, cantidad: cant, costo_mano_obra: redondeaP((Number(cc.costo_mano_obra) || 0) / cant), costo_refaccion: redondeaP(((Number(cc.costo_refaccion) || 0) + (Number(cc.costo_extra) || 0)) / cant) }]);
+              setHojaPaq(false);
+            }}
+            onCerrar={() => setHojaPaq(false)}
+          />
+        </View>
+      </Modal>
 
       {/* Nuevo paquete desde la orden */}
       <Modal visible={!!modalNuevoPaq} transparent animationType="fade" onRequestClose={() => setModalNuevoPaq(null)}>
@@ -2017,8 +2154,9 @@ const styles = crearEstilos({
   nuiIcono: { width: 36, height: 36, borderRadius: 11, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center" },
   nuiTitulo: { fontFamily: "Inter_600SemiBold", fontSize: 14.5, color: colors.ink900 },
   nuiSub: { fontSize: 11.5, color: colors.ink500, marginTop: 1 },
-  nuiCant: { backgroundColor: colors.paper0, borderRadius: 100, paddingVertical: 2, paddingHorizontal: 8 },
-  nuiCantTexto: { fontSize: 12, fontWeight: "800", color: colors.ink700 },
+  nuiCant: { backgroundColor: colors.petrol100, borderRadius: 10, paddingVertical: 3, paddingHorizontal: 9, alignItems: "center", minWidth: 42 },
+  nuiCantTexto: { fontFamily: "Inter_700Bold", fontSize: 16, lineHeight: 18, color: colors.petrol600 },
+  nuiCantPzas: { fontSize: 9.5, fontWeight: "700", color: colors.petrol600, textTransform: "uppercase", letterSpacing: 0.4 },
   nuiImporte: { fontFamily: "Inter_700Bold", fontSize: 15, color: colors.ink900 },
   nuiExtra: { paddingHorizontal: 12, paddingBottom: 12, paddingTop: 2, borderTopWidth: 1, borderTopColor: colors.ink300 },
   nuiControles: { flexDirection: "row", alignItems: "flex-end", gap: 10, marginTop: 10 },

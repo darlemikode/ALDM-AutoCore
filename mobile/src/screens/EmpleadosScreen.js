@@ -52,15 +52,22 @@ export default function EmpleadosScreen({ navigation }) {
   const { hasPermission } = useAuth();
   const [usuarios, setUsuarios] = useState([]);
 
-  const campos = CAMPOS.concat([{
-    name: "id_usuario", label: "Cuenta de usuario ligada", type: "select", grupo: "trabajo",
-    hint: "Opcional — para que vea su propio dashboard.",
-    options: usuarios.map((u) => ({ value: u.id_usuario, label: `${u.nombre_completo || u.nombre_usuario || u.username} (@${u.username})` })),
-  }]).concat(
-    hasPermission("nomina.ver") ? [
-      { name: "sueldo_base", label: "Sueldo base", type: "number", grupo: "nomina", hint: "Por periodo, según la periodicidad de pago." },
-    ] : []
-  );
+  // Sueldo capturado POR PERIODO (lo que se paga cada semana / quincena / mes); el servidor guarda el equivalente mensual
+  const DIAS = { semanal: 7, quincenal: 15, mensual: 30 };
+  const UNIDAD = { semanal: "semana", quincenal: "quincena", mensual: "mes" };
+  const camposDe = (v) => {
+    const per = v?.periodicidad_pago || "semanal";
+    return CAMPOS.concat([{
+      name: "id_usuario", label: "Cuenta de usuario ligada", type: "select", grupo: "trabajo",
+      hint: "Opcional — para que vea su propio dashboard.",
+      options: usuarios.map((u) => ({ value: u.id_usuario, label: `${u.nombre_completo || u.nombre_usuario || u.username} (@${u.username})` })),
+    }]).concat(
+      hasPermission("nomina.ver") ? [
+        { name: "periodicidad_pago", label: "¿Cada cuándo se le paga?", type: "select", grupo: "nomina", options: PERIODICIDADES },
+        { name: "sueldo_periodo", label: `Sueldo por ${UNIDAD[per] || "periodo"} ($)`, type: "number", grupo: "nomina", hint: `Lo que se le paga cada ${UNIDAD[per] || "periodo"}, tal cual.` },
+      ] : []
+    );
+  };
 
   return (
     <ListaCrud
@@ -70,7 +77,9 @@ export default function EmpleadosScreen({ navigation }) {
       idCampo="id_empleado"
       etiqueta="empleado"
       icono="id-card-outline"
-      campos={campos}
+      campos={camposDe}
+      valoresNuevo={{ periodicidad_pago: "semanal", estatus: "activo" }}
+      valoresParaEditar={(e) => ({ ...e, periodicidad_pago: e.periodicidad_pago || "semanal", sueldo_periodo: e.sueldo_mensual != null ? String(Math.round(e.sueldo_mensual * (DIAS[e.periodicidad_pago || "semanal"] || 7) / 30 * 100) / 100) : "" })}
       grupos={GRUPOS}
       permisos={{ crear: "empleados.crear", editar: "empleados.editar", eliminar: false }}
       cargarExtra={() => api.get("/auth/usuarios").then(setUsuarios).catch(() => setUsuarios([]))}
@@ -89,7 +98,13 @@ export default function EmpleadosScreen({ navigation }) {
           : chip;
       }}
       buscarEn={(e) => `${e.nombre} ${e.paterno || ""} ${e.materno || ""} ${e.puesto || ""} ${e.telefono || ""}`}
-      prepararGuardar={(v) => ({ ...v, estatus: v.estatus || "activo", id_usuario: v.id_usuario ? Number(v.id_usuario) : null, fecha_ingreso: v.fecha_ingreso || null, sueldo_base: Number(v.sueldo_base) || 0 })}
+      prepararGuardar={(v) => {
+        const { sueldo_periodo, ...resto } = v;
+        const hay = sueldo_periodo !== "" && sueldo_periodo != null;
+        // el servidor trabaja con el equivalente mensual (mes de 30 días); null = no tocar el sueldo
+        const mensual = hay ? Number(sueldo_periodo) * 30 / (DIAS[v.periodicidad_pago || "semanal"] || 7) : null;
+        return { ...resto, periodicidad_pago: v.periodicidad_pago || "semanal", estatus: v.estatus || "activo", id_usuario: v.id_usuario ? Number(v.id_usuario) : null, fecha_ingreso: v.fecha_ingreso || null, sueldo_mensual: mensual };
+      }}
     />
   );
 }

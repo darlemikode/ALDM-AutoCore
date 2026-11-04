@@ -1,4 +1,5 @@
 import BadgeIcono from "../ui/BadgeIcono";
+import ScrollCampos from "../ui/ScrollCampos";
 import { moduloPorTitulo } from "../iconosModulo";
 import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Switch, ActivityIndicator, TextInput, ScrollView } from "react-native";
@@ -254,7 +255,7 @@ export default function MasScreen({ navigation, route }) {
   ];
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}
+    <ScrollCampos style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}
       contentOffset={{ x: 0, y: scrollGuardado }} scrollEventThrottle={64}
       onScroll={(e) => { scrollGuardado = e.nativeEvent.contentOffset.y; }}>
       <View style={{ marginBottom: 4 }}>
@@ -276,34 +277,16 @@ export default function MasScreen({ navigation, route }) {
         </Grupo>
       )}
 
-      {(personal.length + accesos.length) > 0 && (
-        <Grupo titulo="Personal y accesos">
-          {[...personal, ...accesos].map((c, i) => (
+      {accesos.length > 0 && (
+        <Grupo titulo="Accesos">
+          {accesos.map((c, i) => (
             <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => navigation.navigate(c.ir)} />
-          ))}
-        </Grupo>
-      )}
-
-      {otros.length > 0 && (
-        <Grupo titulo="Otros">
-          {otros.map((c, i) => (
-            <Fila key={c.key} primera={i === 0} icono={c.icono} titulo={c.titulo} desc={c.desc} onPress={() => (c.accion ? c.accion() : navigation.navigate(c.ir))} />
           ))}
         </Grupo>
       )}
 
       <Grupo titulo="Ayuda">
         <Fila primera icono="help-circle-outline" titulo="Ayuda por módulo" desc="Recorridos paso a paso de cada módulo" onPress={() => navigation.navigate("Ayuda")} />
-      </Grupo>
-
-      <Grupo titulo="Módulos">
-        {ITEMS.filter((item) => item.to !== "Catálogos" && (!item.permiso || hasPermission(item.permiso))).map((item, i) => (
-          <Fila
-            key={item.to} primera={i === 0} icono={item.icono} titulo={item.label} desc={item.desc}
-            contador={item.to === "Citas" ? citasPendientes : undefined}
-            onPress={() => navigation.navigate(item.to)}
-          />
-        ))}
       </Grupo>
 
       <Grupo titulo="Apariencia">
@@ -372,7 +355,7 @@ export default function MasScreen({ navigation, route }) {
         <Ionicons name="log-out-outline" size={18} color={colors.red600} />
         <Text style={styles.logoutText}>Cerrar sesión</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </ScrollCampos>
   );
 }
 

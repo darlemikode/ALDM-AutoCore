@@ -10,6 +10,8 @@ import ListaCrud from "../ui/ListaCrud";
 
 const fmt = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const MESES_C = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const fechaCorta = (s) => { const m = String(s || "").slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]} ${MESES_C[Number(m[2]) - 1]} ${m[1]}` : String(s || ""); };
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 // ---- Fechas (en UTC para no depender de la zona horaria) ----
@@ -129,7 +131,12 @@ export default function NominaScreen({ navigation }) {
       idCampo="id_periodo"
       etiqueta="periodo de nómina"
       icono="cash-outline"
-      campos={(v) => camposNomina(v, empleados)}
+      pedirMotivoEliminar
+      campos={(v) => {
+        const cs = camposNomina(v, empleados);
+        if (v.id_periodo) cs.push({ name: "motivo", label: "Motivo de la corrección", type: "textarea", hint: "Obligatorio si cambias fechas, periodicidad, día de pago o empleados (mínimo 5 caracteres). Queda en Auditoría." });
+        return cs;
+      }}
       cargarExtra={() => api.get("/empleados/").then((l) => setEmpleados((l || [])
         .filter((e) => ["activo", "vacaciones", "incapacidad"].includes(e.estatus))
         .map((e) => ({ value: e.id_empleado, label: `${e.nombre} ${e.paterno || ""}`.trim() })))).catch(() => setEmpleados([]))}
@@ -140,9 +147,23 @@ export default function NominaScreen({ navigation }) {
       valoresParaEditar={(p) => ({ ...p, dia_pago: String(p.dia_pago ?? 4), empleados: (p.empleados_ids || "").split(",").filter(Boolean).map(Number) })}
       permisos={{ crear: "nomina.crear", editar: "nomina.editar", eliminar: "nomina.eliminar" }}
       alTocar={(item, nav) => nav.navigate("PeriodoNominaDetalle", { id: item.id_periodo })}
-      titulo={(p) => `${p.fecha_inicio} — ${p.fecha_fin}`}
-      subtitulo={(p) => `${p.periodicidad[0].toUpperCase()}${p.periodicidad.slice(1)}${p.dia_pago != null ? ` · paga ${["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][p.dia_pago]}` : ""}${p.recurrente ? " · se repite" : ""} · ${(p.recibos || []).length} recibo(s) · ${fmt((p.recibos || []).reduce((a, r) => a + (r.total_pagar || 0), 0))}`}
-      badge={(p) => (p.status === "pagado" ? { texto: "pagado", tono: "teal" } : { texto: "abierto", tono: "warn" })}
+      resumen={(lista) => {
+        const neto = (p) => (p.recibos || []).reduce((a, r) => a + (r.total_pagar || 0), 0);
+        const porPagar = lista.filter((p) => p.status !== "pagado").reduce((a, p) => a + (p.recibos || []).filter((r) => !r.pagado).reduce((x, r) => x + (r.total_pagar || 0), 0), 0);
+        return [
+          { etiqueta: "Periodos abiertos", valor: String(lista.filter((p) => p.status !== "pagado").length) },
+          { etiqueta: "Por pagar", valor: fmt(porPagar) },
+          { etiqueta: "Pagado", valor: fmt(lista.filter((p) => p.status === "pagado").reduce((a, p) => a + neto(p), 0)) },
+        ];
+      }}
+      titulo={(p) => `${fechaCorta(p.fecha_inicio)} — ${fechaCorta(p.fecha_fin)}`}
+      subtitulo={(p) => `${p.periodicidad[0].toUpperCase()}${p.periodicidad.slice(1)}${p.dia_pago != null && p.periodicidad === "semanal" ? ` · paga ${DIAS[p.dia_pago].toLowerCase()}` : ""}${p.recurrente ? " · se repite" : ""} · ${(p.recibos || []).length} recibo(s) · Neto ${fmt((p.recibos || []).reduce((a, r) => a + (r.total_pagar || 0), 0))}`}
+      badge={(p) => {
+        const rs = p.recibos || [];
+        const pend = rs.filter((r) => !r.pagado).length;
+        if (p.status === "pagado" || (rs.length > 0 && pend === 0)) return { texto: "pagado", tono: "teal" };
+        return { texto: rs.length && pend < rs.length ? `${pend} por pagar` : "abierto", tono: "warn" };
+      }}
       buscarEn={(p) => `${p.fecha_inicio} ${p.fecha_fin} ${p.periodicidad}`}
       textoVacio="Aún no hay periodos de nómina. Crea el primero con el botón +."
     />

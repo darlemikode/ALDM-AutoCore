@@ -32,9 +32,10 @@ export default function ListaCrud(props) {
   const {
     endpoint, idCampo, titulo, subtitulo, icono = "list-outline", etiqueta = "registro", campos, grupos,
     permisos = {}, buscarEn, prepararGuardar, valoresParaEditar, alTocar, badge, cargarExtra, hasPermission,
-    navigation, textoVacio, filtrarLista, despuesDeCrear, fotos, resumen, valoresNuevo, derecha,
+    navigation, textoVacio, filtrarLista, despuesDeCrear, fotos, resumen, valoresNuevo, derecha, pedirMotivoEliminar,
   } = props;
   const [fotosDe, setFotosDe] = useState(null);
+  const [porEliminar, setPorEliminar] = useState(null);
   const [lista, setLista] = useState([]);
   const [q, setQ] = useState("");
   const [editando, setEditando] = useState(null);
@@ -71,7 +72,16 @@ export default function ListaCrud(props) {
     if (eraNuevo && despuesDeCrear && guardado) despuesDeCrear(guardado, navigation);
   }
 
+  async function confirmarMotivo() {
+    const motivo = (porEliminar?.motivo || "").trim();
+    if (motivo.length < 5) { alerta("Motivo requerido", "Escribe el motivo (mínimo 5 caracteres). Queda registrado en Auditoría."); return; }
+    const item = porEliminar.item;
+    setPorEliminar(null);
+    try { await api.del(`${base}${item[idCampo]}?motivo=${encodeURIComponent(motivo)}`); load(); } catch (err) { alerta("Error", err.message); }
+  }
+
   function eliminar(item) {
+    if (pedirMotivoEliminar) { setPorEliminar({ item, motivo: "" }); return; }
     alerta(`Eliminar ${etiqueta}`, `¿Eliminar "${titulo(item)}"? No se puede deshacer.`, [
       { text: "Cancelar", style: "cancel" },
       { text: "Eliminar", style: "destructive", onPress: async () => {
@@ -170,6 +180,29 @@ export default function ListaCrud(props) {
         </View>
       </Modal>
 
+      <Modal visible={!!porEliminar} transparent animationType="fade" onRequestClose={() => setPorEliminar(null)}>
+        <View style={styles.motivoVelo}>
+          <View style={styles.motivoCaja}>
+            <Text style={styles.hojaTitulo}>Eliminar {etiqueta}</Text>
+            <Text style={styles.meta}>{porEliminar ? titulo(porEliminar.item) : ""}</Text>
+            <Text style={[styles.meta, { marginTop: 10 }]}>Motivo de la eliminación (mínimo 5 caracteres). Queda en Auditoría.</Text>
+            <TextInput
+              style={styles.motivoInput}
+              value={porEliminar?.motivo || ""}
+              onChangeText={(m) => setPorEliminar((p) => (p ? { ...p, motivo: m } : p))}
+              placeholder="Ej. Periodo creado por error"
+              placeholderTextColor={colors.ink500}
+              multiline
+              autoFocus
+            />
+            <View style={styles.motivoBotones}>
+              <TouchableOpacity onPress={() => setPorEliminar(null)} style={styles.motivoBtn}><Text style={styles.motivoBtnTxt}>Cancelar</Text></TouchableOpacity>
+              <TouchableOpacity onPress={confirmarMotivo} style={[styles.motivoBtn, { backgroundColor: colors.red600 }]}><Text style={[styles.motivoBtnTxt, { color: "#fff" }]}>Eliminar</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <HojaFormulario
         visible={!!editando}
         titulo={editando?.[idCampo] ? `Editar ${etiqueta}` : `Nuevo ${etiqueta}`}
@@ -205,6 +238,12 @@ const styles = crearEstilos({
   hojaFotos: { maxHeight: "85%", backgroundColor: colors.paper100, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   hojaCabecera: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.ink300 },
   hojaTitulo: { flex: 1, fontSize: 17, fontWeight: "700", color: colors.ink900 },
+  motivoVelo: { flex: 1, backgroundColor: colors.velo, justifyContent: "center", padding: spacing.lg },
+  motivoCaja: { backgroundColor: colors.paper100, borderRadius: 16, padding: spacing.lg },
+  motivoInput: { marginTop: 8, minHeight: 80, backgroundColor: colors.paper0, borderRadius: 10, padding: 12, fontSize: 15, color: colors.ink900, textAlignVertical: "top" },
+  motivoBotones: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 14 },
+  motivoBtn: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 10, backgroundColor: colors.paper0 },
+  motivoBtnTxt: { fontSize: 15, fontWeight: "700", color: colors.ink900 },
   vacio: { alignItems: "center", gap: 8, paddingTop: 60 },
   vacioTexto: { fontSize: 14, color: colors.ink500, textAlign: "center", paddingHorizontal: 20 },
   fab: {

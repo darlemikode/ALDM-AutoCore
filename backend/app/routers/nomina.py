@@ -376,6 +376,8 @@ def actualizar_recibo(recibo_id: int, payload: schemas.ReciboNominaUpdate, db: S
     recibo.horas_extra = payload.horas_extra
     if payload.comisiones is not None:
         recibo.comisiones = payload.comisiones
+    if payload.sueldo_base is not None:
+        recibo.sueldo_base = max(payload.sueldo_base, 0)
     recibo.destajo = payload.destajo
     recibo.destajo_nota = payload.destajo_nota
     recibo.prestamo = payload.prestamo

@@ -4,6 +4,7 @@ import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput,
 } from "react-native";
 import { api } from "../api";
+import ScrollCampos from "../ui/ScrollCampos";
 import { colors, spacing } from "../theme";
 import { crearEstilos } from "../ui/estilos";
 
@@ -114,7 +115,7 @@ export default function AsistenteScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg }}>
+    <ScrollCampos style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
       <View style={styles.encabezado}>
         <View>
           <Text style={styles.subtitle}>Consultas rápidas de uso interno — solo para el staff</Text>
@@ -160,7 +161,7 @@ export default function AsistenteScreen() {
           </TouchableOpacity>
         ))}
       </View>
-    </ScrollView>
+    </ScrollCampos>
   );
 }
 

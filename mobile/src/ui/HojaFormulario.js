@@ -214,7 +214,7 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
     const comunes = {
       ref: (r) => { refs.current[c.name] = r; },
       editable: !c.disabled,
-      placeholder: c.placeholder,
+      placeholder: c.placeholder ?? (c.type === "number" ? "0" : undefined),
       placeholderTextColor: colors.ink500,
       style: [styles.input, conError && styles.inputError, c.type === "textarea" && styles.textarea, c.disabled && { opacity: 0.55 }],
     };
@@ -249,6 +249,8 @@ export default function HojaFormulario({ visible, titulo, subtitulo, icono = "cr
           {...comunes}
           value={valor == null ? "" : String(valor)}
           onChangeText={(v) => actualizar(c, c.type === "phone" ? soloDigitos(v) : v)}
+          selectTextOnFocus={c.type === "number"}
+          onFocus={c.type === "number" ? () => { if (valor !== "" && valor != null && Number(String(valor).replace(",", ".")) === 0) actualizar(c, ""); } : undefined}
           multiline={c.type === "textarea"}
           keyboardType={c.type === "number" ? "decimal-pad" : c.type === "email" ? "email-address" : c.type === "phone" ? "phone-pad" : "default"}
           maxLength={c.type === "phone" ? 10 : c.maxLength}

@@ -12,6 +12,7 @@ import VisorFoto from "./VisorFoto";
 import { ZONAS, zonasDe, peorEstado } from "../lib/zonas";
 import { urlFoto, elegirOrigenFoto, capturarFoto, subirFoto } from "../lib/fotos";
 import { alerta } from "../ui/Dialogo";
+import { contiene } from "../lib/texto";
 
 const ESTADOS = {
   bien: { icono: "checkmark-circle-outline", texto: "Bien", tono: "teal600", fondo: "teal100" },
@@ -43,6 +44,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
   const [fotosPuntos, setFotosPuntos] = useState({}); // { id_item: [foto] } — fotos de puntos en Regular/Mal
   const [subiendoFoto, setSubiendoFoto] = useState(null);
   const [visor, setVisor] = useState(null); // { fotos: [url], indice }
+  const [busqueda, setBusqueda] = useState(""); // filtro escrito por nombre o categoría
   const [soloProblemas, setSoloProblemas] = useState(false); // ver solo puntos en Regular/Mal
 
   const idRef = useRef(inspeccionExistente?.id_inspeccion || null);
@@ -196,7 +198,9 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
   items.forEach((it) => zonasDe(it.categoria, it.nombre_item).forEach((z) => { (itemsPorZona[z] = itemsPorZona[z] || []).push(it); }));
   const estadoZona = (z) => peorEstado((itemsPorZona[z] || []).map((it) => resultados[it.id_item]?.estado || "bien"));
   const itemsZona = zona && itemsPorZona[zona] ? itemsPorZona[zona] : items;
-  const itemsVisibles = soloProblemas ? itemsZona.filter((i) => (resultados[i.id_item]?.estado || "bien") !== "bien") : itemsZona;
+  const palabrasBusq = busqueda.trim().split(/\s+/).filter(Boolean);
+  const conBusqueda = palabrasBusq.length ? itemsZona.filter((i) => palabrasBusq.every((p) => contiene(`${i.nombre_item} ${i.categoria || ""}`, p))) : itemsZona;
+  const itemsVisibles = soloProblemas ? conBusqueda.filter((i) => (resultados[i.id_item]?.estado || "bien") !== "bien") : conBusqueda;
   function marcarZona(z, estado) {
     if (!puedeEditar) return;
     setResultados((prev) => {
@@ -281,6 +285,12 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
           )}
         </View>
 
+        <View style={styles.buscadorPuntos}>
+          <Ionicons name="search-outline" size={18} color={colors.ink500} />
+          <TextInput style={styles.buscadorPuntosTexto} value={busqueda} onChangeText={setBusqueda} placeholder="Buscar punto (ej. frenos, batería, llantas)…" placeholderTextColor={colors.ink500} autoCorrect={false} />
+          {!!busqueda && <TouchableOpacity onPress={() => setBusqueda("")} hitSlop={8}><Ionicons name="close-circle-outline" size={18} color={colors.ink500} /></TouchableOpacity>}
+        </View>
+
         <View style={styles.barraFiltro}>
           <Text style={styles.hint} numberOfLines={2}>Toca el estado de cada punto; se guarda al instante.</Text>
           <TouchableOpacity style={[styles.chipFiltro, soloProblemas && { backgroundColor: colors.petrol500, borderColor: colors.petrol500 }]} onPress={() => setSoloProblemas((v) => !v)} activeOpacity={0.8}>
@@ -292,7 +302,7 @@ export default function InspeccionForm({ visible, idVehiculo, idServicio, inspec
         {categorias.length === 0 && (
           <View style={styles.vacio}>
             <Ionicons name="checkmark-done-outline" size={28} color={colors.teal600} />
-            <Text style={styles.vacioTexto}>Todo en orden: no hay puntos en Regular ni en Mal.</Text>
+            <Text style={styles.vacioTexto}>{busqueda.trim() ? "Ningún punto coincide con la búsqueda." : "Todo en orden: no hay puntos en Regular ni en Mal."}</Text>
           </View>
         )}
 
@@ -436,6 +446,8 @@ const styles = crearEstilos({
   screen: { flex: 1, backgroundColor: colors.paper0 },
   barraFiltro: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: spacing.md },
   hint: { flex: 1, fontSize: 12, color: colors.ink500 },
+  buscadorPuntos: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.paper100, borderWidth: 1.5, borderColor: colors.petrol300, borderRadius: 12, paddingHorizontal: 12, height: 44, marginBottom: 10 },
+  buscadorPuntosTexto: { flex: 1, fontSize: 15, color: colors.ink900, height: "100%" },
   chipFiltro: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.ink300, backgroundColor: colors.paper100, borderRadius: 100, paddingVertical: 6, paddingHorizontal: 12 },
   chipFiltroTexto: { fontSize: 12, fontWeight: "700", color: colors.ink700 },
   vacio: { alignItems: "center", gap: 8, paddingVertical: 30 },

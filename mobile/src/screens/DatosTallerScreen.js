@@ -183,14 +183,7 @@ export default function DatosTallerScreen() {
       <Text style={styles.subtitulo}>Aparecen en el membrete de las notas y recibos que se le entregan al cliente. Los cambios se guardan solos.</Text>
 
       <View style={styles.logoBox}>
-        {uriLogo ? (
-          <Image source={{ uri: uriLogo }} style={styles.logoImg} resizeMode="contain" />
-        ) : (
-          <Text style={styles.logoVacio}>Sin logo</Text>
-        )}
-        <TouchableOpacity style={styles.botonLogo} onPress={elegirLogo} disabled={subiendoLogo}>
-          <Text style={styles.botonLogoTexto}>{subiendoLogo ? "Subiendo…" : "Cambiar logo"}</Text>
-        </TouchableOpacity>
+        <Text style={styles.logoMarca}>ALDM <Text style={{ color: colors.petrol500 }}>AutoCore</Text></Text>
       </View>
 
       <Campo label="Nombre del taller">
@@ -284,6 +277,8 @@ const styles = crearEstilos({
   subtitulo: { fontSize: 12.5, color: colors.ink500, marginTop: 4, marginBottom: spacing.lg },
   logoBox: { alignItems: "center", backgroundColor: colors.paper100, borderRadius: 10, padding: spacing.lg, marginBottom: spacing.lg },
   logoImg: { width: 120, height: 120, marginBottom: spacing.sm },
+  logoMarca: { fontSize: 26, fontWeight: "800", color: colors.ink900, letterSpacing: 0.5 },
+  logoNota: { fontSize: 12, color: colors.ink500, marginTop: 6, textAlign: "center" },
   logoVacio: { color: colors.ink500, fontSize: 13, marginBottom: spacing.sm, width: 120, height: 120, textAlign: "center", textAlignVertical: "center" },
   botonLogo: { backgroundColor: colors.paper0, borderWidth: 1, borderColor: colors.ink300, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 16 },
   botonLogoTexto: { fontSize: 12.5, fontWeight: "700", color: colors.ink700 },

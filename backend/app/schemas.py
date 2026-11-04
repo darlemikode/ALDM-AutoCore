@@ -709,6 +709,7 @@ class CotizacionUpdate(BaseModel):
     iva_porcentaje: Optional[float] = None
     comentarios: Optional[str] = None
     vigente_hasta: Optional[datetime] = None
+    fecha_cotizacion: Optional[datetime] = None  # fecha de servicio: editable
 
 
 class CotizacionOut(CotizacionIn, ORMBase):
@@ -1121,6 +1122,7 @@ class ReciboNominaUpdate(BaseModel):
     faltas: float = 0
     horas_extra: float = 0
     comisiones: Optional[float] = None  # None = conservar la calculada
+    sueldo_base: Optional[float] = None  # None = conservar el sueldo del recibo
     destajo: float = 0
     destajo_nota: Optional[str] = None
     prestamo: float = 0

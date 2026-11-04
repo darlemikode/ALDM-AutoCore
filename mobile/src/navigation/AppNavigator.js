@@ -500,7 +500,7 @@ export default function AppNavigator() {
     >
       <Drawer.Navigator
         id="RootDrawer"
-        screenOptions={{ headerShown: false, drawerType: "front", drawerStyle: { width: 300, backgroundColor: colors.sidebarBg, borderRightWidth: 2, borderRightColor: colors.petrol500, elevation: 24, shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 24, shadowOffset: { width: 8, height: 0 } }, overlayColor: "rgba(0,0,0,0.68)" }}
+        screenOptions={{ headerShown: false, swipeEnabled: false, drawerType: "front", drawerStyle: { width: 300, backgroundColor: colors.sidebarBg, borderRightWidth: 2, borderRightColor: colors.petrol500, elevation: 24, shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 24, shadowOffset: { width: 8, height: 0 } }, overlayColor: "rgba(0,0,0,0.68)" }}
         drawerContent={(props) => <ContenidoDrawer {...props} />}
       >
         <Drawer.Screen name="Taller" component={TallerTabs} />
