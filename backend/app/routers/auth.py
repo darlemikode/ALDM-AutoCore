@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas, password_tokens
 from ..database import get_db, get_db_global
-from ..notifications import notificar_admin_recuperacion, enviar_correo_restablecer, enviar_correo_password_cambiada
+from ..notifications import notificar_admin_recuperacion, enviar_correo_restablecer, enviar_correo_password_cambiada, enviar_correo_bienvenida
 from ..security import (
     authenticate_user, get_current_user, get_current_user_sin_taller, require_permission, token_usuario,
     hash_password, verify_password, generar_password_temporal, invalidar_tokens,
@@ -491,9 +491,14 @@ def resolver_solicitud_recuperacion(solicitud_id: int, db: Session = Depends(get
 def solicitar_acceso_por_correo(request: Request, payload: schemas.SolicitarAccesoIn, db: Session = Depends(get_db)):
     fijar_tenant(db, MODO_SUPERADMIN)  # usuarios y membresías son globales
     correo = (payload.correo or "").strip()
-    respuesta = {"detail": "Si el correo coincide con una cuenta, te mandamos un enlace para restablecer tu contraseña."}
+    respuesta = {"detail": "Si el correo coincide con una cuenta, te mandamos un enlace para " + ("crear tu contraseña." if payload.nuevo else "restablecer tu contraseña.")}
     usuario = db.query(models.Usuario).filter(models.Usuario.correo.ilike(correo)).first() if correo else None
     if not usuario or not usuario.activo:
+        return respuesta
+    if payload.nuevo:
+        # Usuario recién dado de alta que perdió o no recibió su correo de bienvenida: se reenvía a su propio correo
+        token = password_tokens.generar_token(usuario, password_tokens.TIPO_SETUP)
+        enviar_correo_bienvenida(usuario.correo, usuario.nombre_completo, token)
         return respuesta
     token = password_tokens.generar_token(usuario, password_tokens.TIPO_RESET)
     enviar_correo_restablecer(usuario.correo, usuario.nombre_completo, token)

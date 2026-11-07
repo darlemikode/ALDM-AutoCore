@@ -216,6 +216,7 @@ class TempPasswordOut(BaseModel):
 class SolicitarAccesoIn(BaseModel):
     """Self-service: el usuario pide su enlace de restablecimiento con su correo."""
     correo: str
+    nuevo: bool = False  # "Soy usuario nuevo": el enlace es para crear la contraseña
 
 
 class ValidarTokenOut(BaseModel):

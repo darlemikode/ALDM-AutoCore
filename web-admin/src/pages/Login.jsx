@@ -23,6 +23,7 @@ export default function Login() {
   const [ver, setVer] = useState({ login: false, act: false, actConfirmar: false });
 
   const [recovering, setRecovering] = useState(false);
+  const [esNuevo, setEsNuevo] = useState(false); // "Soy usuario nuevo": el enlace sirve para crear la contraseña
   const [identificador, setIdentificador] = useState("");
   const [recoveryMsg, setRecoveryMsg] = useState("");
   const [recoveryLoading, setRecoveryLoading] = useState(false);
@@ -89,7 +90,7 @@ export default function Login() {
     setRecoveryLoading(true);
     setRecoveryMsg("");
     try {
-      const res = await api.post("/auth/password/solicitar", { correo: identificador });
+      const res = await api.post("/auth/password/solicitar", { correo: identificador, nuevo: esNuevo });
       setRecoveryMsg(res.detail);
     } catch (err) {
       setRecoveryMsg(err.message);
@@ -241,9 +242,12 @@ export default function Login() {
             <button
               type="button"
               className="btn-link"
-              onClick={() => { setRecovering(true); setRecoveryMsg(""); setIdentificador(""); }}
+              onClick={() => { setEsNuevo(false); setRecovering(true); setRecoveryMsg(""); setIdentificador(""); }}
             >
               ¿Olvidaste tu contraseña?
+            </button>
+            <button type="button" className="btn-link" onClick={() => { setEsNuevo(true); setRecovering(true); setRecoveryMsg(""); setIdentificador(""); }}>
+              Soy usuario nuevo
             </button>
             <button type="button" className="btn-link" onClick={() => { setActivando(true); setErrorAct(""); }}>
               ¿Primera vez? Activa tu taller
@@ -252,10 +256,11 @@ export default function Login() {
         ) : (
           <>
             <form onSubmit={handleRecoverySubmit}>
+              {esNuevo && <p className="recovery-msg" style={{ marginBottom: 12 }}>Escribe el correo con el que te dieron de alta y te enviamos un enlace para crear tu contraseña.</p>}
               <div className="field-stack">
                 <div className="field">
                   <label>Correo electrónico</label>
-                  <input type="email" value={identificador} onChange={(e) => setIdentificador(e.target.value)} required autoFocus autoCapitalize="none" placeholder="Con el que entras al sistema" />
+                  <input type="email" value={identificador} onChange={(e) => setIdentificador(e.target.value)} required autoFocus autoCapitalize="none" placeholder={esNuevo ? "El correo con el que te dieron de alta" : "Con el que entras al sistema"} />
                 </div>
               </div>
               {recoveryMsg && <div className="recovery-msg">{recoveryMsg}</div>}
