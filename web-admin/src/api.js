@@ -25,55 +25,17 @@ function invalidar(path) {
   for (const k of cacheGet.keys()) if (base(k).startsWith(b)) cacheGet.delete(k);
 }
 function pedirConCache(path) {
+  // Solo los catálogos (listas chicas) pasan por el caché; todo lo demás va directo, sin copiar nada
+  if (!esCatalogo(path)) return request(path);
   const guardado = cacheGet.get(path);
   if (guardado?.enVuelo) return guardado.enVuelo.then(copia);
-  if (guardado && esCatalogo(path) && Date.now() - guardado.t < VIGENCIA_MS) return Promise.resolve(copia(guardado.datos));
+  if (guardado && Date.now() - guardado.t < VIGENCIA_MS) return Promise.resolve(copia(guardado.datos));
   const promesa = request(path);
   cacheGet.set(path, { enVuelo: promesa, t: 0 });
   return promesa.then(
-    (datos) => { if (esCatalogo(path)) cacheGet.set(path, { t: Date.now(), datos }); else cacheGet.delete(path); return copia(datos); },
+    (datos) => { cacheGet.set(path, { t: Date.now(), datos: copia(datos) }); return datos; },
     (err) => { cacheGet.delete(path); throw err; },
   );
-}
-
-async function request(path, { method = "GET", body, isForm = false } = {}) {
-  const headers = {};
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  if (body && !isForm) headers["Content-Type"] = "application/json";
-
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers,
-    body: isForm ? body : body ? JSON.stringify(body) : undefined,
-  });
-
-  if (res.status === 204) return null;
-
-  let data = null;
-  try {
-    data = await res.json();
-  } catch {
-    // sin cuerpo de respuesta
-  }
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      // Si el token ya cambió desde que salió esta petición (p. ej. se
-      // acaba de cambiar la contraseña y esta era una petición vieja que
-      // seguía en vuelo), este 401 es de esa petición vieja: no hay que
-      // cerrar la sesión nueva por ella.
-      if (getToken() === token && !window.location.pathname.startsWith("/seguimiento/") && !window.location.pathname.startsWith("/domicilio/")) {
-        setToken(null);
-        window.location.href = "/login";
-      }
-    }
-    const message = data?.detail || "Ocurrió un error inesperado";
-    const error = new Error(typeof message === "string" ? message : JSON.stringify(message));
-    error.status = res.status;
-    throw error;
-  }
-  return data;
 }
 
 const escribir = (path, opciones) => request(path, opciones).finally(() => invalidar(path));

@@ -18,6 +18,28 @@ def _asignar_proveedores(db: Session, refaccion, ids_extra):
     refaccion.proveedores = db.query(models.Proveedor).filter(models.Proveedor.id_proveedor.in_(ids)).all() if ids else []
 
 
+@router.get("/ligero")
+def listar_ligero(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Solo lo necesario para llenar selectores (id, nombre, categoría, número): una consulta simple,
+    sin proveedores ni compatibilidades. Es lo que usan Inventario y demás pantallas que solo eligen una refacción."""
+    filas = (
+        db.query(
+            models.Refaccion.id_refaccion, models.Refaccion.nombre_refaccion,
+            models.Refaccion.categoria, models.Refaccion.subcategoria, models.Refaccion.numero_refaccion,
+        )
+        .order_by(models.Refaccion.nombre_refaccion)
+        .all()
+    )
+    return [
+        {"id_refaccion": r.id_refaccion, "nombre_refaccion": r.nombre_refaccion, "categoria": r.categoria,
+         "subcategoria": r.subcategoria, "numero_refaccion": r.numero_refaccion}
+        for r in filas
+    ]
+
+
 @router.get("/", response_model=list[schemas.RefaccionOut])
 def listar(
     q: Optional[str] = None,
@@ -25,19 +47,31 @@ def listar(
     db: Session = Depends(get_db),
     user=Depends(require_permission("refacciones.ver")),
 ):
+    # Primero se filtra con una consulta ligera (solo id, nombre y número); la carga pesada de
+    # proveedores y compatibilidades se hace únicamente para las refacciones que sí coinciden.
+    ligera = db.query(models.Refaccion.id_refaccion, models.Refaccion.nombre_refaccion, models.Refaccion.numero_refaccion)
+    if bajo_stock:
+        ligera = ligera.filter(models.Refaccion.cantidad_refaccion <= 3)
+    filas = ligera.order_by(models.Refaccion.nombre_refaccion).all()
+    if q:
+        filas = [r for r in filas if coincide(q, r.nombre_refaccion, r.numero_refaccion)]
+    ids = [r.id_refaccion for r in filas]
+    if not ids:
+        return []
     query = db.query(models.Refaccion).options(
         selectinload(models.Refaccion.proveedores),
-        selectinload(models.Refaccion.compatibilidades).joinedload(models.RefaccionCompatibilidad.marca_vehiculo),
-        selectinload(models.Refaccion.compatibilidades).joinedload(models.RefaccionCompatibilidad.modelo_vehiculo),
+        selectinload(models.Refaccion.compatibilidades).options(
+            joinedload(models.RefaccionCompatibilidad.marca_vehiculo),
+            joinedload(models.RefaccionCompatibilidad.modelo_vehiculo),
+        ),
         joinedload(models.Refaccion.marca_vehiculo_compatible),
         joinedload(models.Refaccion.modelo_vehiculo_compatible),
     )
-    if bajo_stock:
-        query = query.filter(models.Refaccion.cantidad_refaccion <= 3)
-    lista = query.order_by(models.Refaccion.nombre_refaccion).all()
-    if q:
-        lista = [r for r in lista if coincide(q, r.nombre_refaccion, r.numero_refaccion)]
-    return lista
+    por_id = {}
+    for i in range(0, len(ids), 800):  # SQL Server admite ~2100 parámetros por consulta
+        for r in query.filter(models.Refaccion.id_refaccion.in_(ids[i:i + 800])).all():
+            por_id[r.id_refaccion] = r
+    return [por_id[i] for i in ids if i in por_id]
 
 
 @router.get("/{refaccion_id}", response_model=schemas.RefaccionOut)

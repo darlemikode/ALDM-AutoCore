@@ -1,6 +1,6 @@
 import { contiene, norm } from "../lib/texto";
 import { IconoAuto } from "../components/Icono";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import Combo, { opMarca } from "../components/Combo";
 import DataTable from "../components/DataTable";
@@ -53,32 +53,36 @@ export default function Inventario() {
   const [etiquetaDe, setEtiquetaDe] = useState(null); // id a preseleccionar en Etiquetas
   const [ventasVersion, setVentasVersion] = useState(0);
 
+  // Lo primero en llegar es el inventario: se muestra de inmediato y lo demás se completa por detrás
   async function load() {
-    const [inv, refs, cat, marcasRef, marcasVeh, modelosVeh, provs] = await Promise.all([
-      api.get("/inventario-refacciones/"),
-      api.get("/refacciones/"),
+    const inv = await api.get("/inventario-refacciones/");
+    setFilas(inv);
+    setLoading(false);
+    cargarFotos();
+  }
+  // Catálogos y selectores: peticiones ligeras (la lista de refacciones va sin proveedores ni compatibilidades)
+  async function cargarCatalogos() {
+    const [refs, cat, marcasRef, marcasVeh, modelosVeh, provs] = await Promise.all([
+      api.get("/refacciones/ligero"),
       api.get("/refacciones-categorias/"),
       api.get("/refacciones-marcas/"),
       api.get("/vehiculos-marcas/"),
       api.get("/vehiculos-modelos/"),
       api.get("/proveedores/"),
     ]);
-    setFilas(inv);
     setRefacciones(refs);
     setCategorias(cat);
     setMarcasRefaccion(marcasRef);
     setMarcasVehiculo(marcasVeh);
     setModelosVehiculo(modelosVeh);
     setProveedores(provs);
-    setLoading(false);
-    cargarFotos();
   }
 
   async function cargarFotos() {
     try { setFotos(await api.get("/fotos/principales?entidad_tipo=inventario")); } catch { /* sin fotos no pasa nada */ }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); cargarCatalogos().catch(() => {}); }, []);
 
   function estaBajoStock(r) {
     return r.cantidad <= (r.umbral_rojo ?? 1);
@@ -101,10 +105,23 @@ export default function Inventario() {
     const coincideStock = !soloBajoStock || (r.cantidad || 0) <= (r.umbral_naranja ?? 4);
     return coincideTexto && coincideCategoria && coincideRefaccion && coincideVehiculo && coincideStock;
   });
+  // Solo se dibuja un bloque a la vez (y sus fotos); al llegar al final de la lista se agrega el siguiente
+  const [visibles, setVisibles] = useState(60);
+  const centinela = useRef(null);
+  const filtrosClave = `${q}|${filtroCategoria}|${fRefaccion}|${fMarca}|${fModelo}|${soloBajoStock}`;
+  useEffect(() => { setVisibles(60); }, [filtrosClave]);
+  useEffect(() => {
+    const el = centinela.current;
+    if (!el || typeof IntersectionObserver === "undefined") return undefined;
+    const obs = new IntersectionObserver((e) => { if (e[0].isIntersecting) setVisibles((v) => v + 60); }, { rootMargin: "400px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  });
+  const filasVista = filasFiltradas.slice(0, visibles);
   // Agrupadas por categoría — igual que el modal de "Agregar refacciones"
   // en la orden, para que ambas pantallas se vean y se naveguen igual.
   const gruposPorCategoria = {};
-  filasFiltradas.forEach((r) => {
+  filasVista.forEach((r) => {
     const clave = r.refaccion?.categoria || "Sin categoría";
     if (!gruposPorCategoria[clave]) gruposPorCategoria[clave] = [];
     gruposPorCategoria[clave].push(r);
@@ -404,7 +421,7 @@ export default function Inventario() {
           <div className="empty-state">Aún no hay refacciones en el inventario — da de alta la primera.</div>
         ) : vista === "cuadros" ? (
           <div className="veh-cuadros">
-            {filasFiltradas.map((r) => {
+            {filasVista.map((r) => {
               const cat = r.refaccion?.categoria || "Sin categoría";
               const est = estadoStock(r);
               const foto = fotos[r.id_inventario_refaccion];
@@ -472,6 +489,11 @@ export default function Inventario() {
               />
             </div>
           ))
+        )}
+        {filasFiltradas.length > visibles && (
+          <div ref={centinela} style={{ textAlign: "center", padding: 12 }}>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setVisibles((v) => v + 60)}>Mostrar más ({filasFiltradas.length - visibles} restantes)</button>
+          </div>
         )}
       </div>}
 

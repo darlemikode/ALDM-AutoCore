@@ -64,25 +64,30 @@ export default function Refacciones() {
   const [loading, setLoading] = useState(true);
   const [catSel, setCatSel] = useState([]);
 
+  // Solo la lista depende de la búsqueda: con cada letra se pide únicamente ella
   async function load() {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
-    const [r, m, p, cat, marcasVeh, modelosVeh] = await Promise.all([
-      api.get(`/refacciones/?${params}`),
+    const r = await api.get(`/refacciones/?${params}`);
+    setRefacciones(r);
+    setLoading(false);
+  }
+  // Los catálogos se piden una sola vez y en paralelo con la lista (sin bloquearla)
+  async function cargarCatalogos() {
+    const [m, p, cat, marcasVeh, modelosVeh] = await Promise.all([
       api.get("/refacciones-marcas/"),
       api.get("/proveedores/").catch(() => []), // Arranque no incluye Proveedores
       api.get("/refacciones-categorias/"),
       api.get("/vehiculos-marcas/"),
       api.get("/vehiculos-modelos/"),
     ]);
-    setRefacciones(r);
     setMarcas(m);
     setProveedores(p);
     setCategoriasRefaccion(cat);
     setMarcasVehiculo(marcasVeh);
     setModelosVehiculo(modelosVeh);
-    setLoading(false);
   }
+  useEffect(() => { cargarCatalogos().catch(() => {}); }, []);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
