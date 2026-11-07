@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import ClienteFormModal from "../components/ClienteFormModal";
@@ -32,6 +32,11 @@ export default function Clientes() {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState(null); // null = cerrado, {} = crear, {...} = editar
   const [loading, setLoading] = useState(true);
+  const [totales, setTotales] = useState({ total: 0, activados: 0 });
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const PAGINA = 30; // la lista se trae por bloques de 30 al ir bajando
+  const centinela = useRef(null);
+  const cuantos = useRef(0);
   // Desde el Panel: /clientes?abrir_nuevo=1 abre directo el alta de cliente
   useEffect(() => {
     if (params.get("abrir_nuevo") === "1" && hasPermission("clientes.crear")) {
@@ -45,13 +50,39 @@ export default function Clientes() {
   const [invitacion, setInvitacion] = useState(null); // { cliente, codigo_invitacion }
   const [ofrecerVehiculo, setOfrecerVehiculo] = useState(null); // { id_cliente, nombre_cliente, numero_cuenta } tras crear un cliente
 
+  const filtro = () => `${q ? `q=${encodeURIComponent(q)}&` : ""}solo_activos=true`;
+  // Recarga lo que ya se había mostrado (mínimo un bloque) y los totales
   async function load() {
-    const data = await api.get(`/clientes/?${q ? `q=${encodeURIComponent(q)}&` : ""}solo_activos=true`);
+    const limite = Math.min(2000, Math.max(PAGINA, cuantos.current));
+    const [data, tot] = await Promise.all([
+      api.get(`/clientes/?${filtro()}&limite=${limite}`),
+      api.get(`/clientes/conteo?${filtro()}`),
+    ]);
+    cuantos.current = data.length;
     setClientes(data);
+    setTotales(tot);
     setLoading(false);
   }
+  async function cargarMas() {
+    if (cargandoMas || clientes.length >= totales.total) return;
+    setCargandoMas(true);
+    try {
+      const mas = await api.get(`/clientes/?${filtro()}&limite=${PAGINA}&offset=${clientes.length}`);
+      cuantos.current = clientes.length + mas.length;
+      setClientes((prev) => [...prev, ...mas.filter((m) => !prev.some((p) => p.id_cliente === m.id_cliente))]);
+    } finally { setCargandoMas(false); }
+  }
+  useEffect(() => {
+    const el = centinela.current;
+    if (!el || typeof IntersectionObserver === "undefined") return undefined;
+    const obs = new IntersectionObserver((e) => { if (e[0].isIntersecting) cargarMas(); }, { rootMargin: "300px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
 
   useEffect(() => {
+    cuantos.current = 0; // al cambiar la búsqueda se vuelve al primer bloque
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,14 +148,14 @@ export default function Clientes() {
     navigate(`/servicios?nueva=1&cliente=${cliente.id_cliente}`);
   }
 
-  const activados = clientes.filter((c) => c.cuenta_activada).length;
+  const activados = totales.activados;
 
   return (
     <>
       <div className="page-header">
         <div>
           <h1><IconoModulo ruta="/clientes" /> Clientes</h1>
-          <div className="subtitle">{clientes.length} cliente(s) activos</div>
+          <div className="subtitle">{totales.total} cliente(s) activos</div>
         </div>
         {hasPermission("clientes.crear") && (
         <button className="btn btn-primary btn-nuevo" onClick={() => setEditing({})}>
@@ -134,11 +165,11 @@ export default function Clientes() {
 
       <div className="kpi-grid">
         <div className="kpi-card"><span className="kpi-icono"><Icono nombre="people" size={22} /></span>
-          <div className="kpi-label">Clientes activos</div><div className="kpi-value">{clientes.length}</div></div>
+          <div className="kpi-label">Clientes activos</div><div className="kpi-value">{totales.total}</div></div>
         <div className="kpi-card ok"><span className="kpi-icono"><Icono nombre="sparkles" size={22} /></span>
           <div className="kpi-label">Con app activada</div><div className="kpi-value">{activados}</div></div>
         <div className="kpi-card alert"><span className="kpi-icono"><Icono nombre="notifications" size={22} /></span>
-          <div className="kpi-label">Sin activar</div><div className="kpi-value">{clientes.length - activados}</div></div>
+          <div className="kpi-label">Sin activar</div><div className="kpi-value">{totales.total - activados}</div></div>
       </div>
 
       <div className="panel">
@@ -195,6 +226,9 @@ export default function Clientes() {
                 </div>
               );
             })}
+            <div ref={centinela} style={{ textAlign: "center", padding: 10, fontSize: 12, opacity: .65 }}>
+              {clientes.length < totales.total ? (cargandoMas ? "Cargando más…" : <button type="button" className="btn btn-secondary btn-sm" onClick={cargarMas}>Mostrar más ({totales.total - clientes.length} restantes)</button>) : ""}
+            </div>
           </div>
         )}
       </div>

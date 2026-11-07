@@ -13,15 +13,7 @@ from datetime import datetime
 router = APIRouter(prefix="/api/clientes", tags=["clientes"])
 
 
-@router.get("/", response_model=list[schemas.ClienteOut])
-def listar(
-    q: Optional[str] = None,
-    solo_activos: bool = False,
-    limite: Optional[int] = Query(None, ge=1, le=2000),
-    offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db),
-    user=Depends(require_permission("clientes.ver")),
-):
+def _consulta(db: Session, q: Optional[str], solo_activos: bool):
     query = db.query(models.Cliente)
     if solo_activos:
         query = query.filter(models.Cliente.status_cliente == 1)
@@ -38,6 +30,33 @@ def listar(
                 models.Cliente.numero_cuenta.ilike(like),
             )
         )
+    return query
+
+
+@router.get("/conteo")
+def conteo(
+    q: Optional[str] = None,
+    solo_activos: bool = False,
+    db: Session = Depends(get_db),
+    user=Depends(require_permission("clientes.ver")),
+):
+    """Totales para las tarjetas de la pantalla de clientes sin traer la lista completa."""
+    query = _consulta(db, q, solo_activos)
+    total = query.count()
+    activados = query.filter(models.Cliente.cuenta_activada.is_(True)).count()
+    return {"total": total, "activados": activados}
+
+
+@router.get("/", response_model=list[schemas.ClienteOut])
+def listar(
+    q: Optional[str] = None,
+    solo_activos: bool = False,
+    limite: Optional[int] = Query(None, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    user=Depends(require_permission("clientes.ver")),
+):
+    query = _consulta(db, q, solo_activos)
     query = query.order_by(models.Cliente.nombre_cliente, models.Cliente.id_cliente)
     if limite:
         query = query.offset(offset).limit(limite)

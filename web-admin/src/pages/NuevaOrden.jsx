@@ -52,7 +52,8 @@ export default function NuevaOrden() {
     ]);
     setClientes(c); setVehiculos(v); setMarcas(m); setModelos(mo);
   }
-  useEffect(() => { cargar(); precargarEnvio(); }, []);
+  // A domicilio el cliente/vehículo se eligen en la ventana (que pide sus propios datos por bloques): aquí no se trae nada de más
+  useEffect(() => { if (!soloDomicilio) cargar(); precargarEnvio(); }, []);
 
   const cliente = clientes.find((c) => c.id_cliente === Number(idCliente));
   const vehiculo = vehiculos.find((v) => v.id_vehiculo === Number(idVehiculo));
@@ -266,7 +267,9 @@ export default function NuevaOrden() {
 
       {domicilio && eligiendo && (
         <ElegirClienteVehiculo idCliente={idCliente ? Number(idCliente) : null} idVehiculo={idVehiculo ? Number(idVehiculo) : null}
-          onConfirmar={async ({ id_cliente, id_vehiculo }) => { await cargar(); setIdCliente(id_cliente); setIdVehiculo(id_vehiculo || ""); setEligiendo(false); }}
+          onConfirmar={async ({ id_cliente, id_vehiculo }) => {
+            const [c, v] = await Promise.all([api.get(`/clientes/${id_cliente}`), api.get(`/vehiculos/?id_cliente=${id_cliente}`)]);
+            setClientes([c]); setVehiculos(v); setIdCliente(id_cliente); setIdVehiculo(id_vehiculo || ""); setEligiendo(false); }}
           onCerrar={() => { setEligiendo(false); if (!idCliente || !idVehiculo) navigate("/domicilios"); }} />
       )}
       {nuevoCliente && <ClienteFormModal title="Nuevo cliente" initialValues={{}} onSubmit={guardarCliente} onClose={() => setNuevoCliente(false)} />}

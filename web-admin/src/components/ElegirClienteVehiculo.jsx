@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { opMarca, opModelo } from "./Combo";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
@@ -19,10 +19,16 @@ import { Icono } from "./Icono";
 export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh0, onConfirmar, onCerrar }) {
   const { notify } = useUI();
   const { hasPermission } = useAuth();
+  // Los datos se piden al servidor solo cuando hacen falta: clientes por bloques (con búsqueda en el servidor),
+  // vehículos solo del cliente elegido y marcas/modelos solo al dar de alta un vehículo.
   const [clientes, setClientes] = useState([]);
+  const [totalClientes, setTotalClientes] = useState(0);
+  const [cargandoClientes, setCargandoClientes] = useState(true);
+  const [clienteSel, setClienteSel] = useState(null);
   const [vehiculos, setVehiculos] = useState([]);
   const [marcas, setMarcas] = useState([]);
   const [modelos, setModelos] = useState([]);
+  const catalogosListos = useRef(false);
   const [idCliente, setIdCliente] = useState(cli0 || "");
   const [idVehiculo, setIdVehiculo] = useState(veh0 || "");
   const [nuevoCliente, setNuevoCliente] = useState(false);
@@ -32,17 +38,57 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
   const POR_PAGINA = 30; // bloques de 30: se cargan más al bajar
-  const [limite, setLimite] = useState(POR_PAGINA); // se va ampliando al bajar en la lista
+  const [limite, setLimite] = useState(POR_PAGINA); // solo para la lista de vehículos (ya filtrada por cliente)
   useEffect(() => { setLimite(POR_PAGINA); }, [q, paso]);
 
-  async function cargar() {
-    const [c, v, m, mo] = await Promise.all([
-      api.get("/clientes/?solo_activos=true"), api.get("/vehiculos/"),
-      api.get("/vehiculos-marcas/"), api.get("/vehiculos-modelos/"),
-    ]);
-    setClientes(c); setVehiculos(v); setMarcas(m); setModelos(mo);
+  const filtroClientes = (texto) => `solo_activos=true${texto.trim() ? `&q=${encodeURIComponent(texto.trim())}` : ""}`;
+  // Primer bloque de clientes (y su total) cada vez que cambia la búsqueda
+  useEffect(() => {
+    if (paso !== 1) return undefined;
+    let vigente = true;
+    setCargandoClientes(true);
+    const t = setTimeout(async () => {
+      try {
+        const [lista, tot] = await Promise.all([
+          api.get(`/clientes/?${filtroClientes(q)}&limite=${POR_PAGINA}`),
+          api.get(`/clientes/conteo?${filtroClientes(q)}`),
+        ]);
+        if (!vigente) return;
+        setClientes(lista); setTotalClientes(tot.total);
+      } catch { if (vigente) setClientes([]); }
+      finally { if (vigente) setCargandoClientes(false); }
+    }, q.trim() ? 250 : 0);
+    return () => { vigente = false; clearTimeout(t); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, paso]);
+  async function masClientes() {
+    if (cargandoClientes || clientes.length >= totalClientes) return;
+    setCargandoClientes(true);
+    try {
+      const mas = await api.get(`/clientes/?${filtroClientes(q)}&limite=${POR_PAGINA}&offset=${clientes.length}`);
+      setClientes((prev) => [...prev, ...mas.filter((m) => !prev.some((x) => x.id_cliente === m.id_cliente))]);
+    } finally { setCargandoClientes(false); }
   }
-  useEffect(() => { cargar(); }, []);
+  // Cliente ya elegido de antes (p. ej. viene de otra pantalla): se trae solo ese
+  useEffect(() => {
+    if (cli0) api.get(`/clientes/${cli0}`).then(setClienteSel).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  async function cargarVehiculos(idCli) {
+    if (!idCli) { setVehiculos([]); return []; }
+    const v = await api.get(`/vehiculos/?id_cliente=${idCli}`);
+    setVehiculos(v);
+    return v;
+  }
+  useEffect(() => { if (idCliente) cargarVehiculos(idCliente).catch(() => setVehiculos([])); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  async function asegurarCatalogos() {
+    if (catalogosListos.current) return;
+    catalogosListos.current = true;
+    try {
+      const [m, mo] = await Promise.all([api.get("/vehiculos-marcas/"), api.get("/vehiculos-modelos/")]);
+      setMarcas(m); setModelos(mo);
+    } catch { catalogosListos.current = false; }
+  }
   useEffect(() => {
     const esc = (e) => { if (e.key === "Escape" && !nuevoCliente && !nuevoVehiculo) onCerrar(); };
     document.addEventListener("keydown", esc);
@@ -50,37 +96,39 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
   }, [nuevoCliente, nuevoVehiculo, onCerrar]);
 
   const nombreVeh = (v) => `${v.marca?.nombre_marca || ""} ${v.modelo?.nombre_modelo || ""}`.trim() || v.numero_cuenta;
-  const cliente = clientes.find((c) => c.id_cliente === Number(idCliente));
+  const cliente = clienteSel || clientes.find((c) => c.id_cliente === Number(idCliente));
 
   const opcionesCliente = useMemo(() => clientes.map((c) => ({
     value: c.id_cliente, label: `${c.nombre_cliente} ${c.paterno_cliente || ""}`.trim(),
     sub: [c.numero_cuenta, c.telefono1].filter(Boolean).join(" · "),
   })), [clientes]);
   const opcionesVehiculo = useMemo(() => vehiculos
-    .filter((v) => !idCliente || v.id_cliente === Number(idCliente))
     .map((v) => ({ value: v.id_vehiculo, label: nombreVeh(v), sub: [v.placas_vehiculo, !idCliente && v.cliente?.nombre_cliente].filter(Boolean).join(" · ") })),
   [vehiculos, idCliente]);
 
-  function elegirCliente(id) {
+  async function elegirCliente(id) {
     setIdCliente(id);
-    const propios = vehiculos.filter((v) => v.id_cliente === Number(id));
-    setIdVehiculo(propios.length === 1 ? propios[0].id_vehiculo : "");
+    setClienteSel(clientes.find((c) => c.id_cliente === Number(id)) || null);
+    setIdVehiculo("");
     irAPaso(2);
+    try {
+      const propios = await cargarVehiculos(id);
+      if (propios.length === 1) setIdVehiculo(propios[0].id_vehiculo);
+    } catch { setVehiculos([]); }
   }
   function irAPaso(p) { setPaso(p); setQ(""); setSel(0); }
   function elegirVehiculo(id) {
     setIdVehiculo(id);
-    const v = vehiculos.find((x) => x.id_vehiculo === Number(id));
-    if (v) setIdCliente(v.id_cliente);
   }
 
   async function guardarCliente(values) {
     const creado = await api.post("/clientes/", values);
     notify(`Cliente creado con cuenta ${creado.numero_cuenta}.`, "success");
     setNuevoCliente(false);
-    await cargar();
+    setClienteSel(creado);
     setIdCliente(creado.id_cliente);
     setIdVehiculo("");
+    setVehiculos([]);
     irAPaso(2);
     if (hasPermission("vehiculos.crear")) setNuevoVehiculo(true);
   }
@@ -107,7 +155,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     const creado = await api.post("/vehiculos/", { ...values, id_cliente: Number(idCliente) });
     notify("Vehículo registrado.", "success");
     setNuevoVehiculo(false);
-    await cargar();
+    await cargarVehiculos(idCliente);
     setIdVehiculo(creado.id_vehiculo);
   }
 
@@ -121,10 +169,11 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     }
   }
 
-  const todas = (paso === 1 ? opcionesCliente : opcionesVehiculo).filter((o) => !q.trim() || contiene(`${o.label} ${o.sub || ""}`, q.trim()));
-  const lista = todas.slice(0, limite);
-  const hayMas = todas.length > lista.length;
-  const masResultados = () => setLimite((l) => Math.min(l + POR_PAGINA, todas.length));
+  const todas = paso === 1 ? opcionesCliente : opcionesVehiculo.filter((o) => !q.trim() || contiene(`${o.label} ${o.sub || ""}`, q.trim()));
+  // Clientes: ya vienen filtrados y paginados del servidor. Vehículos: son pocos (solo los del cliente).
+  const lista = paso === 1 ? todas : todas.slice(0, limite);
+  const hayMas = paso === 1 ? clientes.length < totalClientes : todas.length > lista.length;
+  const masResultados = () => (paso === 1 ? masClientes() : setLimite((l) => Math.min(l + POR_PAGINA, todas.length)));
   const valorActual = paso === 1 ? idCliente : idVehiculo;
   const elegir = (o) => (paso === 1 ? elegirCliente(o.value) : elegirVehiculo(o.value));
   function teclas(e) {
@@ -133,7 +182,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     else if (e.key === "Enter") { e.preventDefault(); if (lista[sel]) elegir(lista[sel]); else if (idCliente) confirmar(); }
   }
   const puedeNuevo = paso === 1 ? hasPermission("clientes.crear") : hasPermission("vehiculos.crear");
-  const nuevo = () => (paso === 1 ? setNuevoCliente(true) : setNuevoVehiculo(true));
+  const nuevo = () => (paso === 1 ? setNuevoCliente(true) : (asegurarCatalogos(), setNuevoVehiculo(true)));
   const iniciales = (t) => (t || "?").split(" ").filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase();
   const nombreCliente = cliente ? `${cliente.nombre_cliente} ${cliente.paterno_cliente || ""}`.trim() : "";
   const veh = vehiculos.find((v) => v.id_vehiculo === Number(idVehiculo));
@@ -165,7 +214,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
           <div className="ecv2-lista" onScroll={(e) => { const el = e.currentTarget; if (hayMas && el.scrollTop + el.clientHeight >= el.scrollHeight - 160) masResultados(); }}>
             {lista.length === 0 ? (
               <div className="ecv2-vacio">
-                {paso === 2 && !q.trim() ? "Este cliente aún no tiene vehículos." : "Sin resultados."}
+                {cargandoClientes && paso === 1 ? "Cargando…" : paso === 2 && !q.trim() ? "Este cliente aún no tiene vehículos." : "Sin resultados."}
                 {puedeNuevo && <button type="button" className="btn btn-primary" onClick={nuevo}><Icono nombre="add" size={18} /> {paso === 1 ? "Agregar cliente nuevo" : "Agregar vehículo nuevo"}</button>}
               </div>
             ) : lista.map((o, i) => (
@@ -176,9 +225,9 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
                 {String(o.value) === String(valorActual) && <span className="ecv2-ok">✓</span>}
               </button>
             ))}
-            {hayMas && <button type="button" className="btn btn-secondary" style={{ margin: "6px auto 2px", display: "block" }} onClick={masResultados}>Mostrar más ({todas.length - lista.length} restantes)</button>}
+            {hayMas && <button type="button" className="btn btn-secondary" style={{ margin: "6px auto 2px", display: "block" }} onClick={masResultados}>Mostrar más ({(paso === 1 ? totalClientes : todas.length) - lista.length} restantes)</button>}
           </div>
-          <div style={{ fontSize: 12, opacity: .65, padding: "6px 4px 0" }}>{todas.length} {paso === 1 ? "cliente(s)" : "vehículo(s)"}{q.trim() ? " encontrados" : " en total"}{hayMas ? ` · mostrando ${lista.length}` : ""}</div>
+          <div style={{ fontSize: 12, opacity: .65, padding: "6px 4px 0" }}>{paso === 1 ? totalClientes : todas.length} {paso === 1 ? "cliente(s)" : "vehículo(s)"}{q.trim() ? " encontrados" : " en total"}{hayMas ? ` · mostrando ${lista.length}` : ""}</div>
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={onCerrar}>Cancelar</button>
             <button className="btn btn-primary" onClick={confirmar} disabled={guardando || !idCliente}>{guardando ? "Guardando…" : "Aceptar y continuar"}</button>

@@ -1,6 +1,6 @@
 import { IconoAuto } from "../components/Icono";
 import { opMarca, opModelo } from "../components/Combo";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
@@ -64,15 +64,13 @@ export default function Vehiculos() {
   const [ofrecerSiguiente, setOfrecerSiguiente] = useState(null); // vehículo recién creado
 
   async function loadAll() {
-    const [v, c, m, mo, co] = await Promise.all([
+    const [v, m, mo, co] = await Promise.all([
       api.get(`/vehiculos/${idCliente ? `?id_cliente=${idCliente}` : ""}`),
-      api.get("/clientes/?solo_activos=true"),
       api.get("/vehiculos-marcas/"),
       api.get("/vehiculos-modelos/"),
       api.get("/colores-vehiculos/"),
     ]);
     setVehiculos(v);
-    setClientes(c);
     setMarcas(m);
     setModelos(mo);
     setColores(co);
@@ -83,6 +81,14 @@ export default function Vehiculos() {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idCliente]);
+
+  // La lista de clientes solo sirve para el selector del formulario: se pide al abrirlo (y una sola vez)
+  const clientesPedidos = useRef(false);
+  useEffect(() => {
+    if (!editing || clientesPedidos.current) return;
+    clientesPedidos.current = true;
+    api.get("/clientes/?solo_activos=true").then(setClientes).catch(() => { clientesPedidos.current = false; });
+  }, [editing]);
 
   // Si se llegó aquí desde "Cliente creado — ¿agregar su vehículo?", se
   // abre el formulario de alta solo, ya con el cliente precargado, sin
