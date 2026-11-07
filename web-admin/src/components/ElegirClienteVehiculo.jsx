@@ -31,7 +31,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
   const [paso, setPaso] = useState(cli0 ? 2 : 1);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
-  const POR_PAGINA = 80;
+  const POR_PAGINA = 30; // bloques de 30: se cargan más al bajar
   const [limite, setLimite] = useState(POR_PAGINA); // se va ampliando al bajar en la lista
   useEffect(() => { setLimite(POR_PAGINA); }, [q, paso]);
 

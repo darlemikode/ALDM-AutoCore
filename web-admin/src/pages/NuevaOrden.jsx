@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import BuscadorSelect from "../components/BuscadorSelect";
 import ClienteFormModal from "../components/ClienteFormModal";
 import FormModal from "../components/FormModal";
+import ElegirClienteVehiculo from "../components/ElegirClienteVehiculo";
 import IconoModulo from "../components/IconoModulo";
 import { opMarca } from "../components/Combo";
 import { Icono } from "../components/Icono";
@@ -36,11 +37,13 @@ export default function NuevaOrden() {
   const [dom, setDom] = useState(DOMICILIO_VACIO);
   const [empleados, setEmpleados] = useState([]);
   const puedeDomicilio = hasPermission("servicios.editar");
+  const [soloDomicilio] = useState(params.get("domicilio") === "1"); // llegó desde "Nuevo a domicilio": no se ofrece "En el taller"
   useEffect(() => {
     if (domicilio && empleados.length === 0) api.get("/empleados/").then((e) => setEmpleados((e || []).filter((x) => x.activo))).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domicilio]);
   const yaCreada = useRef(false);
+  const [eligiendo, setEligiendo] = useState(params.get("domicilio") === "1"); // a domicilio: se abre la ventana de cliente y vehículo
 
   async function cargar() {
     const [c, v, m, mo] = await Promise.all([
@@ -162,7 +165,7 @@ export default function NuevaOrden() {
           <h1 className="orden-hero-titulo"><IconoModulo ruta="/servicios" /> Orden nueva{domicilio ? " a domicilio" : ""} <span className="badge badge-petrol">sin abrir</span></h1>
         </div>
 
-        {puedeDomicilio && (
+        {puedeDomicilio && !soloDomicilio && (
           <div className="modo-orden" role="radiogroup" aria-label="¿Dónde se hará el servicio?">
             <button type="button" role="radio" aria-checked={!domicilio} className={`modo-card ${!domicilio ? "activo" : ""}`} onClick={() => setDomicilio(false)} disabled={creando}>
               <span className="modo-ico">🔧</span>
@@ -182,6 +185,8 @@ export default function NuevaOrden() {
           </ol>
         )}
 
+        {!domicilio && (
+        <>
         <div className="orden-hero-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14, padding: 20 }}>
           <div className="nota-bloque" style={tarjeta(paso === "cliente")} onClick={() => setPaso("cliente")}>
             <div className="nota-bloque-header"><span className="icono"><Icono nombre="people" size={18} /></span><h2>Cliente</h2></div>
@@ -216,6 +221,26 @@ export default function NuevaOrden() {
           </div>
         </div>
 
+        </>
+        )}
+        {domicilio && (
+          <div className="orden-hero-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14, padding: 20 }}>
+            <div className="nota-bloque">
+              <div className="nota-bloque-header"><span className="icono"><Icono nombre="people" size={18} /></span><h2>Cliente</h2></div>
+              <div className="nota-bloque-body">
+                {cliente ? <div><b>{cliente.nombre_cliente} {cliente.paterno_cliente || ""}</b><div className="subtitle">{cliente.numero_cuenta}{cliente.telefono1 ? ` · ${cliente.telefono1}` : ""}</div></div> : <div className="subtitle">Sin elegir</div>}
+              </div>
+            </div>
+            <div className="nota-bloque">
+              <div className="nota-bloque-header"><span className="icono"><Icono nombre="car" size={18} /></span><h2>Vehículo</h2></div>
+              <div className="nota-bloque-body">
+                {vehiculo ? <div><b>{nombreVeh(vehiculo)}</b><div className="subtitle">{vehiculo.placas_vehiculo || "sin placas"}</div></div> : <div className="subtitle">{cliente ? "Falta elegir el vehículo" : "Sin elegir"}</div>}
+                <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={() => setEligiendo(true)} disabled={creando}>{cliente ? "Cambiar cliente o vehículo" : "Elegir cliente y vehículo"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {domicilio && cliente && vehiculo && (
           <>
             <div className="nota-bloque dom-bloque">
@@ -233,12 +258,17 @@ export default function NuevaOrden() {
         {!(domicilio && cliente && vehiculo) && (
           <div className="empty-state" style={{ margin: "14px 20px 20px" }}>
             {creando ? "Abriendo la orden…" : domicilio
-              ? (!cliente ? "Paso 1: elige al cliente." : "Paso 2: elige su vehículo. Después te pediremos la dirección.")
+              ? (!cliente ? "Paso 1: elige al cliente y su vehículo con el botón “Elegir cliente y vehículo”." : "Paso 2: falta el vehículo. Después te pediremos la dirección.")
               : "Elige el cliente y su vehículo: la orden se abre sola y ahí agregas las refacciones."}
           </div>
         )}
       </div>
 
+      {domicilio && eligiendo && (
+        <ElegirClienteVehiculo idCliente={idCliente ? Number(idCliente) : null} idVehiculo={idVehiculo ? Number(idVehiculo) : null}
+          onConfirmar={async ({ id_cliente, id_vehiculo }) => { await cargar(); setIdCliente(id_cliente); setIdVehiculo(id_vehiculo || ""); setEligiendo(false); }}
+          onCerrar={() => { setEligiendo(false); if (!idCliente || !idVehiculo) navigate("/domicilios"); }} />
+      )}
       {nuevoCliente && <ClienteFormModal title="Nuevo cliente" initialValues={{}} onSubmit={guardarCliente} onClose={() => setNuevoCliente(false)} />}
       {nuevoVehiculo && (
         <FormModal title={`Nuevo vehículo${cliente ? ` — ${cliente.nombre_cliente}` : ""}`} icono="🚗" fields={camposVehiculo} initialValues={{}} onSubmit={guardarVehiculo} onClose={() => setNuevoVehiculo(false)} />

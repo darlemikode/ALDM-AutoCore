@@ -228,7 +228,13 @@ export default function Layout() {
                 to={item.to}
                 end={item.end}
                 title={item.label}
-                className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+                className={({ isActive }) => {
+                  // "Nueva orden a domicilio" se queda en la sección A domicilio, no en Órdenes de servicio
+                  const nuevaDom = location.pathname === "/servicios/nueva" && new URLSearchParams(location.search).get("domicilio") === "1";
+                  if (nuevaDom && item.to === "/servicios") isActive = false;
+                  if (nuevaDom && item.to === "/domicilios") isActive = true;
+                  return "nav-link" + (isActive ? " active" : "");
+                }}
               >
                 <span className="nav-link-icono" style={{ "--ico": COLORES_ICONO[item.to] || "#2de2d0" }}><Icono nombre={ICONOS[item.to] || "grid"} size={19} /></span>
                 <span className="nav-link-texto">{item.label}</span>
