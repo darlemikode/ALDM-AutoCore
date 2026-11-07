@@ -102,16 +102,46 @@ export default function Servicios() {
 
   // Los chips de filtro ya no son solo "status" del backend (ahora mezclan
   // etapa y garantía), así que se trae todo y se filtra en el navegador.
+  // Se traen todas las órdenes ABIERTAS (son las que se trabajan y llenan el tablero) y, de las finalizadas y
+  // canceladas, solo un bloque de las más recientes: el resto se pide con "Mostrar más" o al buscar.
+  // Se usan refs porque la suscripción a actualizaciones en vivo conserva la primera versión de esta función.
+  const BLOQUE = 40;
+  const qRef = useRef("");
+  const cargadas = useRef({ cerrado: BLOQUE, cancelado: BLOQUE });
+  const [totales, setTotales] = useState({ abierto: 0, cerrado: 0, cancelado: 0 });
+  const [cargandoMas, setCargandoMas] = useState(false);
   async function load() {
-    const data = await api.get("/servicios/");
-    setServicios(data);
+    const busca = qRef.current.trim() ? `&q=${encodeURIComponent(qRef.current.trim())}` : "";
+    const [ab, ce, ca, tot] = await Promise.all([
+      api.get("/servicios/?status=abierto"),
+      api.get(`/servicios/?status=cerrado&limite=${cargadas.current.cerrado}${busca}`),
+      api.get(`/servicios/?status=cancelado&limite=${cargadas.current.cancelado}${busca}`),
+      api.get("/servicios/conteo"),
+    ]);
+    setServicios([...ab, ...ce, ...ca]);
+    setTotales({ abierto: 0, cerrado: 0, cancelado: 0, ...tot });
     setLoading(false);
   }
+  async function cargarMas(st) {
+    if (cargandoMas) return;
+    setCargandoMas(true);
+    try {
+      const busca = qRef.current.trim() ? `&q=${encodeURIComponent(qRef.current.trim())}` : "";
+      const yaTengo = servicios.filter((x) => x.status === st).length;
+      const mas = await api.get(`/servicios/?status=${st}&limite=${BLOQUE}&offset=${yaTengo}${busca}`);
+      cargadas.current[st] = yaTengo + mas.length;
+      setServicios((prev) => [...prev, ...mas.filter((m) => !prev.some((p) => p.id_servicio === m.id_servicio))]);
+    } finally { setCargandoMas(false); }
+  }
 
+  // Al escribir en el buscador, las finalizadas/canceladas se buscan en el servidor (no solo entre las cargadas)
   useEffect(() => {
-    load();
+    qRef.current = q;
+    cargadas.current = { cerrado: BLOQUE, cancelado: BLOQUE };
+    const t = setTimeout(() => { load(); }, q ? 300 : 0);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [q]);
 
   useActualizacionGlobal("servicios", load);
 
@@ -478,7 +508,7 @@ export default function Servicios() {
       <div className="page-header">
         <div>
           <h1><IconoModulo ruta="/servicios" /> Órdenes de servicio</h1>
-          <div className="subtitle">{filtrados.length}{filtrados.length !== servicios.length ? ` de ${servicios.length}` : ""} orden(es)</div>
+          <div className="subtitle">{filtrados.length} orden(es){totales.cerrado + totales.cancelado > 0 ? ` · ${totales.abierto} abiertas, ${totales.cerrado} finalizadas, ${totales.cancelado} canceladas en total` : ""}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <div className="vista-toggle vista-toggle-iconos">
@@ -621,6 +651,14 @@ export default function Servicios() {
                 </div>
               );
             })}
+            {/* Finalizadas y canceladas se cargan por bloques */}
+            {["cerrado", "cancelado"].filter((st) => (status === "" || status === st) && servicios.filter((x) => x.status === st).length < (totales[st] || 0) && !q.trim()).map((st) => (
+              <div key={st} style={{ textAlign: "center", padding: 12 }}>
+                <button type="button" className="btn btn-secondary" disabled={cargandoMas} onClick={() => cargarMas(st)}>
+                  {cargandoMas ? "Cargando…" : `Mostrar más ${st === "cerrado" ? "finalizadas" : "canceladas"} (${totales[st] - servicios.filter((x) => x.status === st).length} restantes)`}
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

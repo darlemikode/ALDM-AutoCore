@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func
+from sqlalchemy import String, cast, func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from ..vehiculo_utils import orden_abierta_del_vehiculo
@@ -200,11 +200,19 @@ def _sincronizar_pagado(db: Session, servicio_id: int) -> None:
     db.commit()
 
 
+@router.get("/conteo")
+def conteo_por_status(db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
+    """Cuántas órdenes hay por status, sin traerlas (la pantalla carga solo las abiertas y las demás por bloques)."""
+    filas = db.query(models.Servicio.status, func.count(models.Servicio.id_servicio)).group_by(models.Servicio.status).all()
+    return {(st or "abierto"): n for st, n in filas}
+
+
 @router.get("/", response_model=list[schemas.ServicioCompletoOut])
 def listar(
     status: Optional[str] = None,
     id_cliente: Optional[int] = None,
     solo_sin_pagar: bool = False,
+    q: Optional[str] = None,
     limite: Optional[int] = Query(None, ge=1, le=2000),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
@@ -224,6 +232,19 @@ def listar(
         query = query.filter(models.Servicio.id_cliente == id_cliente)
     if solo_sin_pagar:
         query = query.filter(models.Servicio.pagado == False)
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        query = (
+            query.outerjoin(models.Cliente, models.Servicio.id_cliente == models.Cliente.id_cliente)
+            .outerjoin(models.Vehiculo, models.Servicio.id_vehiculo == models.Vehiculo.id_vehiculo)
+            .filter(or_(
+                cast(models.Servicio.id_servicio, String).ilike(like),
+                models.Servicio.nombre_servicio.ilike(like),
+                models.Cliente.nombre_cliente.ilike(like),
+                models.Cliente.paterno_cliente.ilike(like),
+                models.Vehiculo.placas_vehiculo.ilike(like),
+            ))
+        )
     query = query.order_by(models.Servicio.fecha_entrada_servicio.desc())
     if limite:
         query = query.offset(offset).limit(limite)

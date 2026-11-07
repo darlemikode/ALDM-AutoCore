@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
@@ -41,10 +41,10 @@ def conteo(
     user=Depends(require_permission("clientes.ver")),
 ):
     """Totales para las tarjetas de la pantalla de clientes sin traer la lista completa."""
-    query = _consulta(db, q, solo_activos)
-    total = query.count()
-    activados = query.filter(models.Cliente.cuenta_activada.is_(True)).count()
-    return {"total": total, "activados": activados}
+    sub = _consulta(db, q, solo_activos).with_entities(
+        func.count(models.Cliente.id_cliente), func.sum(case((models.Cliente.cuenta_activada.is_(True), 1), else_=0))
+    ).order_by(None).one()  # una sola consulta para ambos totales
+    return {"total": int(sub[0] or 0), "activados": int(sub[1] or 0)}
 
 
 @router.get("/", response_model=list[schemas.ClienteOut])

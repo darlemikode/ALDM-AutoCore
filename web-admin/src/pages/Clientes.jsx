@@ -50,14 +50,19 @@ export default function Clientes() {
   const [invitacion, setInvitacion] = useState(null); // { cliente, codigo_invitacion }
   const [ofrecerVehiculo, setOfrecerVehiculo] = useState(null); // { id_cliente, nombre_cliente, numero_cuenta } tras crear un cliente
 
-  const filtro = () => `${q ? `q=${encodeURIComponent(q)}&` : ""}solo_activos=true`;
+  // La suscripción a actualizaciones en vivo conserva la primera versión de load(): la búsqueda vigente se lee de un ref
+  const qRef = useRef("");
+  const peticion = useRef(0); // descarta respuestas viejas si se sigue escribiendo
+  const filtro = () => `${qRef.current ? `q=${encodeURIComponent(qRef.current)}&` : ""}solo_activos=true`;
   // Recarga lo que ya se había mostrado (mínimo un bloque) y los totales
   async function load() {
     const limite = Math.min(2000, Math.max(PAGINA, cuantos.current));
+    const mia = ++peticion.current;
     const [data, tot] = await Promise.all([
       api.get(`/clientes/?${filtro()}&limite=${limite}`),
       api.get(`/clientes/conteo?${filtro()}`),
     ]);
+    if (mia !== peticion.current) return;
     cuantos.current = data.length;
     setClientes(data);
     setTotales(tot);
@@ -82,6 +87,7 @@ export default function Clientes() {
   });
 
   useEffect(() => {
+    qRef.current = q.trim();
     cuantos.current = 0; // al cambiar la búsqueda se vuelve al primer bloque
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);

@@ -2,6 +2,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas
@@ -14,29 +15,29 @@ router = APIRouter(prefix="/api/vehiculos", tags=["vehículos"])
 def _con_ultimo_servicio(db: Session, vehiculos: list[models.Vehiculo]) -> list[models.Vehiculo]:
     """Le pega a cada vehículo los datos de su orden más reciente — lo usa
     la vista "Por cliente" para ordenar por a quién le hicieron servicio
-    hace menos tiempo."""
+    hace menos tiempo. Todo se calcula en la base de datos (una fila por
+    vehículo), sin traer cada orden al servidor."""
     ids = [v.id_vehiculo for v in vehiculos]
     if not ids:
         return vehiculos
-    # Solo las columnas necesarias (no órdenes completas) y por trozos: SQL
-    # Server admite ~2100 parámetros por consulta.
-    filas = []
-    for i in range(0, len(ids), 800):
-        filas += (
-            db.query(models.Servicio.id_vehiculo, models.Servicio.fecha_entrada_servicio, models.Servicio.etapa, models.Servicio.status)
-            .filter(models.Servicio.id_vehiculo.in_(ids[i:i + 800]))
-            .all()
-        )
-    filas.sort(key=lambda f: f.fecha_entrada_servicio or 0, reverse=True)
+    S = models.Servicio
     ultimos = {}
     conteos: dict[int, int] = {}
-    for s in filas:
-        conteos[s.id_vehiculo] = conteos.get(s.id_vehiculo, 0) + 1
-        if s.id_vehiculo not in ultimos:
-            ultimos[s.id_vehiculo] = s
+    # Por trozos: SQL Server admite ~2100 parámetros por consulta.
+    for i in range(0, len(ids), 800):
+        trozo = ids[i:i + 800]
+        for id_veh, n in db.query(S.id_vehiculo, func.count(S.id_servicio)).filter(S.id_vehiculo.in_(trozo)).group_by(S.id_vehiculo).all():
+            conteos[id_veh] = n
+        orden = func.row_number().over(partition_by=S.id_vehiculo, order_by=S.fecha_entrada_servicio.desc()).label("orden")
+        sub = (
+            db.query(S.id_vehiculo.label("id_vehiculo"), S.fecha_entrada_servicio.label("fecha"), S.etapa.label("etapa"), S.status.label("status"), orden)
+            .filter(S.id_vehiculo.in_(trozo)).subquery()
+        )
+        for f in db.query(sub.c.id_vehiculo, sub.c.fecha, sub.c.etapa, sub.c.status).filter(sub.c.orden == 1).all():
+            ultimos[f.id_vehiculo] = f
     for v in vehiculos:
         s = ultimos.get(v.id_vehiculo)
-        v.fecha_ultimo_servicio = s.fecha_entrada_servicio if s else None
+        v.fecha_ultimo_servicio = s.fecha if s else None
         v.etapa_ultimo_servicio = s.etapa if s else None
         v.status_ultimo_servicio = s.status if s else None
         v.total_servicios = conteos.get(v.id_vehiculo, 0)
@@ -46,21 +47,22 @@ def _con_ultimo_servicio(db: Session, vehiculos: list[models.Vehiculo]) -> list[
 def _con_foto_principal(db: Session, vehiculos: list[models.Vehiculo]) -> list[models.Vehiculo]:
     """Deja en vehiculo.foto_principal la ruta de su foto más reciente (o
     None) — una sola consulta para toda la lista, para que la vista en
-    cuadros pueda mostrarla sin pedir /fotos/ por cada tarjeta."""
+    cuadros pueda mostrarla sin pedir /fotos/ por cada tarjeta. La base de
+    datos devuelve solo la última foto de cada vehículo (no todas)."""
     ids = [v.id_vehiculo for v in vehiculos]
     if not ids:
         return vehiculos
-    fotos = []
-    for i in range(0, len(ids), 800):
-        fotos += (
-            db.query(models.Foto)
-            .filter(models.Foto.entidad_tipo == "vehiculo", models.Foto.entidad_id.in_(ids[i:i + 800]))
-            .all()
-        )
-    fotos.sort(key=lambda f: f.fecha or 0, reverse=True)
+    F = models.Foto
     mas_reciente: dict[int, str] = {}
-    for foto in fotos:
-        mas_reciente.setdefault(foto.entidad_id, foto.ruta_archivo)
+    for i in range(0, len(ids), 800):
+        trozo = ids[i:i + 800]
+        orden = func.row_number().over(partition_by=F.entidad_id, order_by=F.fecha.desc()).label("orden")
+        sub = (
+            db.query(F.entidad_id.label("entidad_id"), F.ruta_archivo.label("ruta"), orden)
+            .filter(F.entidad_tipo == "vehiculo", F.entidad_id.in_(trozo)).subquery()
+        )
+        for f in db.query(sub.c.entidad_id, sub.c.ruta).filter(sub.c.orden == 1).all():
+            mas_reciente[f.entidad_id] = f.ruta
     for v in vehiculos:
         v.foto_principal = f"/uploads/{mas_reciente[v.id_vehiculo]}" if v.id_vehiculo in mas_reciente else None
     return vehiculos

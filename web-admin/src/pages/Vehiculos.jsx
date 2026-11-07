@@ -242,6 +242,17 @@ export default function Vehiculos() {
     });
     return k;
   }, [vehiculos]);
+  // Solo se dibuja un bloque a la vez (con sus fotos); al llegar al final se agrega el siguiente
+  const [ventana, setVentana] = useState(60);
+  const centinela = useRef(null);
+  useEffect(() => { setVentana(60); }, [q, filtros, vista]);
+  useEffect(() => {
+    const el = centinela.current;
+    if (!el || typeof IntersectionObserver === "undefined") return undefined;
+    const obs = new IntersectionObserver((e) => { if (e[0].isIntersecting) setVentana((v) => v + 60); }, { rootMargin: "400px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  });
   const alternarServicio = (clave) => setFiltros((f) => ({ ...f, servicio: f.servicio === clave ? "" : clave }));
   const visibles = useMemo(() => {
     const texto = q.trim().toLowerCase();
@@ -324,7 +335,7 @@ export default function Vehiculos() {
         ) : vista === "clientes" ? (
           <div className="ordenes-lista">
             {visibles.length === 0 && <div className="empty-state">{vehiculos.length ? "Ningún vehículo coincide con los filtros." : "No hay vehículos registrados todavía."}</div>}
-            {visibles.map((v) => (
+            {visibles.slice(0, ventana).map((v) => (
               <div
                 key={v.id_vehiculo}
                 className={`orden-fila fila-acciones ${v.status_ultimo_servicio === "cancelado" ? "est-cancelado" : v.status_ultimo_servicio === "cerrado" ? "est-cerrado" : ""}`}
@@ -363,11 +374,16 @@ export default function Vehiculos() {
                 </div>
               </div>
             ))}
+            {visibles.length > ventana && (
+              <div ref={centinela} style={{ textAlign: "center", padding: 12, gridColumn: "1 / -1" }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setVentana((v) => v + 60)}>Mostrar más ({visibles.length - ventana} restantes)</button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="veh-cuadros">
             {visibles.length === 0 && <div className="empty-state">{vehiculos.length ? "Ningún vehículo coincide con los filtros." : "No hay vehículos registrados todavía."}</div>}
-            {visibles.map((v) => (
+            {visibles.slice(0, ventana).map((v) => (
               <div key={v.id_vehiculo} className="veh-tarjeta" style={{ "--acc": colorGrupo(nomMarcaV(v)) }} onClick={() => hasPermission("vehiculos.editar") && setEditing(v)}>
                 <div className="veh-tarjeta-foto" onClick={(e) => { e.stopPropagation(); setFotosDe(v); }} title="Ver / agregar fotos">
                   {v.foto_principal ? (
@@ -416,6 +432,11 @@ export default function Vehiculos() {
                 </div>
               </div>
             ))}
+            {visibles.length > ventana && (
+              <div ref={centinela} style={{ textAlign: "center", padding: 12, gridColumn: "1 / -1" }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setVentana((v) => v + 60)}>Mostrar más ({visibles.length - ventana} restantes)</button>
+              </div>
+            )}
           </div>
         )}
       </div>
