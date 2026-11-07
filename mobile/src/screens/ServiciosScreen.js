@@ -74,6 +74,7 @@ export default function ServiciosScreen({ navigation }) {
             <TouchableOpacity style={styles.tarjeta} onPress={() => navigation.navigate("ServicioDetalle", { id: s.id_servicio })} activeOpacity={0.75}>
               <View style={styles.tarjetaTop}>
                 <Text style={styles.numero}>#{s.id_servicio}</Text>
+                {s.es_domicilio && <View style={styles.chipDomicilio}><Ionicons name="location" size={10} color="#fff" /><Text style={styles.chipDomicilioTexto}>A domicilio</Text></View>}
                 {s.es_garantia && <View style={[styles.chip, { backgroundColor: colors.warn100 }]}><Text style={[styles.chipTexto, { color: colors.warn600 }]}>garantía</Text></View>}
                 {s.status === "abierto" && s.etapa ? (
                   <View style={[styles.chip, { backgroundColor: colors.petrol100 }]}><Text style={[styles.chipTexto, { color: colors.petrol600 }]}>{ETAPAS[s.etapa] || s.etapa}</Text></View>
@@ -137,6 +138,8 @@ const styles = crearEstilos({
   tarjetaTop: { flexDirection: "row", alignItems: "center", gap: 6 },
   numero: { fontFamily: "BarlowCondensed_700Bold", fontSize: 19, color: colors.petrol600 },
   chip: { borderRadius: 100, paddingVertical: 2, paddingHorizontal: 8 },
+  chipDomicilio: { flexDirection: "row", alignItems: "center", gap: 3, borderRadius: 100, paddingVertical: 2, paddingHorizontal: 8, backgroundColor: "#ff6b4a" },
+  chipDomicilioTexto: { fontSize: 11, fontWeight: "700", color: "#fff" },
   chipTexto: { fontSize: 11, fontWeight: "700" },
   fecha: { marginLeft: "auto", fontSize: 12, color: colors.ink500 },
   servicio: { fontSize: 15, fontWeight: "600", color: colors.ink900 },

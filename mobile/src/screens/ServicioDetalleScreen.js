@@ -15,6 +15,7 @@ import EtapaTracker from "../components/EtapaTracker";
 import ChatOrden from "../components/ChatOrden";
 import InspeccionForm from "../components/InspeccionForm";
 import RecepcionAutoModal from "../components/RecepcionAutoModal";
+import DomicilioModal from "../components/DomicilioModal";
 import NuevaRefaccionModal from "../components/NuevaRefaccionModal";
 import HojaAgregarConceptos from "../components/HojaAgregarConceptos";
 import Auto3D from "../components/Auto3D";
@@ -326,6 +327,17 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   const [verAutoRef, setVerAutoRef] = useState(false); // elegir refacciones tocando el auto
   const [zonaRef, setZonaRef] = useState(null); // clave de ZONAS | "otras" | null
   const [chatAbierto, setChatAbierto] = useState(!!route.params?.abrirChat);
+  const [domicilioAbierto, setDomicilioAbierto] = useState(false);
+  const [domicilio, setDomicilio] = useState(null);
+  const cargarDomicilio = useCallback(() => {
+    api.get(`/servicio-domicilio/${id}`).then(setDomicilio).catch(() => setDomicilio(null));
+  }, [id]);
+  useEffect(() => { cargarDomicilio(); }, [cargarDomicilio]);
+  // Viniendo de "Nueva orden" con el switch de domicilio: se abre la hoja para capturar la dirección
+  useEffect(() => {
+    if (route.params?.abrirDomicilio) { setDomicilioAbierto(true); navigation.setParams?.({ abrirDomicilio: false }); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.abrirDomicilio]);
 
   // Si llegamos aquí desde la campanita (con params.abrirChat), se abre el
   // chat aunque la pantalla ya estuviera montada (mismo componente, params nuevos).
@@ -373,6 +385,9 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         <View style={styles.hdrTitulo}>
           <Text style={styles.hdrId}>Orden #{servicio.id_servicio}</Text>
           <View style={[styles.badge, estiloEstatus[0]]}><Text style={[styles.badgeTexto, estiloEstatus[1]]}>{etiqueta}</Text></View>
+          {(servicio.es_domicilio || domicilio?.existe) ? (
+            <View style={styles.badgeDomicilio}><Ionicons name="location" size={11} color="#fff" /><Text style={styles.badgeDomicilioTexto}>A domicilio</Text></View>
+          ) : null}
           <View style={[styles.cabSaldo, { backgroundColor: debe ? colors.red100 : colors.teal100 }]}>
             <Text style={[styles.cabSaldoTexto, { color: debe ? colors.red600 : colors.teal600 }]} numberOfLines={1}>
               {debe ? `Debe ${fmt(servicio.costos.saldo_pendiente)}` : servicio.status === "cerrado" ? "Liquidado" : "Sin saldo"}
@@ -382,7 +397,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       ),
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, servicio?.id_servicio, servicio?.status, servicio?.costos?.saldo_pendiente]);
+  }, [navigation, servicio?.id_servicio, servicio?.status, servicio?.costos?.saldo_pendiente, servicio?.es_domicilio, domicilio?.existe]);
   const [modalMO, setModalMO] = useState(null); // { descripcion, cantidad, precio } | null
   const [guardandoMO, setGuardandoMO] = useState(false);
   const [creandoRef, setCreandoRef] = useState(false); // alta rápida de una refacción que no existe
@@ -636,6 +651,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
       if (resultado.status !== 200) throw new Error("No se pudo generar la nota.");
       if (!(await Sharing.isAvailableAsync())) throw new Error("Este equipo no permite compartir archivos.");
       await Sharing.shareAsync(resultado.uri, { mimeType: "application/pdf", dialogTitle: "Enviar nota por WhatsApp", UTI: "com.adobe.pdf" });
+      if (domicilio?.existe) api.post(`/servicio-domicilio/${id}/nota-enviada`).then(cargarDomicilio).catch(() => {});
     } catch (err) { alerta("Error", err.message); } finally { setDescargando(null); }
   }
 
@@ -1300,6 +1316,16 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                 </View>
                 <Ionicons name="chevron-forward-outline" size={20} color={colors.ink500} />
               </TouchableOpacity>
+              {abierta && hasPermission("servicios.editar") && (
+                <TouchableOpacity style={styles.accesoFila} onPress={() => setDomicilioAbierto(true)} activeOpacity={0.8}>
+                  <IconoAcceso nombre="location" insignia="key" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.accesoTitulo}>{domicilio?.existe ? (domicilio.iniciado_at ? "Servicio a domicilio (iniciado)" : "Servicio a domicilio") : "Servicio a domicilio"}</Text>
+                    <Text style={styles.accesoSub}>{domicilio?.existe ? (domicilio.iniciado_at ? "Ya se verificó el código del cliente" : "Código y enlace para el mecánico") : "Dirección, código de seguridad y enlace del mecánico"}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward-outline" size={20} color={colors.ink500} />
+                </TouchableOpacity>
+              )}
               {puedeCompartirSeguimiento && (
                 <TouchableOpacity style={styles.accesoFila} onPress={enviarSeguimientoWhatsApp} disabled={enviandoSeg} activeOpacity={0.8}>
                   <IconoAcceso nombre="logo-whatsapp" insignia="link" fondo="#25D366" cargando={enviandoSeg} />
@@ -1521,6 +1547,16 @@ export default function ServicioDetalleScreen({ route, navigation }) {
         onGuardado={(g) => setInspeccionActual(g)}
         onClose={() => setMostrandoInspeccion(false)}
         puedeEditar={puedeEditar && abierta}
+      />
+
+      <DomicilioModal
+        visible={domicilioAbierto}
+        idServicio={servicio.id_servicio}
+        nombreServicio={servicio.nombre_servicio}
+        nombreTaller={datosTaller?.nombre_taller}
+        empleados={empleados}
+        onCerrar={() => setDomicilioAbierto(false)}
+        onCambio={() => { cargarDomicilio(); load(); }}
       />
 
       <RecepcionAutoModal
@@ -2024,6 +2060,8 @@ const styles = crearEstilos({
   badgeTexto: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
   badgePetrol: { backgroundColor: colors.petrol100 }, badgePetrolTexto: { color: colors.petrol600 },
   badgeTeal: { backgroundColor: colors.teal100 }, badgeTealTexto: { color: colors.teal600 },
+  badgeDomicilio: { flexDirection: "row", alignItems: "center", gap: 3, borderRadius: 100, paddingVertical: 3, paddingHorizontal: 8, backgroundColor: "#ff6b4a" },
+  badgeDomicilioTexto: { fontSize: 11, fontWeight: "700", color: "#fff" },
   badgeRojo: { backgroundColor: colors.red100 }, badgeRojoTexto: { color: colors.red600 },
   badgeAmbar: { backgroundColor: colors.warn100 }, badgeAmbarTexto: { color: colors.warn600 },
   pickerWrap: { backgroundColor: colors.paper100, borderWidth: 1, borderColor: colors.ink300, borderRadius: 10, overflow: "hidden", marginTop: 4 },

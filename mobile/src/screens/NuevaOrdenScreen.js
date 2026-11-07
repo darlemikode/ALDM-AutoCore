@@ -1,6 +1,6 @@
 import { contiene } from "../lib/texto";
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Image } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Image, Switch } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "../ui/IconoWeb";
@@ -64,6 +64,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
 
   const [verificacion2Pasos, setVerificacion2Pasos] = useState(false);
   const [autorizado, setAutorizado] = useState(false);
+  const [aDomicilio, setADomicilio] = useState(false);
   const [modalConfirmacion, setModalConfirmacion] = useState(null);
   const [codigoIngresado, setCodigoIngresado] = useState("");
   const [errorCodigo, setErrorCodigo] = useState("");
@@ -91,7 +92,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
     setDescripcion(""); setTiposIds([]); setDiagnostico(""); setOperaciones("");
     setEmpleadoId(""); setKmLlegada(""); setKmProximo(""); setKmProximoManual(false); setFotos([]);
     setAnticipoTipo("efectivo"); setAnticipoMonto(""); setAnticipoEfectivo(""); setAnticipoTarjeta("");
-    setAutorizado(false); setError("");
+    setAutorizado(false); setADomicilio(false); setError("");
   }
 
   // Llegada con cliente/vehículo ya resueltos (tras dar de alta) o desde "Reclamar garantía"
@@ -120,7 +121,8 @@ export default function NuevaOrdenScreen({ navigation, route }) {
   useEffect(() => {
     if (route?.params?.resetear) {
       reiniciar();
-      navigation.setParams({ resetear: undefined });
+      if (route?.params?.domicilio) setADomicilio(true);
+      navigation.setParams({ resetear: undefined, domicilio: undefined });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route?.params?.resetear]);
@@ -295,7 +297,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
       setModalConfirmacion(null);
       reiniciar();
       // replace: al regresar desde la orden se vuelve al historial, no a este formulario
-      navigation.replace("ServicioDetalle", { id: nueva.id_servicio });
+      navigation.replace("ServicioDetalle", { id: nueva.id_servicio, abrirDomicilio: aDomicilio });
     } catch (err) {
       alerta("Error", err.message);
     } finally {
@@ -411,6 +413,17 @@ export default function NuevaOrdenScreen({ navigation, route }) {
           </>
         )}
 
+        {/* Servicio a domicilio: al crear la orden se pide la dirección y se genera el código */}
+        {hasPermission("servicios.editar") && (
+          <View style={styles.domFila}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.domTitulo}>Servicio a domicilio</Text>
+              <Text style={styles.domSub}>Se pedirá la dirección y se generará un código de seguridad para el cliente.</Text>
+            </View>
+            <Switch value={aDomicilio} onValueChange={setADomicilio} trackColor={{ true: colors.petrol500 }} />
+          </View>
+        )}
+
         {/* Fotos al final: cámara o galería (se suben a la orden: piden poder editarla) */}
         {hasPermission("servicios.editar") && <>
         <Text style={[styles.label, { marginTop: 18 }]}>Fotos <Text style={styles.labelNota}>(opcional, cómo llegó el vehículo)</Text></Text>
@@ -519,6 +532,9 @@ const styles = crearEstilos({
   avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.petrol100, alignItems: "center", justifyContent: "center" },
   avatarTexto: { fontSize: 15, fontWeight: "700", color: colors.petrol600 },
   vacio: { fontSize: 14, color: colors.ink500, paddingVertical: 12, textAlign: "center" },
+  domFila: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 18, backgroundColor: colors.paper100, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: colors.ink300 },
+  domTitulo: { fontSize: 14, fontWeight: "700", color: colors.ink900 },
+  domSub: { fontSize: 12, color: colors.ink500, marginTop: 2 },
   resumenMini: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.petrol100, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 14 },
   resumenMiniTexto: { flex: 1, fontSize: 13, fontWeight: "600", color: colors.petrol600 },
   label: { fontSize: 12, fontWeight: "800", color: colors.ink900, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 7 },

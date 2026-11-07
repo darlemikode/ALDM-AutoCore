@@ -17,6 +17,7 @@ import ClienteFormScreen from "../screens/ClienteFormScreen";
 import VehiculoFormScreen from "../screens/VehiculoFormScreen";
 import NuevaOrdenScreen from "../screens/NuevaOrdenScreen";
 import ServiciosScreen from "../screens/ServiciosScreen";
+import DomiciliosScreen from "../screens/DomiciliosScreen";
 import ServicioDetalleScreen from "../screens/ServicioDetalleScreen";
 import RefaccionesScreen from "../screens/RefaccionesScreen";
 import VehiculosScreen from "../screens/VehiculosScreen";
@@ -146,6 +147,7 @@ function ServicioStackScreen() {
   return (
     <ServicioStack.Navigator screenOptions={opcionesHeader(["HistorialServicios"])}>
       <ServicioStack.Screen name="HistorialServicios" component={ServiciosScreen} options={{ title: "ÓRDENES DE SERVICIO" }} />
+      <ServicioStack.Screen name="Domicilios" component={DomiciliosScreen} options={{ title: "SERVICIOS A DOMICILIO" }} />
       <ServicioStack.Screen name="NuevaOrden" component={NuevaOrdenScreen} options={{ title: "Nueva orden" }} />
       <ServicioStack.Screen name="ServicioDetalle" component={ServicioDetalleScreen} options={{ title: "Orden" }} />
     </ServicioStack.Navigator>
@@ -332,6 +334,7 @@ function ContenidoDrawer({ navigation, state }) {
     ].filter(Boolean) },
     { grupo: "Operación", items: [
       hasPermission("servicios.ver") && { label: "Órdenes de servicio", icono: "construct-outline", ruta: "HistorialServicios", destino: ["Taller", "Servicio", "HistorialServicios"] },
+      hasPermission("servicios.ver") && { label: "Servicios a domicilio", icono: "location-outline", ruta: "Domicilios", destino: ["Taller", "Servicio", "Domicilios"] },
       hasPermission("clientes.ver") && { label: "Clientes", icono: "people-outline", ruta: "ClientesLista", destino: ["Taller", "Clientes"] },
       hasPermission("vehiculos.ver") && { label: "Vehículos", icono: "car-outline", ruta: "VehiculosLista", destino: ["Taller", "Vehículos"] },
       hasPermission("cotizaciones.ver") && { label: "Cotizaciones", icono: "document-text-outline", ruta: "Cotizaciones", destino: ["Taller", "Más", "Cotizaciones"] },
