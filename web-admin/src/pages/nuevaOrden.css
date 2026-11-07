@@ -1,0 +1,22 @@
+.modo-orden { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; padding: 20px 20px 0; }
+.modo-card { display: flex; gap: 14px; align-items: flex-start; text-align: left; padding: 14px 16px; border-radius: 14px; border: 1.5px solid color-mix(in srgb, var(--ink-900) 16%, transparent); background: color-mix(in srgb, var(--ink-900) 4%, var(--paper-0)); color: inherit; cursor: pointer; font: inherit; transition: border-color .15s, background .15s; }
+.modo-card:hover:not(:disabled) { border-color: var(--petrol-500); }
+.modo-card.activo { border-color: var(--petrol-500); background: color-mix(in srgb, var(--petrol-500) 10%, var(--paper-0)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--petrol-500) 18%, transparent); }
+.modo-card:disabled { opacity: .6; cursor: default; }
+.modo-card .modo-ico { flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: color-mix(in srgb, var(--ink-900) 8%, transparent); }
+.modo-card.activo .modo-ico { background: linear-gradient(135deg, var(--petrol-500), #ff7a45); }
+.modo-card b { display: block; font-size: 15px; margin-bottom: 2px; }
+.modo-card span.t { font-size: 12.5px; color: var(--ink-500); line-height: 1.35; }
+
+.ord-pasos { list-style: none; margin: 0; padding: 16px 20px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.ord-pasos li { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-500); padding: 6px 12px 6px 6px; border-radius: 999px; background: color-mix(in srgb, var(--ink-900) 5%, transparent); }
+.ord-pasos li i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--ink-900) 14%, transparent); color: var(--ink-700); }
+.ord-pasos li.actual { color: var(--ink-900); background: color-mix(in srgb, var(--petrol-500) 14%, transparent); }
+.ord-pasos li.actual i { background: linear-gradient(135deg, var(--petrol-500), #ff7a45); color: #fff; }
+.ord-pasos li.hecho { color: var(--teal-600); }
+.ord-pasos li.hecho i { background: var(--teal-600); color: #fff; }
+
+.dom-bloque { margin: 14px 20px 0; padding: 0; }
+.dom-bloque .nota-bloque-body { display: flex; flex-direction: column; gap: 12px; }
+.dom-crear { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 14px 20px 20px; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--petrol-500) 8%, var(--paper-0)); border: 1px solid color-mix(in srgb, var(--petrol-500) 30%, transparent); }
+.dom-crear p { margin: 0; flex: 1; min-width: 220px; font-size: 13px; color: var(--ink-700); }

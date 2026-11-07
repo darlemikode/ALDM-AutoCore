@@ -95,6 +95,22 @@ def _adjuntar_foto_vehiculo(db: Session, servicios: list[models.Servicio]):
             s.vehiculo.foto_principal = f"/uploads/{mas_reciente[s.id_vehiculo]}" if s.id_vehiculo in mas_reciente else None
 
 
+def _marcar_domicilio(db: Session, salidas: list) -> list:
+    """Marca es_domicilio en cada salida con una sola consulta."""
+    ids = [o.id_servicio for o in salidas]
+    if not ids:
+        return salidas
+    con_dom = set()
+    for i in range(0, len(ids), 800):
+        con_dom.update(
+            r[0] for r in db.query(models.ServicioDomicilio.id_servicio)
+            .filter(models.ServicioDomicilio.id_servicio.in_(ids[i:i + 800])).all()
+        )
+    for o in salidas:
+        o.es_domicilio = o.id_servicio in con_dom
+    return salidas
+
+
 def _para(user, out: schemas.ServicioCompletoOut) -> schemas.ServicioCompletoOut:
     """Sin el permiso «Ver precios» (p. ej. el Técnico) la API no entrega
     montos: no basta con esconderlos en la pantalla."""
@@ -169,6 +185,11 @@ def _exigir_orden_abierta(servicio: models.Servicio) -> None:
         )
 
 
+def _exigir_codigo_domicilio(db: Session, servicio: models.Servicio) -> None:
+    from .domicilio import exigir_codigo_domicilio
+    exigir_codigo_domicilio(db, servicio)
+
+
 def _sincronizar_pagado(db: Session, servicio_id: int) -> None:
     """Recalcula el saldo pendiente y ajusta el flag `pagado` en consecuencia.
     Se llama después de cualquier cambio a refacciones o abonos, para que el
@@ -208,14 +229,14 @@ def listar(
         query = query.offset(offset).limit(limite)
     servicios = query.all()
     _adjuntar_foto_vehiculo(db, servicios)
-    return [_para(user, _con_costos(s)) for s in servicios]
+    return _marcar_domicilio(db, [_para(user, _con_costos(s)) for s in servicios])
 
 
 @router.get("/{servicio_id}", response_model=schemas.ServicioCompletoOut)
 def obtener(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver"))):
     servicio = _get_servicio_o_404(db, servicio_id)
     _adjuntar_foto_vehiculo(db, [servicio])
-    return _para(user, _con_costos(servicio))
+    return _marcar_domicilio(db, [_para(user, _con_costos(servicio))])[0]
 
 
 def _validar_cliente_vehiculo(db: Session, id_cliente, id_vehiculo, exigir_ambos=False):
@@ -415,6 +436,7 @@ def consolidar_refacciones_repetidas(db: Session, servicio_id: int) -> None:
 def agregar_detalle(servicio_id: int, payload: schemas.ServicioDetalleIn, db: Session = Depends(get_db), user=Depends(require_permission("servicios.editar"))):
     servicio = _get_servicio_o_404(db, servicio_id)
     _exigir_orden_abierta(servicio)
+    _exigir_codigo_domicilio(db, servicio)
 
     cantidad = max(payload.cantidad or 1, 1)
     id_inventario_encontrado = None
@@ -659,6 +681,7 @@ async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn
 
     servicio = _get_servicio_o_404(db, servicio_id)
     _exigir_orden_abierta(servicio)
+    _exigir_codigo_domicilio(db, servicio)
     _exigir_cliente_y_vehiculo(servicio)
     if not servicio.detalles:
         raise HTTPException(status_code=400, detail="La orden no tiene refacciones. Agrega al menos una antes de finalizarla.")
@@ -768,6 +791,8 @@ async def actualizar_etapa(servicio_id: int, payload: schemas.ActualizarEtapaIn,
 
     if payload.etapa not in CLAVES_ETAPAS_VALIDAS:
         raise HTTPException(status_code=400, detail="Esa etapa no existe en el catálogo.")
+    if payload.etapa not in ("cancelado", "en_proceso"):
+        _exigir_codigo_domicilio(db, servicio)
 
     servicio.etapa = payload.etapa
     db.add(models.ServicioEtapaHistorial(

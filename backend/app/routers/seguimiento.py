@@ -191,6 +191,7 @@ def consultar(request: Request, token: str, db: Session = Depends(db_publica)):
         for h in s.historial_etapas
     ]
     return _respuesta(200, {
+        "domicilio": _domicilio_publico(db, s.id_servicio),
         "taller": {
             "nombre": nombre_taller,
             "telefono": taller.telefono if taller else None,
@@ -217,6 +218,18 @@ def consultar(request: Request, token: str, db: Session = Depends(db_publica)):
         "montos": _montos(s) if mostrar_montos else None,
         "actualizado": ahora.isoformat() + "Z",
     })
+
+
+def _domicilio_publico(db: Session, id_servicio: int) -> Optional[dict]:
+    """Dirección donde se realiza el servicio cuando la orden es a domicilio (solo lo que el cliente necesita ver)."""
+    d = db.query(models.ServicioDomicilio).filter(models.ServicioDomicilio.id_servicio == id_servicio).first()
+    if not d:
+        return None
+    calle = " ".join(x for x in [d.calle, d.numero] if x)
+    direccion = ", ".join(p for p in [calle, d.colonia, f"CP {d.cp}" if d.cp else None, d.ciudad, d.estado] if p)
+    if not direccion and d.lat is None:
+        return None
+    return {"direccion": direccion or None, "lat": d.lat, "lng": d.lng}
 
 
 def _inspeccion_publica(db: Session, id_servicio: int) -> Optional[dict]:

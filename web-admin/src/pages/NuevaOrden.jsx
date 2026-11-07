@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
@@ -9,6 +9,10 @@ import FormModal from "../components/FormModal";
 import IconoModulo from "../components/IconoModulo";
 import { opMarca } from "../components/Combo";
 import { Icono } from "../components/Icono";
+import DomicilioForm, { DOMICILIO_VACIO, domicilioCompleto, domicilioPayload } from "../components/DomicilioForm";
+import "../components/domicilioModal.css";
+import { abrirVentanaWa, confirmarDomicilioPorWhatsApp, precargarEnvio } from "../lib/domicilioWa";
+import "./nuevaOrden.css";
 
 // Nueva orden: se entra directo a la pantalla de la orden. En el lugar del
 // cliente y del vehículo se elige uno existente (con buscador) o se agrega
@@ -27,6 +31,15 @@ export default function NuevaOrden() {
   const [nuevoCliente, setNuevoCliente] = useState(false);
   const [nuevoVehiculo, setNuevoVehiculo] = useState(false);
   const [creando, setCreando] = useState(false);
+  const [params] = useSearchParams();
+  const [domicilio, setDomicilio] = useState(params.get("domicilio") === "1");
+  const [dom, setDom] = useState(DOMICILIO_VACIO);
+  const [empleados, setEmpleados] = useState([]);
+  const puedeDomicilio = hasPermission("servicios.editar");
+  useEffect(() => {
+    if (domicilio && empleados.length === 0) api.get("/empleados/").then((e) => setEmpleados((e || []).filter((x) => x.activo))).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domicilio]);
   const yaCreada = useRef(false);
 
   async function cargar() {
@@ -36,7 +49,7 @@ export default function NuevaOrden() {
     ]);
     setClientes(c); setVehiculos(v); setMarcas(m); setModelos(mo);
   }
-  useEffect(() => { cargar(); }, []);
+  useEffect(() => { cargar(); precargarEnvio(); }, []);
 
   const cliente = clientes.find((c) => c.id_cliente === Number(idCliente));
   const vehiculo = vehiculos.find((v) => v.id_vehiculo === Number(idVehiculo));
@@ -63,27 +76,49 @@ export default function NuevaOrden() {
     if (v && !idCliente) setIdCliente(v.id_cliente);
   }
 
-  // Con cliente y vehículo elegidos, la orden se abre sola
-  useEffect(() => {
-    if (!idCliente || !idVehiculo || yaCreada.current) return;
+  // Crea la orden (y, si es a domicilio, guarda la dirección y genera el código y el enlace)
+  async function crearOrden() {
+    if (yaCreada.current || !idCliente || !idVehiculo) return;
+    if (domicilio && !domicilioCompleto(dom)) { notify("Escribe la calle o pega un enlace del mapa para saber a dónde ir.", "error"); return; }
     yaCreada.current = true;
-    (async () => {
-      setCreando(true);
-      try {
-        const v = vehiculos.find((x) => x.id_vehiculo === Number(idVehiculo));
-        const s = await api.post("/servicios/", {
-          id_cliente: Number(idCliente), id_vehiculo: Number(idVehiculo),
-          nombre_servicio: "Servicio general", km_llegada: v?.km_vehiculo ? String(v.km_vehiculo) : null,
-          iva_porcentaje: 0, tipos_mantenimiento_ids: [], autorizado_cliente: false,
-        });
+    const ventana = domicilio ? abrirVentanaWa() : null; // dentro del clic, para que el navegador no la bloquee
+    setCreando(true);
+    try {
+      const v = vehiculos.find((x) => x.id_vehiculo === Number(idVehiculo));
+      const s = await api.post("/servicios/", {
+        id_cliente: Number(idCliente), id_vehiculo: Number(idVehiculo),
+        nombre_servicio: "Servicio general", km_llegada: v?.km_vehiculo ? String(v.km_vehiculo) : null,
+        iva_porcentaje: 0, tipos_mantenimiento_ids: [], autorizado_cliente: false,
+      });
+      if (domicilio) {
+        try {
+          const info = await api.put(`/servicio-domicilio/${s.id_servicio}`, domicilioPayload(dom));
+          const res = await confirmarDomicilioPorWhatsApp({ idServicio: s.id_servicio, info, ventana, nombreServicio: "Servicio general" });
+          notify(res === "automatico" ? `Orden a domicilio #${s.id_servicio} creada. La confirmación se envía por WhatsApp al cliente en segundo plano.`
+            : res === "ok" ? `Orden a domicilio #${s.id_servicio} creada. Se abrió WhatsApp con la confirmación: pulsa «Enviar».`
+            : res === "sin_telefono" ? `Orden #${s.id_servicio} creada, pero el cliente no tiene teléfono de 10 dígitos para enviarle la confirmación.`
+            : `Orden #${s.id_servicio} creada. Envía el código desde la ventana siguiente.`, res === "ok" || res === "automatico" ? "success" : "info");
+        } catch (err) {
+          ventana?.close();
+          notify(`La orden #${s.id_servicio} se creó, pero la dirección no se guardó: ${err.message}`, "error");
+        }
+      } else {
         notify(`Orden creada — #${s.id_servicio}.`, "success");
-        navigate(`/servicios/${s.id_servicio}?agregar=1`, { replace: true });
-      } catch (err) {
-        notify(err.message, "error");
-        yaCreada.current = false;
-        setCreando(false);
       }
-    })();
+      navigate(`/servicios/${s.id_servicio}?${domicilio ? "domicilio=1" : "agregar=1"}`, { replace: true });
+    } catch (err) {
+      ventana?.close();
+      notify(err.message, "error");
+      yaCreada.current = false;
+      setCreando(false);
+    }
+  }
+
+  // En el taller: con cliente y vehículo elegidos, la orden se abre sola.
+  // A domicilio: primero se pide la dirección, así que se crea con el botón.
+  useEffect(() => {
+    if (domicilio || !idCliente || !idVehiculo) return;
+    crearOrden();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idCliente, idVehiculo]);
 
@@ -124,8 +159,28 @@ export default function NuevaOrden() {
     <div className="orden-main">
       <div className="orden-hero">
         <div className="orden-hero-top">
-          <h1 className="orden-hero-titulo"><IconoModulo ruta="/servicios" /> Orden nueva <span className="badge badge-petrol">sin abrir</span></h1>
+          <h1 className="orden-hero-titulo"><IconoModulo ruta="/servicios" /> Orden nueva{domicilio ? " a domicilio" : ""} <span className="badge badge-petrol">sin abrir</span></h1>
         </div>
+
+        {puedeDomicilio && (
+          <div className="modo-orden" role="radiogroup" aria-label="¿Dónde se hará el servicio?">
+            <button type="button" role="radio" aria-checked={!domicilio} className={`modo-card ${!domicilio ? "activo" : ""}`} onClick={() => setDomicilio(false)} disabled={creando}>
+              <span className="modo-ico">🔧</span>
+              <span><b>En el taller</b><span className="t">El vehículo llega al taller. La orden se abre al elegir cliente y vehículo.</span></span>
+            </button>
+            <button type="button" role="radio" aria-checked={domicilio} className={`modo-card ${domicilio ? "activo" : ""}`} onClick={() => setDomicilio(true)} disabled={creando}>
+              <span className="modo-ico">🏠</span>
+              <span><b>A domicilio</b><span className="t">El mecánico va con el cliente. Pide la dirección y genera un código de seguridad.</span></span>
+            </button>
+          </div>
+        )}
+        {domicilio && (
+          <ol className="ord-pasos" aria-label="Pasos">
+            {[["Cliente", !!cliente], ["Vehículo", !!vehiculo], ["Dirección y mecánico", false], ["Código y enlace", false]].map(([n, hecho], i, arr) => (
+              <li key={n} className={hecho ? "hecho" : arr.findIndex((x) => !x[1]) === i ? "actual" : ""}><i>{hecho ? "✓" : i + 1}</i>{n}</li>
+            ))}
+          </ol>
+        )}
 
         <div className="orden-hero-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14, padding: 20 }}>
           <div className="nota-bloque" style={tarjeta(paso === "cliente")} onClick={() => setPaso("cliente")}>
@@ -161,9 +216,27 @@ export default function NuevaOrden() {
           </div>
         </div>
 
-        <div className="empty-state" style={{ margin: "0 20px 20px" }}>
-          {creando ? "Abriendo la orden…" : "Elige el cliente y su vehículo: la orden se abre sola y ahí agregas las refacciones."}
-        </div>
+        {domicilio && cliente && vehiculo && (
+          <>
+            <div className="nota-bloque dom-bloque">
+              <div className="nota-bloque-header"><span className="icono"><Icono nombre="pin" size={18} /></span><h2>Dirección y mecánico</h2></div>
+              <div className="nota-bloque-body"><DomicilioForm form={dom} setForm={setDom} empleados={empleados} /></div>
+            </div>
+            <div className="dom-crear">
+              <p>Al crear la orden se genera el <b>código</b> para el cliente y el <b>enlace</b> para el mecánico; en la siguiente pantalla los envías por WhatsApp.</p>
+              <button type="button" className="btn btn-primary" onClick={crearOrden} disabled={creando || !domicilioCompleto(dom)}>
+                {creando ? "Creando…" : "Crear orden a domicilio"}
+              </button>
+            </div>
+          </>
+        )}
+        {!(domicilio && cliente && vehiculo) && (
+          <div className="empty-state" style={{ margin: "14px 20px 20px" }}>
+            {creando ? "Abriendo la orden…" : domicilio
+              ? (!cliente ? "Paso 1: elige al cliente." : "Paso 2: elige su vehículo. Después te pediremos la dirección.")
+              : "Elige el cliente y su vehículo: la orden se abre sola y ahí agregas las refacciones."}
+          </div>
+        )}
       </div>
 
       {nuevoCliente && <ClienteFormModal title="Nuevo cliente" initialValues={{}} onSubmit={guardarCliente} onClose={() => setNuevoCliente(false)} />}

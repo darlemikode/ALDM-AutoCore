@@ -7,6 +7,7 @@ import FotoGaleria from "./FotoGaleria";
 import { Icono } from "./Icono";
 import Auto3D from "./Auto3D";
 import { ZONAS, zonasDe, peorEstado } from "./AutoInspeccion";
+import { reducirFoto } from "../lib/reducirFoto";
 
 const ESTADOS = {
   bien: { icono: "check-circle", texto: "Bien" },
@@ -18,8 +19,9 @@ const ESTADOS = {
  * Checklist de inspección digital, agrupado por categoría. NO se guarda solo:
  * se captura completo y se guarda con «Finalizar inspección» (o «Guardar avance»).
  * El primer guardado crea la inspección; los siguientes la actualizan.
+ * Con `publico={{ token }}` funciona sin sesión desde el enlace del mecánico (servicio a domicilio): mismo diseño, otro API.
  */
-export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExistente, refacciones, onGuardado, onClose, puedeEditar = true }) {
+export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExistente, refacciones = [], onGuardado, onClose, puedeEditar = true, publico = null }) {
   const { notify, confirmDialog } = useUI();
   const [items, setItems] = useState([]);
   const [resultados, setResultados] = useState({}); // { id_item: {estado, comentario, id_refaccion_sugerida} }
@@ -35,18 +37,37 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
   const datosRef = useRef({ resultados, comentarioGeneral });
   datosRef.current = { resultados, comentarioGeneral };
 
+  // Modo enlace público: mismas pantallas, pero contra /api/domicilio/{token}/... (sin sesión)
+  async function llamarPublico(ruta, opciones = {}) {
+    const res = await fetch(`/api/domicilio/${encodeURIComponent(publico.token)}/${ruta}`, { cache: "no-store", ...opciones });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.mensaje || data?.detail || "No se pudo completar la acción.");
+    return data;
+  }
+
   useEffect(() => {
-    api.get("/inspecciones/items").then((data) => {
+    (async () => {
+      let data; let existente = inspeccionExistente;
+      try {
+        if (publico) {
+          const r = await llamarPublico("inspeccion");
+          data = r.items; existente = r.inspeccion;
+          if (existente) { idRef.current = existente.id_inspeccion; setIdInspeccion(existente.id_inspeccion); setComentarioGeneral(existente.comentario_general || ""); }
+          setFotosPuntos(r.fotos_puntos || {});
+        } else {
+          data = await api.get("/inspecciones/items");
+        }
+      } catch (err) { notify(err.message, "error"); return; }
       setItems(data);
       const iniciales = {};
       data.forEach((it) => { iniciales[it.id_item] = { estado: "bien", comentario: "", id_refaccion_sugerida: null }; });
-      if (inspeccionExistente) {
-        inspeccionExistente.resultados.forEach((r) => {
+      if (existente) {
+        existente.resultados.forEach((r) => {
           iniciales[r.id_item] = { estado: r.estado, comentario: r.comentario || "", id_refaccion_sugerida: r.id_refaccion_sugerida };
         });
       }
       setResultados(iniciales);
-    });
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -66,9 +87,11 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
     };
     setEstadoGuardado("guardando");
     try {
-      const guardada = idRef.current
-        ? await api.put(`/inspecciones/${idRef.current}`, payload)
-        : await api.post("/inspecciones/", payload);
+      const guardada = publico
+        ? await llamarPublico("inspeccion", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comentario_general: payload.comentario_general, resultados: payload.resultados }) })
+        : idRef.current
+          ? await api.put(`/inspecciones/${idRef.current}`, payload)
+          : await api.post("/inspecciones/", payload);
       idRef.current = guardada.id_inspeccion;
       setIdInspeccion(guardada.id_inspeccion);
       setEstadoGuardado("guardado");
@@ -83,7 +106,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
   }
 
   async function cargarFotosPuntos(id) {
-    if (!id) return;
+    if (!id || publico) return;
     try {
       const lista = await api.get(`/fotos/?entidad_tipo=inspeccion_item&entidad_id=${id}`);
       const por = {};
@@ -100,11 +123,18 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
       // La foto necesita una inspección guardada: si aún no existe, se guarda el avance primero
       if (!idRef.current && !(await guardar())) return;
       const fd = new FormData();
-      fd.append("entidad_tipo", "inspeccion_item");
-      fd.append("entidad_id", idRef.current);
-      fd.append("descripcion", String(idItem));
-      fd.append("archivo", archivo);
-      const foto = await api.postForm("/fotos/", fd);
+      let foto;
+      if (publico) {
+        fd.append("id_item", String(idItem));
+        fd.append("archivo", await reducirFoto(archivo));
+        foto = await llamarPublico("inspeccion/foto", { method: "POST", body: fd });
+      } else {
+        fd.append("entidad_tipo", "inspeccion_item");
+        fd.append("entidad_id", idRef.current);
+        fd.append("descripcion", String(idItem));
+        fd.append("archivo", archivo);
+        foto = await api.postForm("/fotos/", fd);
+      }
       setFotosPuntos((prev) => ({ ...prev, [idItem]: [...(prev[String(idItem)] || prev[idItem] || []), foto] }));
     } catch (err) {
       notify(err.message, "error");
@@ -115,7 +145,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
   async function borrarFotoPunto(idItem, foto) {
     if (!(await confirmDialog("¿Eliminar esta foto? No se puede deshacer.", { danger: true, confirmar: "Sí, eliminar" }))) return;
     try {
-      await api.del(`/fotos/${foto.id_foto}`);
+      if (publico) await llamarPublico(`inspeccion/foto/${foto.id_foto}`, { method: "DELETE" }); else await api.del(`/fotos/${foto.id_foto}`);
       setFotosPuntos((prev) => ({ ...prev, [idItem]: (prev[idItem] || []).filter((f) => f.id_foto !== foto.id_foto) }));
     } catch (err) {
       notify(err.message, "error");
@@ -188,7 +218,7 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
                       value={r.comentario}
                       onChange={(e) => actualizar(item.id_item, "comentario", e.target.value)}
                     />
-                    {r.estado === "mal" && (
+                    {r.estado === "mal" && !publico && (
                       <select
                         value={r.id_refaccion_sugerida || ""}
                         onChange={(e) => actualizar(item.id_item, "id_refaccion_sugerida", e.target.value ? Number(e.target.value) : null)}
@@ -233,8 +263,8 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
   const claseGuardado = estadoGuardado === "guardando" ? "guardando" : estadoGuardado === "error" ? "error" : sucio || !idInspeccion ? "" : "guardado";
 
   return createPortal(
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && cerrar()}>
-      <div className="modal insp-modal">
+    <div className={`modal-backdrop ${publico ? "insp-publico-fondo" : ""}`} onClick={(e) => e.target === e.currentTarget && cerrar()}>
+      <div className={`modal insp-modal ${publico ? "insp-publico" : ""}`}>
         <button type="button" className="x-cerrar" title="Cerrar" aria-label="Cerrar" onClick={cerrar} disabled={estadoGuardado === "guardando"}><Icono nombre="close" size={20} /></button>
         <div className="insp-cabecera">
           <div className="modal-header-icono" style={{ marginBottom: 0 }}>
@@ -284,7 +314,9 @@ export default function InspeccionForm({ idVehiculo, idServicio, inspeccionExist
             <textarea value={comentarioGeneral} onChange={(e) => { setComentarioGeneral(e.target.value); setSucio(true); }} placeholder="Observaciones generales de la inspección" />
           </div>
 
-          {idInspeccion ? (
+          {publico ? (
+            <div className="field-hint" style={{ marginTop: 10 }}>📷 Las fotos se agregan en cada punto marcado como Regular o Mal (guarda el avance antes de la primera foto).</div>
+          ) : idInspeccion ? (
             <div style={{ marginTop: 10 }}>
               <FotoGaleria entidadTipo="inspeccion" entidadId={idInspeccion} puedeEditar={puedeEditar} />
             </div>

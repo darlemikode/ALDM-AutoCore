@@ -10,7 +10,7 @@ import os
 
 from .rate_limit import limiter
 
-from .routers import auth, catalogos, catalogos_admin, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, inventario, seguimiento, recepcion, notificaciones, paquetes_servicio, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router, auditoria as auditoria_router
+from .routers import auth, catalogos, catalogos_admin, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, inventario, seguimiento, domicilio, recepcion, notificaciones, paquetes_servicio, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router, auditoria as auditoria_router
 from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
@@ -113,7 +113,7 @@ async def cabeceras_seguridad(request: Request, call_next):
         response.headers.setdefault(
             "Content-Security-Policy-Report-Only",
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://cdn.jsdelivr.net https://upload.wikimedia.org; "
+            "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://cdn.jsdelivr.net https://upload.wikimedia.org https://tile.openstreetmap.org https://server.arcgisonline.com; "
             "connect-src 'self' wss: https://en.wikipedia.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
         )
         response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
@@ -254,6 +254,8 @@ app.include_router(auditoria_router.router)
 app.include_router(inventario.router)
 app.include_router(seguimiento.publico)
 app.include_router(seguimiento.interno)
+app.include_router(domicilio.publico)
+app.include_router(domicilio.interno)
 app.include_router(paquetes_servicio.router)
 app.include_router(recepcion.router)
 app.include_router(ws_router.router)

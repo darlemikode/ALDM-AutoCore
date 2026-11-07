@@ -1,6 +1,6 @@
 import { contiene, norm } from "../lib/texto";
 import SelectorFecha from "../components/SelectorFecha";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { marcarCampo } from "../validacion";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, getToken } from "../api";
@@ -13,6 +13,7 @@ import ChatOrden from "../components/ChatOrden";
 import InspeccionForm from "../components/InspeccionForm";
 import FinalizarOrdenModal from "../components/FinalizarOrdenModal";
 import SeguimientoOrdenModal from "../components/SeguimientoOrdenModal";
+import DomicilioOrdenModal from "../components/DomicilioOrdenModal";
 import RecepcionAutoModal from "../components/RecepcionAutoModal";
 import SelectorZonaRefacciones from "../components/SelectorZonaRefacciones";
 import { zonasRefaccion } from "../components/zonasRefaccion";
@@ -127,6 +128,8 @@ export default function ServicioDetalle() {
   const [descargando, setDescargando] = useState(false);
   const [modalCierre, setModalCierre] = useState(false);
   const [verSeguimiento, setVerSeguimiento] = useState(false);
+  const [verDomicilio, setVerDomicilio] = useState(false);
+  const [domicilio, setDomicilio] = useState(null);
   const [verRecepcion, setVerRecepcion] = useState(false);
   const [textoConfirmar, setTextoConfirmar] = useState("");
   const [cerrando, setCerrando] = useState(false);
@@ -217,6 +220,22 @@ export default function ServicioDetalle() {
       notify(err.message, "error");
     }
   }
+
+  // Servicio a domicilio: estado de la visita (dirección, código, inicio)
+  const cargarDomicilio = useCallback(() => {
+    if (!id) return;
+    api.get(`/servicio-domicilio/${id}`).then(setDomicilio).catch(() => setDomicilio(null));
+  }, [id]);
+  useEffect(() => { cargarDomicilio(); }, [cargarDomicilio]);
+  useEffect(() => {
+    if (servicio && searchParams.get("domicilio") === "1" && servicio.status === "abierto" && hasPermission("servicios.editar")) {
+      setVerDomicilio(true);
+      const p = new URLSearchParams(searchParams);
+      p.delete("domicilio");
+      setSearchParams(p, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servicio?.id_servicio]);
 
   // Viniendo de "Nueva orden": abre directo el alta de refacciones
   useEffect(() => {
@@ -744,6 +763,10 @@ export default function ServicioDetalle() {
   // WhatsApp al cliente: se genera el PDF de la nota y se manda como archivo con un texto corto.
   // En celular se abre el menú de compartir con el PDF ya adjunto; en computadora el PDF se descarga
   // y se abre WhatsApp Web con el chat del cliente y el texto listo para adjuntarlo.
+  function marcarNotaDomicilio() {
+    if (domicilio?.existe) api.post(`/servicio-domicilio/${servicio.id_servicio}/nota-enviada`).then(cargarDomicilio).catch(() => {});
+  }
+
   async function enviarWhatsApp() {
     const digitos = String(servicio.cliente?.telefono1 || "").replace(/\D/g, "").slice(-10);
     if (digitos.length !== 10) {
@@ -771,6 +794,7 @@ export default function ServicioDetalle() {
       if (esMovil && navigator.canShare?.({ files: [archivo] })) {
         try {
           await navigator.share({ files: [archivo], text: texto });
+          marcarNotaDomicilio();
           return;
         } catch (err) {
           if (err?.name === "AbortError") return; // la persona cerró el menú de compartir
@@ -787,6 +811,7 @@ export default function ServicioDetalle() {
       const destino = esMovil ? "https://wa.me/52" + digitos : `https://web.whatsapp.com/send?phone=52${digitos}`;
       window.open(`${destino}${esMovil ? "?" : "&"}text=${encodeURIComponent(texto)}`, "_blank", "noopener");
       notify(esMovil ? `La nota se descargó como «${archivo.name}». En WhatsApp toca el clip y adjúntala.` : `Nota descargada. En WhatsApp Web arrastra «${archivo.name}» al chat (se abre la vista previa para agregar comentarios) o usa el clip (+).`, "success");
+      marcarNotaDomicilio();
     } catch (err) {
       notify(err.message, "error");
     } finally {
@@ -878,6 +903,7 @@ export default function ServicioDetalle() {
                 {servicio.status === "cerrado" ? "finalizada" : servicio.status}
               </span>
               {servicio.pagado && <span className="badge badge-teal">pagada</span>}
+              {domicilio?.existe && <span className="badge-domicilio" title="Servicio a domicilio"><Icono nombre="pin" size={12} /> A domicilio</span>}
             </h1>
             {editandoNombre ? (
               <input
@@ -900,6 +926,16 @@ export default function ServicioDetalle() {
             )}
           </div>
           <div className="orden-hero-herramientas">
+            {servicio.status === "abierto" && (servicio.etapa || "en_proceso") === "en_proceso" && hasPermission("servicios.editar") && (
+              <span className="tip-envoltura" title="Dirección, mecánico y código de seguridad. Al guardar se confirma al cliente por WhatsApp">
+                <button className={`btn btn-domicilio ${domicilio?.existe ? "activo" : ""}`} onClick={() => setVerDomicilio(true)}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9.5h7" /><path d="M18.5 12.5c-2 0-3.5 1.5-3.5 3.4 0 2.4 3.5 5.6 3.5 5.6s3.5-3.2 3.5-5.6c0-1.9-1.5-3.4-3.5-3.4z" transform="translate(-0.5 -2)" /><circle cx="18" cy="13.7" r="1.2" />
+                  </svg>
+                  <span>{domicilio?.existe ? "A domicilio" : "Servicio a domicilio"}</span>
+                </button>
+              </span>
+            )}
             {servicio.status === "abierto" && tieneMod("seguimiento_qr") && hasPermission("servicios.editar") && hasPermission("servicios.ver_precios") && (
               <span className="tip-envoltura" title="Enlace y QR para que el cliente vea el avance, las refacciones y el monto">
                 <button className="btn btn-primary" onClick={() => setVerSeguimiento(true)}><IconoAuto valor="📱" size={18} /> Seguimiento al cliente (QR)</button>
@@ -1813,6 +1849,7 @@ export default function ServicioDetalle() {
         />
       )}
 
+      {verDomicilio && <DomicilioOrdenModal idServicio={servicio.id_servicio} nombreServicio={servicio.nombre_servicio} nombreTaller={datosTaller?.nombre_taller} onClose={() => setVerDomicilio(false)} onCambio={() => { cargarDomicilio(); load(); }} />}
       {verSeguimiento && <SeguimientoOrdenModal idServicio={servicio.id_servicio} onClose={() => setVerSeguimiento(false)} />}
       {verRecepcion && <RecepcionAutoModal idServicio={servicio.id_servicio} puedeEditar={puedeEditarOrden} onClose={() => setVerRecepcion(false)} />}
 

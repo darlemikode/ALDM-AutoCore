@@ -53,3 +53,31 @@
 .insp-foto-add:hover { opacity: 1; }
 .insp-foto-add.ocupado { opacity: .5; pointer-events: none; }
 
+/* Inspección desde el enlace del mecánico: en el celular ocupa toda la pantalla y es compacta */
+@media (max-width: 900px) {
+  .modal-backdrop.insp-publico-fondo { padding: 0; align-items: stretch; justify-content: stretch; overflow: hidden; }
+  .modal.insp-modal.insp-publico { width: calc(100vw / var(--zoom, 1)); max-width: none; height: calc(100dvh / var(--zoom, 1)); max-height: none; border-radius: 0; border-width: 0; border-top-width: 3px; }
+  .insp-publico .insp-cabecera { padding: 10px 56px 8px 12px; gap: 8px; }
+  .insp-publico .insp-cabecera h2 { font-size: 17px; }
+  .insp-publico .insp-cabecera .modal-subtitulo { display: none; }
+  .insp-publico .insp-cabecera .modal-avatar-icono { width: 32px; height: 32px; }
+  .insp-publico .insp-contadores { gap: 4px; width: 100%; }
+  .insp-publico .insp-cont { font-size: 12px; padding: 3px 8px; }
+  .insp-publico .insp-cont svg { width: 14px; height: 14px; }
+  .insp-publico .guardado-auto { font-size: 11px; margin-left: auto; }
+  .insp-publico .insp-cuerpo { padding: 8px 10px 14px; }
+  .insp-publico .insp-mapa { grid-template-columns: 1fr; gap: 10px; padding: 8px; margin-bottom: 12px; }
+  .insp-publico .car-vista { height: 250px; }
+  .insp-publico .insp-mapa-grid { grid-template-columns: 1fr; }
+  .insp-publico .insp-mapa-panel h3 { font-size: 16px; }
+  .insp-publico .insp-item-nombre { font-size: 14.5px; }
+  .insp-publico .insp-modal .insp-estado, .insp-modal.insp-publico .insp-estado { height: 40px; font-size: 13px; }
+  .insp-publico .insp-estados { gap: 3px; }
+  .insp-publico .insp-detalle input, .insp-publico .insp-detalle select, .insp-publico textarea { font-size: 16px; } /* evita el zoom automático de iOS */
+  .insp-publico .insp-foto { width: 64px; height: 64px; }
+  .insp-publico .insp-foto-add { height: 44px; }
+  .insp-publico .insp-pie { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); gap: 8px; display: grid; grid-template-columns: 1fr 1fr; }
+  .insp-publico .insp-pie .btn { padding: 0 10px; min-height: 46px; justify-content: center; }
+  .insp-publico .insp-pie .btn-exito { grid-column: 1 / -1; }
+  .insp-modal.insp-publico > .x-cerrar { top: 8px; right: 10px; }
+}

@@ -4,6 +4,8 @@ import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 const Login = lazy(() => import("./pages/Login"));
 const Seguimiento = lazy(() => import("./pages/Seguimiento"));
+const Domicilio = lazy(() => import("./pages/Domicilio"));
+const Domicilios = lazy(() => import("./pages/Domicilios"));
 const EstablecerPassword = lazy(() => import("./pages/EstablecerPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Clientes = lazy(() => import("./pages/Clientes"));
@@ -86,6 +88,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/establecer-password" element={<EstablecerPassword />} />
       <Route path="/seguimiento/:token" element={<Seguimiento />} />
+      <Route path="/domicilio/:token" element={<Domicilio />} />
       <Route
         path="/"
         element={
@@ -98,6 +101,7 @@ export default function App() {
         <Route path="clientes" element={<RequirePermission clave="clientes.ver"><Clientes /></RequirePermission>} />
         <Route path="vehiculos" element={<RequirePermission clave="vehiculos.ver"><Vehiculos /></RequirePermission>} />
         <Route path="servicios" element={<RequirePermission clave="servicios.ver"><Servicios /></RequirePermission>} />
+        <Route path="domicilios" element={<RequirePermission clave="servicios.ver"><Domicilios /></RequirePermission>} />
         <Route path="servicios/nueva" element={<RequirePermission clave="servicios.crear"><NuevaOrden /></RequirePermission>} />
         <Route path="servicios/:id" element={<RequirePermission clave="servicios.ver"><ServicioDetalle /></RequirePermission>} />
         <Route path="cotizaciones" element={<RequirePermission clave="cotizaciones.ver"><Cotizaciones /></RequirePermission>} />

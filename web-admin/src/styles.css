@@ -5305,3 +5305,9 @@ table { border-spacing: 0 10px; }
 @media (max-width: 700px) { .bloques-grid .nota-bloque-body.form-grid { grid-template-columns: 1fr 1fr !important; } }
 .pv-filtros { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .pv-filtros select { flex: 1; min-width: 130px; }
+
+/* Identificador de servicio a domicilio (tablero y lista) */
+.badge-domicilio { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #ff6b4a; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .02em; line-height: 1.4; white-space: nowrap; }
+.badge-domicilio svg { stroke: currentColor; }
+.kanban-tarjeta-top .badge-domicilio { margin-left: auto; }
+.orden-titulo .badge-domicilio { margin-left: 8px; vertical-align: middle; }

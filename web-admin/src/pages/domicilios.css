@@ -1,0 +1,51 @@
+.dmcl-barra { display: flex; gap: 10px; flex-wrap: wrap; }
+.dmcl-barra .search-input { flex: 1; min-width: 220px; }
+.dmcl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 16px; }
+.dmcl-card { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: color-mix(in srgb, var(--ink-900) 4%, var(--paper-0)); border: 1px solid color-mix(in srgb, var(--ink-900) 12%, transparent); border-left: 4px solid var(--warn-600); }
+.dmcl-card.ini { border-left-color: var(--teal-600); }
+.dmcl-card.bloq { border-left-color: var(--red-600); }
+.dmcl-card header { display: flex; align-items: center; justify-content: space-between; color: var(--ink-500); }
+.dmcl-card h3 { margin: 0; font-size: 16px; text-wrap: balance; }
+.dmcl-linea { margin: 0; font-size: 13.5px; color: var(--ink-700); overflow-wrap: anywhere; }
+.dmcl-chip { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--warn-100); color: var(--warn-600); }
+.dmcl-chip.ini { background: var(--teal-100); color: var(--teal-600); }
+.dmcl-chip.bloq { background: var(--red-100); color: var(--red-600); }
+.dmcl-card footer { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+/* Rediseño: filtros, tarjeta con datos, avance y mapa */
+.dmcl-filtros { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px 0; }
+.dmcl-filtro { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--ink-900) 18%, transparent); background: transparent; color: var(--ink-700); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.dmcl-filtro span { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--ink-900) 10%, transparent); font-size: 12px; text-align: center; }
+.dmcl-filtro.activo { background: var(--violet-600, #e5391f); border-color: transparent; color: #fff; }
+.dmcl-filtro.activo span { background: rgba(255, 255, 255, .25); }
+.dmcl-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.dmcl-card { gap: 10px; padding: 16px; transition: transform .15s, box-shadow .15s; }
+.dmcl-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0, 0, 0, .25); }
+.dmcl-num { display: inline-flex; align-items: baseline; gap: 8px; font-weight: 800; font-size: 15px; }
+.dmcl-num small { font-size: 11.5px; font-weight: 600; color: var(--ink-500); }
+.dmcl-card h3 { font-size: 17px; }
+.dmcl-datos { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid color-mix(in srgb, var(--ink-900) 10%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ink-900) 10%, transparent); }
+.dmcl-linea { display: flex; align-items: flex-start; gap: 8px; }
+.dmcl-linea svg { flex: none; margin-top: 2px; color: var(--ink-500); }
+.dmcl-linea.sin { color: var(--ink-500); font-style: italic; }
+.dmcl-placa { margin-left: auto; flex: none; padding: 1px 8px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--ink-900) 25%, transparent); font-style: normal; font-size: 12px; font-weight: 800; letter-spacing: .06em; }
+.dmcl-avance { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; color: var(--ink-500); }
+.dmcl-barra-av { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.dmcl-barra-av i { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink-900) 14%, transparent); }
+.dmcl-barra-av i.hecho { background: var(--teal-600); }
+.dmcl-barra-av i.actual { background: #ff7a45; }
+.dmcl-card footer { margin-top: 2px; }
+.dmcl-mapa { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; text-decoration: none; }
+
+/* Botones: "Código y enlace" a todo lo ancho; "Ver orden" grande junto al mapa */
+.dmcl-card footer { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.dmcl-card footer .btn { min-height: 44px; justify-content: center; font-size: 14px; }
+.dmcl-card footer .btn-primary { grid-column: 1 / -1; }
+.dmcl-card footer .btn-primary ~ a.btn-secondary:not(.dmcl-mapa) { grid-column: 1; font-size: 15px; font-weight: 800; }
+.dmcl-card footer > a.btn-secondary:only-child, .dmcl-card footer > a.btn-secondary:not(.dmcl-mapa):last-child { grid-column: 1 / -1; }
+.dmcl-mapa { margin-left: 0; padding: 0 16px; }
+
+/* Finalizados */
+.dmcl-card.fin { border-left-color: var(--ink-500); opacity: .9; }
+.dmcl-chip.fin { background: color-mix(in srgb, var(--ink-900) 12%, transparent); color: var(--ink-700); }
+.dmcl-card.fin .dmcl-barra-av i { background: var(--teal-600); }

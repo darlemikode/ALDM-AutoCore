@@ -240,7 +240,10 @@ export default function Seguimiento() {
   const telDigitos = String(taller.telefono || "").replace(/\D/g, "");
   const waNumero = telDigitos.length === 10 ? `52${telDigitos}` : telDigitos.length >= 11 ? telDigitos : "";
   const wa = waNumero ? `https://wa.me/${waNumero}?text=${encodeURIComponent(`Hola, consulto sobre mi orden #${orden.folio} (${orden.vehiculo}).`)}` : null;
-  const mapaQ = taller.direccion ? encodeURIComponent(taller.direccion) : null;
+  const dom = datos.domicilio || null;
+  const domQ = dom ? (dom.lat != null && dom.lng != null ? `${dom.lat},${dom.lng}` : dom.direccion ? encodeURIComponent(`${dom.direccion}, México`) : null) : null;
+  // En servicio a domicilio el trabajo no es en el taller: se muestra la dirección del servicio en lugar de la del taller.
+  const mapaQ = !dom && taller.direccion ? encodeURIComponent(taller.direccion) : null;
   const idx = PASOS.findIndex(([k]) => k === orden.etapa);
   const refacciones = conceptos.filter((c) => c.es_refaccion);
   const otros = conceptos.filter((c) => !c.es_refaccion);
@@ -385,6 +388,31 @@ export default function Seguimiento() {
           <section className="seg-tarjeta seg-total" aria-labelledby="seg-t-total">
             <h2 id="seg-t-total"><Ico n="costos" />Resumen de costos</h2>
             <p className="seg-vacio">Los costos se mostrarán aquí cuando tu vehículo esté listo para entrega.</p>
+          </section>
+        )}
+
+        {domQ && (
+          <section className="seg-tarjeta seg-mapa" aria-labelledby="seg-t-mapa-dom">
+            <h2 id="seg-t-mapa-dom"><Ico n="ubicacion" />Ubicación del servicio</h2>
+            <div className="seg-dir">
+              <Ico n="ubicacion" size={26} />
+              <div>
+                <strong>Servicio a domicilio</strong>
+                <span>{dom.direccion || "Ubicación marcada en el mapa"}</span>
+              </div>
+            </div>
+            <div className="seg-mapa-marco">
+              <iframe
+                title="Mapa de la dirección del servicio"
+                src={`https://www.google.com/maps?q=${domQ}&output=embed`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
+            </div>
+            <a className="seg-btn-mapa" href={`https://www.google.com/maps/search/?api=1&query=${domQ}`} target="_blank" rel="noopener noreferrer">
+              Abrir en Google Maps
+            </a>
           </section>
         )}
 

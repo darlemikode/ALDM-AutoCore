@@ -849,6 +849,8 @@ class ServicioCompletoOut(ServicioOut):
     # Igual que costos: se llena solo al cerrar la orden, si alguna
     # refacción usada quedó en nivel bajo/crítico de stock.
     alertas_stock: List[dict] = []
+    # True si la orden es «a domicilio» (existe su fila en servicio_domicilio).
+    es_domicilio: bool = False
 
 
 class ProximoServicioOut(BaseModel):

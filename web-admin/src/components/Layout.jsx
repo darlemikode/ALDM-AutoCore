@@ -28,6 +28,7 @@ const NAV = [
     group: "Operación",
     items: [
       { to: "/servicios", label: "Órdenes de servicio", permisoRequerido: "servicios.ver" },
+      { to: "/domicilios", label: "A domicilio", permisoRequerido: "servicios.ver" },
       { to: "/clientes", label: "Clientes", permisoRequerido: "clientes.ver" },
       { to: "/vehiculos", label: "Vehículos", permisoRequerido: "vehiculos.ver" },
       { to: "/cotizaciones", label: "Cotizaciones", permisoRequerido: "cotizaciones.ver" },

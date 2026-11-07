@@ -33,3 +33,31 @@ document.addEventListener(
   },
   true
 );
+
+// Solo números: en los campos numéricos no se captura ninguna letra (ni "e",
+// que el navegador sí permite) ni "+"; el "-" solo si el campo admite negativos.
+document.addEventListener(
+  "keydown",
+  (e) => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement) || el.type !== "number" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length !== 1) return; // teclas de control (Backspace, flechas, Tab…)
+    const permitido = /[0-9.]/.test(e.key) || (e.key === "-" && el.min !== "" && Number(el.min) < 0);
+    if (!permitido) e.preventDefault();
+  },
+  true
+);
+
+// Pegar texto con letras: se descarta lo que no sea número.
+document.addEventListener(
+  "paste",
+  (e) => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement) || el.type !== "number") return;
+    const texto = (e.clipboardData?.getData("text") || "").replace(/[^0-9.\-]/g, "");
+    e.preventDefault();
+    if (texto) document.execCommand("insertText", false, texto);
+  },
+  true
+);
+

@@ -1472,6 +1472,37 @@ class SeguimientoOrden(TenantMixin, Base):
     accesos = Column(Integer, default=0)
 
 
+class ServicioDomicilio(TenantMixin, Base):
+    """Datos de una orden «a domicilio»: dónde se hará el servicio, quién va,
+    el enlace público del mecánico y el código de 6 dígitos que da el cliente
+    para poder iniciar. Una fila por orden."""
+    __tablename__ = "servicio_domicilio"
+
+    id_domicilio = Column(Integer, primary_key=True, index=True)
+    id_servicio = Column(Integer, ForeignKey("servicios.id_servicio"), nullable=False, unique=True, index=True)
+    calle = Column(String(150), nullable=True)
+    numero = Column(String(20), nullable=True)
+    colonia = Column(String(100), nullable=True)
+    cp = Column(String(10), nullable=True)
+    ciudad = Column(String(100), nullable=True)
+    estado = Column(String(100), nullable=True)
+    referencias = Column(String(500), nullable=True)
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    maps_url = Column(String(500), nullable=True)
+    id_empleado_mecanico = Column(Integer, ForeignKey("empleados.id_empleado"), nullable=True, index=True)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)  # SHA-256 del token del enlace
+    token_cifrado = Column(TextoCifrado(300), nullable=True)
+    codigo_cifrado = Column(TextoCifrado(60), nullable=True)  # código de 6 dígitos que se entrega al cliente
+    codigo_intentos = Column(Integer, default=0)
+    codigo_bloqueado = Column(Boolean, default=False)
+    iniciado_at = Column(DateTime, nullable=True)
+    iniciado_por = Column(String(60), nullable=True)
+    nota_enviada_at = Column(DateTime, nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_por = Column(String(50), nullable=True)
+
+
 class PaqueteServicio(TenantMixin, Base):
     """Plantilla de servicio reutilizable (Afinación, Frenos…): lista de
     conceptos en JSON que se agrega de golpe a una orden."""

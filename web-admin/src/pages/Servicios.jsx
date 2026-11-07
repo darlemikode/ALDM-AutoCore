@@ -551,6 +551,7 @@ export default function Servicios() {
                         >
                           <div className="kanban-tarjeta-top">
                             <span className="kanban-tarjeta-num">#{s.id_servicio}</span>
+                            {s.es_domicilio && <span className="badge-domicilio" title="Servicio a domicilio"><Icono nombre="pin" size={12} /> A domicilio</span>}
                             {s.es_garantia && <IconoAuto valor="🛡️" size={14} />}
                           </div>
                           <div className="kanban-tarjeta-titulo">{s.nombre_servicio}</div>
@@ -591,7 +592,7 @@ export default function Servicios() {
                 <div key={s.id_servicio} className={`orden-fila est-${s.status}`} style={{ "--acc": COLOR_ETAPA[claveFila] || "#2563EB" }} onClick={() => navigate(`/servicios/${s.id_servicio}`)}>
                   <div className="orden-num">#{s.id_servicio}</div>
                   <div className="orden-main">
-                    <div className="orden-titulo">{s.es_garantia && <><IconoAuto valor="🛡️" size={16} />{" "}</>}{s.nombre_servicio}</div>
+                    <div className="orden-titulo">{s.es_garantia && <><IconoAuto valor="🛡️" size={16} />{" "}</>}{s.nombre_servicio}{s.es_domicilio && <span className="badge-domicilio" title="Servicio a domicilio"><Icono nombre="pin" size={12} /> A domicilio</span>}</div>
                     <div className="orden-meta">
                       <span><Icono nombre="user" size={15} /> {cli || "Sin cliente"}</span>
                       <span><Icono nombre="car" size={15} /> {s.vehiculo?.placas_vehiculo || "Sin vehículo"}</span>
