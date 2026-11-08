@@ -43,8 +43,16 @@ from ..ws_manager import manager
 from ..tenancy import MODO_TALLER, fijar_tenant
 from .seguimiento import db_publica
 
+def _exigir_modulo_domicilio(user=Depends(get_current_user)):
+    """El servicio a domicilio es un módulo del paquete: sin él, el taller no usa estas rutas.
+    (El enlace público del mecánico no pasa por aquí: se valida con su token.)"""
+    modulos = getattr(user, "_modulos_activos", None)
+    if modulos is not None and "servicio_domicilio" not in modulos:
+        raise HTTPException(status_code=403, detail="Tu paquete no incluye el servicio a domicilio.")
+
+
 publico = APIRouter(prefix="/api/domicilio", tags=["domicilio"])
-interno = APIRouter(prefix="/api/servicio-domicilio", tags=["domicilio"])
+interno = APIRouter(prefix="/api/servicio-domicilio", tags=["domicilio"], dependencies=[Depends(_exigir_modulo_domicilio)])
 
 MAX_INTENTOS = 5
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{43}$")
@@ -1201,7 +1209,13 @@ def listar_abiertas(incluir_finalizados: bool = False, db: Session = Depends(get
     filas = base.filter(models.Servicio.status == "abierto").order_by(models.Servicio.fecha_entrada_servicio.asc()).all()
     if incluir_finalizados:  # los 100 más recientes
         filas += base.filter(models.Servicio.status == "cerrado").order_by(models.Servicio.fecha_entrada_servicio.desc()).limit(100).all()
+    ids_mec = {d.id_empleado_mecanico for d, _ in filas if d.id_empleado_mecanico}
+    nombres_mec = {}
+    if ids_mec:  # un solo query para los nombres (la pantalla ya no pide /empleados/)
+        for e in db.query(models.Empleado).filter(models.Empleado.id_empleado.in_(ids_mec)).all():
+            nombres_mec[e.id_empleado] = " ".join(x for x in (e.nombre, e.paterno) if x)
     return [{
+        "mecanico": nombres_mec.get(d.id_empleado_mecanico),
         "id_servicio": s.id_servicio, "servicio": s.nombre_servicio, "cliente": _cliente_corto(s.cliente),
         "direccion": _direccion_txt(d) or None, "id_empleado_mecanico": d.id_empleado_mecanico,
         "iniciado": bool(d.iniciado_at), "bloqueado": bool(d.codigo_bloqueado),

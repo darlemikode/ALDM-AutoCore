@@ -35,7 +35,7 @@ export default function ConfiguracionInicio() {
   const vistos = new Set([...(user?.tutoriales_vistos || []), ...vistosSesion]);
   const ayuda = AYUDA
     .filter((m) => !m.permiso || hasPermission(m.permiso))
-    .map((m) => ({ ...m, tutoriales: m.tutoriales.filter((t) => !t.permiso || hasPermission(t.permiso)) }))
+    .map((m) => ({ ...m, tutoriales: m.tutoriales.filter((t) => (!t.permiso || hasPermission(t.permiso)) && (!t.modulo || tieneMod(t.modulo)) && (!t.soloSuperadmin || user?.es_superadmin)) }))
     .filter((m) => m.tutoriales.length > 0);
 
   const [temaOscuro, setTemaOscuroLocal] = useState(temaOscuroActivo);

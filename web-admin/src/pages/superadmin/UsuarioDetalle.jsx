@@ -128,13 +128,13 @@ export default function UsuarioDetalle() {
       </div>
 
       {modal?.tipo === "datos" && (
-        <FormModal title="Datos del usuario" icono="👤" initialValues={modal.iniciales}
+        <FormModal tema="sa" title="Datos del usuario" icono="👤" initialValues={modal.iniciales}
           fields={[{ name: "nombre_completo", label: "Nombre completo", required: true, full: true }, { name: "telefono", label: "Teléfono" }, { name: "correo", label: "Correo", type: "email" }]}
           onSubmit={async (v) => { await actualizar({ nombre_completo: v.nombre_completo, telefono: v.telefono || null, correo: v.correo || null }); setModal(null); }}
           onClose={() => setModal(null)} />
       )}
       {modal?.tipo === "taller" && (
-        <FormModal title="Dar acceso a un taller" subtitulo="Entra como Administrador General; después puedes cambiarle el rol." icono="🏢" initialValues={modal.iniciales}
+        <FormModal tema="sa" title="Dar acceso a un taller" subtitulo="Entra como Administrador General; después puedes cambiarle el rol." icono="🏢" initialValues={modal.iniciales}
           fields={[{ name: "id_taller", label: "Taller", type: "select", required: true, options: disponibles.map((t) => ({ value: t.id_taller, label: t.nombre_comercial })) }]}
           onSubmit={async (v) => { await guardarMembresias([...u.membresias, { id_taller: Number(v.id_taller), id_rol: null, activo: true }]); setModal(null); }}
           onClose={() => setModal(null)} />

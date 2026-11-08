@@ -23,7 +23,6 @@ const Comisiones = lazy(() => import("./pages/Comisiones"));
 const Suscripcion = lazy(() => import("./pages/Suscripcion"));
 const Integraciones = lazy(() => import("./pages/Integraciones"));
 const Inventario = lazy(() => import("./pages/Inventario"));
-const Errores = lazy(() => import("./pages/Errores"));
 const NuevaOrden = lazy(() => import("./pages/NuevaOrden"));
 const MiDashboard = lazy(() => import("./pages/MiDashboard"));
 const Refacciones = lazy(() => import("./pages/Refacciones"));
@@ -98,7 +97,7 @@ export default function App() {
         <Route path="suscripcion" element={<Suscripcion />} />
         <Route path="integraciones" element={<RequirePermission clave="configuracion.editar"><Integraciones /></RequirePermission>} />
         <Route path="comisiones" element={<RequirePermission clave="configuracion.editar"><Comisiones /></RequirePermission>} />
-        <Route path="errores" element={<RequirePermission clave="configuracion.editar"><Errores /></RequirePermission>} />
+        <Route path="errores" element={<RequireSuperadmin><Navigate to="/superadmin/errores" replace /></RequireSuperadmin>} />
         <Route path="mi-dashboard" element={<MiDashboard />} />
         <Route path="refacciones" element={<RequirePermission clave="refacciones.ver"><Refacciones /></RequirePermission>} />
         <Route path="inventario" element={<RequirePermission clave="inventario.ver"><Inventario /></RequirePermission>} />

@@ -68,7 +68,7 @@ export default function Usuarios() {
         </>
       )}
       {nuevo && (
-        <FormModal
+        <FormModal tema="sa"
           title="Nuevo usuario"
           subtitulo="Después le asignas a qué talleres puede entrar."
           icono="👤"

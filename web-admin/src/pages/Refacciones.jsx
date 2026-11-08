@@ -5,7 +5,7 @@ import { Icono } from "../components/Icono";
 import LogoMarca from "../components/LogoMarca";
 import "./refacciones.css";
 import Combo, { opMarca } from "../components/Combo";
-import FiltroChips, { colorGrupo as colorCategoria, contarPor } from "../components/FiltroChips";
+import FiltroChips, { colorGrupo as colorCategoria } from "../components/FiltroChips";
 import FormModal from "../components/FormModal";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
@@ -51,7 +51,6 @@ export default function Refacciones() {
   const { confirmDialog, notify } = useUI();
   const { hasPermission } = useAuth();
   const [refacciones, setRefacciones] = useState([]);
-  const [marcas, setMarcas] = useState([]);
   const [categoriasRefaccion, setCategoriasRefaccion] = useState([]);
   const [marcasVehiculo, setMarcasVehiculo] = useState([]);
   const [modelosVehiculo, setModelosVehiculo] = useState([]);
@@ -62,23 +61,75 @@ export default function Refacciones() {
   const [compatNueva, setCompatNueva] = useState({ id_marca_vehiculo: "", id_modelo_vehiculo: "" });
   const [loading, setLoading] = useState(true);
   const [catSel, setCatSel] = useState([]);
+  const PAGINA = 30; // la lista se trae por bloques de 30 al ir bajando
+  const [conteoCat, setConteoCat] = useState({});
+  const [totalGeneral, setTotalGeneral] = useState(0);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const [existentes, setExistentes] = useState([]); // lista ligera (nombre/categoría) para detectar duplicados al capturar
+  const centinela = useRef(null);
+  const cuantos = useRef(0);
+  const qRef = useRef("");
+  const catRef = useRef([]);
+  const peticion = useRef(0); // descarta respuestas viejas
+  const filtro = () => {
+    const p = new URLSearchParams();
+    if (qRef.current) p.set("q", qRef.current);
+    if (catRef.current.length) p.set("categorias", catRef.current.join("|"));
+    return p.toString();
+  };
+  const totalVisible = catSel.length ? catSel.reduce((a, n) => a + (conteoCat[n] || 0), 0) : totalGeneral;
 
   // Solo la lista depende de la búsqueda: con cada letra se pide únicamente ella
-  async function load() {
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    const r = await api.get(`/refacciones/?${params}`);
-    setRefacciones(r);
+  async function cargarLista() {
+    const limite = Math.min(2000, Math.max(PAGINA, cuantos.current));
+    const mia = ++peticion.current;
+    try {
+      const r = await api.get(`/refacciones/?${filtro()}&limite=${limite}`);
+      if (mia !== peticion.current) return;
+      cuantos.current = r.length;
+      setRefacciones(r);
+    } catch (err) {
+      if (mia === peticion.current) notify(err.message || "No se pudieron cargar las refacciones.", "error");
+    }
     setLoading(false);
   }
+  async function cargarResumen() {
+    try {
+      const p = new URLSearchParams();
+      if (qRef.current) p.set("q", qRef.current);
+      const r = await api.get(`/refacciones/resumen-categorias?${p}`);
+      setConteoCat(r.categorias || {});
+      setTotalGeneral(r.total || 0);
+    } catch { /* los chips quedan como estaban */ }
+  }
+  function load() { return Promise.all([cargarLista(), cargarResumen()]); }
+  async function cargarMas() {
+    if (cargandoMas || refacciones.length >= totalVisible) return;
+    setCargandoMas(true);
+    try {
+      const mas = await api.get(`/refacciones/?${filtro()}&limite=${PAGINA}&offset=${refacciones.length}`);
+      cuantos.current = refacciones.length + mas.length;
+      setRefacciones((prev) => [...prev, ...mas.filter((m) => !prev.some((p) => p.id_refaccion === m.id_refaccion))]);
+    } finally { setCargandoMas(false); }
+  }
+  useEffect(() => {
+    const el = centinela.current;
+    if (!el || typeof IntersectionObserver === "undefined") return undefined;
+    const obs = new IntersectionObserver((e) => { if (e[0].isIntersecting) cargarMas(); }, { rootMargin: "300px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
+  // La lista ligera solo se necesita con el formulario abierto
+  useEffect(() => {
+    if (!editing) return;
+    api.get("/refacciones/ligero").then(setExistentes).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!editing]);
   // Los catálogos se piden una sola vez y en paralelo con la lista (sin bloquearla)
   async function cargarCatalogos() {
-    const [m, cat] = await Promise.all([
-      api.get("/refacciones-marcas/"),
-      api.get("/refacciones-categorias/"),
-    ]);
-    setMarcas(m);
-    setCategoriasRefaccion(cat);
+    // Las marcas de refacción no se usan en esta pantalla: no se piden.
+    setCategoriasRefaccion(await api.get("/refacciones-categorias/"));
   }
   useEffect(() => { cargarCatalogos().catch(() => {}); }, []);
 
@@ -94,7 +145,15 @@ export default function Refacciones() {
   }, [editing]);
 
   useEffect(() => {
-    const t = setTimeout(load, 250);
+    qRef.current = q.trim();
+    catRef.current = catSel;
+    cuantos.current = 0; // al cambiar búsqueda o categorías se vuelve al primer bloque
+    const t = setTimeout(cargarLista, q ? 250 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, catSel]);
+  useEffect(() => {
+    const t = setTimeout(cargarResumen, q ? 250 : 0);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
@@ -125,7 +184,7 @@ export default function Refacciones() {
   // Al elegir una categoría se muestran las refacciones que ya existen en ella
   function bloqueExistentes(values) {
     const cat = categoriasRefaccion.find((c) => String(c.id_categoria_refaccion) === String(values.__id_categoria ?? ""));
-    const lista = cat ? refacciones.filter((r) => r.categoria === cat.nombre_categoria && r.id_refaccion !== editing?.id_refaccion) : [];
+    const lista = cat ? existentes.filter((r) => r.categoria === cat.nombre_categoria && r.id_refaccion !== editing?.id_refaccion) : [];
     return {
       icono: "📋", acento: "acento-teal",
       titulo: cat ? `Ya existen en ${cat.nombre_categoria}` : "Refacciones existentes",
@@ -149,11 +208,12 @@ export default function Refacciones() {
     const norm = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
     const nombreCat = __id_categoria ? categoriasRefaccion.find((c) => c.id_categoria_refaccion === Number(__id_categoria))?.nombre_categoria || null : null;
     const clave = `${norm(nombreCat)}|${norm(capturados.nombre_refaccion)}`;
-    const yaEsta = refacciones.some((r) => r.id_refaccion !== editing?.id_refaccion && `${norm(r.categoria)}|${norm(r.nombre_refaccion)}` === clave)
+    const ligeras = await api.get("/refacciones/ligero").catch(() => existentes);
+    const yaEsta = ligeras.some((r) => r.id_refaccion !== editing?.id_refaccion && `${norm(r.categoria)}|${norm(r.nombre_refaccion)}` === clave)
       || (!editing?.id_refaccion && recienAgregadas.current.has(clave));
     if (yaEsta) throw new Error(`"${capturados.nombre_refaccion}" ya existe${nombreCat ? ` en ${nombreCat}` : ""}.`);
     // Mismo nombre en OTRA categoría: se avisa para evitar duplicados
-    const enOtras = [...new Set(refacciones
+    const enOtras = [...new Set(ligeras
       .filter((r) => r.id_refaccion !== editing?.id_refaccion && norm(r.nombre_refaccion) === norm(capturados.nombre_refaccion) && norm(r.categoria) !== norm(nombreCat))
       .map((r) => r.categoria || "Sin categoría"))];
     if (enOtras.length) {
@@ -173,7 +233,9 @@ export default function Refacciones() {
       notify("Refacción creada.", "success");
     }
     // Se muestra la categoría donde quedó la refacción
-    setCatSel([datos.categoria || "Sin categoría"]);
+    catRef.current = [datos.categoria || "Sin categoría"];
+    cuantos.current = 0;
+    setCatSel(catRef.current);
     if (!opciones.otra) setEditing(null);
     load();
   }
@@ -244,8 +306,7 @@ export default function Refacciones() {
   }
 
   const puedeEditar = hasPermission("refacciones.editar");
-  const conteoCat = contarPor(refacciones, (r) => r.categoria || "Sin categoría");
-  const visibles = catSel.length ? refacciones.filter((r) => catSel.includes(r.categoria || "Sin categoría")) : refacciones;
+  const visibles = refacciones; // el servidor ya filtra por búsqueda y categorías
 
   // Marcas de vehículo compatibles (sin repetir) para mostrar sus logos
   function marcasCompatibles(r) {
@@ -265,7 +326,6 @@ export default function Refacciones() {
     );
   }
 
-  function nombreMarca(id) { return marcas.find((m) => m.id_marca_refaccion === id)?.nombre_marca || "—"; }
   const fmt = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
   return (
@@ -293,7 +353,7 @@ export default function Refacciones() {
           <input className="search-input" placeholder="Buscar por nombre o número de parte…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 
-        <FiltroChips multiple items={conteoCat} valor={catSel} onChange={setCatSel} total={refacciones.length} />
+        <FiltroChips multiple items={conteoCat} valor={catSel} onChange={setCatSel} total={totalGeneral} />
 
         {loading ? (
           <div className="loading-text">Cargando…</div>
@@ -359,6 +419,11 @@ export default function Refacciones() {
                 </div>
               );
             })}
+          </div>
+        )}
+        {!loading && refacciones.length > 0 && (
+          <div ref={centinela} style={{ textAlign: "center", padding: 10, fontSize: 12, opacity: .65 }}>
+            {refacciones.length < totalVisible ? (cargandoMas ? "Cargando más…" : <button type="button" className="btn btn-secondary btn-sm" onClick={cargarMas}>Mostrar más ({totalVisible - refacciones.length} restantes)</button>) : ""}
           </div>
         )}
       </div>

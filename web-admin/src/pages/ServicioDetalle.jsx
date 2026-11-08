@@ -222,10 +222,11 @@ export default function ServicioDetalle() {
   }
 
   // Servicio a domicilio: estado de la visita (dirección, código, inicio)
+  const modDomicilio = tieneMod("servicio_domicilio"); // módulo del paquete
   const cargarDomicilio = useCallback(() => {
-    if (!id) return;
+    if (!id || !modDomicilio) return;
     api.get(`/servicio-domicilio/${id}`).then(setDomicilio).catch(() => setDomicilio(null));
-  }, [id]);
+  }, [id, modDomicilio]);
   useEffect(() => { cargarDomicilio(); }, [cargarDomicilio]);
   useEffect(() => {
     if (servicio && searchParams.get("domicilio") === "1" && servicio.status === "abierto" && hasPermission("servicios.editar")) {
@@ -926,7 +927,7 @@ export default function ServicioDetalle() {
             )}
           </div>
           <div className="orden-hero-herramientas">
-            {servicio.status === "abierto" && (servicio.etapa || "en_proceso") === "en_proceso" && hasPermission("servicios.editar") && (
+            {modDomicilio && servicio.status === "abierto" && (servicio.etapa || "en_proceso") === "en_proceso" && hasPermission("servicios.editar") && (
               <span className="tip-envoltura" title="Dirección, mecánico y código de seguridad. Al guardar se confirma al cliente por WhatsApp">
                 <button className={`btn btn-domicilio ${domicilio?.existe ? "activo" : ""}`} onClick={() => setVerDomicilio(true)}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

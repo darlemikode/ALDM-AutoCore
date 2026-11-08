@@ -5,7 +5,7 @@ import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import BuscadorSelect from "../components/BuscadorSelect";
 import ClienteFormModal from "../components/ClienteFormModal";
-import FormModal from "../components/FormModal";
+import VehiculoModal from "../components/VehiculoModal";
 import ElegirClienteVehiculo from "../components/ElegirClienteVehiculo";
 import IconoModulo from "../components/IconoModulo";
 import { opMarca } from "../components/Combo";
@@ -20,12 +20,13 @@ import "./nuevaOrden.css";
 // uno nuevo; al tener los dos, la orden se abre sola.
 export default function NuevaOrden() {
   const { notify } = useUI();
-  const { hasPermission } = useAuth();
+  const { hasPermission, estadoSuscripcion } = useAuth();
   const navigate = useNavigate();
   const [clientes, setClientes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
   const [marcas, setMarcas] = useState([]);
   const [modelos, setModelos] = useState([]);
+  const [colores, setColores] = useState([]);
   const [idCliente, setIdCliente] = useState("");
   const [idVehiculo, setIdVehiculo] = useState("");
   const [paso, setPaso] = useState("cliente"); // cliente | vehiculo
@@ -36,7 +37,7 @@ export default function NuevaOrden() {
   const [domicilio, setDomicilio] = useState(params.get("domicilio") === "1");
   const [dom, setDom] = useState(DOMICILIO_VACIO);
   const [empleados, setEmpleados] = useState([]);
-  const puedeDomicilio = hasPermission("servicios.editar");
+  const puedeDomicilio = hasPermission("servicios.editar") && (!estadoSuscripcion?.modulos || estadoSuscripcion.modulos.includes("servicio_domicilio"));
   const [soloDomicilio] = useState(params.get("domicilio") === "1"); // llegó desde "Nuevo a domicilio": no se ofrece "En el taller"
   useEffect(() => {
     if (domicilio && empleados.length === 0) api.get("/empleados/").then((e) => setEmpleados((e || []).filter((x) => x.activo))).catch(() => {});
@@ -46,11 +47,11 @@ export default function NuevaOrden() {
   const [eligiendo, setEligiendo] = useState(params.get("domicilio") === "1"); // a domicilio: se abre la ventana de cliente y vehículo
 
   async function cargar() {
-    const [c, v, m, mo] = await Promise.all([
+    const [c, v, m, mo, co] = await Promise.all([
       api.get("/clientes/?solo_activos=true"), api.get("/vehiculos/"),
-      api.get("/vehiculos-marcas/"), api.get("/vehiculos-modelos/"),
+      api.get("/vehiculos-marcas/"), api.get("/vehiculos-modelos/"), api.get("/colores-vehiculos/"),
     ]);
-    setClientes(c); setVehiculos(v); setMarcas(m); setModelos(mo);
+    setClientes(c); setVehiculos(v); setMarcas(m); setModelos(mo); setColores(co);
   }
   // A domicilio el cliente/vehículo se eligen en la ventana (que pide sus propios datos por bloques): aquí no se trae nada de más
   useEffect(() => { if (!soloDomicilio) cargar(); precargarEnvio(); }, []);
@@ -133,20 +134,6 @@ export default function NuevaOrden() {
     await cargar();
     elegirCliente(creado.id_cliente);
     if (hasPermission("vehiculos.crear")) setNuevoVehiculo(true); // un cliente nuevo no tiene vehículos: se captura el suyo
-  }
-
-  function camposVehiculo(values) {
-    return [
-      { name: "id_marca_vehiculo", label: "Marca", type: "select", required: true,
-        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) })),
-        creatable: { endpoint: "/vehiculos-marcas/", createField: "nombre_marca", idField: "id_marca_vehiculo", label: "marca", onCreated: (n) => setMarcas((p) => [...p, n]) } },
-      { name: "id_modelo_vehiculo", label: "Modelo", type: "select", required: true,
-        options: modelos.filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo).map((m) => ({ value: m.id_modelo_vehiculo, label: m.nombre_modelo })),
-        creatable: values.id_marca_vehiculo ? { endpoint: "/vehiculos-modelos/", createField: "nombre_modelo", idField: "id_modelo_vehiculo", label: "modelo",
-          extraFields: (v) => ({ id_marca_vehiculo: v.id_marca_vehiculo }), onCreated: (n) => setModelos((p) => [...p, n]) } : null },
-      { name: "placas_vehiculo", label: "Placas" },
-      { name: "km_vehiculo", label: "Kilometraje", required: true, type: "number" },
-    ];
   }
 
   async function guardarVehiculo(values) {
@@ -274,7 +261,7 @@ export default function NuevaOrden() {
       )}
       {nuevoCliente && <ClienteFormModal title="Nuevo cliente" initialValues={{}} onSubmit={guardarCliente} onClose={() => setNuevoCliente(false)} />}
       {nuevoVehiculo && (
-        <FormModal title={`Nuevo vehículo${cliente ? ` — ${cliente.nombre_cliente}` : ""}`} icono="🚗" fields={camposVehiculo} initialValues={{}} onSubmit={guardarVehiculo} onClose={() => setNuevoVehiculo(false)} />
+        <VehiculoModal titulo="Nuevo vehículo" subtitulo="Se registrará a nombre del cliente seleccionado." clienteNombre={cliente ? `${cliente.nombre_cliente} ${cliente.paterno_cliente || ""}`.trim() : "Cliente seleccionado"} clienteBloqueado marcas={marcas} modelos={modelos} colores={colores} onSubmit={guardarVehiculo} onClose={() => setNuevoVehiculo(false)} />
       )}
     </div>
   );

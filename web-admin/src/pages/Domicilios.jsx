@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 import IconoModulo from "../components/IconoModulo";
 import { Icono } from "../components/Icono";
-import DomicilioOrdenModal from "../components/DomicilioOrdenModal";
 import { contiene } from "../lib/texto";
 import "./domicilios.css";
+
+const DomicilioOrdenModal = lazy(() => import("../components/DomicilioOrdenModal"));
 
 // Mismas etapas cortas que el seguimiento público del cliente.
 const PASOS = [
@@ -37,19 +38,20 @@ export default function Domicilios() {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const [lista, setLista] = useState(null);
-  const [empleados, setEmpleados] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [mecanico, setMecanico] = useState("");
   const [filtro, setFiltro] = useState("");
   const [abierta, setAbierta] = useState(null);
 
+  const conFin = useRef(false); // los finalizados solo se piden cuando se abre esa pestaña
   const cargar = useCallback(async () => {
-    try { setLista(await api.get("/servicio-domicilio/lista/abiertas?incluir_finalizados=true")); } catch { setLista((l) => l || []); }
+    try { setLista(await api.get(`/servicio-domicilio/lista/abiertas${conFin.current ? "?incluir_finalizados=true" : ""}`)); } catch { setLista((l) => l || []); }
   }, []);
-  useEffect(() => { cargar(); api.get("/empleados/").then(setEmpleados).catch(() => setEmpleados([])); }, [cargar]);
+  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => { if (filtro === "fin" && !conFin.current) { conFin.current = true; cargar(); } }, [filtro, cargar]);
   useActualizacionGlobal("servicios", cargar);
 
-  const nombreMec = useMemo(() => Object.fromEntries(empleados.map((e) => [e.id_empleado, [e.nombre, e.paterno].filter(Boolean).join(" ")])), [empleados]);
+  const mecanicos = [...new Map((lista || []).filter((d) => d.id_empleado_mecanico && d.mecanico).map((d) => [d.id_empleado_mecanico, d.mecanico])).entries()];
   const estado = (d) => (d.finalizado ? ["fin", "Finalizado"] : d.bloqueado ? ["bloq", "Código bloqueado"] : d.iniciado ? ["ini", "En servicio"] : ["pend", "Esperando código"]);
 
   const base = (lista || []).filter((d) => (!mecanico || String(d.id_empleado_mecanico || "") === mecanico)
@@ -75,13 +77,13 @@ export default function Domicilios() {
           <input className="search-input" placeholder="Buscar por orden, cliente, vehículo, placas o dirección…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
           <select value={mecanico} onChange={(e) => setMecanico(e.target.value)} aria-label="Filtrar por mecánico">
             <option value="">Todos los mecánicos</option>
-            {empleados.filter((e) => e.activo).map((e) => <option key={e.id_empleado} value={e.id_empleado}>{nombreMec[e.id_empleado]}</option>)}
+            {mecanicos.map(([id, nombre]) => <option key={id} value={id}>{nombre}</option>)}
           </select>
         </div>
         <div className="dmcl-filtros" role="tablist" aria-label="Estado del servicio">
           {FILTROS.map(([k, t]) => (
             <button key={k || "todos"} type="button" role="tab" aria-selected={filtro === k} className={`dmcl-filtro ${k}${filtro === k ? " activo" : ""}`} onClick={() => setFiltro(k)}>
-              {t} <span>{conteo(k)}</span>
+              {t} {(k !== "fin" || conFin.current) && <span>{conteo(k)}</span>}
             </button>
           ))}
         </div>
@@ -94,7 +96,7 @@ export default function Domicilios() {
               const [cls, txt] = estado(d);
               const idx = d.finalizado ? PASOS.length - 1 : Math.max(0, PASOS.findIndex(([k]) => k === d.etapa));
               const mapa = enlaceMapa(d);
-              const mec = nombreMec[d.id_empleado_mecanico];
+              const mec = d.mecanico;
               return (
                 <article key={d.id_servicio} className={`dmcl-card ${cls}`}>
                   <header>
@@ -128,7 +130,7 @@ export default function Domicilios() {
           </div>
         )}
       </div>
-      {abierta && <DomicilioOrdenModal idServicio={abierta} nombreServicio={lista?.find((x) => x.id_servicio === abierta)?.servicio} onClose={() => setAbierta(null)} onCambio={cargar} />}
+      {abierta && <Suspense fallback={null}><DomicilioOrdenModal idServicio={abierta} nombreServicio={lista?.find((x) => x.id_servicio === abierta)?.servicio} onClose={() => setAbierta(null)} onCambio={cargar} /></Suspense>}
     </div>
   );
 }

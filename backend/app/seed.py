@@ -128,6 +128,7 @@ MODULOS_SISTEMA = [
     ("comisiones", "Comisiones", "Porcentajes por tipo de pago y comisión estimada en cada nota o recibo.", "💰", 23),
     ("auditoria", "Auditoría", "Bitácora inalterable de cambios de fechas, cierres, cancelaciones y citas retroactivas.", "🔎", 24),
     ("notas_recibos", "Notas de remisión y recibos", "Nota de remisión y recibos en PDF para imprimir o enviar por WhatsApp.", "🧾", 25),
+    ("servicio_domicilio", "Servicio a domicilio", "Órdenes en el domicilio del cliente: dirección y ubicación, mecánico asignado, código de seguridad al llegar y enlace para el mecánico.", "📍", 26),
 ]
 
 # Módulos que antes venían "dentro" de otro: al crearse por primera vez se
@@ -148,6 +149,7 @@ MODULOS_HEREDADOS = {
     "notas_recibos": "ordenes_servicio",
     "comisiones": "empleados",
     "auditoria": None,
+    "servicio_domicilio": "ordenes_servicio",  # los talleres que ya lo usaban lo conservan; se quita por paquete desde Súper admin
 }
 
 # Paquetes base (precios definitivos 13-oct-2026: $699 / $999 / $1,399 al mes
@@ -160,7 +162,7 @@ PAQUETES_BASE = [
     ("Taller Pro", "El más contratado: suma inventario y punto de venta, proveedores, herramientas, empleados, roles y permisos, reportes, app móvil del taller y asistente IA.", 999.0,
      ["ordenes_servicio", "cotizaciones", "clientes_vehiculos", "refacciones", "inventario", "herramientas",
       "proveedores", "catalogos", "empleados", "roles_permisos", "reportes", "app_taller", "asistente_ia",
-      "seguimiento_qr", "inspeccion_digital", "chat_ordenes", "notas_recibos", "comisiones", "auditoria"]),
+      "seguimiento_qr", "inspeccion_digital", "chat_ordenes", "notas_recibos", "comisiones", "auditoria", "servicio_domicilio"]),
     ("Full Garage", "Todo el sistema: nómina, facturación electrónica, app para tus clientes y agente de WhatsApp con IA.", 1399.0,
      [c for c, *_ in MODULOS_SISTEMA]),
 ]

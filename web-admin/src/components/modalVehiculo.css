@@ -1,0 +1,48 @@
+/* Ventana de alta / edición de vehículo */
+.modal.vm-modal {
+  position: relative; display: flex; flex-direction: column; padding: 0; overflow: hidden;
+  width: min(900px, 96vw); max-width: 900px; max-height: 92vh; border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px var(--contorno);
+}
+.vm-modal .x-cerrar { top: 18px; right: 18px; }
+.vm-cab { display: flex; align-items: center; gap: 16px; padding: 24px 72px 20px 30px; border-bottom: 1px solid var(--contorno);
+  background: linear-gradient(135deg, var(--petrol-100), transparent 65%); }
+.vm-cab-ico { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; color: var(--petrol-500);
+  background: var(--petrol-100); border: 1px solid color-mix(in srgb, var(--petrol-500) 45%, transparent); }
+.vm-cab h2 { margin: 0; font-size: 22px; letter-spacing: .02em; text-transform: uppercase; }
+.vm-cab p { margin: 4px 0 0; font-size: 14px; color: var(--ink-500); }
+
+.vm-cuerpo { display: flex; flex-direction: column; gap: 18px; padding: 24px 30px; overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+.vm-tarjeta { display: flex; flex-direction: column; gap: 18px; padding: 20px 22px 22px; border: 1px solid var(--contorno); border-radius: 16px;
+  background: color-mix(in srgb, var(--paper-100) 60%, transparent); }
+.vm-tarjeta > h3 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--petrol-500); }
+.vm-rejilla { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 20px; }
+
+.vm-campo { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.vm-campo > span { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-500); }
+.vm-campo > span b { color: var(--red-600); }
+.vm-campo input:not(.combo-requerido), .vm-campo textarea, .vm-fijo {
+  width: 100%; min-height: 50px; padding: 0 16px; border-radius: 12px; font-size: 16px; box-sizing: border-box;
+  background: var(--paper-0); border: 1px solid var(--ink-300); color: var(--ink-900);
+}
+.vm-campo textarea { padding: 13px 16px; min-height: 84px; resize: vertical; font-family: inherit; }
+.vm-campo input:focus, .vm-campo textarea:focus, .vm-campo .combo:focus-within .combo-input { outline: none; border-color: var(--petrol-500); box-shadow: 0 0 0 3px var(--petrol-100); }
+.vm-campo .combo-input { min-height: 50px; font-size: 16px; border-radius: 12px; }
+.vm-fijo { display: flex; align-items: center; gap: 10px; font-weight: 700; background: var(--paper-100); }
+.vm-mal input, .vm-mal .combo-input { border-color: var(--red-600) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-600) 18%, transparent); }
+
+.vm-error { margin: 0 30px 10px; padding: 11px 14px; border-radius: 11px; font-size: 14px; background: color-mix(in srgb, var(--red-600) 14%, transparent); border: 1px solid color-mix(in srgb, var(--red-600) 40%, transparent); }
+.vm-pie { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 30px; border-top: 1px solid var(--contorno); background: var(--paper-100); flex: none; }
+.vm-pie .btn { min-height: 48px; padding: 0 26px; border-radius: 12px; font-size: 15px; font-weight: 700; }
+
+@media (max-width: 760px) {
+  .vm-rejilla { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 520px) {
+  .modal.vm-modal { width: 98vw; border-radius: 14px; }
+  .vm-cab { padding: 18px 60px 14px 18px; }
+  .vm-cuerpo { padding: 16px 14px; }
+  .vm-rejilla { grid-template-columns: 1fr; }
+  .vm-pie { padding: 12px 14px; }
+  .vm-pie .btn { flex: 1; padding: 0 12px; }
+}

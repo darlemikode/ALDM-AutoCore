@@ -13,6 +13,8 @@ import Catalogos from "./Catalogos";
 import CatalogosGenerales from "../Catalogos";
 import Reglas from "./Reglas";
 import Solicitudes from "./Solicitudes";
+import Errores from "../Errores";
+import "./saModales.css";
 
 const PESTANAS = [
   ["resumen", "Resumen"],
@@ -23,6 +25,7 @@ const PESTANAS = [
   ["catalogos", "Paquetes y cobros"],
   ["catalogos-generales", "Catálogos generales"],
   ["reglas", "Reglas"],
+  ["errores", "Errores"],
 ];
 
 export default function SuperAdmin() {
@@ -53,6 +56,7 @@ export default function SuperAdmin() {
         <Route path="catalogos" element={<Catalogos />} />
         <Route path="catalogos-generales" element={<CatalogosGenerales admin />} />
         <Route path="reglas" element={<Reglas />} />
+        <Route path="errores" element={<Errores />} />
         <Route path="*" element={<Navigate to="resumen" replace />} />
       </Routes>
     </>

@@ -85,6 +85,19 @@ const RUTAS = {
   facturacion: "/facturacion", catalogos: "/configuracion", promociones: "/promociones", integraciones: "/integraciones",
   auditoria: "/auditoria", errores: "/errores", "mi-dashboard": "/mi-dashboard", panel: "/", asistente: "/asistente", busqueda: "/clientes",
 };
+// Módulo del paquete que debe estar contratado para ver cada ayuda (sin entrada = siempre disponible)
+const MODULO = {
+  "orden-nueva": "ordenes_servicio", "orden-refacciones": "ordenes_servicio", "orden-editar": "ordenes_servicio", "orden-fechas": "ordenes_servicio",
+  "orden-abonos": "ordenes_servicio", "orden-estatus": "ordenes_servicio", "orden-finalizar": "ordenes_servicio", "orden-nota": "ordenes_servicio",
+  cotizaciones: "cotizaciones", citas: "citas", "cliente-alta": "clientes_vehiculos", "vehiculo-alta": "clientes_vehiculos", "cliente-app": "app_movil",
+  refacciones: "refacciones", inventario: "inventario", proveedores: "proveedores", herramientas: "herramientas",
+  empleados: "empleados", nomina: "nomina", comisiones: "comisiones", roles: "roles_permisos",
+  facturacion: "facturacion", catalogos: "catalogos", promociones: "promociones", integraciones: "agente_whatsapp", auditoria: "auditoria",
+  "mi-dashboard": "empleados", asistente: "asistente_ia",
+};
+// Solo las ve el súper administrador
+const SOLO_SUPERADMIN = new Set(["errores"]);
+for (const m of AYUDA) for (const x of m.tutoriales) { if (MODULO[x.clave]) x.modulo = MODULO[x.clave]; if (SOLO_SUPERADMIN.has(x.clave)) x.soloSuperadmin = true; }
 for (const m of AYUDA) for (const x of m.tutoriales) if (!x.pasos && T[x.clave]) { x.pasos = T[x.clave]; x.ruta = RUTAS[x.clave] || "/"; }
 
 export function tutorialPorClave(clave) {

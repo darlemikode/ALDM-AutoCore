@@ -80,6 +80,7 @@ const ICONO_MODULO_EXTRA = {
   citas: { nombre: "calendar", color: "#6bc4ff" },
   promociones: { nombre: "pricetag", color: "#ffa86b" },
   seguimiento_qr: { nombre: "link", color: "#2de2d0" },
+  servicio_domicilio: { nombre: "pin", color: "#ff8f5f" },
   inspeccion_digital: { nombre: "camera", color: "#c58bff" },
   chat_ordenes: { nombre: "chatbubble", color: "#6bdc8c" },
   comisiones: { nombre: "cash", color: "#7be07b" },

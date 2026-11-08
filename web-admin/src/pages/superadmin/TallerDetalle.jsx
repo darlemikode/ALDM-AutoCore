@@ -6,6 +6,12 @@ import QrTaller from "../../components/QrTaller";
 import { useUI } from "../../context/UIContext";
 import { CAMPOS_TALLER, GRUPOS_TALLER } from "./Talleres";
 import { Cargando, Dato, ESTADOS_MANUALES, EstadoBadge, METODOS_PAGO, fmt, fmtFecha, useCargar } from "./comun";
+import { Icono } from "../../components/Icono";
+import { IconoModuloSistema } from "../../components/IconoModulo";
+import "./tallerDetalle.css";
+import "./paqueteModal.css";
+
+const iniciales = (n) => String(n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase();
 
 export default function TallerDetalle() {
   const { id } = useParams();
@@ -119,31 +125,42 @@ export default function TallerDetalle() {
         <Link to="/superadmin/talleres">← Talleres</Link>
       </div>
 
-      <div className="panel">
-        <div className="sa-titulo-fila">
-          <div>
-            <h2 style={{ fontSize: 24 }}>{t.nombre_comercial}</h2>
-            <div className="subtitle">{[t.razon_social, t.tipo_negocio].filter(Boolean).join(" · ")}</div>
+      <section className="td-hero">
+        <div className="td-avatar" aria-hidden="true">{iniciales(t.nombre_comercial)}</div>
+        <div className="td-hero-info">
+          <div className="td-hero-fila">
+            <h2>{t.nombre_comercial}</h2>
+            <EstadoBadge estado={e.estado} />
           </div>
-          <EstadoBadge estado={e.estado} />
+          <div className="td-hero-meta">
+            {[t.razon_social, t.tipo_negocio, [t.ciudad, t.estado_mx].filter(Boolean).join(", ")].filter(Boolean).map((x, i) => <span key={i}>{x}</span>)}
+            <span>Alta {fmtFecha(t.fecha_alta)}</span>
+          </div>
+          {e.mensaje && <div className="td-aviso" style={{ color: e.bloqueado ? "var(--red-600)" : "var(--warn-600)" }}>{e.mensaje}</div>}
+          <div className="td-codigo">
+            {t.codigo ? <><span className="sa-codigo mono">{t.codigo}</span><button className="btn btn-secondary btn-sm" onClick={() => setVerQr((x) => !x)}>{verQr ? "Ocultar QR" : "Ver QR"}</button></> : <span className="sa-sub">Sin código aún: lo captura el dueño</span>}
+          </div>
         </div>
-        {e.mensaje && <div className="sa-mensaje" style={{ color: e.bloqueado ? "var(--red-600)" : "var(--warn-600)" }}>{e.mensaje}</div>}
-        <div className="sa-acciones">
-          {t.codigo ? <span className="sa-codigo mono">{t.codigo}</span> : <span className="sa-sub">Sin código aún: lo captura el dueño</span>}
-          {t.codigo && <button className="btn btn-secondary btn-sm" onClick={() => setVerQr((x) => !x)}>{verQr ? "Ocultar QR" : "Ver QR"}</button>}
-          <span style={{ flex: 1 }} />
-          <button className="btn btn-primary" onClick={() => setModal({ tipo: "pago", iniciales: { id_tipo_cobro: s?.id_tipo_cobro || opcionesTipos[0]?.value, metodo_pago: "transferencia" } })}>Registrar pago</button>
-          <button className="btn btn-secondary" onClick={() => setModal({ tipo: "suscripcion", iniciales: {
+        <div className="td-hero-acciones">
+          <button className="btn btn-primary td-btn" onClick={() => setModal({ tipo: "pago", iniciales: { id_tipo_cobro: s?.id_tipo_cobro || opcionesTipos[0]?.value, metodo_pago: "transferencia" } })}><span className="td-btn-ico"><Icono nombre="cash" size={20} /></span>Registrar pago</button>
+          <button className="btn btn-secondary td-btn" onClick={() => setModal({ tipo: "suscripcion", iniciales: {
             id_paquete: s?.id_paquete, id_tipo_cobro: s?.id_tipo_cobro, estado: s?.estado,
             precio_pactado: s?.precio_pactado ?? "", fecha_vencimiento: s?.fecha_vencimiento?.slice(0, 10) || "", notas: s?.notas || "",
-          } })}>Suscripción</button>
+          } })}><span className="td-btn-ico"><Icono nombre="card" size={20} /></span>Suscripción</button>
         </div>
         {verQr && t.qr && (
-          <div style={{ marginTop: 14 }}>
-            <QrTaller contenido={t.qr} tamano={220} />
-            <div className="sa-sub" style={{ marginTop: 6 }}>Los clientes del taller lo escanean para entrar a la app "Mi Taller".</div>
+          <div className="td-qr">
+            <QrTaller contenido={t.qr} tamano={200} />
+            <div className="sa-sub">Los clientes del taller lo escanean para entrar a la app "Mi Taller".</div>
           </div>
         )}
+      </section>
+
+      <div className="td-kpis">
+        {[["Usuarios", t.uso?.usuarios_activos, "people"], ["Clientes", t.uso?.clientes, "user"], ["Vehículos", t.uso?.vehiculos, "car"], ["Órdenes este mes", t.uso?.ordenes_mes, "calendar"], ["Órdenes en total", t.uso?.ordenes_total, "document"]].map(([k, v, ico]) => (
+          <div className="td-kpi" key={k}><span className="td-kpi-ico"><Icono nombre={ico} size={18} /></span><div><b>{(v || 0).toLocaleString("es-MX")}</b><small>{k}</small></div></div>
+        ))}
+        <div className="td-kpi td-kpi-texto"><span className="td-kpi-ico"><Icono nombre="clock" size={18} /></span><div><b>{t.uso?.ultima_actividad ? fmtFecha(t.uso.ultima_actividad) : "Sin actividad"}</b><small>Última orden</small></div></div>
       </div>
 
       {t.pendiente_activacion && (
@@ -158,34 +175,45 @@ export default function TallerDetalle() {
         </div>
       )}
 
-      <div className="sa-columnas">
-        <div className="panel">
-          <h2 className="sa-titulo">Suscripción</h2>
-          <Dato etiqueta="Paquete">{s?.paquete?.nombre}</Dato>
+      <div className="td-dos">
+        <section className="td-tarjeta">
+          <header className="td-tarjeta-cab">
+            <h3>Suscripción</h3>
+            <span className="td-plan"><b>{s?.paquete?.nombre || "Sin paquete"}</b>{t.precio_periodo != null && <small>{fmt(t.precio_periodo)} por periodo</small>}</span>
+          </header>
+          {s?.fecha_vencimiento && (() => {
+            const ini = s.fecha_inicio ? new Date(s.fecha_inicio).getTime() : null;
+            const fin = new Date(s.fecha_vencimiento).getTime();
+            const pct = ini && fin > ini ? Math.min(100, Math.max(0, ((Date.now() - ini) / (fin - ini)) * 100)) : null;
+            const dias = e.dias_restantes;
+            const tono = dias != null && dias < 0 ? "rojo" : dias != null && dias <= 7 ? "ambar" : "verde";
+            return (
+              <div className="td-vence">
+                <div className="td-vence-txt"><span>Vence el <b>{fmtFecha(s.fecha_vencimiento)}</b></span>{dias != null && <em className={`td-dias td-${tono}`}>{dias < 0 ? `vencida hace ${-dias} d` : dias === 0 ? "vence hoy" : `${dias} días`}</em>}</div>
+                {pct != null && <div className="td-barra"><i className={`td-${tono}`} style={{ width: `${pct}%` }} /></div>}
+              </div>
+            );
+          })()}
           <Dato etiqueta="Tipo de cobro">{s?.tipo_cobro?.nombre || "Sin definir"}</Dato>
-          <Dato etiqueta="Precio por periodo">{t.precio_periodo != null ? fmt(t.precio_periodo) : "—"}</Dato>
           {s?.precio_pactado != null && <Dato etiqueta="Precio pactado" tono="blue">Sí (precio especial)</Dato>}
           <Dato etiqueta="Inicio">{fmtFecha(s?.fecha_inicio)}</Dato>
-          <Dato etiqueta="Vence" tono={e.dias_restantes != null && e.dias_restantes < 0 ? "red" : null}>{s?.fecha_vencimiento ? fmtFecha(s.fecha_vencimiento) : "Sin vencimiento"}</Dato>
+          {!s?.fecha_vencimiento && <Dato etiqueta="Vence">Sin vencimiento</Dato>}
           {e.fin_gracia && <Dato etiqueta="Fin de gracia (solo consulta)">{fmtFecha(e.fin_gracia)}</Dato>}
           {e.fecha_depuracion && <Dato etiqueta="Conservar datos hasta" tono={e.para_depurar ? "red" : null}>{fmtFecha(e.fecha_depuracion)}</Dato>}
-          <div className="sa-sub" style={{ marginTop: 8 }}>Módulos: {(s?.paquete?.modulos || []).map((m) => m.nombre).join(", ") || "—"}</div>
           {s?.notas && <div className="sa-notas">{s.notas}</div>}
-        </div>
+        </section>
 
-        <div className="panel">
-          <h2 className="sa-titulo">Uso</h2>
-          <div className="sa-uso">
-            {[["Usuarios", t.uso?.usuarios_activos], ["Clientes", t.uso?.clientes], ["Vehículos", t.uso?.vehiculos], ["Órdenes mes", t.uso?.ordenes_mes], ["Órdenes total", t.uso?.ordenes_total]].map(([k, v]) => (
-              <div key={k}><div className="sa-uso-valor">{v || 0}</div><div className="sa-sub">{k}</div></div>
-            ))}
+        <section className="td-tarjeta">
+          <header className="td-tarjeta-cab"><h3>Módulos incluidos</h3><span className="sa-sub">{(s?.paquete?.modulos || []).length} en {s?.paquete?.nombre || "—"}</span></header>
+          <div className="td-modulos">
+            {(s?.paquete?.modulos || []).map((m) => <span key={m.clave} className="pk-mod"><IconoModuloSistema clave={m.clave} size={13} />{m.nombre}</span>)}
+            {!(s?.paquete?.modulos || []).length && <span className="sa-sub">—</span>}
           </div>
-          <div className="sa-sub" style={{ marginTop: 10 }}>Última orden: {t.uso?.ultima_actividad ? fmtFecha(t.uso.ultima_actividad) : "sin actividad"}</div>
-        </div>
+        </section>
       </div>
 
       <div className="panel">
-        <h2 className="sa-titulo">Pagos ({pagos.length})</h2>
+        <div className="sa-titulo-fila"><h2 className="sa-titulo">Pagos ({pagos.length})</h2>{pagos.length > 0 && <span className="sa-sub">Total cobrado: <b>{fmt(pagos.reduce((a, p) => a + (Number(p.monto) || 0), 0))}</b></span>}</div>
         {pagos.length === 0 ? <div className="empty-state">Todavía no hay pagos registrados.</div> : (
           <div className="sa-tabla">
             <table>
@@ -214,9 +242,10 @@ export default function TallerDetalle() {
             const m = u.membresias.find((x) => x.id_taller === t.id_taller);
             return (
               <button key={u.id_usuario} type="button" className="sa-item" onClick={() => navigate(`/superadmin/usuarios/${u.id_usuario}`)}>
-                <span>
-                  <strong>{u.nombre_completo}</strong>
-                  <div className="sa-sub">@{u.username} · {m?.rol?.nombre}{u.membresias.length > 1 ? ` · ${u.membresias.length} talleres` : ""}</div>
+                <span className="td-usuario">
+                  <span className="td-mini-avatar" aria-hidden="true">{iniciales(u.nombre_completo)}</span>
+                  <span><strong>{u.nombre_completo}</strong>
+                  <div className="sa-sub">@{u.username} · {m?.rol?.nombre}{u.membresias.length > 1 ? ` · ${u.membresias.length} talleres` : ""}</div></span>
                 </span>
                 {m && !m.activo ? <span className="badge badge-grey">sin acceso</span> : <span className="sa-sub">›</span>}
               </button>
@@ -238,14 +267,15 @@ export default function TallerDetalle() {
         </div>
       </div>
 
-      <div style={{ marginBottom: 30 }}>
+      <section className="td-riesgo">
+        <div><b>{e.bloqueado && (e.estado === "suspendida" || e.estado === "cancelada") ? "Taller suspendido" : "Zona de riesgo"}</b><div className="sa-sub">{e.bloqueado && (e.estado === "suspendida" || e.estado === "cancelada") ? "No puede entrar al sistema. Sus datos se conservan." : "Suspender impide el acceso al sistema; los datos se conservan."}</div></div>
         {e.bloqueado && (e.estado === "suspendida" || e.estado === "cancelada")
           ? <button className="btn btn-primary" onClick={reactivar}>Reactivar taller</button>
           : <button className="btn btn-danger" onClick={suspender}>Suspender taller</button>}
-      </div>
+      </section>
 
       {modal?.tipo === "pago" && (
-        <FormModal
+        <FormModal tema="sa"
           title="Registrar pago"
           subtitulo="Renueva la suscripción: el nuevo periodo empieza al terminar el actual (o hoy, si ya venció)."
           icono="💵"
@@ -262,7 +292,7 @@ export default function TallerDetalle() {
         />
       )}
       {modal?.tipo === "suscripcion" && (
-        <FormModal
+        <FormModal tema="sa"
           title="Suscripción"
           subtitulo="Paquete, forma de cobro, precio especial y fechas."
           icono="⚙️"
@@ -280,7 +310,7 @@ export default function TallerDetalle() {
         />
       )}
       {modal?.tipo === "datos" && (
-        <FormModal
+        <FormModal tema="sa"
           title="Datos del taller"
           subtitulo={t.nombre_comercial}
           icono="🏢"
