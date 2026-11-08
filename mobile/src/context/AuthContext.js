@@ -184,12 +184,18 @@ export function AuthProvider({ children }) {
     return permisos.includes(clave);
   }
 
+  // Módulos del paquete contratado (sin lista = sin restricción, igual que la web)
+  function tieneModulo(modulo) {
+    const mods = user?.estado_suscripcion?.modulos;
+    return !mods || mods.includes(modulo);
+  }
+
   return (
     <AuthContext.Provider
       value={{
         user, loading, login, logout,
         lockedByBiometrics, desbloquearConBiometria, desactivarBiometria,
-        permisos, hasPermission,
+        permisos, hasPermission, tieneModulo,
         talleres: user?.talleres || [], estadoSuscripcion: user?.estado_suscripcion || null,
         seleccionarTaller, eligiendoTaller, continuarEnTallerActual, entrarConToken,
       }}

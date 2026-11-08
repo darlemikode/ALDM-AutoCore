@@ -31,8 +31,12 @@ logger = logging.getLogger("aldm.errores")
 SOPORTE_EMAIL = os.getenv("SOPORTE_EMAIL", "soporte@aldmautocore.com")
 _VENTANA_SEG = 3600
 _TOPE_POR_HORA = 30
+# Los errores que reportan las apps llegan por un endpoint público: tienen su propio tope
+# (bajo) para que nadie pueda llenar el buzón ni agotar los avisos de errores reales del servidor.
+_TOPE_CLIENTE_POR_HORA = 5
 _vistos: dict[str, float] = {}
 _enviados: list[float] = []
+_enviados_cliente: list[float] = []
 _candado = threading.Lock()
 
 
@@ -41,17 +45,22 @@ def _firma(status: int, metodo: str | None, ruta: str | None, mensaje: str | Non
     return f"{status}|{metodo}|{ruta_n}|{(mensaje or '')[:80]}"
 
 
-def _toca_avisar(firma: str) -> tuple[bool, int]:
+def _toca_avisar(firma: str, desde_cliente: bool = False) -> tuple[bool, int]:
     """(avisar?, veces que ya había ocurrido sin avisar)."""
     ahora = time.time()
     with _candado:
         for k in [k for k, t in _vistos.items() if ahora - t > _VENTANA_SEG]:
             _vistos.pop(k, None)
         _enviados[:] = [t for t in _enviados if ahora - t < _VENTANA_SEG]
+        _enviados_cliente[:] = [t for t in _enviados_cliente if ahora - t < _VENTANA_SEG]
         if firma in _vistos or len(_enviados) >= _TOPE_POR_HORA:
+            return False, 0
+        if desde_cliente and len(_enviados_cliente) >= _TOPE_CLIENTE_POR_HORA:
             return False, 0
         _vistos[firma] = ahora
         _enviados.append(ahora)
+        if desde_cliente:
+            _enviados_cliente.append(ahora)
         return True, 0
 
 
@@ -70,6 +79,9 @@ def _avisar_soporte(datos: dict) -> None:
                     taller = f"{t.nombre_comercial} (código {t.codigo or t.id_taller})" + (f" · {t.ciudad}" if t.ciudad else "")
             finally:
                 db.close()
+        for k in ("metodo", "ruta", "codigo"):
+            datos[k] = re.sub(r"[\r\n]+", " ", str(datos.get(k) or ""))
+        taller = re.sub(r"[\r\n]+", " ", taller)
         asunto = f"[ALDM] Error {datos['codigo']} · {taller.split(' (')[0]} · {datos.get('metodo') or ''} {datos.get('ruta') or ''}".strip()[:150]
         cuerpo = (
             f"Taller: {taller}\n"
@@ -125,7 +137,7 @@ def registrar_error(request: Request | None, exc: BaseException | None, status: 
             db.close()
         if status >= 500 or origen in ("app_movil", "web"):
             firma = _firma(status, request.method if request else None, request.url.path if request else None, mensaje or (str(exc) if exc else ""))
-            avisar, _ = _toca_avisar(firma)
+            avisar, _ = _toca_avisar(firma, desde_cliente=origen in ("app_movil", "web"))
             if avisar:
                 datos = {
                     "codigo": codigo, "origen": origen, "status": status,

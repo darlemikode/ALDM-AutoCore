@@ -299,7 +299,8 @@ function NumeroEditable({ valor, onGuardar, editable, ancho, pendienteRef }) {
 
 export default function ServicioDetalleScreen({ route, navigation }) {
   const { id } = route.params;
-  const { hasPermission } = useAuth();
+  const { hasPermission, tieneModulo } = useAuth();
+  const modDomicilio = tieneModulo("servicio_domicilio"); // módulo del paquete
   const puedeEditar = hasPermission("servicios.editar");
 
   const [servicio, setServicio] = useState(null);
@@ -330,8 +331,9 @@ export default function ServicioDetalleScreen({ route, navigation }) {
   const [domicilioAbierto, setDomicilioAbierto] = useState(false);
   const [domicilio, setDomicilio] = useState(null);
   const cargarDomicilio = useCallback(() => {
+    if (!modDomicilio) { setDomicilio(null); return; }
     api.get(`/servicio-domicilio/${id}`).then(setDomicilio).catch(() => setDomicilio(null));
-  }, [id]);
+  }, [id, modDomicilio]);
   useEffect(() => { cargarDomicilio(); }, [cargarDomicilio]);
   // Viniendo de "Nueva orden" con el switch de domicilio: se abre la hoja para capturar la dirección
   useEffect(() => {
@@ -1316,7 +1318,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                 </View>
                 <Ionicons name="chevron-forward-outline" size={20} color={colors.ink500} />
               </TouchableOpacity>
-              {abierta && hasPermission("servicios.editar") && (
+              {abierta && modDomicilio && hasPermission("servicios.editar") && (
                 <TouchableOpacity style={styles.accesoFila} onPress={() => setDomicilioAbierto(true)} activeOpacity={0.8}>
                   <IconoAcceso nombre="location" insignia="key" />
                   <View style={{ flex: 1 }}>

@@ -53,7 +53,7 @@ export default function TallerFormScreen({ route, navigation }) {
     navigation.replace("TallerDetalle", { id: creado.id_taller });
     alerta(
       "Taller dado de alta",
-      `Mándale al dueño estos dos datos. La primera vez que entre, con ellos registra su usuario y contraseña de administrador:\n\nCódigo del taller: ${creado.codigo}\nCódigo de activación: ${creado.codigo_activacion}\n\n${creado.estado?.estado === "prueba" ? `Prueba hasta el ${creado.suscripcion?.fecha_vencimiento}.` : "Suscripción activa: registra su primer pago."}`,
+      `Código del taller: ${creado.codigo}\n\n${creado.correo ? `Se envió una invitación a ${creado.correo}: el dueño crea su contraseña de administrador desde ese enlace.` : "El taller no tiene correo: captúralo en Datos del taller y reenvía la invitación."}\n\n${creado.estado?.estado === "prueba" ? `Prueba hasta el ${creado.suscripcion?.fecha_vencimiento}.` : "Suscripción activa: registra su primer pago."}`,
     );
   }
 

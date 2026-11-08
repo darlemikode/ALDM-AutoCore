@@ -71,7 +71,7 @@ const orden = await api.post("/servicios/", {
   id_cliente: cliente.id_cliente, id_vehiculo: vehiculo.id_vehiculo, nombre_servicio: "Ruido en suspensión",
   tipos_mantenimiento_ids: [tipos[3].id_tipo_servicio], status: "abierto", es_garantia: false, id_servicio_original: null,
 });
-ok(orden.status === "abierto" && orden.etapa === "recibido", "orden creada abierta en etapa 'recibido'");
+ok(orden.status === "abierto" && orden.etapa === "en_proceso", "orden creada abierta en etapa 'en_proceso' (Recibido)");
 ok(orden.cliente?.nombre_cliente === "Juan" && orden.vehiculo?.modelo?.nombre_modelo === versa.nombre_modelo, "orden trae cliente y vehículo (como el JOIN del backend)");
 ok(orden.iva_porcentaje === 0 && orden.costos.total === 0 && orden.costos.iva === 0, "sin IVA automático: la orden nace con IVA 0 y total en cero");
 // El taller aplica el IVA desde la orden cuando el cliente lo pide (resto del flujo con IVA 16 %)
@@ -145,7 +145,7 @@ ok((await api.get("/servicios/?status=cancelado")).some((x) => x.id_servicio ===
 // ---------- H. Garantía ----------
 seccion("H. Garantías");
 const g = await api.post("/servicios/", { id_cliente: cliente.id_cliente, id_vehiculo: vehiculo.id_vehiculo, nombre_servicio: `Garantía de la orden #${orden.id_servicio}`, tipos_mantenimiento_ids: [tipos[3].id_tipo_servicio], es_garantia: true, id_servicio_original: orden.id_servicio, motivo_garantia: "Volvió el ruido" });
-ok(g.es_garantia && g.etapa === "diagnostico", "orden de garantía arranca en diagnóstico");
+ok(g.es_garantia && g.etapa === "garantia", "orden de garantía arranca en la etapa Garantía");
 const recl = await api.get(`/servicios/${orden.id_servicio}/reclamaciones`);
 ok(recl.length === 1 && recl[0].motivo_garantia === "Volvió el ruido", "la orden original lista su reclamación");
 
@@ -155,7 +155,7 @@ s = await api.put(`/servicios/${g.id_servicio}/etapa`, { etapa: "en_reparacion",
 ok(s.etapa === "en_reparacion" && s.historial_etapas.length === 2, "cambiar etapa guarda historial");
 { const ids = s.historial_etapas.map((h) => h.id_registro); ok(ids.every(Boolean) && new Set(ids).size === ids.length, "historial con id_registro único (key de EtapaTracker)", JSON.stringify(ids)); }
 await falla(() => api.put(`/servicios/${g.id_servicio}/etapa`, { etapa: "inventada" }), "etapa inválida se rechaza", "no existe");
-ok((await api.get("/servicios/etapas-disponibles")).length === 7, "7 etapas disponibles (igual que el backend)");
+ok((await api.get("/servicios/etapas-disponibles")).length === 9, "9 etapas disponibles (igual que ETAPAS_SERVICIO del backend)");
 
 // ---------- J. Inventario por vehículo ----------
 seccion("J. Inventario por vehículo");

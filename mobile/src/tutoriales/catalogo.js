@@ -96,6 +96,17 @@ const IR = {
   panel: ["Panel"], "mi-dashboard": ["MiDashboard"], asistente: ["Asistente"], busqueda: ["Clientes", { screen: "ClientesLista" }],
 };
 
+// Módulo del paquete que debe estar contratado para ver cada ayuda (sin entrada = siempre disponible)
+const MODULO = {
+  "orden-nueva": "ordenes_servicio", "orden-refacciones": "ordenes_servicio", "orden-editar": "ordenes_servicio", "orden-fechas": "ordenes_servicio",
+  "orden-abonos": "ordenes_servicio", "orden-estatus": "ordenes_servicio", "orden-finalizar": "ordenes_servicio", "orden-nota": "ordenes_servicio",
+  cotizaciones: "cotizaciones", citas: "citas", "cliente-alta": "clientes_vehiculos", "vehiculo-alta": "clientes_vehiculos", "cliente-app": "app_movil",
+  refacciones: "refacciones", inventario: "inventario", proveedores: "proveedores", herramientas: "herramientas",
+  empleados: "empleados", nomina: "nomina", comisiones: "comisiones", roles: "roles_permisos",
+  catalogos: "catalogos", promociones: "promociones", "mi-dashboard": "empleados", asistente: "asistente_ia",
+};
+for (const m of AYUDA) for (const x of m.tutoriales) if (MODULO[x.clave]) x.modulo = MODULO[x.clave];
+
 for (const m of AYUDA) {
   for (const x of m.tutoriales) {
     if (x.abrir || !T[x.clave]) continue;

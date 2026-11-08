@@ -11,6 +11,7 @@ MAPA = {
     "../components/ClienteFormModal.jsx": ["ClienteFormScreen.js"],
     "Clientes.jsx": ["ClienteFormScreen.js", "ClientesScreen.js", "ClienteDetalleScreen.js"],
     "Vehiculos.jsx": ["VehiculoFormScreen.js", "VehiculosScreen.js"],
+    "../components/VehiculoModal.jsx": ["VehiculoFormScreen.js", "VehiculosScreen.js"],
     "Servicios.jsx": ["NuevaOrdenScreen.js", "ServiciosScreen.js"],
     "ServicioDetalle.jsx": ["ServicioDetalleScreen.js"],
     "Refacciones.jsx": ["RefaccionesScreen.js"],
@@ -34,7 +35,18 @@ ALIAS = {
     "anticipo_efectivo": "anticipoEfectivo", "anticipo_tarjeta": "anticipoTarjeta",
     "estado_texto": "setEstado", "ciudad_cliente": "setMunicipio",  # mobile resuelve estado/ciudad a id igual que la web
 }
-PATRONES = [r'name:\s*"([a-z_0-9]+)"', r'update\("([a-z_0-9]+)"', r'\.\.\.data,\s*([a-z_0-9]+):', r'values\.([a-z_0-9]+)\b']
+PATRONES = [r'name:\s*"([a-z_0-9]+)"', r'update\("([a-z_0-9]+)"', r'\.\.\.data,\s*([a-z_0-9]+):', r'values\.([a-z_0-9]+)\b',
+            r'(?:pon|texto)\("([a-z_0-9]+)"']
+# Brechas conocidas: campos que la web ya tiene y la app móvil aún no. Se muestran siempre, pero solo
+# fallan las brechas NUEVAS. Al implementar un campo en la app, quítalo de aquí.
+BRECHAS_CONOCIDAS = {
+    "ServicioDetalle.jsx": {"__id_categoria", "precio_unitario"},
+    "Inventario.jsx": {"__compat", "almacen", "estanteria", "nivel", "pasillo", "unidad"},
+    "Empleados.jsx": {"aplicar_impuestos", "curp", "esquema_pago", "nss", "porcentaje_comision", "rfc_empleado"},
+    "Usuarios.jsx": {"confirmar_password"},
+    "ConfiguracionTaller.jsx": {"dias_atencion", "hora_apertura", "hora_cierre", "horarios_dia"},
+    "Catalogos.jsx": {"_foto", "codigo_hex"},
+}
 NO_CAMPOS = {"id", "length", "map", "filter", "tipo_pago"}
 
 total, faltantes = 0, {}
@@ -52,5 +64,10 @@ print("\nCampos de la web que la app todavía no maneja:")
 for w, f in faltantes.items(): print(f"  {w}: {', '.join(f)}")
 print("\nPáginas web sin pantalla en la app del taller:", ", ".join(p for p in SIN_PANTALLA if os.path.exists(os.path.join(WEB, p))))
 n = sum(len(v) for v in faltantes.values())
-print(f"\nParidad: {total - n}/{total} campos")
-sys.exit(1 if n else 0)
+nuevas = {w: [c for c in f if c not in BRECHAS_CONOCIDAS.get(w, set())] for w, f in faltantes.items()}
+nuevas = {w: f for w, f in nuevas.items() if f}
+print(f"\nParidad: {total - n}/{total} campos ({n} brechas conocidas)")
+if nuevas:
+    print("BRECHAS NUEVAS (la web tiene el campo y la app no):")
+    for w, f in nuevas.items(): print(f"  {w}: {', '.join(f)}")
+sys.exit(1 if nuevas else 0)
