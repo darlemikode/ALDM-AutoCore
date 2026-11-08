@@ -228,10 +228,10 @@ export default function Login() {
                 <div className="lgn-pista" style={{ transform: paso === 1 ? "translateX(0)" : "translateX(-50%)" }}>
                   <div className="lgn-paso" aria-hidden={paso !== 1}>
                     <div className="field">
-                      <label>Correo electrónico</label>
+                      <label>Correo electrónico o usuario</label>
                       <div className="lgn-ico">
                         <svg className="lgn-i" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m4 7 8 6 8-6" /></svg>
-                        <input ref={correoRef} type="text" inputMode="email" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoCapitalize="none" autoComplete="username" placeholder="nombre@correo.com" tabIndex={paso === 1 ? 0 : -1} />
+                        <input ref={correoRef} type="text" inputMode="email" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoCapitalize="none" autoComplete="username" placeholder="correo o usuario" tabIndex={paso === 1 ? 0 : -1} />
                       </div>
                     </div>
                     {paso === 1 && error && <div className="error-text">{error}</div>}
