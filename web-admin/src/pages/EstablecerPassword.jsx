@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import logoAldm from "../assets/logo-aldm.png";
+import logoAldm from "../assets/logo-aldm.webp";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import { Icono } from "../components/Icono";

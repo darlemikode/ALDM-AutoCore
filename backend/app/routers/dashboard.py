@@ -14,6 +14,20 @@ from ..security import get_current_user, require_permission
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
+@router.get("/solicitudes-pendientes")
+def solicitudes_pendientes(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Solo el número que muestra la barra lateral (una consulta) — antes se
+    pedía todo /resumen, que hace una docena, solo para leer este dato."""
+    if not user.tiene_permiso("usuarios.ver"):
+        return {"solicitudes_recuperacion_pendientes": 0}
+    n = (
+        db.query(func.count(models.SolicitudRecuperacion.id_solicitud))
+        .filter(models.SolicitudRecuperacion.atendida == False)  # noqa: E712
+        .scalar()
+    )
+    return {"solicitudes_recuperacion_pendientes": n or 0}
+
+
 @router.get("/resumen")
 def resumen(db: Session = Depends(get_db), user=Depends(get_current_user)):
     hoy = datetime.utcnow()

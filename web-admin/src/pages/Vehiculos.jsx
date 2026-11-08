@@ -64,16 +64,14 @@ export default function Vehiculos() {
   const [ofrecerSiguiente, setOfrecerSiguiente] = useState(null); // vehículo recién creado
 
   async function loadAll() {
-    const [v, m, mo, co] = await Promise.all([
+    const [v, cat] = await Promise.all([
       api.get(`/vehiculos/${idCliente ? `?id_cliente=${idCliente}` : ""}`),
-      api.get("/vehiculos-marcas/"),
-      api.get("/vehiculos-modelos/"),
-      api.get("/colores-vehiculos/"),
+      api.get("/vehiculos/catalogos"),
     ]);
     setVehiculos(v);
-    setMarcas(m);
-    setModelos(mo);
-    setColores(co);
+    setMarcas(cat.marcas);
+    setModelos(cat.modelos);
+    setColores(cat.colores);
     setLoading(false);
   }
 

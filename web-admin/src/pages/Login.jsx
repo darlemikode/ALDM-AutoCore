@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import logoAldm from "../assets/logo-aldm.png";
+import logoAldm from "../assets/logo-aldm.webp";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";

@@ -14,7 +14,7 @@ export function setToken(token) {
 // Catálogos que casi nunca cambian: se guardan unos minutos en memoria para no pedirlos en cada pantalla.
 // Cualquier alta/edición/baja sobre el mismo catálogo borra su copia. Además, si la misma consulta
 // ya está en vuelo, se reutiliza en lugar de repetirla.
-const CATALOGOS = ["/vehiculos-marcas/", "/vehiculos-modelos/", "/refacciones-marcas/", "/refacciones-categorias/", "/colores-vehiculos/", "/tipos-servicio/", "/estados/", "/ciudades/", "/paises/"];
+const CATALOGOS = ["/vehiculos-marcas/", "/vehiculos-modelos/", "/refacciones-marcas/", "/refacciones-categorias/", "/colores-vehiculos/", "/vehiculos/catalogos", "/tipos-servicio/", "/estados/", "/ciudades/", "/paises/"];
 const VIGENCIA_MS = 5 * 60 * 1000;
 const cacheGet = new Map(); // ruta -> { t, datos } | { enVuelo }
 const base = (path) => path.split("?")[0];
@@ -22,6 +22,8 @@ const esCatalogo = (path) => CATALOGOS.includes(base(path));
 const copia = (d) => (typeof structuredClone === "function" ? structuredClone(d) : JSON.parse(JSON.stringify(d)));
 function invalidar(path) {
   const b = base(path).replace(/\/\d+\/?$/, "/");
+  // El paquete de catálogos de vehículos junta marcas, modelos y colores
+  if (/^\/(vehiculos-marcas|vehiculos-modelos|colores-vehiculos)\//.test(b)) cacheGet.delete("/vehiculos/catalogos");
   for (const k of cacheGet.keys()) if (base(k).startsWith(b)) cacheGet.delete(k);
 }
 async function request(path, { method = "GET", body, isForm = false } = {}) {

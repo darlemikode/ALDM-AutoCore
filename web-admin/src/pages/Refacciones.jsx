@@ -52,7 +52,6 @@ export default function Refacciones() {
   const { hasPermission } = useAuth();
   const [refacciones, setRefacciones] = useState([]);
   const [marcas, setMarcas] = useState([]);
-  const [proveedores, setProveedores] = useState([]);
   const [categoriasRefaccion, setCategoriasRefaccion] = useState([]);
   const [marcasVehiculo, setMarcasVehiculo] = useState([]);
   const [modelosVehiculo, setModelosVehiculo] = useState([]);
@@ -74,20 +73,25 @@ export default function Refacciones() {
   }
   // Los catálogos se piden una sola vez y en paralelo con la lista (sin bloquearla)
   async function cargarCatalogos() {
-    const [m, p, cat, marcasVeh, modelosVeh] = await Promise.all([
+    const [m, cat] = await Promise.all([
       api.get("/refacciones-marcas/"),
-      api.get("/proveedores/").catch(() => []), // Arranque no incluye Proveedores
       api.get("/refacciones-categorias/"),
-      api.get("/vehiculos-marcas/"),
-      api.get("/vehiculos-modelos/"),
     ]);
     setMarcas(m);
-    setProveedores(p);
     setCategoriasRefaccion(cat);
-    setMarcasVehiculo(marcasVeh);
-    setModelosVehiculo(modelosVeh);
   }
   useEffect(() => { cargarCatalogos().catch(() => {}); }, []);
+
+  // Marcas/modelos de vehículo solo sirven para la sección "Compatible con" de una refacción ya guardada:
+  // se piden al abrirla (una vez), no al entrar a la pantalla. Los proveedores no se usaban aquí.
+  const vehiculosPedidos = useRef(false);
+  useEffect(() => {
+    if (!editing?.id_refaccion || vehiculosPedidos.current) return;
+    vehiculosPedidos.current = true;
+    Promise.all([api.get("/vehiculos-marcas/"), api.get("/vehiculos-modelos/")])
+      .then(([mv, mo]) => { setMarcasVehiculo(mv); setModelosVehiculo(mo); })
+      .catch(() => { vehiculosPedidos.current = false; });
+  }, [editing]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);

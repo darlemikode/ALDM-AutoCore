@@ -27,6 +27,8 @@ export function suscribirNotificaciones(fn) {
 }
 
 export async function refrescarConteoNotificaciones() {
+  // Con la pestaña oculta no hay nadie mirando la campana: no se gasta una petición
+  if (typeof document !== "undefined" && document.hidden) return;
   try {
     const r = await api.get("/notificaciones/conteo");
     conteo = r.no_leidas || 0;
@@ -56,11 +58,12 @@ export async function marcarNotificacionesVistas() {
   emitir();
 }
 
-const INTERVALO_MS = 20000;
+const INTERVALO_MS = 60000;
 export function iniciarMonitoreoNotificaciones() {
   if (intervalo) return;
   refrescarConteoNotificaciones();
   intervalo = setInterval(refrescarConteoNotificaciones, INTERVALO_MS);
+  if (typeof document !== "undefined") document.addEventListener("visibilitychange", () => { if (!document.hidden) refrescarConteoNotificaciones(); });
   suscribirActualizacionGlobal("portal-cliente", refrescarConteoNotificaciones);
   suscribirActualizacionGlobal("auth", refrescarConteoNotificaciones);
 }

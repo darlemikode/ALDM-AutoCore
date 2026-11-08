@@ -2,7 +2,8 @@ from ..busqueda import coincide
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from .. import models, schemas
@@ -40,10 +41,30 @@ def listar_ligero(
     ]
 
 
+@router.get("/resumen-categorias")
+def resumen_categorias(
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user=Depends(require_permission("refacciones.ver")),
+):
+    """Total y conteo por categoría (con la búsqueda aplicada) sin traer las refacciones: lo usan los chips de filtro."""
+    filas = db.query(models.Refaccion.nombre_refaccion, models.Refaccion.numero_refaccion, models.Refaccion.categoria).all()
+    if q:
+        filas = [r for r in filas if coincide(q, r.nombre_refaccion, r.numero_refaccion)]
+    conteo: dict[str, int] = {}
+    for r in filas:
+        k = r.categoria or "Sin categoría"
+        conteo[k] = conteo.get(k, 0) + 1
+    return {"total": len(filas), "categorias": conteo}
+
+
 @router.get("/", response_model=list[schemas.RefaccionOut])
 def listar(
     q: Optional[str] = None,
     bajo_stock: bool = False,
+    categorias: Optional[str] = None,  # nombres separados por "|" ("Sin categoría" = sin categoría)
+    limite: Optional[int] = Query(None, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     user=Depends(require_permission("refacciones.ver")),
 ):
@@ -52,9 +73,20 @@ def listar(
     ligera = db.query(models.Refaccion.id_refaccion, models.Refaccion.nombre_refaccion, models.Refaccion.numero_refaccion)
     if bajo_stock:
         ligera = ligera.filter(models.Refaccion.cantidad_refaccion <= 3)
+    nombres = [c.strip() for c in (categorias or "").split("|") if c.strip()]
+    if nombres:
+        conds = []
+        con = [n for n in nombres if n != "Sin categoría"]
+        if con:
+            conds.append(models.Refaccion.categoria.in_(con))
+        if "Sin categoría" in nombres:
+            conds.append(or_(models.Refaccion.categoria.is_(None), models.Refaccion.categoria == ""))
+        ligera = ligera.filter(or_(*conds))
     filas = ligera.order_by(models.Refaccion.nombre_refaccion).all()
     if q:
         filas = [r for r in filas if coincide(q, r.nombre_refaccion, r.numero_refaccion)]
+    if limite:
+        filas = filas[offset:offset + limite]  # solo este bloque pasa a la carga pesada
     ids = [r.id_refaccion for r in filas]
     if not ids:
         return []

@@ -99,7 +99,7 @@ export default function Layout() {
 
   function cargarSolicitudesPendientes() {
     if (!puedeVerUsuarios) return;
-    api.get("/dashboard/resumen").then((r) => setSolicitudesPendientes(r.solicitudes_recuperacion_pendientes || 0));
+    api.get("/dashboard/solicitudes-pendientes").then((r) => setSolicitudesPendientes(r.solicitudes_recuperacion_pendientes || 0)).catch(() => {});
   }
   useEffect(cargarSolicitudesPendientes, [puedeVerUsuarios]);
   // Antes solo se cargaba una vez al entrar — ahora se refresca sola en

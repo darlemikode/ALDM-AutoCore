@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from .database import get_db, get_db_global
 from . import models
@@ -65,7 +65,14 @@ def _decodificar_usuario(token: str, db: Session) -> models.Usuario:
     except JWTError:
         raise credentials_exception
 
-    user = db.query(models.Usuario).filter(models.Usuario.username == username).first()
+    # Usuario + membresías + rol + permisos en 2 consultas (antes ~4, una por
+    # cada acceso perezoso): se paga en CADA petición.
+    user = (
+        db.query(models.Usuario)
+        .options(joinedload(models.Usuario.membresias).joinedload(models.UsuarioTaller.rol).selectinload(models.Rol.permisos))
+        .filter(models.Usuario.username == username)
+        .first()
+    )
     if user is None or not user.activo:
         raise credentials_exception
     if version != (user.version_token or 0):

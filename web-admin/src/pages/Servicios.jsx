@@ -1,12 +1,12 @@
 import { IconoAuto } from "../components/Icono";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import FormModal from "../components/FormModal";
-import MensajeModal from "../components/MensajeModal";
+const FormModal = lazy(() => import("../components/FormModal"));
+const MensajeModal = lazy(() => import("../components/MensajeModal"));
 import ModalPortal from "../components/ModalPortal";
 import FotoGaleria from "../components/FotoGaleria";
-import ElegirClienteVehiculo from "../components/ElegirClienteVehiculo";
+const ElegirClienteVehiculo = lazy(() => import("../components/ElegirClienteVehiculo"));
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
@@ -503,7 +503,9 @@ export default function Servicios() {
   return (
     <>
       {eligiendoNueva && (
-        <ElegirClienteVehiculo idCliente={clientePre} onConfirmar={confirmarNuevaOrden} onCerrar={() => { setEligiendoNueva(false); setClientePre(null); }} />
+        <Suspense fallback={null}>
+          <ElegirClienteVehiculo idCliente={clientePre} onConfirmar={confirmarNuevaOrden} onCerrar={() => { setEligiendoNueva(false); setClientePre(null); }} />
+        </Suspense>
       )}
       <div className="page-header">
         <div>
@@ -664,6 +666,7 @@ export default function Servicios() {
       </div>
 
       {creating && (
+        <Suspense fallback={null}>
         <FormModal
           title={garantiaOriginal ? `Reclamación de garantía — orden #${garantiaOriginal.id_servicio}` : "Nueva orden de servicio"}
           icono="🔧"
@@ -685,9 +688,11 @@ export default function Servicios() {
           onSubmit={handleCreate}
           onClose={() => { setCreating(false); setGarantiaOriginal(null); setPrefillVehiculo(null); }}
         />
+        </Suspense>
       )}
 
       {modalConfirmar && (
+        <Suspense fallback={null}>
         <MensajeModal
           icono="🔒"
           titulo="Verificación en 2 pasos"
@@ -703,6 +708,7 @@ export default function Servicios() {
           </div>
           {errorCodigo && <div className="error-text">{errorCodigo}</div>}
         </MensajeModal>
+        </Suspense>
       )}
     </>
   );

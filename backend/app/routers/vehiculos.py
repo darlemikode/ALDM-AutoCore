@@ -2,6 +2,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
@@ -66,6 +67,23 @@ def _con_foto_principal(db: Session, vehiculos: list[models.Vehiculo]) -> list[m
     for v in vehiculos:
         v.foto_principal = f"/uploads/{mas_reciente[v.id_vehiculo]}" if v.id_vehiculo in mas_reciente else None
     return vehiculos
+
+
+class CatalogosVehiculoOut(BaseModel):
+    marcas: list[schemas.VehiculoMarcaOut]
+    modelos: list[schemas.VehiculoModeloOut]
+    colores: list[schemas.ColorVehiculoOut]
+
+
+@router.get("/catalogos", response_model=CatalogosVehiculoOut)
+def catalogos(db: Session = Depends(get_db), user=Depends(require_permission("vehiculos.ver"))):
+    """Marcas, modelos y colores en UNA petición (la pantalla los pedía en
+    tres, y cada petición paga su validación de sesión)."""
+    return {
+        "marcas": db.query(models.VehiculoMarca).order_by(models.VehiculoMarca.id_marca_vehiculo).all(),
+        "modelos": db.query(models.VehiculoModelo).order_by(models.VehiculoModelo.id_modelo_vehiculo).all(),
+        "colores": db.query(models.ColorVehiculo).order_by(models.ColorVehiculo.id_color).all(),
+    }
 
 
 @router.get("/", response_model=list[schemas.VehiculoConClienteOut])
