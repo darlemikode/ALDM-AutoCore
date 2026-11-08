@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ModalPortal from "./ModalPortal";
 import { Icono } from "./Icono";
 import { marcarCampo } from "../validacion";
+import { useAuth } from "../context/AuthContext";
 import {
   atajosActivos, escucharAtajos, setSidebarCompacta, setTemaOscuro,
   sidebarCompactaActiva, temaOscuroActivo,
@@ -12,6 +13,18 @@ const RUTAS = {
   KeyP: "/", KeyO: "/servicios", KeyC: "/clientes", KeyV: "/vehiculos", KeyT: "/cotizaciones",
   KeyF: "/facturacion", KeyR: "/refacciones", KeyI: "/inventario", KeyH: "/herramientas", KeyA: "/citas", KeyB: "/asistente",
 };
+
+// Módulo del paquete que necesita cada atajo de "Ir a" (sin entrada = siempre disponible)
+const MODULO_RUTA = {
+  KeyO: "ordenes_servicio", KeyC: "clientes_vehiculos", KeyV: "clientes_vehiculos", KeyT: "cotizaciones", KeyF: "facturacion",
+  KeyR: "refacciones", KeyI: "inventario", KeyH: "herramientas", KeyA: "citas", KeyB: "app_movil",
+};
+const MODULO_TECLAS = {
+  "Alt + O": "ordenes_servicio", "Alt + C": "clientes_vehiculos", "Alt + V": "clientes_vehiculos", "Alt + T": "cotizaciones", "Alt + F": "facturacion",
+  "Alt + R": "refacciones", "Alt + I": "inventario", "Alt + H": "herramientas", "Alt + A": "citas", "Alt + B": "app_movil",
+  "Alt + G": "ordenes_servicio", "Alt + D": "ordenes_servicio",
+};
+const hayModulo = (est, m) => !m || !est?.modulos || est.modulos.includes(m);
 
 export const ATAJOS = [
   { grupo: "Ir a", items: [
@@ -37,9 +50,13 @@ const ACENTO_GRUPO = {
 };
 
 export function ListaAtajos() {
+  const { estadoSuscripcion } = useAuth();
+  const grupos = ATAJOS
+    .map((g) => ({ ...g, items: g.items.filter(([teclas]) => hayModulo(estadoSuscripcion, MODULO_TECLAS[teclas])) }))
+    .filter((g) => g.items.length > 0);
   return (
     <div className="atajos-grid">
-      {ATAJOS.map((g) => {
+      {grupos.map((g) => {
         const c = ACENTO_GRUPO[g.grupo] || ACENTO_GRUPO["Ir a"];
         return (
           <div key={g.grupo} className="atajos-grupo" style={{ "--acc": c.acc, "--acc-soft": c.soft }}>
@@ -76,6 +93,9 @@ export default function Atajos() {
   const navigate = useNavigate();
   const [activo, setActivo] = useState(atajosActivos);
   const [ayuda, setAyuda] = useState(false);
+  const { estadoSuscripcion } = useAuth();
+  const estRef = useRef(estadoSuscripcion);
+  estRef.current = estadoSuscripcion;
 
   useEffect(() => escucharAtajos(() => setActivo(atajosActivos())), []);
 
@@ -148,7 +168,7 @@ export default function Atajos() {
         return;
       }
       let usado = true;
-      if (RUTAS[e.code]) navigate(RUTAS[e.code]);
+      if (RUTAS[e.code]) { if (hayModulo(estRef.current, MODULO_RUTA[e.code])) navigate(RUTAS[e.code]); else usado = false; }
       else if (e.code === "KeyN") {
         const b = [...document.querySelectorAll(".btn-nuevo, .btn-agregar")].find(visible);
         if (b) b.click(); else usado = false;
@@ -158,10 +178,10 @@ export default function Atajos() {
       } else if (e.code === "KeyM") setSidebarCompacta(!sidebarCompactaActiva());
       else if (e.code === "KeyL") setTemaOscuro(!temaOscuroActivo());
       else if (e.code === "Slash" || e.key === "?") setAyuda((v) => !v);
-      else if (e.code === "KeyG") {
+      else if (e.code === "KeyG" && hayModulo(estRef.current, "ordenes_servicio")) {
         const b = botonConTexto("Finalizar y generar nota");
         if (b) b.click(); else usado = false;
-      } else if (e.code === "KeyD") {
+      } else if (e.code === "KeyD" && hayModulo(estRef.current, "ordenes_servicio")) {
         const b = botonConTexto("Descargar recibo");
         if (b) b.click(); else usado = false;
       } else usado = false;

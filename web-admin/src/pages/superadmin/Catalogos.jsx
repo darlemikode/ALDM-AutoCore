@@ -5,11 +5,15 @@ import FormModal from "../../components/FormModal";
 import { IconoModuloSistema } from "../../components/IconoModulo";
 import { useUI } from "../../context/UIContext";
 import { Cargando, fmt, useCargar } from "./comun";
+import PaqueteModal from "./PaqueteModal";
 
 const calculado = (mensual, t) => (Number(mensual) || 0) * t.meses * (1 - (t.descuento_porcentaje || 0) / 100);
 
 export default function Catalogos() {
   const { confirmDialog, notify } = useUI();
+  const [filtroMod, setFiltroMod] = useState("");
+  const [filtroPaq, setFiltroPaq] = useState(""); // "" = todos · id de paquete · "ninguno"
+  const [verTodos, setVerTodos] = useState(null); // paquete con todos sus módulos desplegados
   const [modal, setModal] = useState(null); // { tipo: "paquete"|"tipo"|"modulo", item, iniciales }
   const { datos, error, recargar } = useCargar(async () => {
     const [paquetes, tipos, modulos] = await Promise.all([api.get("/superadmin/paquetes"), api.get("/superadmin/tipos-cobro"), api.get("/superadmin/modulos")]);
@@ -30,11 +34,7 @@ export default function Catalogos() {
     if (!ok) return;
     try { await api.del(`${endpoint}/${idItem}`); recargar(); } catch (err) { notify(err.message, "error"); }
   }
-  const editarPaquete = (p) => {
-    const v = p ? { ...p, modulos: (p.modulos || []).map((m) => m.clave) } : { activo: true, modulos: [] };
-    (p?.precios || []).forEach((x) => { v[`precio_${x.id_tipo_cobro}`] = x.precio; });
-    setModal({ tipo: "paquete", item: p, iniciales: v });
-  };
+  const editarPaquete = (p) => setModal({ tipo: "paquete", item: p });
 
   return (
     <>
@@ -43,87 +43,128 @@ export default function Catalogos() {
           <h2 className="sa-titulo">Paquetes</h2>
           <button className="btn btn-primary btn-sm" onClick={() => editarPaquete(null)}>+ Nuevo paquete</button>
         </div>
-        <div className="sa-tabla">
-          <table>
-            <thead><tr><th>Paquete</th><th>Precios</th><th>Módulos</th><th></th></tr></thead>
-            <tbody>
-              {paquetes.map((p) => (
-                <tr key={p.id_paquete}>
-                  <td><strong>{p.nombre}</strong>{!p.activo && <> <span className="badge badge-grey">no se ofrece</span></>}{p.limite_usuarios && <div className="sa-sub">hasta {p.limite_usuarios} usuarios</div>}</td>
-                  <td className="sa-sub">{tipos.filter((t) => t.activo).map((t) => {
-                    const fijo = p.precios?.find((x) => x.id_tipo_cobro === t.id_tipo_cobro);
-                    return <div key={t.id_tipo_cobro}>{t.nombre}: {fmt(fijo ? fijo.precio : calculado(p.precio_mensual, t))}</div>;
-                  })}</td>
-                  <td className="sa-sub">{p.modulos.map((m) => m.nombre).join(", ") || "—"}</td>
-                  <td><div className="row-actions">
-                    <button className="btn btn-secondary btn-sm" onClick={() => editarPaquete(p)}>Editar</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => eliminar("/superadmin/paquetes", p.id_paquete, p.nombre)}>Eliminar</button>
-                  </div></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="pk-grid">
+          {paquetes.map((p) => {
+            const activosTipos = tipos.filter((t) => t.activo);
+            const precioDe = (t) => { const fijo = p.precios?.find((x) => x.id_tipo_cobro === t.id_tipo_cobro); return fijo ? fijo.precio : calculado(p.precio_mensual, t); };
+            const mods = p.modulos || [];
+            const abierto = verTodos === p.id_paquete;
+            const mostrados = abierto ? mods : mods.slice(0, 8);
+            return (
+              <article key={p.id_paquete} className={`pk-card ${p.activo ? "" : "pk-card-oculto"}`}>
+                <header className="pk-cab">
+                  <div>
+                    <h3>{p.nombre}</h3>
+                    <div className="pk-metas">
+                      {!p.activo && <span className="badge badge-grey">no se ofrece</span>}
+                      <span>{p.limite_usuarios ? `hasta ${p.limite_usuarios} usuarios` : "usuarios ilimitados"}</span>
+                      <span>· {mods.length} módulo{mods.length === 1 ? "" : "s"}</span>
+                    </div>
+                  </div>
+                  <div className="pk-precio"><b>{fmt(p.precio_mensual)}</b><small>/ mes + IVA</small></div>
+                </header>
+                {p.descripcion && <p className="pk-desc">{p.descripcion}</p>}
+                <div className="pk-cobros">
+                  {activosTipos.map((t) => (
+                    <div key={t.id_tipo_cobro} className="pk-cobro">
+                      <small>{t.nombre}</small><b>{fmt(precioDe(t))}</b>
+                      {t.descuento_porcentaje > 0 && <i>−{Number(t.descuento_porcentaje).toFixed(t.descuento_porcentaje % 1 ? 2 : 0)}%</i>}
+                    </div>
+                  ))}
+                </div>
+                <div className="pk-modulos">
+                  {mostrados.map((m) => <span key={m.clave} className="pk-mod" title={m.nombre}><IconoModuloSistema clave={m.clave} size={13} />{m.nombre}</span>)}
+                  {mods.length > 8 && <button type="button" className="pk-mas" onClick={() => setVerTodos(abierto ? null : p.id_paquete)}>{abierto ? "Ver menos" : `+${mods.length - 8} más`}</button>}
+                  {mods.length === 0 && <span className="sa-sub">Sin módulos.</span>}
+                </div>
+                <footer className="pk-pie">
+                  <button className="btn btn-secondary btn-sm" onClick={() => editarPaquete(p)}>Editar</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => eliminar("/superadmin/paquetes", p.id_paquete, p.nombre)}>Eliminar</button>
+                </footer>
+              </article>
+            );
+          })}
         </div>
       </div>
 
-      <div className="sa-columnas">
-        <div className="panel">
-          <div className="sa-titulo-fila">
+      <div className="panel">
+        <div className="sa-titulo-fila">
+          <div>
             <h2 className="sa-titulo">Tipos de cobro</h2>
-            <button className="btn btn-primary btn-sm" onClick={() => setModal({ tipo: "tipo", item: null, iniciales: { meses: 1, descuento_porcentaje: 0, activo: true, orden: 0 } })}>+ Nuevo</button>
+            <div className="sa-sub">Cada cuántos meses se paga y qué descuento tiene.</div>
           </div>
+          <button className="btn btn-primary btn-sm" onClick={() => setModal({ tipo: "tipo", item: null, iniciales: { meses: 1, descuento_porcentaje: 0, activo: true, orden: 0 } })}>+ Nuevo</button>
+        </div>
+        <div className="tc-grid">
           {tipos.map((t) => (
-            <div key={t.id_tipo_cobro} className="sa-item">
-              <span><strong>{t.nombre}</strong>{!t.activo && <> <span className="badge badge-grey">inactivo</span></>}
-                <div className="sa-sub">Cada pago cubre {t.meses} mes{t.meses > 1 ? "es" : ""}{t.descuento_porcentaje ? ` · ${t.descuento_porcentaje}% de descuento` : ""}</div></span>
-              <span className="row-actions">
+            <article key={t.id_tipo_cobro} className={`tc-card ${t.activo ? "" : "tc-card-off"}`}>
+              <div className="tc-meses"><b>{t.meses}</b><small>mes{t.meses > 1 ? "es" : ""}</small></div>
+              <div className="tc-info">
+                <strong>{t.nombre}</strong>
+                <span className="sa-sub">Cada pago cubre {t.meses} mes{t.meses > 1 ? "es" : ""}</span>
+                <span className="tc-chips">
+                  {t.descuento_porcentaje > 0 ? <em className="tc-desc">−{Number(t.descuento_porcentaje).toFixed(t.descuento_porcentaje % 1 ? 2 : 0)}% de descuento</em> : <em className="tc-sin">Sin descuento</em>}
+                  {!t.activo && <span className="badge badge-grey">inactivo</span>}
+                </span>
+              </div>
+              <div className="tc-acc">
                 <button className="btn btn-secondary btn-sm" onClick={() => setModal({ tipo: "tipo", item: t, iniciales: { ...t } })}>Editar</button>
                 <button className="btn btn-danger btn-sm" onClick={() => eliminar("/superadmin/tipos-cobro", t.id_tipo_cobro, t.nombre)}>Eliminar</button>
-              </span>
-            </div>
+              </div>
+            </article>
           ))}
         </div>
+      </div>
 
-        <div className="panel">
-          <h2 className="sa-titulo">Módulos del sistema</h2>
-          <div className="sa-sub" style={{ marginBottom: 8 }}>Los define el sistema; aquí solo cambias cómo se muestran.</div>
-          {modulos.map((m) => (
-            <div key={m.id_modulo} className="sa-item">
-              <span className="sa-modulo-fila"><IconoModuloSistema clave={m.clave} /><span><strong>{m.nombre}</strong><div className="sa-sub">{m.descripcion}</div></span></span>
-              <button className="btn btn-secondary btn-sm" onClick={() => setModal({ tipo: "modulo", item: m, iniciales: { ...m } })}>Editar</button>
-            </div>
+      <div className="panel">
+        <div className="sa-titulo-fila">
+          <div>
+            <h2 className="sa-titulo">Módulos del sistema <span className="sa-sub">({modulos.length})</span></h2>
+            <div className="sa-sub">Los define el sistema; aquí solo cambias cómo se muestran.</div>
+          </div>
+          <input className="pq-buscar" value={filtroMod} onChange={(e) => setFiltroMod(e.target.value)} placeholder="Buscar módulo…" aria-label="Buscar módulo" />
+        </div>
+        <div className="md-filtros" role="group" aria-label="Filtrar por paquete">
+          <span className="md-filtros-etq">Incluido en</span>
+          {[["", "Todos", modulos.length], ...paquetes.map((p) => [String(p.id_paquete), p.nombre, modulos.filter((m) => (p.modulos || []).some((x) => x.clave === m.clave)).length]),
+            ["ninguno", "Sin paquete", modulos.filter((m) => !paquetes.some((p) => (p.modulos || []).some((x) => x.clave === m.clave))).length]].map(([v, txt, n]) => (
+            <button key={v || "todos"} type="button" className={`md-filtro ${filtroPaq === v ? "md-filtro-on" : ""}`} aria-pressed={filtroPaq === v} onClick={() => setFiltroPaq(v)}>{txt} <b>{n}</b></button>
           ))}
+        </div>
+        <div className="md-grid">
+          {modulos.filter((m) => {
+            if (filtroMod.trim() && !`${m.nombre} ${m.descripcion || ""}`.toLowerCase().includes(filtroMod.trim().toLowerCase())) return false;
+            if (!filtroPaq) return true;
+            const dentro = paquetes.filter((p) => (p.modulos || []).some((x) => x.clave === m.clave));
+            return filtroPaq === "ninguno" ? dentro.length === 0 : dentro.some((p) => String(p.id_paquete) === filtroPaq);
+          }).map((m) => {
+            const enPaquetes = paquetes.filter((p) => (p.modulos || []).some((x) => x.clave === m.clave));
+            return (
+              <article key={m.id_modulo} className="md-card">
+                <IconoModuloSistema clave={m.clave} size={20} />
+                <div className="md-info">
+                  <strong>{m.nombre}</strong>
+                  <p>{m.descripcion}</p>
+                  <div className="md-paquetes">
+                    {enPaquetes.length === 0 ? <span className="md-ninguno">En ningún paquete</span> : enPaquetes.map((p) => <span key={p.id_paquete} className="md-paq">{p.nombre}</span>)}
+                  </div>
+                </div>
+                <button className="btn btn-secondary btn-sm" onClick={() => setModal({ tipo: "modulo", item: m, iniciales: { ...m } })}>Editar</button>
+              </article>
+            );
+          })}
         </div>
       </div>
 
       {modal?.tipo === "paquete" && (
-        <FormModal
-          title={modal.item ? "Editar paquete" : "Nuevo paquete"} icono="📦" initialValues={modal.iniciales}
-          grupos={{ plan: { icono: "📦", titulo: "Paquete" }, precios: { icono: "💲", titulo: "Precios por tipo de cobro", acento: "acento-teal" }, modulos: { icono: "🧩", titulo: "Qué incluye", acento: "acento-ambar" } }}
-          fields={(v) => [
-            { name: "nombre", label: "Nombre del paquete", required: true, grupo: "plan" },
-            { name: "limite_usuarios", label: "Límite de usuarios", type: "number", hint: "Vacío = sin límite", grupo: "plan" },
-            { name: "descripcion", label: "Descripción", type: "textarea", full: true, grupo: "plan" },
-            { name: "activo", label: "Se ofrece a talleres nuevos", type: "checkbox", grupo: "plan" },
-            { name: "precio_mensual", label: "Precio mensual (sin IVA)", type: "number", required: true, grupo: "precios" },
-            ...tipos.filter((t) => t.activo || v[`precio_${t.id_tipo_cobro}`] != null).map((t) => ({
-              name: `precio_${t.id_tipo_cobro}`, label: `Precio ${t.nombre.toLowerCase()} (${t.meses} mes${t.meses > 1 ? "es" : ""})`, type: "number", grupo: "precios",
-              hint: `Vacío = ${fmt(calculado(v.precio_mensual, t))}${t.descuento_porcentaje ? ` (−${t.descuento_porcentaje}%)` : ""}`,
-            })),
-            { name: "modulos", label: "Módulos incluidos", type: "multiselect", full: true, grupo: "modulos",
-              options: modulos.map((m) => ({ value: m.clave, label: m.nombre })) },
-          ]}
-          onSubmit={(v) => guardar("/superadmin/paquetes", modal.item?.id_paquete, {
-            nombre: v.nombre, descripcion: v.descripcion || null, precio_mensual: Number(v.precio_mensual) || 0,
-            limite_usuarios: v.limite_usuarios ? Number(v.limite_usuarios) : null, activo: !!v.activo, modulos: v.modulos || [],
-            precios: tipos.filter((t) => v[`precio_${t.id_tipo_cobro}`] !== null && v[`precio_${t.id_tipo_cobro}`] !== undefined && v[`precio_${t.id_tipo_cobro}`] !== "")
-              .map((t) => ({ id_tipo_cobro: t.id_tipo_cobro, precio: Number(v[`precio_${t.id_tipo_cobro}`]) })),
-          })}
+        <PaqueteModal
+          item={modal.item} tipos={tipos} modulos={modulos}
+          onSubmit={(cuerpo) => guardar("/superadmin/paquetes", modal.item?.id_paquete, cuerpo)}
           onClose={() => setModal(null)}
         />
       )}
       {modal?.tipo === "tipo" && (
-        <FormModal
+        <FormModal tema="sa"
           title={modal.item ? "Editar tipo de cobro" : "Nuevo tipo de cobro"} icono="🔁" initialValues={modal.iniciales}
           fields={[
             { name: "nombre", label: "Nombre (ej. Mensual, Anual)", required: true },
@@ -139,7 +180,7 @@ export default function Catalogos() {
         />
       )}
       {modal?.tipo === "modulo" && (
-        <FormModal
+        <FormModal tema="sa"
           title="Editar módulo" icono="🧩" initialValues={modal.iniciales}
           fields={[
             { name: "clave", label: "Clave del sistema", disabled: true },

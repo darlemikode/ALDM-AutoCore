@@ -1,12 +1,12 @@
 import { IconoAuto } from "../components/Icono";
 import { opMarca, opModelo } from "../components/Combo";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import DataTable from "../components/DataTable";
 import { colorGrupo } from "../components/FiltroChips";
-import FiltrosVehiculos, { VACIOS, DIAS_PROXIMO, aplicarFiltros } from "../components/FiltrosVehiculos";
-import FormModal from "../components/FormModal";
+import FiltrosVehiculos, { VACIOS, DIAS_PROXIMO } from "../components/FiltrosVehiculos";
+import VehiculoModal from "../components/VehiculoModal";
 import ModalPortal from "../components/ModalPortal";
 import MensajeModal from "../components/MensajeModal";
 import FotoGaleria from "../components/FotoGaleria";
@@ -50,7 +50,10 @@ export default function Vehiculos() {
   const { confirmDialog, notify } = useUI();
   const { hasPermission } = useAuth();
 
-  const [vehiculos, setVehiculos] = useState([]);
+  const [vehiculos, setVehiculos] = useState([]); // páginas ya cargadas (filtradas por el servidor)
+  const [total, setTotal] = useState(0); // vehículos que coinciden con los filtros
+  const [resumen, setResumen] = useState(null); // tarjetas y conteos de los filtros
+  const [cargandoMas, setCargandoMas] = useState(false);
   const [clientes, setClientes] = useState([]);
   const [marcas, setMarcas] = useState([]);
   const [modelos, setModelos] = useState([]);
@@ -63,22 +66,93 @@ export default function Vehiculos() {
   const [fotosDe, setFotosDe] = useState(null); // vehículo cuyas fotos se están viendo
   const [ofrecerSiguiente, setOfrecerSiguiente] = useState(null); // vehículo recién creado
 
-  async function loadAll() {
-    const [v, cat] = await Promise.all([
-      api.get(`/vehiculos/${idCliente ? `?id_cliente=${idCliente}` : ""}`),
-      api.get("/vehiculos/catalogos"),
-    ]);
-    setVehiculos(v);
-    setMarcas(cat.marcas);
-    setModelos(cat.modelos);
-    setColores(cat.colores);
-    setLoading(false);
+  const PAGINA = 40;
+  const peticion = useRef(0); // descarta respuestas viejas si cambian los filtros a medias
+  const filtrosRef = useRef({ q: "", filtros: VACIOS });
+  filtrosRef.current = { q, filtros };
+
+  function parametros(offset) {
+    const { q: texto, filtros: f } = filtrosRef.current;
+    const p = new URLSearchParams();
+    if (idCliente) p.set("id_cliente", idCliente);
+    if (texto.trim()) p.set("q", texto.trim());
+    if (f.marcas.length) p.set("marcas", f.marcas.join(","));
+    if (f.modelos.length) p.set("modelos", f.modelos.join(","));
+    if (f.colores.length) p.set("colores", f.colores.join(","));
+    if (f.anioDesde) p.set("anio_desde", f.anioDesde);
+    if (f.anioHasta) p.set("anio_hasta", f.anioHasta);
+    if (f.estado) p.set("estado", f.estado);
+    if (f.servicio) p.set("servicio", f.servicio);
+    if (f.orden) p.set("orden", f.orden);
+    p.set("limite", PAGINA);
+    p.set("offset", offset);
+    return p.toString();
   }
 
+  // Primera página (o recarga tras guardar/borrar) con los filtros actuales
+  async function cargarPagina() {
+    const n = ++peticion.current;
+    try {
+      const r = await api.get(`/vehiculos/pagina?${parametros(0)}`);
+      if (n !== peticion.current) return;
+      setVehiculos(r.items);
+      setTotal(r.total);
+    } catch (err) {
+      if (n === peticion.current) notify(err.message, "error");
+    } finally {
+      if (n === peticion.current) setLoading(false);
+    }
+  }
+
+  async function cargarMas() {
+    if (cargandoMas || vehiculos.length >= total) return;
+    const n = peticion.current;
+    setCargandoMas(true);
+    try {
+      const r = await api.get(`/vehiculos/pagina?${parametros(vehiculos.length)}`);
+      if (n !== peticion.current) return;
+      setVehiculos((l) => [...l, ...r.items.filter((x) => !l.some((y) => y.id_vehiculo === x.id_vehiculo))]);
+      setTotal(r.total);
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setCargandoMas(false);
+    }
+  }
+
+  async function cargarResumen() {
+    try {
+      const r = await api.get(`/vehiculos/resumen${idCliente ? `?id_cliente=${idCliente}` : ""}`);
+      setResumen(r);
+      if (r.errores?.length) console.warn("vehiculos/resumen:", r.errores);
+    } catch (err) {
+      console.warn("vehiculos/resumen:", err);
+      notify(`No se pudieron cargar las tarjetas: ${err.message}`, "error");
+    }
+  }
+
+  // Tras guardar, borrar o cambiar fotos: se refresca la lista y las tarjetas
+  function loadAll() {
+    cargarPagina();
+    cargarResumen();
+  }
+
+  // Catálogos (marcas, modelos, colores): una sola vez
   useEffect(() => {
-    loadAll();
+    api.get("/vehiculos/catalogos").then((cat) => { setMarcas(cat.marcas); setModelos(cat.modelos); setColores(cat.colores); }).catch(() => {});
+  }, []);
+
+  useEffect(() => { cargarResumen(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [idCliente]);
+
+  // La lista se vuelve a pedir al servidor cuando cambia el cliente, la búsqueda o un filtro (con una pausa al escribir)
+  const primera = useRef(true);
+  useEffect(() => {
+    const espera = primera.current ? 0 : 300;
+    primera.current = false;
+    const t = setTimeout(cargarPagina, espera);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idCliente]);
+  }, [idCliente, q, filtros]);
 
   // La lista de clientes solo sirve para el selector del formulario: se pide al abrirlo (y una sola vez)
   const clientesPedidos = useRef(false);
@@ -100,94 +174,6 @@ export default function Vehiculos() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Al editar, el cliente dueño no se puede cambiar (rompería la cuenta
-  // única vehículo↔cliente), así que el selector se deshabilita.
-  // `fields` es una función de `values`: así el modelo solo ofrece "+ Nuevo"
-  // una vez que ya se eligió una marca (el modelo pertenece a una marca).
-  function fields(values) {
-    return [
-      {
-        name: "id_cliente",
-        label: "Cliente",
-        type: "buscable",
-        placeholder: "Escribe el nombre del cliente…",
-        required: true,
-        disabled: !!editing?.id_vehiculo,
-        grupo: "propietario",
-        options: [...clientes]
-          .sort((a, b) => a.nombre_cliente.localeCompare(b.nombre_cliente))
-          .map((c) => ({ value: c.id_cliente, label: `${c.nombre_cliente} ${c.paterno_cliente || ""}`.trim() })),
-      },
-      {
-        name: "id_marca_vehiculo",
-        label: "Marca",
-        type: "select",
-        required: true,
-        grupo: "identificacion",
-        // Al cambiar de marca, se limpia el modelo si ya no le corresponde
-        onElegir: (idMarca, v) => (v.id_modelo_vehiculo && modelos.find((m) => m.id_modelo_vehiculo === v.id_modelo_vehiculo)?.id_marca_vehiculo !== idMarca ? { id_modelo_vehiculo: null } : {}),
-        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) })),
-        creatable: {
-          endpoint: "/vehiculos-marcas/",
-          createField: "nombre_marca",
-          idField: "id_marca_vehiculo",
-          label: "marca",
-          onCreated: (nueva) => setMarcas((prev) => [...prev, nueva]),
-        },
-      },
-      {
-        name: "id_modelo_vehiculo",
-        label: "Modelo",
-        type: "select",
-        required: true,
-        grupo: "identificacion",
-        // Al elegir un modelo, la marca se hereda sola
-        onElegir: (idModelo) => {
-          const m = modelos.find((x) => x.id_modelo_vehiculo === idModelo);
-          return m ? { id_marca_vehiculo: m.id_marca_vehiculo } : {};
-        },
-        options: modelos
-          .filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo)
-          .map((m) => ({ value: m.id_modelo_vehiculo, ...opModelo(m, marcas), label: values.id_marca_vehiculo ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim() })),
-        creatable: values.id_marca_vehiculo
-          ? {
-              endpoint: "/vehiculos-modelos/",
-              createField: "nombre_modelo",
-              idField: "id_modelo_vehiculo",
-              label: "modelo",
-              extraFields: (v) => ({ id_marca_vehiculo: v.id_marca_vehiculo }),
-              onCreated: (nuevo) => setModelos((prev) => [...prev, nuevo]),
-            }
-          : null,
-      },
-      {
-        name: "id_color",
-        label: "Color",
-        type: "select",
-        grupo: "identificacion",
-        options: colores.map((c) => ({ value: c.id_color, label: c.nombre_color })),
-        creatable: {
-          endpoint: "/colores-vehiculos/",
-          createField: "nombre_color",
-          idField: "id_color",
-          label: "color",
-          onCreated: (nuevo) => setColores((prev) => [...prev, nuevo]),
-        },
-      },
-      { name: "placas_vehiculo", label: "Placas", grupo: "identificacion" },
-      { name: "numserie_vehiculo", label: "Número de serie (VIN)", grupo: "identificacion" },
-      { name: "id_year_vehiculo", label: "Año", grupo: "identificacion" },
-      { name: "cilindraje_vehiculo", label: "Cilindraje", grupo: "identificacion" },
-      { name: "km_vehiculo", label: "Kilometraje", required: true, type: "number", grupo: "identificacion" },
-      { name: "comentarios", label: "Comentarios", type: "textarea", full: true, grupo: "propietario" },
-    ];
-  }
-
-  const gruposVehiculo = {
-    propietario: { icono: "🧑", titulo: "Propietario y notas", completo: true },
-    identificacion: { icono: "🚗", titulo: "Identificación del vehículo", acento: "acento-teal", completo: true, columnas: 3, grande: true },
-  };
 
   async function handleSave(values) {
     const esNuevo = !editing?.id_vehiculo;
@@ -223,54 +209,20 @@ export default function Vehiculos() {
   const nomMarcaV = (v) => marcas.find((m) => m.id_marca_vehiculo === v.id_marca_vehiculo)?.nombre_marca || "Sin marca";
   function nombreMarca(id) { return marcas.find((m) => m.id_marca_vehiculo === id)?.nombre_marca || "—"; }
   function nombreModelo(id) { return modelos.find((m) => m.id_modelo_vehiculo === id)?.nombre_modelo || "—"; }
-  const porFiltros = useMemo(
-    () => aplicarFiltros(vehiculos, filtros, { nomMarca: (v) => nombreMarca(v.id_marca_vehiculo), nomModelo: (v) => nombreModelo(v.id_modelo_vehiculo) }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [vehiculos, filtros, marcas, modelos]);
-  const kpis = useMemo(() => {
-    const ahora = Date.now();
-    const k = { activos: 0, abiertos: 0, toca: 0, sin: 0 };
-    vehiculos.forEach((v) => {
-      if ((v.estado_vehiculo || "activo") !== "activo") return;
-      k.activos++;
-      const fecha = v.fecha_ultimo_servicio ? new Date(v.fecha_ultimo_servicio).getTime() : null;
-      if (v.status_ultimo_servicio === "abierto") k.abiertos++;
-      else if (fecha && ahora - fecha >= DIAS_PROXIMO * 86400000) k.toca++;
-      if (!v.total_servicios && !fecha) k.sin++;
-    });
-    return k;
-  }, [vehiculos]);
-  // Solo se dibuja un bloque a la vez (con sus fotos); al llegar al final se agrega el siguiente
-  const [ventana, setVentana] = useState(60);
+  const kpis = { activos: resumen?.activos ?? 0, abiertos: resumen?.abiertos ?? 0, toca: resumen?.toca ?? 0, sin: resumen?.sin ?? 0 };
+  // Al llegar al final de lo cargado se pide la siguiente página
   const centinela = useRef(null);
-  useEffect(() => { setVentana(60); }, [q, filtros, vista]);
+  const cargarMasRef = useRef(cargarMas);
+  cargarMasRef.current = cargarMas;
   useEffect(() => {
     const el = centinela.current;
     if (!el || typeof IntersectionObserver === "undefined") return undefined;
-    const obs = new IntersectionObserver((e) => { if (e[0].isIntersecting) setVentana((v) => v + 60); }, { rootMargin: "400px" });
+    const obs = new IntersectionObserver((e) => { if (e[0].isIntersecting) cargarMasRef.current(); }, { rootMargin: "400px" });
     obs.observe(el);
     return () => obs.disconnect();
   });
   const alternarServicio = (clave) => setFiltros((f) => ({ ...f, servicio: f.servicio === clave ? "" : clave }));
-  const visibles = useMemo(() => {
-    const texto = q.trim().toLowerCase();
-    if (!texto) return porFiltros;
-    const soloDigitos = texto.replace(/\D/g, "");
-    return porFiltros.filter((v) => {
-      const campos = [
-        v.placas_vehiculo,
-        nombreMarca(v.id_marca_vehiculo),
-        nombreModelo(v.id_modelo_vehiculo),
-        v.numero_cuenta,
-        v.cliente ? `${v.cliente.nombre_cliente} ${v.cliente.paterno_cliente || ""}` : "",
-      ];
-      if (campos.some((c) => (c || "").toLowerCase().includes(texto))) return true;
-      // Teléfono: compara solo dígitos, así da igual si se busca con o sin guiones/espacios.
-      if (soloDigitos && v.cliente?.telefono1 && v.cliente.telefono1.replace(/\D/g, "").includes(soloDigitos)) return true;
-      return false;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [porFiltros, q, marcas, modelos]);
+  const visibles = vehiculos;
 
   return (
     <>
@@ -278,7 +230,7 @@ export default function Vehiculos() {
         <div>
           <h1><IconoModulo ruta="/vehiculos" /> Vehículos</h1>
           <div className="subtitle">
-            {idCliente ? "Filtrando por cliente seleccionado" : `${vehiculos.length} vehículo(s) registrados`}
+            {idCliente ? "Filtrando por cliente seleccionado" : `${resumen?.total ?? total} vehículo(s) registrados`}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -327,13 +279,13 @@ export default function Vehiculos() {
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <FiltrosVehiculos vehiculos={vehiculos} marcas={marcas} modelos={modelos} colores={colores} filtros={filtros} setFiltros={setFiltros} mostrados={visibles.length} />
+        <FiltrosVehiculos resumen={resumen} marcas={marcas} modelos={modelos} colores={colores} filtros={filtros} setFiltros={setFiltros} mostrados={visibles.length} total={total} />
         {loading ? (
           <div className="loading-text">Cargando…</div>
         ) : vista === "clientes" ? (
           <div className="ordenes-lista">
-            {visibles.length === 0 && <div className="empty-state">{vehiculos.length ? "Ningún vehículo coincide con los filtros." : "No hay vehículos registrados todavía."}</div>}
-            {visibles.slice(0, ventana).map((v) => (
+            {visibles.length === 0 && <div className="empty-state">{(resumen?.total ?? total) ? "Ningún vehículo coincide con los filtros." : "No hay vehículos registrados todavía."}</div>}
+            {visibles.map((v) => (
               <div
                 key={v.id_vehiculo}
                 className={`orden-fila fila-acciones ${v.status_ultimo_servicio === "cancelado" ? "est-cancelado" : v.status_ultimo_servicio === "cerrado" ? "est-cerrado" : ""}`}
@@ -372,16 +324,16 @@ export default function Vehiculos() {
                 </div>
               </div>
             ))}
-            {visibles.length > ventana && (
+            {visibles.length < total && (
               <div ref={centinela} style={{ textAlign: "center", padding: 12, gridColumn: "1 / -1" }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setVentana((v) => v + 60)}>Mostrar más ({visibles.length - ventana} restantes)</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={cargarMas} disabled={cargandoMas}>{cargandoMas ? "Cargando…" : `Mostrar más (${total - visibles.length} restantes)`}</button>
               </div>
             )}
           </div>
         ) : (
           <div className="veh-cuadros">
-            {visibles.length === 0 && <div className="empty-state">{vehiculos.length ? "Ningún vehículo coincide con los filtros." : "No hay vehículos registrados todavía."}</div>}
-            {visibles.slice(0, ventana).map((v) => (
+            {visibles.length === 0 && <div className="empty-state">{(resumen?.total ?? total) ? "Ningún vehículo coincide con los filtros." : "No hay vehículos registrados todavía."}</div>}
+            {visibles.map((v) => (
               <div key={v.id_vehiculo} className="veh-tarjeta" style={{ "--acc": colorGrupo(nomMarcaV(v)) }} onClick={() => hasPermission("vehiculos.editar") && setEditing(v)}>
                 <div className="veh-tarjeta-foto" onClick={(e) => { e.stopPropagation(); setFotosDe(v); }} title="Ver / agregar fotos">
                   {v.foto_principal ? (
@@ -430,9 +382,9 @@ export default function Vehiculos() {
                 </div>
               </div>
             ))}
-            {visibles.length > ventana && (
+            {visibles.length < total && (
               <div ref={centinela} style={{ textAlign: "center", padding: 12, gridColumn: "1 / -1" }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setVentana((v) => v + 60)}>Mostrar más ({visibles.length - ventana} restantes)</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={cargarMas} disabled={cargandoMas}>{cargandoMas ? "Cargando…" : `Mostrar más (${total - visibles.length} restantes)`}</button>
               </div>
             )}
           </div>
@@ -440,24 +392,23 @@ export default function Vehiculos() {
       </div>
 
       {editing && (
-        <FormModal
-          title={editing.id_vehiculo ? `Editar vehículo — ${editing.numero_cuenta || ""}` : "Nuevo vehículo"}
-          icono="🚗"
-          subtitulo="Propietario, identificación y estado del vehículo."
-          fields={fields}
-          grupos={gruposVehiculo}
-          initialValues={editing}
+        <VehiculoModal
+          titulo={editing.id_vehiculo ? `Editar vehículo — ${editing.numero_cuenta || ""}` : "Nuevo vehículo"}
+          subtitulo="Propietario e identificación del vehículo."
+          inicial={editing}
+          clientes={clientes}
+          clienteBloqueado={!!editing.id_vehiculo}
+          marcas={marcas}
+          modelos={modelos}
+          colores={colores}
           onSubmit={handleSave}
           onClose={() => setEditing(null)}
-          bloqueExtra={(values) =>
-            values.id_vehiculo
-              ? {
-                  icono: "📷",
-                  titulo: "Fotos del vehículo",
-                  contenido: <FotoGaleria entidadTipo="vehiculo" entidadId={values.id_vehiculo} puedeEditar={hasPermission("vehiculos.editar")} />,
-                }
-              : null
-          }
+          extra={editing.id_vehiculo ? (
+            <section className="vm-tarjeta">
+              <h3><Icono nombre="camera" size={16} />Fotos del vehículo</h3>
+              <FotoGaleria entidadTipo="vehiculo" entidadId={editing.id_vehiculo} puedeEditar={hasPermission("vehiculos.editar")} />
+            </section>
+          ) : null}
         />
       )}
 

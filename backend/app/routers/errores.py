@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -6,7 +6,7 @@ from .. import models
 from ..database import get_db
 from ..errores import MENSAJE_SOPORTE, registrar_error
 from ..rate_limit import limiter
-from ..security import require_permission
+from ..security import get_current_user
 
 router = APIRouter(prefix="/api/errores", tags=["errores"])
 
@@ -30,17 +30,22 @@ def reportar_desde_app(request: Request, payload: ErrorClienteIn, db: Session = 
 
 
 @router.get("/")
-def listar(limit: int = 100, db: Session = Depends(get_db), user=Depends(require_permission("configuracion.editar"))):
-    consulta = db.query(models.ErrorSistema)
-    if getattr(user, "es_superadmin", False):
-        # Los errores de las pantallas de súper admin se guardan sin taller
-        # (id_taller nulo, porque esas rutas usan la sesión global). El filtro
-        # por taller los dejaba invisibles justo para quien debe revisarlos.
-        consulta = consulta.execution_options(sin_filtro_taller=True)
-    filas = consulta.order_by(models.ErrorSistema.fecha.desc()).limit(min(limit, 500)).all()
+def listar(limit: int = 100, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Bitácora global de errores: solo la ve soporte (súper admin). Los talleres
+    no ven errores técnicos: a ellos solo se les muestra un código y a soporte le llega el aviso."""
+    if not getattr(user, "es_superadmin", False):
+        raise HTTPException(status_code=403, detail="Sin permiso.")
+    # Los errores de las pantallas de súper admin se guardan sin taller (id_taller nulo)
+    filas = (db.query(models.ErrorSistema).execution_options(sin_filtro_taller=True)
+             .order_by(models.ErrorSistema.fecha.desc()).limit(min(limit, 500)).all())
+    ids = {e.id_taller for e in filas if e.id_taller}
+    talleres = {}
+    if ids:
+        for tl in db.query(models.Taller).filter(models.Taller.id_taller.in_(ids)).all():
+            talleres[tl.id_taller] = tl.nombre_comercial
     return [
         {"id_error": e.id_error, "codigo": e.codigo, "fecha": e.fecha, "origen": e.origen, "metodo": e.metodo,
          "ruta": e.ruta, "status": e.status, "usuario": e.usuario, "mensaje": e.mensaje, "detalle": e.detalle,
-         "id_taller": e.id_taller}
+         "id_taller": e.id_taller, "taller": talleres.get(e.id_taller)}
         for e in filas
     ]

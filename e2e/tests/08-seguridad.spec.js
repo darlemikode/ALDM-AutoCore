@@ -13,7 +13,7 @@ test.describe("Seguridad", () => {
     // Petición mal formada (falta "identificador") con una contraseña
     const r = await ctx.post("portal-cliente/login", { data: { password: secreto }, headers: { "X-Taller": T.taller.codigo || "" } });
     expect(r.status()).toBe(422);
-    const errores = await api.get("/errores/");
+    const errores = await sa.get("/errores/"); // la bitácora ahora solo la ve soporte
     expect(JSON.stringify(errores)).not.toContain(secreto);
     await ctx.dispose(); await api.cerrar(); await sa.cerrar();
   });

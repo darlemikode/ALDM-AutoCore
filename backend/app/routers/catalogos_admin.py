@@ -3,6 +3,7 @@
 Los talleres solo pueden leer estos catálogos (ver catalogos.py, modo "lectura"); aquí se dan de alta,
 editan y eliminan — sin taller, para que los vean todos. Incluye las imágenes de modelos y marcas."""
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import almacenamiento, models, schemas
@@ -12,6 +13,19 @@ from ..security import require_superadmin
 from ..subida_archivos import leer_y_validar_imagen, nombre_unico
 
 router = APIRouter()
+
+_CONTEOS = {
+    "/paises": models.Pais, "/estados": models.Estado, "/ciudades": models.Ciudad, "/colores-vehiculos": models.ColorVehiculo,
+    "/vehiculos-marcas": models.VehiculoMarca, "/vehiculos-modelos": models.VehiculoModelo,
+    "/refacciones-marcas": models.RefaccionMarca, "/refacciones-categorias": models.RefaccionCategoria,
+    "/herramientas-marcas": models.HerramientaMarca, "/tipos-servicio": models.TipoServicio,
+}
+
+
+@router.get("/api/superadmin/catalogos/conteos", tags=["catálogo general"])
+def conteos_catalogos(db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    """Registros por catálogo para la lista lateral, sin descargar los catálogos completos."""
+    return {ep: int(db.query(func.count()).select_from(m).scalar() or 0) for ep, m in _CONTEOS.items()}
 
 router.include_router(make_crud_router(
     model=models.Pais, schema_out=schemas.PaisOut, schema_in=schemas.PaisIn,

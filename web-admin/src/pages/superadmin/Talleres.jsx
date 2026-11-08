@@ -119,7 +119,7 @@ export default function Talleres() {
       )}
 
       {nuevo && (
-        <FormModal
+        <FormModal tema="sa"
           title="Nuevo taller"
           subtitulo="Se crea con sus roles base y se manda un enlace al correo para que el dueño registre su usuario y contraseña de administrador."
           icono="🏢"

@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { contiene } from "../lib/texto";
 import "./elegirCV.css";
 import ClienteFormModal from "./ClienteFormModal";
-import FormModal from "./FormModal";
+import VehiculoModal from "./VehiculoModal";
 import ModalPortal from "./ModalPortal";
 import { Icono } from "./Icono";
 
@@ -28,6 +28,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
   const [vehiculos, setVehiculos] = useState([]);
   const [marcas, setMarcas] = useState([]);
   const [modelos, setModelos] = useState([]);
+  const [colores, setColores] = useState([]);
   const catalogosListos = useRef(false);
   const [idCliente, setIdCliente] = useState(cli0 || "");
   const [idVehiculo, setIdVehiculo] = useState(veh0 || "");
@@ -85,8 +86,8 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     if (catalogosListos.current) return;
     catalogosListos.current = true;
     try {
-      const [m, mo] = await Promise.all([api.get("/vehiculos-marcas/"), api.get("/vehiculos-modelos/")]);
-      setMarcas(m); setModelos(mo);
+      const [m, mo, co] = await Promise.all([api.get("/vehiculos-marcas/"), api.get("/vehiculos-modelos/"), api.get("/colores-vehiculos/")]);
+      setMarcas(m); setModelos(mo); setColores(co);
     } catch { catalogosListos.current = false; }
   }
   useEffect(() => {
@@ -133,24 +134,6 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     if (hasPermission("vehiculos.crear")) setNuevoVehiculo(true);
   }
 
-  function camposVehiculo(values) {
-    return [
-      { name: "id_marca_vehiculo", label: "Marca", type: "select", required: true,
-        onElegir: (idMarca, v) => (v.id_modelo_vehiculo && modelos.find((m) => m.id_modelo_vehiculo === v.id_modelo_vehiculo)?.id_marca_vehiculo !== idMarca ? { id_modelo_vehiculo: null } : {}),
-        options: marcas.map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, ...opMarca(m) })),
-        creatable: { endpoint: "/vehiculos-marcas/", createField: "nombre_marca", idField: "id_marca_vehiculo", label: "marca", onCreated: (n) => setMarcas((p) => [...p, n]) } },
-      { name: "id_modelo_vehiculo", label: "Modelo", type: "select", required: true,
-        onElegir: (idModelo) => {
-          const m = modelos.find((x) => x.id_modelo_vehiculo === idModelo);
-          return m ? { id_marca_vehiculo: m.id_marca_vehiculo } : {};
-        },
-        options: modelos.filter((m) => !values.id_marca_vehiculo || m.id_marca_vehiculo === values.id_marca_vehiculo).map((m) => ({ value: m.id_modelo_vehiculo, ...opModelo(m, marcas), label: values.id_marca_vehiculo ? m.nombre_modelo : `${marcas.find((x) => x.id_marca_vehiculo === m.id_marca_vehiculo)?.nombre_marca || ""} ${m.nombre_modelo}`.trim() })),
-        creatable: values.id_marca_vehiculo ? { endpoint: "/vehiculos-modelos/", createField: "nombre_modelo", idField: "id_modelo_vehiculo", label: "modelo",
-          extraFields: (v) => ({ id_marca_vehiculo: v.id_marca_vehiculo }), onCreated: (n) => setModelos((p) => [...p, n]) } : null },
-      { name: "placas_vehiculo", label: "Placas" },
-      { name: "km_vehiculo", label: "Kilometraje", required: true, type: "number" },
-    ];
-  }
   async function guardarVehiculo(values) {
     const creado = await api.post("/vehiculos/", { ...values, id_cliente: Number(idCliente) });
     notify("Vehículo registrado.", "success");
@@ -235,7 +218,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
         </div>
       </div>
       {nuevoCliente && <ClienteFormModal title="Nuevo cliente" initialValues={{}} onSubmit={guardarCliente} onClose={() => setNuevoCliente(false)} />}
-      {nuevoVehiculo && <FormModal title={`Nuevo vehículo${cliente ? ` — ${cliente.nombre_cliente}` : ""}`} icono="🚗" fields={camposVehiculo} initialValues={{}} onSubmit={guardarVehiculo} onClose={() => setNuevoVehiculo(false)} />}
+      {nuevoVehiculo && <VehiculoModal titulo="Nuevo vehículo" subtitulo="Se registrará a nombre del cliente seleccionado." clienteNombre={cliente ? `${cliente.nombre_cliente} ${cliente.paterno_cliente || ""}`.trim() : "Cliente seleccionado"} clienteBloqueado marcas={marcas} modelos={modelos} colores={colores} onSubmit={guardarVehiculo} onClose={() => setNuevoVehiculo(false)} />}
     </ModalPortal>
   );
 }

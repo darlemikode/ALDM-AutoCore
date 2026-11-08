@@ -2942,7 +2942,7 @@ form div:has(> .select-with-add :user-invalid) > label {
   box-shadow: none;
   padding: 0;
 }
-.panel-kanban { display: flex; flex-direction: column; min-height: calc(100vh / var(--zoom) - 210px); }
+.panel-kanban { display: flex; flex-direction: column; height: calc(100vh / var(--zoom) - 210px); min-height: 380px; }
 .kanban-tablero { display: flex; gap: 16px; overflow-x: auto; padding: 2px 2px 10px; align-items: stretch; flex: 1; min-height: 0; }
 .kanban-columna { flex: 0 0 280px; display: flex; flex-direction: column;
   background: linear-gradient(180deg, color-mix(in srgb, var(--c) 7%, var(--paper-0)) 0%, color-mix(in srgb, var(--ink-500) 4%, var(--paper-0)) 100%);

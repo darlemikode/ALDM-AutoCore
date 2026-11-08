@@ -28,7 +28,7 @@ const NAV = [
     group: "Operación",
     items: [
       { to: "/servicios", label: "Órdenes de servicio", permisoRequerido: "servicios.ver" },
-      { to: "/domicilios", label: "A domicilio", permisoRequerido: "servicios.ver" },
+      { to: "/domicilios", label: "A domicilio", permisoRequerido: "servicios.ver", moduloRequerido: "servicio_domicilio" },
       { to: "/clientes", label: "Clientes", permisoRequerido: "clientes.ver" },
       { to: "/vehiculos", label: "Vehículos", permisoRequerido: "vehiculos.ver" },
       { to: "/cotizaciones", label: "Cotizaciones", permisoRequerido: "cotizaciones.ver" },
@@ -46,7 +46,6 @@ const NAV = [
       { to: "/proveedores", label: "Proveedores", permisoRequerido: "proveedores.ver" },
     ],
   },
-  { group: "Soporte", items: [{ to: "/errores", label: "Errores del sistema", permisoRequerido: "configuracion.editar" }] },
   { group: "App de clientes", items: [{ to: "/promociones", label: "Promociones", permisoRequerido: "promociones.ver", moduloRequerido: "promociones" }, { to: "/asistente", label: "Asistente (chatbot)", moduloRequerido: "app_movil" }] },
 ];
 

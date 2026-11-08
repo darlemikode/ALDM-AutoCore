@@ -37,10 +37,6 @@ export default function Herramientas() {
     {
       name: "id_herramienta_marca", label: "Marca", type: "select", grupo: "general",
       options: marcas.map((m) => ({ value: m.id_herramienta_marca, label: m.nombre_marca, ...opMarca(m) })),
-      creatable: {
-        endpoint: "/herramientas-marcas/", createField: "nombre_marca", idField: "id_herramienta_marca", label: "marca",
-        onCreated: (nueva) => setMarcas((prev) => [...prev, nueva]),
-      },
     },
     { name: "medida_herramienta", label: "Medida", grupo: "general" },
     { name: "cantidad_herramienta", label: "Cantidad", type: "number", grupo: "costo" },

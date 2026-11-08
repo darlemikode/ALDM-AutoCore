@@ -299,9 +299,6 @@ export default function Inventario() {
       {
         name: "id_marca_refaccion", label: "Marca", type: "select", grupo: "general",
         options: marcasRefaccion.map((m) => ({ value: m.id_marca_refaccion, label: m.nombre_marca, ...opMarca(m) })),
-        creatable: hasPermission("catalogos.crear")
-          ? { endpoint: "/refacciones-marcas/", createField: "nombre_marca", idField: "id_marca_refaccion", label: "marca", onCreated: (n) => setMarcasRefaccion((prev) => [...prev, n]) }
-          : null,
       },
       {
         name: "id_proveedor", label: "Proveedor", type: "select", grupo: "general",

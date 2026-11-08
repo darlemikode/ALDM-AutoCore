@@ -145,19 +145,12 @@ export function aplicarFiltros(lista, f, { nomMarca, nomModelo }) {
 }
 
 /* Barra completa: filtros desplegables, marcas frecuentes, chips activos y conteo */
-export default function FiltrosVehiculos({ vehiculos, marcas, modelos, colores, filtros, setFiltros, mostrados }) {
+// "resumen" trae los conteos ya calculados por el servidor (la lista de vehículos llega por páginas).
+export default function FiltrosVehiculos({ resumen, marcas, modelos, colores, filtros, setFiltros, mostrados, total }) {
   const set = (k, v) => setFiltros((f) => ({ ...f, [k]: v }));
   const activos = filtros.marcas.length + filtros.modelos.length + filtros.colores.length + (filtros.estado ? 1 : 0) + (filtros.servicio ? 1 : 0) + (filtros.anioDesde || filtros.anioHasta ? 1 : 0);
 
-  const conteo = useMemo(() => {
-    const c = { marca: {}, modelo: {}, color: {} };
-    vehiculos.forEach((v) => {
-      c.marca[v.id_marca_vehiculo] = (c.marca[v.id_marca_vehiculo] || 0) + 1;
-      c.modelo[v.id_modelo_vehiculo] = (c.modelo[v.id_modelo_vehiculo] || 0) + 1;
-      c.color[v.id_color] = (c.color[v.id_color] || 0) + 1;
-    });
-    return c;
-  }, [vehiculos]);
+  const conteo = useMemo(() => ({ marca: resumen?.marcas || {}, modelo: resumen?.modelos || {}, color: resumen?.colores || {} }), [resumen]);
 
   const opMarcas = useMemo(() => marcas.filter((m) => conteo.marca[m.id_marca_vehiculo]).map((m) => ({ value: m.id_marca_vehiculo, label: m.nombre_marca, count: conteo.marca[m.id_marca_vehiculo], logo: m.nombre_marca })).sort((a, b) => a.label.localeCompare(b.label, "es")), [marcas, conteo]);
   const topMarcas = useMemo(() => [...opMarcas].sort((a, b) => b.count - a.count).slice(0, 8), [opMarcas]);
@@ -167,11 +160,10 @@ export default function FiltrosVehiculos({ vehiculos, marcas, modelos, colores, 
     .sort((a, b) => a.label.localeCompare(b.label, "es")), [modelos, marcas, conteo, filtros.marcas]);
   const opColores = useMemo(() => colores.filter((c) => conteo.color[c.id_color]).map((c) => ({ value: c.id_color, label: c.nombre_color, count: conteo.color[c.id_color], color: c.codigo_hex || undefined })).sort((a, b) => b.count - a.count), [colores, conteo]);
   const anios = useMemo(() => {
-    const ys = vehiculos.map((v) => parseInt(v.id_year_vehiculo, 10)).filter(Boolean);
-    if (!ys.length) return [];
-    const min = Math.min(...ys), max = Math.max(...ys);
+    const min = resumen?.anio_min, max = resumen?.anio_max;
+    if (!min || !max) return [];
     return Array.from({ length: max - min + 1 }, (_, i) => max - i);
-  }, [vehiculos]);
+  }, [resumen]);
 
   // Si se quitan marcas, se sueltan los modelos que ya no corresponden
   useEffect(() => {
@@ -232,7 +224,7 @@ export default function FiltrosVehiculos({ vehiculos, marcas, modelos, colores, 
       )}
 
       <div className="vf-resumen">
-        <span className="vf-contador">Mostrando <b>{mostrados}</b> de {vehiculos.length}</span>
+        <span className="vf-contador">Mostrando <b>{mostrados}</b> de {total}</span>
         {chips.map((c) => (
           <button key={c.k} type="button" className="vf-chip" onClick={c.quitar} title="Quitar este filtro">{c.t} <span aria-hidden="true">✕</span></button>
         ))}

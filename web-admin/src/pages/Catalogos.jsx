@@ -215,11 +215,21 @@ export default function Catalogos({ admin = false }) {
 
   // Conteo de todos los catálogos para la lista de la izquierda
   useEffect(() => {
+    if (admin) {
+      // Una sola consulta con los totales (antes se bajaban los 10 catálogos completos solo para contarlos)
+      api.get("/superadmin/catalogos/conteos").then((r) => {
+        const c = {};
+        CLAVES.forEach((k) => { if (r[CATALOGS[k].endpoint] !== undefined) c[k] = r[CATALOGS[k].endpoint]; });
+        setConteos((prev) => ({ ...c, ...prev }));
+      }).catch(() => {});
+      return;
+    }
     Promise.allSettled(CLAVES.map((k) => api.get(ruta(CATALOGS[k].endpoint) + "/"))).then((res) => {
       const c = {};
       res.forEach((r, i) => { if (r.status === "fulfilled") c[CLAVES[i]] = r.value.length; });
       setConteos(c);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Si se cambia de catálogo antes de que termine de llegar la respuesta
@@ -484,6 +494,7 @@ export default function Catalogos({ admin = false }) {
 
       {editing && (
         <FormModal
+          tema={admin ? "sa" : undefined}
           title={editing[config.idField] ? `Editar — ${config.label}` : `Nuevo — ${config.label}`}
           icono={config.icono}
           subtitulo={config.descripcion}
