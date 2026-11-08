@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import ClienteFormModal from "../components/ClienteFormModal";
-import MensajeModal from "../components/MensajeModal";
+// Las ventanas se descargan solo al abrirlas (no al entrar a la pantalla)
+const ClienteFormModal = lazy(() => import("../components/ClienteFormModal"));
+const MensajeModal = lazy(() => import("../components/MensajeModal"));
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
@@ -58,14 +59,20 @@ export default function Clientes() {
   async function load() {
     const limite = Math.min(2000, Math.max(PAGINA, cuantos.current));
     const mia = ++peticion.current;
-    const [data, tot] = await Promise.all([
+    // La lista es lo importante: si los totales fallan, la pantalla igual se muestra (con el conteo de lo cargado)
+    const [lista, tot] = await Promise.allSettled([
       api.get(`/clientes/?${filtro()}&limite=${limite}`),
       api.get(`/clientes/conteo?${filtro()}`),
     ]);
     if (mia !== peticion.current) return;
-    cuantos.current = data.length;
-    setClientes(data);
-    setTotales(tot);
+    if (lista.status === "fulfilled") {
+      const data = lista.value;
+      cuantos.current = data.length;
+      setClientes(data);
+      setTotales(tot.status === "fulfilled" ? tot.value : { total: data.length, activados: data.filter((c) => c.cuenta_activada).length });
+    } else {
+      notify(lista.reason?.message || "No se pudieron cargar los clientes.", "error");
+    }
     setLoading(false);
   }
   async function cargarMas() {
@@ -239,6 +246,7 @@ export default function Clientes() {
         )}
       </div>
 
+      <Suspense fallback={null}>
       {editing && (
         <ClienteFormModal
           title={editing.id_cliente ? `Editar cliente — ${editing.numero_cuenta || ""}` : "Nuevo cliente"}
@@ -282,6 +290,7 @@ export default function Clientes() {
           <p>{ofrecerVehiculo.nombre_cliente} {ofrecerVehiculo.paterno_cliente} quedó registrado en tu taller. ¿Quieres dar de alta su vehículo ahora?</p>
         </MensajeModal>
       )}
+      </Suspense>
     </>
   );
 }

@@ -42,7 +42,9 @@ def conteo(
 ):
     """Totales para las tarjetas de la pantalla de clientes sin traer la lista completa."""
     sub = _consulta(db, q, solo_activos).with_entities(
-        func.count(models.Cliente.id_cliente), func.sum(case((models.Cliente.cuenta_activada.is_(True), 1), else_=0))
+        func.count(models.Cliente.id_cliente),
+        # "== True" y no ".is_(True)": SQL Server no acepta "IS 1"
+        func.sum(case((models.Cliente.cuenta_activada == True, 1), else_=0)),  # noqa: E712
     ).order_by(None).one()  # una sola consulta para ambos totales
     return {"total": int(sub[0] or 0), "activados": int(sub[1] or 0)}
 

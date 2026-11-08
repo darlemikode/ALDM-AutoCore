@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
@@ -61,25 +61,7 @@ function RequirePermission({ clave, children }) {
   return children;
 }
 
-// Cuando el navegador queda libre se descargan en segundo plano las pantallas más usadas,
-// así al entrar a ellas ya están listas (carga anticipada sin bloquear el inicio).
-function precargarPantallas() {
-  [
-    () => import("./pages/Servicios"),
-    () => import("./pages/Clientes"),
-    () => import("./pages/Vehiculos"),
-    () => import("./pages/Cotizaciones"),
-    () => import("./pages/Refacciones"),
-  ].forEach((cargar, i) => setTimeout(() => cargar().catch(() => {}), i * 400));
-}
-
 export default function App() {
-  useEffect(() => {
-    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 2500));
-    const id = idle(precargarPantallas);
-    return () => { if (window.cancelIdleCallback && typeof id === "number") window.cancelIdleCallback(id); };
-  }, []);
-
   return (
     <>
       <ScrollToTop />
