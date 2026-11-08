@@ -11,8 +11,10 @@ from datetime import datetime, timedelta
 import io
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+import re
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -26,6 +28,51 @@ from ..security import (
 )
 
 router = APIRouter(prefix="/api/portal-cliente", tags=["portal de clientes"])
+
+_CODIGO_RE = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
+
+
+@router.get("/taller")
+@limiter.limit("30/minute")
+def info_taller(request: Request, db: Session = Depends(get_db)):
+    """Datos públicos mínimos del taller del código (encabezado X-Taller) para que la app de
+    clientes confirme "este es mi taller" antes de activar la cuenta. No expone nada más."""
+    from ..suscripciones import estado_taller
+    from ..tenancy import taller_actual
+
+    tid = taller_actual(db)
+    if not tid:
+        raise HTTPException(status_code=404, detail="Escribe o escanea el código de tu taller.")
+    taller = db.get(models.Taller, tid)
+    if not taller:
+        raise HTTPException(status_code=404, detail="No encontramos un taller con ese código.")
+    cfg = db.query(models.ConfiguracionTaller).first()
+    estado = estado_taller(db, tid)
+    nombre = taller.nombre_comercial
+    if cfg and cfg.nombre_taller and cfg.nombre_taller.strip() and cfg.nombre_taller != "Mi Taller":
+        nombre = cfg.nombre_taller
+    return {
+        "codigo": taller.codigo, "nombre": nombre, "ruta_logo": cfg.ruta_logo if cfg else None,
+        "direccion": cfg.direccion if cfg else None, "telefono": (cfg.telefono if cfg else None) or taller.telefono,
+        "disponible": bool(taller.activo and not (estado and estado.get("bloqueado"))),
+    }
+
+
+@router.get("/qr/{codigo}", response_class=HTMLResponse)
+@limiter.limit("60/minute")
+def abrir_app_desde_qr(request: Request, codigo: str):
+    """Página a la que apunta el QR del taller: abre la app de clientes con el código ya puesto."""
+    if not _CODIGO_RE.match(codigo):
+        raise HTTPException(status_code=404, detail="Código no válido.")
+    esquema = f"aldmcliente://taller/{codigo}"
+    return HTMLResponse(
+        "<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+        f"<title>ALDM AutoCore</title><meta http-equiv='refresh' content='0;url={esquema}'></head>"
+        "<body style='font-family:system-ui;text-align:center;padding:40px 20px'>"
+        f"<h2>Abriendo tu taller…</h2><p><a href='{esquema}'>Toca aquí si no se abre la app</a></p>"
+        f"<p style='color:#666'>Código del taller: <b>{codigo}</b></p></body></html>",
+        headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
+    )
 
 
 def _buscar_por_identificador(db: Session, identificador: str):
@@ -209,6 +256,36 @@ async def enviar_mensaje_cliente(servicio_id: int, payload: schemas.MensajeChatI
     return mensaje
 
 
+@router.post("/mis-servicios/{servicio_id}/chat/foto", response_model=schemas.MensajeChatOut, status_code=201)
+async def enviar_foto_cliente(
+    servicio_id: int,
+    archivo: UploadFile = File(...),
+    texto: str = Form(None),
+    db: Session = Depends(get_db),
+    cliente: models.Cliente = Depends(get_current_cliente),
+):
+    """El cliente manda una foto por el chat de su orden (misma validación de imagen que el taller)."""
+    from ..ws_manager import manager  # import diferido: mismo motivo
+    from .servicios import guardar_foto_chat
+
+    servicio = db.query(models.Servicio).filter(models.Servicio.id_servicio == servicio_id).first()
+    if not servicio or servicio.id_cliente != cliente.id_cliente:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+    nombre = await guardar_foto_chat(archivo)
+    mensaje = models.MensajeChat(
+        id_servicio=servicio_id, autor_tipo="cliente", autor_nombre=cliente.nombre_cliente,
+        tipo="foto", texto=(texto or "").strip()[:500] or "📷 Foto", ruta_foto=nombre,
+    )
+    db.add(mensaje)
+    db.commit()
+    db.refresh(mensaje)
+    await manager.difundir(servicio_id, {
+        "tipo": "chat", "id_mensaje": mensaje.id_mensaje, "autor_tipo": "cliente", "autor_nombre": mensaje.autor_nombre,
+        "mensaje_tipo": mensaje.tipo, "texto": mensaje.texto, "ruta_foto": mensaje.ruta_foto, "fecha": mensaje.fecha.isoformat(),
+    })
+    return mensaje
+
+
 # --- Agendar servicio (el cliente propone, el taller confirma) ---------------
 @router.get("/tipos-servicio")
 def tipos_servicio_disponibles(db: Session = Depends(get_db), cliente: models.Cliente = Depends(get_current_cliente)):
@@ -340,7 +417,7 @@ def promociones_vigentes(db: Session = Depends(get_db), cliente: models.Cliente 
     hoy = datetime.utcnow().date()
     promos = (
         db.query(models.Promocion)
-        .filter(models.Promocion.activa.is_(True))
+        .filter(models.Promocion.activa == True)  # noqa: E712 — SQL Server no acepta "IS 1"
         .order_by(models.Promocion.orden, models.Promocion.fecha_creacion.desc())
         .all()
     )

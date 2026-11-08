@@ -11,14 +11,14 @@ import { vistosSesion } from "../tutoriales/bienvenida";
 // Ayuda: recorridos con globos de texto, desglosados por módulo (igual que
 // Configuración → Ayuda en la web). Los que aún no existen dicen «Próximamente».
 export default function AyudaScreen({ navigation }) {
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, tieneModulo } = useAuth();
   const [, refrescar] = useState(0);
   useFocusEffect(useCallback(() => { refrescar((n) => n + 1); }, [])); // al volver se marca «Visto»
 
   const vistos = new Set([...(user?.tutoriales_vistos || []), ...vistosSesion]);
   const modulos = AYUDA
     .filter((m) => !m.permiso || hasPermission(m.permiso))
-    .map((m) => ({ ...m, tutoriales: m.tutoriales.filter((t) => !t.permiso || hasPermission(t.permiso)) }))
+    .map((m) => ({ ...m, tutoriales: m.tutoriales.filter((t) => (!t.permiso || hasPermission(t.permiso)) && (!t.modulo || tieneModulo(t.modulo))) }))
     .filter((m) => m.tutoriales.length > 0);
 
   return (

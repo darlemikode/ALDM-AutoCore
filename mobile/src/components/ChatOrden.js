@@ -222,7 +222,7 @@ const styles = crearEstilos({
   caja: { maxHeight: 260, backgroundColor: colors.paper0, borderRadius: 8, padding: spacing.sm, marginBottom: spacing.sm },
   vacio: { fontSize: 12, color: colors.ink500, padding: 8 },
   diaSeparador: { alignItems: "center", marginVertical: 8 },
-  diaTexto: { fontSize: 10.5, fontWeight: "700", color: colors.ink500, backgroundColor: colors.ink300, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 100, overflow: "hidden", textTransform: "capitalize" },
+  diaTexto: { fontSize: 10.5, fontWeight: "700", color: colors.ink700, backgroundColor: colors.ink300, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 100, overflow: "hidden", textTransform: "capitalize" },
   burbuja: { maxWidth: "80%", borderRadius: 10, padding: 9, marginBottom: 7 },
   burbujaTaller: { backgroundColor: colors.petrol500, alignSelf: "flex-end" },
   burbujaCliente: { backgroundColor: colors.paper100, alignSelf: "flex-start" },

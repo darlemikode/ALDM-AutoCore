@@ -100,7 +100,7 @@ export default function ClienteDetalleScreen({ route, navigation }) {
       <View style={styles.seccionFila}>
         <Text style={styles.seccion}>Vehículos</Text>
         {hasPermission("vehiculos.crear") && (
-          <TouchableOpacity style={styles.btnAgregar} onPress={() => navigation.navigate("VehiculoForm", { clienteFijo: cliente })} activeOpacity={0.8}><Ionicons name="add-outline" size={20} color="#fff" /><Text style={styles.agregar}>Agregar</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.btnAgregar} onPress={() => navigation.navigate("VehiculoForm", { clienteFijo: cliente })} activeOpacity={0.8}><Ionicons name="add-outline" size={20} color={colors.sobreAcento} /><Text style={styles.agregar}>Agregar</Text></TouchableOpacity>
         )}
       </View>
       {vehiculos.length === 0 ? <Text style={styles.vacio}>Sin vehículos registrados.</Text> : vehiculos.map((v) => (
@@ -157,7 +157,7 @@ const styles = crearEstilos({
   datoValor: { flex: 1, fontSize: 13.5, fontWeight: "500", color: colors.ink900 },
   seccionFila: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 22, marginBottom: 8 },
   seccion: { fontSize: 12.5, fontWeight: "700", color: colors.ink700, textTransform: "uppercase", letterSpacing: 0.6 },
-  agregar: { fontSize: 16, fontWeight: "800", color: "#fff" },
+  agregar: { fontSize: 16, fontWeight: "800", color: colors.sobreAcento },
   btnAgregar: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.petrol500, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 18, minHeight: 46 },
   vacio: { fontSize: 13.5, color: colors.ink500 },
   tarjeta: { backgroundColor: colors.paper100, borderRadius: 12, padding: 12, marginBottom: 10, gap: 10 },

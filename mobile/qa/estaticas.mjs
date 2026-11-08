@@ -80,7 +80,12 @@ for (const f of archivos) {
   if (!bloque) continue;
   aplicarPaleta("claro");
   let def;
-  try { def = new Function("colors", "spacing", "radius", "radiusCard", "shadowCard", "fonts", `return (${bloque});`)(colors, spacing, radius, radiusCard, shadowCard, fonts); }
+  // Constantes simples de una línea declaradas arriba del archivo (const PERILLA = 46; const C = { ... };) que los estilos usan
+  const fuente = fs.readFileSync(f, "utf8");
+  const previo = [...fuente.slice(0, fuente.indexOf("crearEstilos({")).matchAll(/^const (\w+) = (.+);$/gm)]
+    .filter((m) => !/require\(|import|=>|\buse[A-Z]|\bnew\b|Dimensions|Platform|StyleSheet/.test(m[2]))
+    .map((m) => `let ${m[1]}; try { ${m[1]} = (${m[2]}); } catch (e) { /* dependía de algo dinámico */ }`).join("\n");
+  try { def = new Function("colors", "spacing", "radius", "radiusCard", "shadowCard", "fonts", `${previo}\nreturn (${bloque});`)(colors, spacing, radius, radiusCard, shadowCard, fonts); }
   catch (e) { falla(`${path.basename(f)}: no se pudo evaluar estilos (${e.message})`); continue; }
   const st = crearEstilos(def);
   for (const tema of ["claro", "oscuro"]) {

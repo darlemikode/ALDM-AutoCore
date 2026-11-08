@@ -217,8 +217,10 @@ function BarraTabs(props) {
 }
 
 function TallerTabs() {
-  const { hasPermission } = useAuth();
-  fijarPestanas(2 + ["clientes.ver", "servicios.crear", "servicios.ver"].filter((p) => hasPermission(p)).length);
+  const { hasPermission, tieneModulo } = useAuth();
+  // Ve la sección quien tiene el permiso y el módulo está en el paquete del taller
+  const puede = (permiso, modulo) => hasPermission(permiso) && (!modulo || tieneModulo(modulo));
+  fijarPestanas(2 + [puede("clientes.ver", "clientes_vehiculos"), puede("servicios.crear", "ordenes_servicio"), puede("servicios.ver", "ordenes_servicio")].filter(Boolean).length);
   return (
     <Tab.Navigator
       id="TallerTabs"
@@ -246,8 +248,8 @@ function TallerTabs() {
       })}
     >
       <Tab.Screen name="Panel" component={DashboardScreen} />
-      {hasPermission("clientes.ver") && <Tab.Screen name="Clientes" component={ClientesStackScreen} />}
-      {hasPermission("servicios.crear") && (
+      {puede("clientes.ver", "clientes_vehiculos") && <Tab.Screen name="Clientes" component={ClientesStackScreen} />}
+      {puede("servicios.crear", "ordenes_servicio") && (
         <Tab.Screen
           name="NuevaOrdenTab"
           component={ServicioStackScreen}
@@ -260,7 +262,7 @@ function TallerTabs() {
           })}
         />
       )}
-      {hasPermission("servicios.ver") && (
+      {puede("servicios.ver", "ordenes_servicio") && (
         <Tab.Screen
           name="Servicio"
           component={ServicioStackScreen}
@@ -274,9 +276,9 @@ function TallerTabs() {
           })}
         />
       )}
-      {hasPermission("refacciones.ver") && <Tab.Screen name="Refacciones" component={RefaccionesStackScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />}
-      {hasPermission("vehiculos.ver") && <Tab.Screen name="Vehículos" component={VehiculosStackScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />}
-      {hasPermission("catalogos.ver") && <Tab.Screen name="Catálogos" component={CatalogosStackScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />}
+      {puede("refacciones.ver", "refacciones") && <Tab.Screen name="Refacciones" component={RefaccionesStackScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />}
+      {puede("vehiculos.ver", "clientes_vehiculos") && <Tab.Screen name="Vehículos" component={VehiculosStackScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />}
+      {puede("catalogos.ver", "catalogos") && <Tab.Screen name="Catálogos" component={CatalogosStackScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />}
       <Tab.Screen name="Más" component={MasStackScreen} />
     </Tab.Navigator>
   );
@@ -304,7 +306,8 @@ function irA(navigation, destino) {
 }
 
 function ContenidoDrawer({ navigation, state }) {
-  const { user, logout, hasPermission, talleres } = useAuth();
+  const { user, logout, hasPermission, tieneModulo, talleres } = useAuth();
+  const puede = (permiso, modulo) => hasPermission(permiso) && (!modulo || tieneModulo(modulo));
   const { preferencia, cambiarPreferencia } = useTema();
   const insets = useSafeAreaInsets();
   const activa = rutaActiva(state);
@@ -329,27 +332,27 @@ function ContenidoDrawer({ navigation, state }) {
   const nav = [
     { grupo: "General", items: [
       { label: "Panel", icono: "grid-outline", ruta: "Panel", destino: ["Taller", "Panel"] },
-      hasPermission("promociones.ver") && { label: "Citas solicitadas", icono: "calendar-outline", ruta: "Citas", destino: ["Taller", "Más", "Citas"] },
-      { label: "Mi dashboard", icono: "person-circle-outline", ruta: "MiDashboard", destino: ["Taller", "Más", "MiDashboard"] },
+      puede("promociones.ver", "citas") && { label: "Citas solicitadas", icono: "calendar-outline", ruta: "Citas", destino: ["Taller", "Más", "Citas"] },
+      tieneModulo("empleados") && { label: "Mi dashboard", icono: "person-circle-outline", ruta: "MiDashboard", destino: ["Taller", "Más", "MiDashboard"] },
     ].filter(Boolean) },
     { grupo: "Operación", items: [
-      hasPermission("servicios.ver") && { label: "Órdenes de servicio", icono: "construct-outline", ruta: "HistorialServicios", destino: ["Taller", "Servicio", "HistorialServicios"] },
-      hasPermission("servicios.ver") && { label: "Servicios a domicilio", icono: "location-outline", ruta: "Domicilios", destino: ["Taller", "Servicio", "Domicilios"] },
-      hasPermission("clientes.ver") && { label: "Clientes", icono: "people-outline", ruta: "ClientesLista", destino: ["Taller", "Clientes"] },
-      hasPermission("vehiculos.ver") && { label: "Vehículos", icono: "car-outline", ruta: "VehiculosLista", destino: ["Taller", "Vehículos"] },
-      hasPermission("cotizaciones.ver") && { label: "Cotizaciones", icono: "document-text-outline", ruta: "Cotizaciones", destino: ["Taller", "Más", "Cotizaciones"] },
-      hasPermission("empleados.ver") && { label: "Empleados", icono: "id-card-outline", ruta: "Empleados", destino: ["Taller", "Más", "Empleados"] },
-      hasPermission("nomina.ver") && { label: "Nómina", icono: "cash-outline", ruta: "Nomina", destino: ["Taller", "Más", "Nomina"] },
+      puede("servicios.ver", "ordenes_servicio") && { label: "Órdenes de servicio", icono: "construct-outline", ruta: "HistorialServicios", destino: ["Taller", "Servicio", "HistorialServicios"] },
+      puede("servicios.ver", "servicio_domicilio") && { label: "Servicios a domicilio", icono: "location-outline", ruta: "Domicilios", destino: ["Taller", "Servicio", "Domicilios"] },
+      puede("clientes.ver", "clientes_vehiculos") && { label: "Clientes", icono: "people-outline", ruta: "ClientesLista", destino: ["Taller", "Clientes"] },
+      puede("vehiculos.ver", "clientes_vehiculos") && { label: "Vehículos", icono: "car-outline", ruta: "VehiculosLista", destino: ["Taller", "Vehículos"] },
+      puede("cotizaciones.ver", "cotizaciones") && { label: "Cotizaciones", icono: "document-text-outline", ruta: "Cotizaciones", destino: ["Taller", "Más", "Cotizaciones"] },
+      puede("empleados.ver", "empleados") && { label: "Empleados", icono: "id-card-outline", ruta: "Empleados", destino: ["Taller", "Más", "Empleados"] },
+      puede("nomina.ver", "nomina") && { label: "Nómina", icono: "cash-outline", ruta: "Nomina", destino: ["Taller", "Más", "Nomina"] },
     ].filter(Boolean) },
     { grupo: "Inventario", items: [
-      hasPermission("refacciones.ver") && { label: "Refacciones", icono: "cube-outline", ruta: "RefaccionesLista", destino: ["Taller", "Refacciones"] },
-      hasPermission("inventario.ver") && { label: "Inventario", icono: "file-tray-stacked-outline", ruta: "InventarioLista", destino: ["Taller", "Más", "InventarioLista"] },
-      hasPermission("herramientas.ver") && { label: "Herramientas", icono: "hammer-outline", ruta: "Herramientas", destino: ["Taller", "Más", "Herramientas"] },
-      hasPermission("proveedores.ver") && { label: "Proveedores", icono: "business-outline", ruta: "Proveedores", destino: ["Taller", "Más", "Proveedores"] },
+      puede("refacciones.ver", "refacciones") && { label: "Refacciones", icono: "cube-outline", ruta: "RefaccionesLista", destino: ["Taller", "Refacciones"] },
+      puede("inventario.ver", "inventario") && { label: "Inventario", icono: "file-tray-stacked-outline", ruta: "InventarioLista", destino: ["Taller", "Más", "InventarioLista"] },
+      puede("herramientas.ver", "herramientas") && { label: "Herramientas", icono: "hammer-outline", ruta: "Herramientas", destino: ["Taller", "Más", "Herramientas"] },
+      puede("proveedores.ver", "proveedores") && { label: "Proveedores", icono: "business-outline", ruta: "Proveedores", destino: ["Taller", "Más", "Proveedores"] },
     ].filter(Boolean) },
     { grupo: "App de clientes", items: [
-      hasPermission("promociones.ver") && { label: "Promociones", icono: "pricetag-outline", ruta: "Promociones", destino: ["Taller", "Más", "Promociones"] },
-      hasPermission("promociones.ver") && { label: "Asistente (chatbot)", icono: "chatbubbles-outline", ruta: "Asistente", destino: ["Taller", "Más", "Asistente"] },
+      puede("promociones.ver", "promociones") && { label: "Promociones", icono: "pricetag-outline", ruta: "Promociones", destino: ["Taller", "Más", "Promociones"] },
+      puede("promociones.ver", "app_movil") && { label: "Asistente (chatbot)", icono: "chatbubbles-outline", ruta: "Asistente", destino: ["Taller", "Más", "Asistente"] },
     ].filter(Boolean) },
   ].filter((seccion) => seccion.items.length > 0);
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Share } from "react-native";
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
 import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
 import { colors, spacing } from "../theme";
@@ -86,11 +86,8 @@ export default function TallerDetalleScreen({ route, navigation }) {
 
   const bloqueado = e.bloqueado;
 
-  const compartirActivacion = () => Share.share({
-    message: `Bienvenido a ALDM AutoCore 👋\n\nPara entrar por primera vez a tu sistema abre la página o la app del taller, toca "¿Primera vez? Activa tu taller" y escribe:\n\nCódigo del taller: ${t.codigo}\nCódigo de activación: ${t.codigo_activacion}\n\nAhí creas tu usuario y contraseña de administrador.`,
-  }).catch(() => {});
-  const nuevoCodigo = () => confirmar("Nuevo código de activación", "El código anterior dejará de servir.", "Generar", async () => {
-    try { await api.post(`/superadmin/talleres/${id}/codigo-activacion`); recargar(); } catch (err) { alerta("No se pudo generar", err.message); }
+  const reenviarInvitacion = () => confirmar("Reenviar invitación", `Se enviará un enlace nuevo a ${t.correo || "el correo del taller"} para que el dueño cree su contraseña.`, "Reenviar", async () => {
+    try { await api.post(`/superadmin/talleres/${id}/reenviar-invitacion`); alerta("Invitación enviada", "El enlace anterior deja de servir."); recargar(); } catch (err) { alerta("No se pudo enviar", err.message); }
   }, false);
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }} refreshControl={<RefreshControl refreshing={refrescando} onRefresh={() => recargar(true)} />}>
@@ -122,11 +119,9 @@ export default function TallerDetalleScreen({ route, navigation }) {
             <Ionicons name="key-outline" size={20} color={colors.warn600} />
             <Text style={styles.activacionTitulo}>Pendiente de activar</Text>
           </View>
-          <Text style={styles.sub}>Todavía nadie registró el administrador. El dueño lo crea la primera vez que entra, con el código del taller y este código de activación:</Text>
-          {t.codigo_activacion ? <Text style={styles.activacionCodigo} selectable>{t.codigo_activacion}</Text> : <Text style={styles.sub}>Sin código vigente: genera uno.</Text>}
+          <Text style={styles.sub}>El dueño todavía no crea su contraseña. Recibe un enlace por correo{t.correo ? ` (${t.correo})` : ""}; si no le llegó, reenvíalo.</Text>
           <View style={styles.acciones}>
-            {t.codigo_activacion ? <Boton texto="Compartir" icono="share-social-outline" onPress={compartirActivacion} style={{ flex: 1 }} /> : null}
-            <Boton texto="Nuevo código" icono="refresh-outline" tipo="secundario" onPress={nuevoCodigo} style={{ flex: 1 }} />
+            <Boton texto="Reenviar invitación" icono="mail-outline" onPress={reenviarInvitacion} style={{ flex: 1 }} />
           </View>
         </Tarjeta>
       ) : null}

@@ -31,7 +31,7 @@ const nombreCliente = (c) => (c ? `${c.nombre_cliente || ""} ${c.paterno_cliente
 const nombreVehiculo = (v) => (v ? [v.marca?.nombre_marca, v.modelo?.nombre_modelo].filter(Boolean).join(" ") || "Vehículo" : "—");
 
 export default function NuevaOrdenScreen({ navigation, route }) {
-  const { hasPermission } = useAuth();
+  const { hasPermission, tieneModulo } = useAuth();
   const puedeCrearCliente = hasPermission("clientes.crear");
   const puedeCrearVehiculo = hasPermission("vehiculos.crear");
   const [paso, setPaso] = useState(0);
@@ -414,7 +414,7 @@ export default function NuevaOrdenScreen({ navigation, route }) {
         )}
 
         {/* Servicio a domicilio: al crear la orden se pide la dirección y se genera el código */}
-        {hasPermission("servicios.editar") && (
+        {hasPermission("servicios.editar") && tieneModulo("servicio_domicilio") && (
           <View style={styles.domFila}>
             <View style={{ flex: 1 }}>
               <Text style={styles.domTitulo}>Servicio a domicilio</Text>

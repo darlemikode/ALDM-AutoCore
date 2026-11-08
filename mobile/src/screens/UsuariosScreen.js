@@ -68,8 +68,8 @@ export default function UsuariosScreen({ navigation }) {
       tono: cl.cuenta_activada ? "peligro" : "info",
       titulo: cl.cuenta_activada ? "Restablecer acceso" : "Generar acceso a la app",
       mensaje: cl.cuenta_activada
-        ? `"${cl.nombre_cliente}" ya puede entrar a la app. ¿Generar una contraseña temporal nueva? La anterior deja de servir.`
-        : `Se creará un usuario (su teléfono o correo) y una contraseña temporal para que "${cl.nombre_cliente}" entre a la app de clientes.`,
+        ? `"${cl.nombre_cliente}" ya puede entrar a la app. ¿Generar una invitación nueva? Su cuenta se reinicia y tendrá que activarla de nuevo.`
+        : `Se generará un código de invitación (vale 72 horas) para que "${cl.nombre_cliente}" active su cuenta en la app de clientes.`,
       acciones: [
         { texto: "Cancelar", tipo: "secundario" },
         {
@@ -77,14 +77,14 @@ export default function UsuariosScreen({ navigation }) {
           tipo: "primario",
           onPress: async () => {
             try {
-              const { identificador, password_temporal } = await api.post(`/clientes/${cl.id_cliente}/generar-acceso`);
+              const { codigo_invitacion, telefono1, correo_cliente } = await api.post(`/clientes/${cl.id_cliente}/invitar`);
               await cargarClientes();
               alerta(
-                "Acceso listo",
-                `Usuario: ${identificador}
-Contraseña temporal: ${password_temporal}
+                "Invitación lista",
+                `Código de invitación: ${codigo_invitacion}
+Usuario: ${telefono1 || correo_cliente}
 
-Compártesela al cliente — puede cambiarla luego desde su app.`
+El cliente abre la app, escanea el QR del taller, toca "Activar mi cuenta" y escribe su usuario, este código y una contraseña. El código vale 72 horas y se usa una sola vez.`
               );
             } catch (err) {
               alerta("Error", err.message);

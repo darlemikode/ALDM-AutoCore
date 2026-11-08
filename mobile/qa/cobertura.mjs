@@ -21,8 +21,16 @@ const s = await api.post("/servicios/", { id_cliente: c.id_cliente, id_vehiculo:
 const muestra = (ruta) => ruta
   .replace(/\$\{[^}]*(cp|valor)[^}]*\}/gi, "37000")
   .replace(/\$\{[^}]*\}/g, "1");
+// Funciones que solo existen con servidor (no tienen modo local/offline): se listan pero no hacen fallar la prueba.
+// Si una de estas rutas se vuelve offline, quítala de aquí.
+const SOLO_SERVIDOR = [
+  "/servicio-domicilio", "/recepcion", "/nomina", "/paquetes-servicio", "/seguimiento-orden", "/asistente",
+  "/auth/password/solicitar", "/empleados/1/estatus",
+  "/clientes/1/invitar",
+];
+const esSoloServidor = (ruta) => SOLO_SERVIDOR.some((p) => ruta === p || ruta.startsWith(p + "/") || ruta.startsWith(p + "?"));
 const vistas = new Set();
-const faltan = [], otrosErrores = [];
+const faltan = [], otrosErrores = [], soloServidor = [];
 for (const l of llamadas) {
   const ruta = muestra(l.ruta);
   if (!ruta.startsWith("/")) continue; // rutas armadas dinámicamente (p. ej. Catálogos) se prueban en e2e
@@ -35,11 +43,12 @@ for (const l of llamadas) {
     else await api[metodo](ruta, metodo === "postForm" ? { get: () => null } : {});
   } catch (e) {
     const msg = String(e.message || e);
-    if (msg.includes("todavía no tiene equivalente local")) faltan.push(`${clave}   (${l.archivo})`);
+    if (msg.includes("todavía no tiene equivalente local")) (esSoloServidor(ruta) ? soloServidor : faltan).push(`${clave}   (${l.archivo})`);
     else otrosErrores.push(`${clave}   (${l.archivo}) -> ${msg.slice(0, 90)}`);
   }
 }
 console.log(`Llamadas únicas: ${vistas.size}`);
+console.log(`\nSOLO CON SERVIDOR, aceptado (${soloServidor.length}):\n` + soloServidor.join("\n"));
 console.log(`\nSIN EQUIVALENTE LOCAL (${faltan.length}):\n` + faltan.join("\n"));
 console.log(`\nErrores de validación esperados con cuerpo vacío (${otrosErrores.length}):\n` + otrosErrores.join("\n"));
 process.exit(faltan.length ? 1 : 0);

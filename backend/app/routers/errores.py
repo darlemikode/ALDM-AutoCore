@@ -37,7 +37,7 @@ def listar(limit: int = 100, db: Session = Depends(get_db), user=Depends(get_cur
         raise HTTPException(status_code=403, detail="Sin permiso.")
     # Los errores de las pantallas de súper admin se guardan sin taller (id_taller nulo)
     filas = (db.query(models.ErrorSistema).execution_options(sin_filtro_taller=True)
-             .order_by(models.ErrorSistema.fecha.desc()).limit(min(limit, 500)).all())
+             .order_by(models.ErrorSistema.fecha.desc()).limit(max(1, min(limit, 500))).all())
     ids = {e.id_taller for e in filas if e.id_taller}
     talleres = {}
     if ids:

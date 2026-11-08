@@ -10,9 +10,14 @@ rutas = set()
 for f in routers:
     if not os.path.exists(f): continue
     t = open(f, encoding="utf-8").read()
-    m = re.search(r'APIRouter\(\s*prefix\s*=\s*"([^"]*)"', t)
-    prefijo = m.group(1) if m else ""
-    for metodo, ruta in re.findall(r'@router\.(get|post|put|delete|patch)\(\s*"([^"]*)"', t):
+    # Un archivo puede tener varios routers (router, publico, interno…): cada variable con su prefijo
+    prefijos = {v: p for v, p in re.findall(r'(\w+)\s*=\s*APIRouter\(\s*prefix\s*=\s*"([^"]*)"', t)}
+    if not prefijos:
+        prefijos = {"router": ""}
+    for var, metodo, ruta in re.findall(r'@(\w+)\.(get|post|put|delete|patch)\(\s*"([^"]*)"', t):
+        if var not in prefijos:
+            continue
+        prefijo = prefijos[var]
         completa = (prefijo + ruta).replace("/api", "", 1) if (prefijo + ruta).startswith("/api") else prefijo + ruta
         rutas.add((metodo.upper(), re.sub(r"\{[^}]+\}", "{}", completa.rstrip("/") or "/")))
 # routers genéricos creados con crud_factory (catálogos)

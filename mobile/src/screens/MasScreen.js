@@ -68,7 +68,7 @@ function Grupo({ titulo, children }) {
 let scrollGuardado = 0;
 
 export default function MasScreen({ navigation, route }) {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, hasPermission, tieneModulo } = useAuth();
   const { preferencia, cambiarPreferencia } = useTema();
   const [biometriaDisponible, setBiometriaDisponible] = useState(false);
   const [biometriaActiva, setBiometriaActiva] = useState(false);
@@ -240,18 +240,18 @@ export default function MasScreen({ navigation, route }) {
 
   const taller = [
     hasPermission("configuracion.editar") && { key: "DatosTaller", icono: "storefront-outline", titulo: "Datos del taller", desc: "Nombre, dirección, RFC y logo", ir: "DatosTaller" },
-    hasPermission("configuracion.editar") && { key: "Comisiones", icono: "card-outline", titulo: "Comisiones por tipo de pago", desc: "Efectivo, tarjeta y mixto", ir: "Comisiones" },
+    hasPermission("configuracion.editar") && tieneModulo("comisiones") && { key: "Comisiones", icono: "card-outline", titulo: "Comisiones por tipo de pago", desc: "Efectivo, tarjeta y mixto", ir: "Comisiones" },
   ].filter(Boolean);
   const accesos = [
-    hasPermission("roles.ver") && { key: "GestionRoles", icono: "shield-checkmark-outline", titulo: "Roles y permisos", desc: "Qué puede hacer cada rol", ir: "GestionRoles" },
+    hasPermission("roles.ver") && tieneModulo("roles_permisos") && { key: "GestionRoles", icono: "shield-checkmark-outline", titulo: "Roles y permisos", desc: "Qué puede hacer cada rol", ir: "GestionRoles" },
     hasPermission("usuarios.ver") && { key: "Usuarios", icono: "key-outline", titulo: "Usuarios de la aplicación", desc: "Cuentas de acceso", ir: "Usuarios" },
   ].filter(Boolean);
   const personal = [
-    hasPermission("empleados.ver") && { key: "Empleados", icono: "id-card-outline", titulo: "Empleados", desc: "Personal del taller", ir: "Empleados" },
-    hasPermission("nomina.ver") && { key: "Nomina", icono: "cash-outline", titulo: "Nómina", desc: "Sueldos y pagos del personal", ir: "Nomina" },
+    hasPermission("empleados.ver") && tieneModulo("empleados") && { key: "Empleados", icono: "id-card-outline", titulo: "Empleados", desc: "Personal del taller", ir: "Empleados" },
+    hasPermission("nomina.ver") && tieneModulo("nomina") && { key: "Nomina", icono: "cash-outline", titulo: "Nómina", desc: "Sueldos y pagos del personal", ir: "Nomina" },
   ].filter(Boolean);
   const otros = [
-    { key: "MiDashboard", icono: "person-circle-outline", titulo: "Mi dashboard", desc: "Tus servicios como responsable", ir: "MiDashboard" },
+    tieneModulo("empleados") && { key: "MiDashboard", icono: "person-circle-outline", titulo: "Mi dashboard", desc: "Tus servicios como responsable", ir: "MiDashboard" },
   ];
 
   return (
@@ -271,7 +271,7 @@ export default function MasScreen({ navigation, route }) {
         </Grupo>
       )}
 
-      {hasPermission("catalogos.ver") && (
+      {hasPermission("catalogos.ver") && tieneModulo("catalogos") && (
         <Grupo titulo="Catálogos">
           <Fila primera icono="list-outline" titulo="Catálogos generales" desc="Listas usadas en clientes, vehículos y refacciones" onPress={() => navigation.navigate("Catálogos")} />
         </Grupo>
