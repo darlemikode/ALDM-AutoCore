@@ -216,14 +216,17 @@ export default function Citas() {
 
   // Vehículos que están en el taller ahora (órdenes abiertas) para mostrarlos en el calendario
   function cargarTaller() {
-    Promise.all([api.get("/servicios/?status=abierto"), api.get("/servicios/?status=cerrado"), api.get("/vehiculos/")])
-      .then(([ab, ce, ve]) => {
+    // Cada orden ya trae su cliente y vehículo: no hace falta bajar toda la lista de vehículos (se pide al abrir el formulario).
+    // De las finalizadas solo las más recientes: las viejas no aparecen en la semana que se mira.
+    ultimaCargaTaller.current = Date.now();
+    Promise.all([api.get("/servicios/?status=abierto"), api.get("/servicios/?status=cerrado&limite=60")])
+      .then(([ab, ce]) => {
         setEnTaller(ab.filter((o) => o.id_vehiculo).map(aHoraLocal));
         setFinalizadas(ce.filter((o) => o.id_vehiculo).map(aHoraLocal));
-        setVehiculos((prev) => (prev.length ? prev : ve));
       })
       .catch(() => {});
   }
+  const ultimaCargaTaller = useRef(0);
   useEffect(() => {
     api.get("/configuracion-taller/")
       .then((c) => {
@@ -233,16 +236,18 @@ export default function Citas() {
       })
       .catch(() => {});
     cargarTaller();
-    window.addEventListener("focus", cargarTaller); // al volver de la orden se refresca
-    return () => window.removeEventListener("focus", cargarTaller);
+    // al volver de la orden se refresca, pero no más de una vez por minuto
+    const alVolver = () => { if (Date.now() - ultimaCargaTaller.current > 60000) cargarTaller(); };
+    window.addEventListener("focus", alVolver);
+    return () => window.removeEventListener("focus", alVolver);
   }, []);
   const nombreVehOrden = (o) => {
-    const v = vehiculos.find((x) => x.id_vehiculo === o.id_vehiculo);
+    const v = o.vehiculo || vehiculos.find((x) => x.id_vehiculo === o.id_vehiculo);
     return v ? (`${v.marca?.nombre_marca || ""} ${v.modelo?.nombre_modelo || ""}`.trim() || v.placas_vehiculo || "Vehículo") : "Vehículo";
   };
   const clienteOrden = (o) => {
-    const v = vehiculos.find((x) => x.id_vehiculo === o.id_vehiculo);
-    const c = v?.cliente;
+    const v = o.vehiculo || vehiculos.find((x) => x.id_vehiculo === o.id_vehiculo);
+    const c = o.cliente || v?.cliente;
     const nombre = c ? `${c.nombre_cliente || ""} ${c.paterno_cliente || ""}`.trim() : "";
     return { nombre, tel: c?.telefono1 || "" };
   };
@@ -303,7 +308,7 @@ export default function Citas() {
     }
     return m;
   };
-  const placasOrden = (o) => vehiculos.find((x) => x.id_vehiculo === o.id_vehiculo)?.placas_vehiculo || "";
+  const placasOrden = (o) => (o.vehiculo || vehiculos.find((x) => x.id_vehiculo === o.id_vehiculo))?.placas_vehiculo || "";
   // Búsqueda: cliente, vehículo, placas, servicio u orden
   const norm = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const q = norm(busqueda.trim());

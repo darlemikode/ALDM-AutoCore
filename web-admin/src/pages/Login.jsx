@@ -1,17 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import logoAldm from "../assets/logo-aldm.webp";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import { Icono } from "../components/Icono";
 import { validarPassword } from "../validarPassword";
-
-const CARACTERISTICAS = [
-  { icono: "wrench", titulo: "Órdenes de servicio", texto: "Diagnóstico, autorización, reparación y entrega en un solo tablero." },
-  { icono: "car", titulo: "Clientes y vehículos", texto: "Historial completo de cada auto y cada cliente del taller." },
-  { icono: "cube", titulo: "Inventario y compras", texto: "Refacciones, proveedores y existencias siempre al día." },
-  { icono: "document-text", titulo: "Facturación CFDI", texto: "Factura directo desde la orden, sin pasos de más." },
-];
+import FondoTaller from "../components/FondoTaller";
+import "./login-nuevo.css";
 
 export default function Login() {
   const { user, login, entrarConToken } = useAuth();
@@ -21,6 +16,38 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [ver, setVer] = useState({ login: false, act: false, actConfirmar: false });
+  const [paso, setPaso] = useState(1); // 1 = correo, 2 = contraseña
+  const passRef = useRef(null);
+  const correoRef = useRef(null);
+  const tarjetaRef = useRef(null);
+
+  // El acceso siempre es negro, aunque el tema de la app sea claro
+  useEffect(() => {
+    const raiz = document.documentElement;
+    const previo = raiz.getAttribute("data-theme");
+    raiz.setAttribute("data-theme", "dark");
+    return () => { if (previo) raiz.setAttribute("data-theme", previo); else raiz.removeAttribute("data-theme"); };
+  }, []);
+
+  function sacudir() {
+    const el = tarjetaRef.current;
+    if (!el) return;
+    el.classList.remove("lgn-sacude");
+    void el.offsetWidth;
+    el.classList.add("lgn-sacude");
+  }
+  function siguiente(e) {
+    e.preventDefault();
+    if (!username.trim()) { setError("Escribe tu correo."); sacudir(); return; }
+    setError("");
+    setPaso(2);
+    setTimeout(() => passRef.current?.focus({ preventScroll: true }), 350);
+  }
+  function cambiarCorreo() {
+    setError("");
+    setPaso(1);
+    setTimeout(() => correoRef.current?.focus({ preventScroll: true }), 350);
+  }
 
   const [recovering, setRecovering] = useState(false);
   const [esNuevo, setEsNuevo] = useState(false); // "Soy usuario nuevo": el enlace sirve para crear la contraseña
@@ -72,6 +99,7 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!password) { setError("Escribe tu contraseña."); sacudir(); return; }
     setLoading(true);
     setError("");
     try {
@@ -79,6 +107,7 @@ export default function Login() {
       navigate("/");
     } catch (err) {
       setError(err.message);
+      sacudir();
     } finally {
       setLoading(false);
     }
@@ -101,35 +130,18 @@ export default function Login() {
   }
 
   return (
-    <div className="login-screen">
-      <aside className="login-aside">
-        <img src={logoAldm} alt="ALDM AutoCore · Administración de talleres mecánicos" className="login-logo" />
-        <h1 className="login-aside-titulo">
-          Todo tu taller,<br />
-          <span>en un solo lugar</span>
-        </h1>
-        <p className="login-aside-sub">Órdenes, clientes, inventario y facturación sobre la misma información — sin pagar por usuario.</p>
-        <ul className="login-aside-features">
-          {CARACTERISTICAS.map((c) => (
-            <li key={c.icono}>
-              <span className="login-aside-ico"><Icono nombre={c.icono} size={21} /></span>
-              <div>
-                <b>{c.titulo}</b>
-                <span>{c.texto}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-        <div className="login-aside-pie">Administración de talleres mecánicos</div>
-      </aside>
-
+    <div className="login-screen lgn">
+      <FondoTaller />
       <div className="login-main">
-        <img src={logoAldm} alt="ALDM AutoCore · Administración de talleres mecánicos" className="login-logo-movil" />
-        <div className="login-card">
-          <div className="brand">
-            Bienvenido
-          </div>
-          <div className="tagline">Panel de administración del taller</div>
+        <div className="lgn-logo"><img src={logoAldm} alt="ALDM AutoCore · Administración de talleres mecánicos" /></div>
+        <div className="login-card" ref={tarjetaRef}>
+          {!activando && !recovering && (
+            <div className="lgn-prog">
+              <span className="lgn-prog-et">Paso {paso} de 2</span>
+              <div className="lgn-puntos"><i className={paso === 1 ? "on" : ""} /><i className={paso === 2 ? "on" : ""} /></div>
+            </div>
+          )}
+          <div className="brand">{!activando && !recovering && paso === 2 ? "Hola de nuevo" : "Bienvenido"}</div>
 
           {activando ? (
           <>
@@ -211,47 +223,68 @@ export default function Login() {
           </>
         ) : !recovering ? (
           <>
-            <form onSubmit={handleSubmit}>
-              <div className="field-stack">
-                <div className="field">
-                  <label>Correo electrónico</label>
-                  <input type="text" inputMode="email" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus autoCapitalize="none" placeholder="nombre@correo.com" />
-                </div>
-                <div className="field">
-                  <label>Contraseña</label>
-                  <div className="pass-caja">
-                    <input type={ver.login ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="********" />
-                    <button type="button" className={"pass-ojo" + (ver.login ? " activo" : "")} aria-pressed={ver.login} aria-label={ver.login ? "Ocultar contraseña" : "Ver contraseña"} onMouseDown={(e) => e.preventDefault()} onClick={() => setVer((v) => ({ ...v, login: !v.login }))}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" /><circle cx="12" cy="12" r="3" />{!ver.login && <path d="M3 3l18 18" />}</svg>
+            <form onSubmit={paso === 1 ? siguiente : handleSubmit} noValidate>
+              <div className="lgn-pasos">
+                <div className="lgn-pista" style={{ transform: paso === 1 ? "translateX(0)" : "translateX(-50%)" }}>
+                  <div className="lgn-paso" aria-hidden={paso !== 1}>
+                    <div className="field">
+                      <label>Correo electrónico</label>
+                      <div className="lgn-ico">
+                        <svg className="lgn-i" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m4 7 8 6 8-6" /></svg>
+                        <input ref={correoRef} type="text" inputMode="email" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoCapitalize="none" autoComplete="username" placeholder="nombre@correo.com" tabIndex={paso === 1 ? 0 : -1} />
+                      </div>
+                    </div>
+                    {paso === 1 && error && <div className="error-text">{error}</div>}
+                    <button type="submit" className="btn btn-entrar" tabIndex={paso === 1 ? 0 : -1}>
+                      Continuar <span className="lgn-flecha">→</span>
+                    </button>
+                  </div>
+                  <div className="lgn-paso" aria-hidden={paso !== 2}>
+                    <div className="lgn-hola">
+                      <span className="lgn-av">{(username.trim()[0] || "?").toUpperCase()}</span>
+                      <span className="lgn-hola-txt">{username}</span>
+                      <button type="button" onClick={cambiarCorreo} tabIndex={paso === 2 ? 0 : -1}>Cambiar</button>
+                    </div>
+                    <div className="field">
+                      <label>Contraseña</label>
+                      <div className="pass-caja lgn-ico">
+                        <svg className="lgn-i" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="3" /><path d="M8 10V8a4 4 0 0 1 8 0v2" /></svg>
+                        <input ref={passRef} type={ver.login ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" placeholder="********" tabIndex={paso === 2 ? 0 : -1} />
+                        <button type="button" tabIndex={paso === 2 ? 0 : -1} className={"pass-ojo" + (ver.login ? " activo" : "")} aria-pressed={ver.login} aria-label={ver.login ? "Ocultar contraseña" : "Ver contraseña"} onMouseDown={(e) => e.preventDefault()} onClick={() => setVer((v) => ({ ...v, login: !v.login }))}>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" /><circle cx="12" cy="12" r="3" />{!ver.login && <path d="M3 3l18 18" />}</svg>
+                        </button>
+                      </div>
+                    </div>
+                    {paso === 2 && error && <div className="error-text">{error}</div>}
+                    <button className="btn btn-entrar" disabled={loading} tabIndex={paso === 2 ? 0 : -1}>
+                      {loading ? (
+                        "Entrando…"
+                      ) : (
+                        <>
+                          Entrar
+                          <Icono nombre="log-out" size={18} className="btn-entrar-ico" />
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
               </div>
-              {error && <div className="error-text">{error}</div>}
-              <button className="btn btn-entrar" style={{ width: "100%" }} disabled={loading}>
-                {loading ? (
-                  "Entrando…"
-                ) : (
-                  <>
-                    Entrar
-                    <Icono nombre="log-out" size={18} className="btn-entrar-ico" />
-                  </>
-                )}
-              </button>
             </form>
-            <button
-              type="button"
-              className="btn-link"
-              onClick={() => { setEsNuevo(false); setRecovering(true); setRecoveryMsg(""); setIdentificador(""); }}
-            >
-              ¿Olvidaste tu contraseña?
-            </button>
-            <button type="button" className="btn-link" onClick={() => { setEsNuevo(true); setRecovering(true); setRecoveryMsg(""); setIdentificador(""); }}>
-              Soy usuario nuevo
-            </button>
-            <button type="button" className="btn-link" onClick={() => { setActivando(true); setErrorAct(""); }}>
-              ¿Primera vez? Activa tu taller
-            </button>
+            <div className="lgn-enlaces">
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => { setEsNuevo(false); setRecovering(true); setRecoveryMsg(""); setIdentificador(""); }}
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+              <button type="button" className="btn-link" onClick={() => { setEsNuevo(true); setRecovering(true); setRecoveryMsg(""); setIdentificador(""); }}>
+                Soy usuario nuevo
+              </button>
+              <button type="button" className="btn-link" onClick={() => { setActivando(true); setErrorAct(""); }}>
+                ¿Primera vez? Activa tu taller
+              </button>
+            </div>
           </>
         ) : (
           <>

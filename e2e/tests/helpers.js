@@ -51,8 +51,10 @@ async function entrar(page, usuario, password, { conTutoriales = false } = {}) {
   // Las pruebas no quieren el recorrido de bienvenida encima (salvo la que lo prueba)
   if (!conTutoriales) await page.addInitScript(() => { try { localStorage.setItem("sm_sin_tutoriales", "1"); } catch (e) { /* nada */ } });
   await page.goto("/login");
-  await campo(page, "Usuario").fill(usuario);
-  await campo(page, "Contraseña").fill(password);
+  // Login en 2 pasos: correo/usuario -> "Continuar" -> contraseña -> "Entrar"
+  await page.locator('input[autocomplete="username"]').first().fill(usuario);
+  await page.getByRole("button", { name: /Continuar/ }).first().click();
+  await page.locator('input[autocomplete="current-password"]').first().fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
 }
 

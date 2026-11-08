@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import { Icono } from "../components/Icono";
 import { validarPassword } from "../validarPassword";
+import FondoTaller from "../components/FondoTaller";
+import "./login-nuevo.css";
 
 // Pantalla a la que llega el enlace que se manda por correo: tanto para
 // "crea tu contraseña" (alta de usuario) como para "olvidé mi contraseña"
@@ -14,6 +16,14 @@ export default function EstablecerPassword() {
   const token = params.get("token") || "";
   const navigate = useNavigate();
   const { entrarConToken } = useAuth();
+
+  // Igual que el login: siempre en negro, aunque el tema de la app sea claro
+  useEffect(() => {
+    const raiz = document.documentElement;
+    const previo = raiz.getAttribute("data-theme");
+    raiz.setAttribute("data-theme", "dark");
+    return () => { if (previo) raiz.setAttribute("data-theme", previo); else raiz.removeAttribute("data-theme"); };
+  }, []);
 
   const [estado, setEstado] = useState("verificando"); // verificando | valido | invalido | listo
   const [info, setInfo] = useState(null);
@@ -91,19 +101,10 @@ export default function EstablecerPassword() {
   const reglas = validarPassword(password, [esAlta ? username : info?.username]);
 
   return (
-    <div className="login-screen">
-      <aside className="login-aside">
-        <img src={logoAldm} alt="ALDM AutoCore · Administración de talleres mecánicos" className="login-logo" />
-        <h1 className="login-aside-titulo">
-          Todo tu taller,<br />
-          <span>en un solo lugar</span>
-        </h1>
-        <p className="login-aside-sub">Órdenes, clientes, inventario y facturación sobre la misma información — sin pagar por usuario.</p>
-        <div className="login-aside-pie">Administración de talleres mecánicos</div>
-      </aside>
-
+    <div className="login-screen lgn">
+      <FondoTaller />
       <div className="login-main">
-        <img src={logoAldm} alt="ALDM AutoCore · Administración de talleres mecánicos" className="login-logo-movil" />
+        <div className="lgn-logo"><img src={logoAldm} alt="ALDM AutoCore · Administración de talleres mecánicos" /></div>
         <div className="login-card">
           <div className="brand">{esAlta ? "Crea tu contraseña" : "Restablece tu contraseña"}</div>
 
