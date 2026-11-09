@@ -1064,11 +1064,13 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(resultado.uri, { mimeType });
     else alerta("Listo", `Se guardó en: ${resultado.uri}`);
   }
-  async function descargarPdf(tipo) {
-    setDescargando(tipo);
+  // formato: "carta" (hoja) o "ticket" (rollo térmico de 80 mm)
+  async function descargarPdf(tipo, formato = "carta") {
+    setDescargando(formato === "ticket" ? "ticket" : tipo);
     try {
-      const ruta = tipo === "remision" ? `${API_URL}/servicios/${id}/nota-remision` : `${API_URL}/servicios/${id}/recibo`;
-      await descargarArchivo(ruta, `${tipo === "remision" ? "nota-remision" : "recibo"}-${id}.pdf`, "application/pdf");
+      const base = tipo === "remision" ? `${API_URL}/servicios/${id}/nota-remision` : `${API_URL}/servicios/${id}/recibo`;
+      const ruta = formato === "ticket" ? `${base}?formato=ticket` : base;
+      await descargarArchivo(ruta, `${tipo === "remision" ? "nota-remision" : "recibo"}${formato === "ticket" ? "-ticket" : ""}-${id}.pdf`, "application/pdf");
     } catch (err) { alerta("Error", err.message); } finally { setDescargando(null); }
   }
   async function descargarFactura(tipo) {
@@ -1473,6 +1475,7 @@ export default function ServicioDetalleScreen({ route, navigation }) {
                 {hasPermission("servicios.ver_precios") && <>
                 <Boton icono="eye-outline" texto="Vista previa del recibo" onPress={() => descargarPdf("recibo")} deshabilitado={detalles.length === 0} cargando={descargando === "recibo"} />
                 {servicio.status === "cerrado" && <Boton icono="document-text-outline" texto="Nota de remisión" onPress={() => descargarPdf("remision")} cargando={descargando === "remision"} />}
+                <Boton icono="receipt-outline" texto="Nota en formato ticket (80 mm)" onPress={() => descargarPdf(servicio.status === "cerrado" ? "remision" : "recibo", "ticket")} deshabilitado={detalles.length === 0} cargando={descargando === "ticket"} />
                 <Boton icono="logo-whatsapp" texto="Enviar nota por WhatsApp" onPress={enviarNotaWhatsApp} deshabilitado={detalles.length === 0} cargando={descargando === "whatsapp"} />
                 </>}
                 {factura ? (
