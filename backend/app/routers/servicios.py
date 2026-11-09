@@ -651,8 +651,17 @@ def _nombre_pdf(servicio, prefijo: str) -> str:
 
 
 # --- Recibo en PDF ------------------------------------------------------------
+def _url_nota(tipo: str, servicio, costos):
+    """Enlace firmado (QR del ticket) para descargar la nota en PDF carta; None si no se puede armar."""
+    try:
+        from .nota_publica import url_descarga
+        return url_descarga(tipo, servicio, costos)
+    except Exception:  # noqa: BLE001 — el QR es un extra: sin él el ticket se imprime igual
+        return None
+
+
 @router.get("/{servicio_id}/recibo")
-def descargar_recibo(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver_precios"))):
+def descargar_recibo(servicio_id: int, formato: str = Query("carta", pattern="^(carta|ticket)$"), db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver_precios"))):
     from ..recibo_pdf import generar_recibo_pdf  # import diferido: evita cargar reportlab si no se usa
 
     servicio = _get_servicio_o_404(db, servicio_id)
@@ -660,7 +669,11 @@ def descargar_recibo(servicio_id: int, db: Session = Depends(get_db), user=Depen
     costos = _calcular_costos(servicio)
     taller = db.query(models.ConfiguracionTaller).first()
     from ..inspeccion_pdf import inspeccion_de_servicio
-    pdf_bytes = generar_recibo_pdf(servicio, costos, taller, inspeccion_de_servicio(db, models, servicio_id))
+    if formato == "ticket":
+        from ..ticket_pdf import generar_ticket
+        pdf_bytes = generar_ticket("recibo", servicio, costos, taller, _url_nota("recibo", servicio, costos))
+    else:
+        pdf_bytes = generar_recibo_pdf(servicio, costos, taller, inspeccion_de_servicio(db, models, servicio_id))
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
@@ -669,7 +682,7 @@ def descargar_recibo(servicio_id: int, db: Session = Depends(get_db), user=Depen
 
 
 @router.get("/{servicio_id}/nota-remision")
-def descargar_nota_remision(servicio_id: int, db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver_precios"))):
+def descargar_nota_remision(servicio_id: int, formato: str = Query("carta", pattern="^(carta|ticket)$"), db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver_precios"))):
     """El documento que se le entrega al cliente al recoger su vehículo —
     diagnóstico, trabajos realizados, kilometraje, y espacio de firma de
     conformidad. Distinto del recibo de pago (ver /recibo arriba)."""
@@ -681,7 +694,11 @@ def descargar_nota_remision(servicio_id: int, db: Session = Depends(get_db), use
     costos = _calcular_costos(servicio)
     taller = db.query(models.ConfiguracionTaller).first()
     from ..inspeccion_pdf import inspeccion_de_servicio
-    pdf_bytes = generar_nota_remision_pdf(servicio, costos, taller, inspeccion_de_servicio(db, models, servicio_id))
+    if formato == "ticket":
+        from ..ticket_pdf import generar_ticket
+        pdf_bytes = generar_ticket("remision", servicio, costos, taller, _url_nota("remision", servicio, costos))
+    else:
+        pdf_bytes = generar_nota_remision_pdf(servicio, costos, taller, inspeccion_de_servicio(db, models, servicio_id))
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",

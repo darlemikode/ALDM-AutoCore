@@ -736,10 +736,12 @@ export default function ServicioDetalle() {
   }
 
   // Imprime la nota directo (sin descargar ni abrir pestañas)
-  async function imprimirNota(tipo = "remision") {
+  // formato: "carta" (hoja) o "ticket" (rollo térmico de 80 mm)
+  async function imprimirNota(tipo = "remision", formato = "carta") {
     setDescargando(true);
     try {
-      const ruta = tipo === "remision" ? `/api/servicios/${id}/nota-remision` : `/api/servicios/${id}/recibo`;
+      const base = tipo === "remision" ? `/api/servicios/${id}/nota-remision` : `/api/servicios/${id}/recibo`;
+      const ruta = formato === "ticket" ? `${base}?formato=ticket` : base;
       const res = await fetch(ruta, { headers: { Authorization: `Bearer ${getToken()}` } });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -1526,6 +1528,11 @@ export default function ServicioDetalle() {
               {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
                 <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo"); }} disabled={descargando} title="Imprimir la nota ahora">
                   <IconoAuto valor="🖨️" size={18} /> Imprimir nota
+                </button>
+              )}
+              {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
+                <button className="btn btn-secondary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo", "ticket"); }} disabled={descargando} title="Imprimir la nota en formato ticket (impresora térmica de 80 mm)">
+                  <IconoAuto valor="🧾" size={18} /> Imprimir ticket
                 </button>
               )}
               <button className="btn btn-secondary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; enviarWhatsApp(); }} title="Abrir WhatsApp con el resumen de la orden para el cliente">
