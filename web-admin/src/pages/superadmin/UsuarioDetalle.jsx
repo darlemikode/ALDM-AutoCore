@@ -17,9 +17,7 @@ export default function UsuarioDetalle() {
   const [enviandoEnlace, setEnviandoEnlace] = useState(false);
   const [cooldownEnlace, setCooldownEnlace] = useState(0);
   const { datos, setDatos, error } = useCargar(async () => {
-    const [lista, talleres] = await Promise.all([api.get("/superadmin/usuarios"), api.get("/superadmin/talleres")]);
-    const u = lista.find((x) => x.id_usuario === id);
-    if (!u) throw new Error("Usuario no encontrado");
+    const [u, talleres] = await Promise.all([api.get(`/superadmin/usuarios/${id}`), api.get("/superadmin/talleres")]);
     return { u, talleres };
   }, [id]);
   useEffect(() => {
@@ -76,7 +74,6 @@ export default function UsuarioDetalle() {
         <Dato etiqueta="Teléfono">{u.telefono}</Dato>
         <Dato etiqueta="Correo">{u.correo}</Dato>
         <label className="sa-check"><input type="checkbox" checked={u.activo} disabled={soyYo} onChange={(e) => actualizar({ activo: e.target.checked }).catch(() => {})} /> Cuenta activa</label>
-        <label className="sa-check"><input type="checkbox" checked={u.es_superadmin} disabled={soyYo} onChange={(e) => actualizar({ es_superadmin: e.target.checked }).catch(() => {})} /> Súper administrador</label>
         <div className="sa-acciones">
           <button className="btn btn-secondary" onClick={() => setModal({ tipo: "datos", iniciales: { nombre_completo: u.nombre_completo, telefono: u.telefono || "", correo: u.correo || "" } })}>Editar datos</button>
         </div>

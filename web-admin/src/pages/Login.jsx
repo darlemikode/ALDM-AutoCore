@@ -15,6 +15,8 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pide2fa, setPide2fa] = useState(false); // súper admin: pedir el código de la app de autenticación
+  const [codigo2fa, setCodigo2fa] = useState("");
   const [ver, setVer] = useState({ login: false, act: false, actConfirmar: false });
   const [paso, setPaso] = useState(1); // 1 = correo, 2 = contraseña
   const passRef = useRef(null);
@@ -103,9 +105,10 @@ export default function Login() {
     setLoading(true);
     setError("");
     try {
-      await login(username, password);
+      await login(username, password, pide2fa ? codigo2fa.trim() : undefined);
       navigate("/");
     } catch (err) {
+      if (err.requiere2fa) setPide2fa(true);
       setError(err.message);
       sacudir();
     } finally {
@@ -255,6 +258,14 @@ export default function Login() {
                         </button>
                       </div>
                     </div>
+                    {pide2fa && (
+                      <div className="field">
+                        <label>Código de verificación</label>
+                        <div className="pass-caja">
+                          <input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={7} autoFocus value={codigo2fa} onChange={(e) => setCodigo2fa(e.target.value.replace(/[^0-9 ]/g, ""))} placeholder="000000" tabIndex={paso === 2 ? 0 : -1} />
+                        </div>
+                      </div>
+                    )}
                     {paso === 2 && error && <div className="error-text">{error}</div>}
                     <button className="btn btn-entrar" disabled={loading} tabIndex={paso === 2 ? 0 : -1}>
                       {loading ? (

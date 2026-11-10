@@ -14,6 +14,8 @@ import CatalogosGenerales from "../Catalogos";
 import Reglas from "./Reglas";
 import Solicitudes from "./Solicitudes";
 import Errores from "../Errores";
+import Bitacora from "./Bitacora";
+import Seguridad2FA from "./Seguridad2FA";
 import "./saModales.css";
 
 const PESTANAS = [
@@ -26,6 +28,7 @@ const PESTANAS = [
   ["catalogos-generales", "Catálogos generales"],
   ["reglas", "Reglas"],
   ["errores", "Errores"],
+  ["bitacora", "Bitácora"],
 ];
 
 export default function SuperAdmin() {
@@ -37,6 +40,7 @@ export default function SuperAdmin() {
           <div className="subtitle">Talleres clientes, suscripciones y cobranza de ALDM AutoCore</div>
         </div>
       </div>
+      <Seguridad2FA />
       <nav className="sa-tabs">
         {PESTANAS.map(([ruta, texto]) => (
           <NavLink key={ruta} to={`/superadmin/${ruta}`} className={({ isActive }) => "sa-tab" + (isActive ? " sa-tab-activo" : "")}>
@@ -57,6 +61,7 @@ export default function SuperAdmin() {
         <Route path="catalogos-generales" element={<CatalogosGenerales admin />} />
         <Route path="reglas" element={<Reglas />} />
         <Route path="errores" element={<Errores />} />
+        <Route path="bitacora" element={<Bitacora />} />
         <Route path="*" element={<Navigate to="resumen" replace />} />
       </Routes>
     </>

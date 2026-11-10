@@ -76,16 +76,20 @@ export const api = {
   del: (path) => request(path, { method: "DELETE" }),
 };
 
-export async function login(username, password) {
+export async function login(username, password, codigo2fa) {
   const form = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
   let res;
   try {
-    res = await fetch(`${apiUrl}/auth/login`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form });
+    res = await fetch(`${apiUrl}/auth/login`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", ...(codigo2fa ? { "X-Codigo-2FA": codigo2fa } : {}) }, body: form });
   } catch {
     throw new Error(`No hay conexión con el servidor (${apiUrl}).`);
   }
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.detail || "No se pudo iniciar sesión");
+  if (!res.ok) {
+    const err = new Error(data?.detail || "No se pudo iniciar sesión");
+    if (res.status === 428) err.requiere2fa = true; // verificación en dos pasos activa
+    throw err;
+  }
   if (!data.es_superadmin) throw new Error("Este usuario no es súper administrador de ALDM.");
   await setToken(data.access_token);
   return data;

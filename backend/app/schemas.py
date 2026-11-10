@@ -1520,6 +1520,55 @@ class UsuarioGlobalOut(ORMBase):
         return bool(v)
 
 
+class UsuarioGlobalListaOut(UsuarioGlobalOut):
+    """Versión para listas: correo, teléfono y usuario-correo enmascarados."""
+
+    @field_validator("correo", mode="after")
+    @classmethod
+    def _m_correo(cls, v):
+        from .enmascarar import correo
+        return correo(v)
+
+    @field_validator("telefono", mode="after")
+    @classmethod
+    def _m_tel(cls, v):
+        from .enmascarar import telefono
+        return telefono(v)
+
+    @field_validator("username", mode="after")
+    @classmethod
+    def _m_user(cls, v):
+        from .enmascarar import usuario
+        return usuario(v)
+
+
+class AccesoSuperadminOut(ORMBase):
+    id_acceso: int
+    fecha: datetime
+    usuario: Optional[str] = None
+    ip: Optional[str] = None
+    metodo: str
+    ruta: str
+    accion: str
+    id_taller: Optional[int] = None
+    id_usuario_objetivo: Optional[int] = None
+    taller: Optional[str] = None
+    usuario_objetivo: Optional[str] = None
+
+
+class TotpEstadoOut(BaseModel):
+    activo: bool
+
+
+class TotpIniciarOut(BaseModel):
+    secreto: str
+    uri: str
+
+
+class TotpCodigoIn(BaseModel):
+    codigo: str
+
+
 class MembresiaIn(BaseModel):
     id_taller: int
     id_rol: Optional[int] = None  # None = Administrador General del taller

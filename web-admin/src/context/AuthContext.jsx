@@ -62,8 +62,8 @@ export function AuthProvider({ children }) {
     };
   }, [user?.username, user?.id_taller]);
 
-  async function login(username, password) {
-    const data = await apiLogin(username, password);
+  async function login(username, password, codigo2fa) {
+    const data = await apiLogin(username, password, codigo2fa);
     const me = await api.get("/auth/me");
     aplicarPerfil(me);
     const variosTalleres = (data.talleres || []).length > 1;

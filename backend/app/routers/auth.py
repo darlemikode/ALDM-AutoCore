@@ -14,7 +14,7 @@ from ..security import (
 from ..suscripciones import contenido_qr, estado_taller, permiso_en_modulos
 from ..tenancy import MODO_SUPERADMIN, MODO_TALLER, fijar_tenant, taller_actual
 from ..rate_limit import limiter
-from .. import lockout
+from .. import lockout, totp
 from ..sesion_taller import MENSAJE_SIN_APP_TALLER, es_app_taller
 from .usuarios import (
     listar as _listar_usuarios, crear as _crear_usuario, actualizar as _actualizar_usuario,
@@ -36,6 +36,14 @@ def _estado_out(info):
 
 def _talleres_de(db: Session, user: models.Usuario) -> list[schemas.TallerAccesoOut]:
     salida = []
+    if user.es_superadmin:  # el súper administrador entra a todos los talleres
+        for t in db.query(models.Taller).filter(models.Taller.activo == True).order_by(models.Taller.nombre_comercial).all():  # noqa: E712
+            info = estado_taller(db, t.id_taller) or {}
+            salida.append(schemas.TallerAccesoOut(
+                id_taller=t.id_taller, nombre=t.nombre_comercial, codigo=t.codigo, rol="Súper administrador",
+                estado=info.get("estado"), bloqueado=False, mensaje=None,
+            ))
+        return salida
     for m in sorted(user.membresias, key=lambda m: m.taller.nombre_comercial if m.taller else ""):
         if not m.activo or not m.taller:
             continue
@@ -82,6 +90,16 @@ def _sesion_para(db: Session, user: models.Usuario, id_taller: int | None) -> sc
 
 
 def _elegir_taller(db: Session, user: models.Usuario, codigo: str | None) -> int | None:
+    if user.es_superadmin:
+        todos = db.query(models.Taller).filter(models.Taller.activo == True).order_by(models.Taller.id_taller).all()  # noqa: E712
+        if codigo:
+            for t in todos:
+                if t.codigo and t.codigo == codigo.strip().upper():
+                    return t.id_taller
+        for t in todos:
+            if t.id_taller == user.id_ultimo_taller:
+                return t.id_taller
+        return todos[0].id_taller if todos else None
     activas = [m for m in user.membresias if m.activo and m.taller and m.taller.activo]
     if codigo:
         for m in activas:
@@ -116,6 +134,20 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
             detail="Usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if user.es_superadmin and user.totp_activo:
+        c2 = request.headers.get("x-codigo-2fa")
+        if not c2:
+            raise HTTPException(status_code=428, detail="Escribe el código de 6 dígitos de tu app de autenticación.")
+        paso = totp.verificar(user.totp_secreto, c2, user.totp_ultimo_paso)
+        if paso is None:
+            lockout.registrar_fallo(form_data.username)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Código de verificación incorrecto o vencido.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user.totp_ultimo_paso = paso
+        db.commit()
     lockout.limpiar(form_data.username)
     codigo = form_data.client_id or request.headers.get("x-taller")
     id_taller = _elegir_taller(db, user, codigo)
@@ -199,7 +231,7 @@ def seleccionar_taller(payload: schemas.SeleccionarTallerIn, db: Session = Depen
     if m is None or not m.activo or not m.taller or not m.taller.activo:
         raise HTTPException(status_code=403, detail="No tienes acceso a ese taller.")
     info = estado_taller(db, payload.id_taller)
-    if info and info["bloqueado"]:
+    if info and info["bloqueado"] and not user.es_superadmin:
         raise HTTPException(status_code=402, detail=info["mensaje"])
     return _sesion_para(db, user, payload.id_taller)
 

@@ -12,11 +12,12 @@ exige es_superadmin.
 """
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from .. import models, schemas, password_tokens
+from .. import models, schemas, password_tokens, totp
+from ..rate_limit import ip_del_cliente
 from ..database import get_db_global
 from ..notifications import enviar_correo_bienvenida_taller, enviar_correo_restablecer
 from ..security import generar_password_temporal, hash_password, invalidar_tokens, require_superadmin
@@ -26,7 +27,25 @@ from ..suscripciones import (
     ESTADOS_MANUALES, calcular_estado, contenido_qr, invalidar, obtener_config, precio_periodo, sumar_meses,
 )
 
-router = APIRouter(prefix="/api/superadmin", tags=["superadmin"])
+def registrar_acceso(request: Request, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    """Bitácora de accesos: todo cambio (POST/PUT/DELETE) y las consultas de
+    datos personales o de cobranza. No guarda el contenido, solo qué se tocó."""
+    ruta = getattr(request.scope.get("route"), "path", None) or request.url.path
+    ruta = ruta.replace("/api/superadmin", "") or "/"
+    if request.method == "GET":
+        sensible = ("/usuarios" in ruta or "/pagos" in ruta or "taller_id" in request.path_params)
+        if not sensible or ruta.startswith(("/bitacora", "/2fa")):
+            return
+    accion = {"GET": "consulta", "POST": "alta", "PUT": "cambio", "PATCH": "cambio", "DELETE": "baja"}.get(request.method, "cambio")
+    pp = request.path_params
+    db.add(models.AccesoSuperadmin(
+        usuario=user.username, ip=ip_del_cliente(request), metodo=request.method, ruta=ruta[:150], accion=accion,
+        id_taller=pp.get("taller_id"), id_usuario_objetivo=pp.get("usuario_id"),
+    ))
+    db.commit()
+
+
+router = APIRouter(prefix="/api/superadmin", tags=["superadmin"], dependencies=[Depends(registrar_acceso)])
 
 
 # --- Configuración (días capturables) --------------------------------------
@@ -460,7 +479,7 @@ def roles_del_taller(taller_id: int, db: Session = Depends(get_db_global), user=
     return db.query(models.Rol).filter(models.Rol.id_taller == taller_id).order_by(models.Rol.id_rol).all()
 
 
-@router.get("/talleres/{taller_id}/usuarios", response_model=list[schemas.UsuarioGlobalOut])
+@router.get("/talleres/{taller_id}/usuarios", response_model=list[schemas.UsuarioGlobalListaOut])
 def usuarios_del_taller(taller_id: int, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
     return (
         _consulta_usuarios(db).join(models.UsuarioTaller, models.UsuarioTaller.id_usuario == models.Usuario.id_usuario)
@@ -524,7 +543,7 @@ def _rol_para(db: Session, id_taller: int, id_rol: int | None) -> int:
     return rol.id_rol
 
 
-@router.get("/usuarios", response_model=list[schemas.UsuarioGlobalOut])
+@router.get("/usuarios", response_model=list[schemas.UsuarioGlobalListaOut])
 def listar_usuarios(q: str | None = None, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
     consulta = _consulta_usuarios(db)
     lista = consulta.order_by(models.Usuario.username).all()
@@ -533,12 +552,20 @@ def listar_usuarios(q: str | None = None, db: Session = Depends(get_db_global), 
     return lista
 
 
+@router.get("/usuarios/{usuario_id}", response_model=schemas.UsuarioGlobalOut)
+def ver_usuario(usuario_id: int, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    """Detalle con los datos completos (se registra en la bitácora de accesos)."""
+    return _usuario(db, usuario_id)
+
+
 @router.post("/usuarios", response_model=schemas.UsuarioGlobalOut, status_code=201)
 def crear_usuario(payload: schemas.UsuarioGlobalCreate, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
     if db.query(models.Usuario).filter(func.lower(models.Usuario.username) == payload.username.strip().lower()).first():
         raise HTTPException(status_code=400, detail="Ya existe un usuario con ese nombre de usuario.")
     if len(payload.password) < 6:
         raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres.")
+    if payload.es_superadmin:
+        raise HTTPException(status_code=400, detail="Solo existe un súper administrador.")
     nuevo = models.Usuario(
         username=payload.username.strip(), hashed_password=hash_password(payload.password),
         nombre_completo=payload.nombre_completo, telefono=payload.telefono, correo=payload.correo,
@@ -564,6 +591,8 @@ def actualizar_usuario(usuario_id: int, payload: schemas.UsuarioGlobalUpdate, db
             raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres.")
         u.hashed_password = hash_password(password)
         invalidar_tokens(u)
+    if datos.get("es_superadmin") and not u.es_superadmin:
+        raise HTTPException(status_code=400, detail="Solo existe un súper administrador.")
     if u.id_usuario == user.id_usuario and (datos.get("es_superadmin") is False or datos.get("activo") is False):
         raise HTTPException(status_code=400, detail="No puedes quitarte tu propio acceso de súper administrador.")
     for k, v in datos.items():
@@ -605,6 +634,60 @@ def asignar_talleres(usuario_id: int, payload: list[schemas.MembresiaIn], db: Se
             u.membresias.append(models.UsuarioTaller(id_taller=id_taller, id_rol=id_rol, activo=datos.activo))
     db.commit()
     return _usuario(db, usuario_id)
+
+
+# --- Bitácora de accesos y verificación en dos pasos ----------------------------------
+@router.get("/bitacora", response_model=list[schemas.AccesoSuperadminOut])
+def ver_bitacora(limite: int = 200, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    filas = db.query(models.AccesoSuperadmin).order_by(models.AccesoSuperadmin.id_acceso.desc()).limit(min(max(limite, 1), 500)).all()
+    talleres = {t.id_taller: t.nombre_comercial for t in db.query(models.Taller).filter(models.Taller.id_taller.in_({f.id_taller for f in filas if f.id_taller}))} if filas else {}
+    usuarios = {u.id_usuario: u.username for u in db.query(models.Usuario).filter(models.Usuario.id_usuario.in_({f.id_usuario_objetivo for f in filas if f.id_usuario_objetivo}))} if filas else {}
+    salida = []
+    for f in filas:
+        o = schemas.AccesoSuperadminOut.model_validate(f)
+        o.taller = talleres.get(f.id_taller)
+        from ..enmascarar import usuario as _mask
+        o.usuario_objetivo = _mask(usuarios.get(f.id_usuario_objetivo))
+        salida.append(o)
+    return salida
+
+
+@router.get("/2fa", response_model=schemas.TotpEstadoOut)
+def estado_2fa(db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    return {"activo": bool(user.totp_activo)}
+
+
+@router.post("/2fa/iniciar", response_model=schemas.TotpIniciarOut)
+def iniciar_2fa(db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    if user.totp_activo:
+        raise HTTPException(status_code=400, detail="La verificación en dos pasos ya está activa.")
+    user.totp_secreto = totp.generar_secreto()
+    user.totp_ultimo_paso = None
+    db.commit()
+    return {"secreto": user.totp_secreto, "uri": totp.uri(user.totp_secreto, user.username)}
+
+
+@router.post("/2fa/activar", response_model=schemas.TotpEstadoOut)
+def activar_2fa(payload: schemas.TotpCodigoIn, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    paso = totp.verificar(user.totp_secreto, payload.codigo, user.totp_ultimo_paso) if user.totp_secreto else None
+    if paso is None:
+        raise HTTPException(status_code=400, detail="El código no es correcto. Revisa que tu teléfono tenga la hora automática.")
+    user.totp_activo = True
+    user.totp_ultimo_paso = paso
+    db.commit()
+    return {"activo": True}
+
+
+@router.post("/2fa/desactivar", response_model=schemas.TotpEstadoOut)
+def desactivar_2fa(payload: schemas.TotpCodigoIn, db: Session = Depends(get_db_global), user=Depends(require_superadmin)):
+    paso = totp.verificar(user.totp_secreto, payload.codigo, user.totp_ultimo_paso) if user.totp_activo else None
+    if paso is None:
+        raise HTTPException(status_code=400, detail="El código no es correcto.")
+    user.totp_activo = False
+    user.totp_secreto = None
+    user.totp_ultimo_paso = None
+    db.commit()
+    return {"activo": False}
 
 
 # --- Resumen / estadísticas ----------------------------------------------------------

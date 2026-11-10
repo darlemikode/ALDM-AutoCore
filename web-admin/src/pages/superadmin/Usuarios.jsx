@@ -1,18 +1,20 @@
-import { contiene, norm } from "../../lib/texto";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import FormModal from "../../components/FormModal";
 import { Cargando, useCargar } from "./comun";
 
-const NUEVO = { es_superadmin: false };
+const NUEVO = {};
 
 export default function Usuarios() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [nuevo, setNuevo] = useState(false);
   const [taller, setTaller] = useState(""); // "" = todos · "sin" = sin taller · id del taller
-  const { datos, error } = useCargar(() => api.get("/superadmin/usuarios"));
+  // Correos y teléfonos llegan enmascarados: la búsqueda se hace en el servidor
+  const [qd, setQd] = useState("");
+  useEffect(() => { const t = setTimeout(() => setQd(q.trim()), 350); return () => clearTimeout(t); }, [q]);
+  const { datos, error } = useCargar(() => api.get(`/superadmin/usuarios${qd ? `?q=${encodeURIComponent(qd)}` : ""}`), [qd]);
   const talleres = useMemo(() => {
     const m = new Map();
     (datos || []).forEach((u) => u.membresias.forEach((x) => m.set(String(x.id_taller), x.taller?.nombre_comercial || `Taller ${x.id_taller}`)));
@@ -21,14 +23,13 @@ export default function Usuarios() {
   const lista = useMemo(() => (datos || []).filter((u) => {
     if (taller === "sin" && u.membresias.length > 0) return false;
     if (taller && taller !== "sin" && !u.membresias.some((m) => String(m.id_taller) === taller)) return false;
-    const nombresTaller = u.membresias.map((m) => m.taller?.nombre_comercial || "").join(" ");
-    return !q || contiene(`${u.username} ${u.nombre_completo} ${u.correo || ""} ${nombresTaller}`, q);
-  }), [datos, q, taller]);
+    return true;
+  }), [datos, taller]);
 
   async function crear(v) {
     const u = await api.post("/superadmin/usuarios", {
       username: v.username, password: v.password, nombre_completo: v.nombre_completo,
-      telefono: v.telefono || null, correo: v.correo || null, es_superadmin: !!v.es_superadmin, membresias: [],
+      telefono: v.telefono || null, correo: v.correo || null, es_superadmin: false, membresias: [],
     });
     navigate(`/superadmin/usuarios/${u.id_usuario}`);
   }
@@ -46,7 +47,7 @@ export default function Usuarios() {
       </div>
       {!datos ? <Cargando error={error} /> : (
         <>
-        <div className="sa-conteo">{lista.length} de {datos.length} usuario(s)</div>
+        <div className="sa-conteo">{lista.length} usuario(s)</div>
         <div className="sa-tabla">
           <table>
             <thead><tr><th>Usuario</th><th>Talleres</th><th></th></tr></thead>
@@ -79,7 +80,6 @@ export default function Usuarios() {
             { name: "password", label: "Contraseña", type: "password", required: true, hint: "Mínimo 6 caracteres" },
             { name: "telefono", label: "Teléfono" },
             { name: "correo", label: "Correo", type: "email" },
-            { name: "es_superadmin", label: "Súper administrador de ALDM", type: "checkbox" },
           ]}
           onSubmit={crear}
           onClose={() => setNuevo(false)}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, RefreshControl, ScrollView } from "react-native";
 import { Ionicons } from "../ui/IconoWeb";
 import { api } from "../api";
@@ -11,7 +11,10 @@ export default function UsuariosScreen({ navigation }) {
   const [q, setQ] = useState("");
   const [nuevo, setNuevo] = useState(false);
   const [taller, setTaller] = useState(""); // "" = todos · "sin" = sin taller · id del taller
-  const { datos, recargar, refrescando } = useCargar(() => api.get("/superadmin/usuarios"));
+  // Correos y teléfonos llegan enmascarados: la búsqueda se hace en el servidor
+  const [qd, setQd] = useState("");
+  useEffect(() => { const t = setTimeout(() => setQd(q.trim()), 350); return () => clearTimeout(t); }, [q]);
+  const { datos, recargar, refrescando } = useCargar(() => api.get(`/superadmin/usuarios${qd ? `?q=${encodeURIComponent(qd)}` : ""}`), [qd]);
   const talleres = useMemo(() => {
     const m = new Map();
     (datos || []).forEach((u) => u.membresias.forEach((x) => m.set(String(x.id_taller), x.taller?.nombre_comercial || `Taller ${x.id_taller}`)));
@@ -20,15 +23,14 @@ export default function UsuariosScreen({ navigation }) {
   const lista = useMemo(() => (datos || []).filter((u) => {
     if (taller === "sin" && u.membresias.length > 0) return false;
     if (taller && taller !== "sin" && !u.membresias.some((m) => String(m.id_taller) === taller)) return false;
-    const texto = `${u.username} ${u.nombre_completo} ${u.correo || ""} ${u.membresias.map((m) => m.taller?.nombre_comercial || "").join(" ")}`.toLowerCase();
-    return !q || texto.includes(q.toLowerCase());
-  }), [datos, q, taller]);
+    return true;
+  }), [datos, taller]);
   const opciones = [["", "Todos"], ...talleres, ["sin", "Sin taller"]];
 
   async function crear(v) {
     const u = await api.post("/superadmin/usuarios", {
       username: v.username, password: v.password, nombre_completo: v.nombre_completo,
-      telefono: v.telefono || null, correo: v.correo || null, es_superadmin: !!v.es_superadmin, membresias: [],
+      telefono: v.telefono || null, correo: v.correo || null, es_superadmin: false, membresias: [],
     });
     setNuevo(false);
     navigation.navigate("UsuarioDetalle", { id: u.id_usuario });
@@ -74,14 +76,13 @@ export default function UsuariosScreen({ navigation }) {
         titulo="Nuevo usuario"
         subtitulo="Después le asignas a qué talleres puede entrar."
         icono="person-add-outline"
-        valoresIniciales={{ es_superadmin: false }}
+        valoresIniciales={{}}
         campos={[
           { name: "nombre_completo", label: "Nombre completo", required: true },
           { name: "username", label: "Usuario", required: true, autoCapitalize: "none" },
           { name: "password", label: "Contraseña", required: true, hint: "Mínimo 6 caracteres" },
           { name: "telefono", label: "Teléfono", type: "phone", mitad: true },
           { name: "correo", label: "Correo", type: "email", mitad: true },
-          { name: "es_superadmin", label: "Súper administrador de ALDM", type: "checkbox", hint: "Puede entrar a esta app" },
         ]}
         onGuardar={crear}
         onCerrar={() => setNuevo(false)}
