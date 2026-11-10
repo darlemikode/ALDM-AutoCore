@@ -15,6 +15,8 @@ export default function LoginScreen() {
   const [verServidor, setVerServidor] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const [pide2fa, setPide2fa] = useState(false);
+  const [codigo, setCodigo] = useState("");
 
   async function entrar() {
     setError("");
@@ -22,8 +24,9 @@ export default function LoginScreen() {
     setCargando(true);
     try {
       await guardarServidor(servidor);
-      await login(usuario.trim(), password);
+      await login(usuario.trim(), password, pide2fa ? codigo.trim() : undefined);
     } catch (err) {
+      if (err.requiere2fa) setPide2fa(true);
       setError(err.message);
     } finally {
       setCargando(false);
@@ -48,6 +51,16 @@ export default function LoginScreen() {
             <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry={!ver} onSubmitEditing={entrar} returnKeyType="go" placeholderTextColor={colors.ink500} placeholder="••••••" />
             <TouchableOpacity onPress={() => setVer((x) => !x)} hitSlop={10}><Ionicons name={ver ? "eye-off-outline" : "eye-outline"} size={18} color={colors.ink500} /></TouchableOpacity>
           </View>
+
+          {pide2fa ? (
+            <>
+              <Text style={styles.label}>Código de verificación</Text>
+              <View style={styles.campo}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={colors.ink500} />
+                <TextInput style={styles.input} value={codigo} onChangeText={(x) => setCodigo(x.replace(/[^0-9 ]/g, ""))} keyboardType="number-pad" maxLength={7} autoFocus textContentType="oneTimeCode" onSubmitEditing={entrar} returnKeyType="go" placeholderTextColor={colors.ink500} placeholder="000000" />
+              </View>
+            </>
+          ) : null}
 
           {verServidor ? (
             <>

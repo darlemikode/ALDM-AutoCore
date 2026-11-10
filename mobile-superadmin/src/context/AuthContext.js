@@ -86,8 +86,8 @@ export function AuthProvider({ children }) {
     );
   }
 
-  async function login(username, password) {
-    await apiLogin(username, password);
+  async function login(username, password, codigo2fa) {
+    await apiLogin(username, password, codigo2fa);
     setUsuario(await api.get("/auth/me"));
     setLockedByBiometrics(false);
     registrarPush();

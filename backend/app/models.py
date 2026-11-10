@@ -99,6 +99,10 @@ class Usuario(Base):
     tutoriales_vistos = Column(String(500), nullable=True)
     # Sube cada vez que cambia la contraseña: los tokens con otra versión dejan de servir
     version_token = Column(Integer, nullable=True, default=0)
+    # Verificación en dos pasos (TOTP) — por ahora solo para súper administradores
+    totp_secreto = Column(TextoCifrado(300), nullable=True)
+    totp_activo = Column(Boolean, default=False)
+    totp_ultimo_paso = Column(Integer, nullable=True)  # evita reusar un código
 
     membresias = relationship("UsuarioTaller", back_populates="usuario", cascade="all, delete-orphan")
     solicitudes_recuperacion = relationship("SolicitudRecuperacion", back_populates="usuario")
@@ -121,7 +125,31 @@ class Usuario(Base):
         for m in self.membresias:
             if m.id_taller == tid:
                 return m
+        if self.es_superadmin and self.activo is not False:
+            return self._membresia_superadmin(tid)
         return None
+
+    def _membresia_superadmin(self, tid):
+        """El único súper administrador entra a CUALQUIER taller como
+        Administrador General, sin que exista una membresía guardada: así no
+        aparece en la lista de usuarios del taller ni el taller puede quitarle
+        el acceso."""
+        cache = self.__dict__.setdefault("_mv_superadmin", {})
+        if tid in cache:
+            return cache[tid]
+        sesion = object_session(self)
+        if sesion is None:
+            return None
+        taller = sesion.get(Taller, tid)
+        rol = (
+            sesion.query(Rol).execution_options(sin_filtro_taller=True)
+            .filter(Rol.id_taller == tid, Rol.nombre == "Administrador General").first()
+        ) if taller else None
+        if not taller or not rol:
+            return None
+        m = MembresiaSuperadmin(tid, rol, taller)
+        cache[tid] = m
+        return m
 
     @property
     def rol(self):
@@ -1537,7 +1565,46 @@ class BitacoraAuditoria(TenantMixin, Base):
     alerta = Column(String(300), nullable=True)
 
 
+class MembresiaSuperadmin:
+    """Acceso virtual (no se guarda) del súper administrador a un taller."""
+    activo = True
+
+    def __init__(self, id_taller, rol, taller):
+        self.id_taller = id_taller
+        self.id_rol = rol.id_rol
+        self.rol = rol
+        self.taller = taller
+        self.notificaciones_vistas_hasta = None
+
+
+class AccesoSuperadmin(Base):
+    """Bitácora de accesos del súper administrador: quién consultó o cambió qué
+    (talleres, usuarios, cobranza). Global (no pertenece a un taller), solo se
+    agrega y no guarda contenido, únicamente la ruta consultada."""
+    __tablename__ = "accesos_superadmin"
+
+    id_acceso = Column(Integer, primary_key=True, index=True)
+    fecha = Column(DateTime, default=datetime.utcnow, index=True)
+    usuario = Column(String(50), nullable=True, index=True)
+    ip = Column(String(60), nullable=True)
+    metodo = Column(String(8), nullable=False)
+    ruta = Column(String(150), nullable=False)
+    accion = Column(String(20), nullable=False)       # consulta | alta | cambio | baja
+    id_taller = Column(Integer, nullable=True, index=True)
+    id_usuario_objetivo = Column(Integer, nullable=True, index=True)
+
+
 from sqlalchemy import event as _sa_event
+
+
+@_sa_event.listens_for(AccesoSuperadmin, "before_update")
+def _acceso_no_se_edita(mapper, connection, target):
+    raise ValueError("La bitácora de accesos no se puede modificar.")
+
+
+@_sa_event.listens_for(AccesoSuperadmin, "before_delete")
+def _acceso_no_se_borra(mapper, connection, target):
+    raise ValueError("La bitácora de accesos no se puede borrar.")
 
 
 @_sa_event.listens_for(BitacoraAuditoria, "before_update")

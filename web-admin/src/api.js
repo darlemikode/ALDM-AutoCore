@@ -90,11 +90,11 @@ export const api = {
   del: (path) => escribir(path, { method: "DELETE" }),
 };
 
-export async function login(username, password) {
+export async function login(username, password, codigo2fa) {
   const form = new URLSearchParams();
   form.set("username", username);
   form.set("password", password);
-  const res = await fetch("/api/auth/login", { method: "POST", body: form });
+  const res = await fetch("/api/auth/login", { method: "POST", body: form, headers: codigo2fa ? { "X-Codigo-2FA": codigo2fa } : undefined });
   let data = null;
   try {
     data = await res.json();
@@ -102,7 +102,9 @@ export async function login(username, password) {
     // sin cuerpo de respuesta (ej. el servidor se reinició a medio camino)
   }
   if (!res.ok || !data?.access_token) {
-    throw new Error(data?.detail || "No se pudo iniciar sesión. Intenta de nuevo.");
+    const err = new Error(data?.detail || "No se pudo iniciar sesión. Intenta de nuevo.");
+    if (res.status === 428) err.requiere2fa = true; // súper admin con verificación en dos pasos
+    throw err;
   }
   setToken(data.access_token);
   return data;

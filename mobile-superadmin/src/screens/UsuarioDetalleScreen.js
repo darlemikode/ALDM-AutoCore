@@ -17,8 +17,7 @@ export default function UsuarioDetalleScreen({ route, navigation }) {
   const [hoja, setHoja] = useState(null); // "datos" | "password" | "taller" | {rolDe: membresia}
   const [rolesPorTaller, setRolesPorTaller] = useState({});
   const { datos, setDatos, recargar, refrescando } = useCargar(async () => {
-    const [u, talleres] = await Promise.all([api.get("/superadmin/usuarios").then((l) => l.find((x) => x.id_usuario === id)), api.get("/superadmin/talleres")]);
-    if (!u) throw new Error("Usuario no encontrado");
+    const [u, talleres] = await Promise.all([api.get(`/superadmin/usuarios/${id}`), api.get("/superadmin/talleres")]);
     navigation.setOptions({ title: u.username });
     return { u, talleres };
   }, [id]);
@@ -72,10 +71,6 @@ export default function UsuarioDetalleScreen({ route, navigation }) {
         <View style={styles.switchFila}>
           <Text style={styles.switchTexto}>Cuenta activa</Text>
           <Switch value={u.activo} disabled={soyYo} onValueChange={(v) => actualizar({ activo: v }).catch((e) => alerta("No se pudo", e.message))} trackColor={{ true: colors.petrol500 }} />
-        </View>
-        <View style={styles.switchFila}>
-          <Text style={styles.switchTexto}>Súper administrador (entra a esta app)</Text>
-          <Switch value={u.es_superadmin} disabled={soyYo} onValueChange={(v) => actualizar({ es_superadmin: v }).catch((e) => alerta("No se pudo", e.message))} trackColor={{ true: colors.petrol500 }} />
         </View>
         <View style={styles.acciones}>
           <Boton texto="Editar datos" icono="create-outline" tipo="secundario" onPress={() => setHoja("datos")} style={{ flex: 1 }} />

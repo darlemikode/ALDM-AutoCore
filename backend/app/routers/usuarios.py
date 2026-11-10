@@ -4,6 +4,7 @@ determina exactamente qué puede ver y hacer. Solo quien tiene el permiso
 "usuarios.*" administra esto — por defecto, solo el Administrador General.
 """
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 
@@ -27,7 +28,8 @@ def _con_rol(db: Session):
 
 def usuarios_del_taller(db: Session):
     """Usuarios con membresía (de cualquier estado) en el taller activo de la sesión."""
-    query = _con_rol(db)
+    # El súper administrador no es un usuario del taller: no se ve, ni se edita, ni se elimina desde aquí
+    query = _con_rol(db).filter(or_(models.Usuario.es_superadmin == False, models.Usuario.es_superadmin.is_(None)))  # noqa: E712
     id_taller = taller_actual(db)
     if id_taller is not None:
         query = query.join(
