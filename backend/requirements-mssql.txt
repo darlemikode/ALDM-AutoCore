@@ -8,4 +8,4 @@
 # instalado; si no, descárgalo gratis de:
 # https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server)
 #
-pyodbc==5.1.0
+pyodbc==5.3.0
