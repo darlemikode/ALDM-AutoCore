@@ -1113,6 +1113,9 @@ class ConfiguracionTaller(TenantMixin, Base):
     # Horario distinto para ciertos días (JSON): {"6": {"ap": "09:00", "ci": "14:00"}}; los días que no aparezcan usan el general
     horarios_dia = Column(Text, nullable=True)
     dias_atencion = Column(String(20), nullable=True)  # días ISO separados por coma: "1,2,3,4,5,6" (1=lunes … 7=domingo)
+    # Nota simple: finalizar en 1 clic (cobro exacto), nota sin estatus de pago ni «Servicios» en el resumen y
+    # total con letra al final; la nota de remisión se puede imprimir antes de cerrar la orden.
+    nota_simple = Column(Boolean, default=False)
 
     estado = relationship("Estado", foreign_keys=[id_estado])
     ciudad = relationship("Ciudad", foreign_keys=[id_ciudad])

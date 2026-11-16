@@ -458,11 +458,11 @@ def tabla_lineas(detalles, nombre_principal, nombre_sub=None):
     return t
 
 
-def resumen_por_tipo(detalles, aviso: str | None = None):
+def resumen_por_tipo(detalles, aviso: str | None = None, sin_servicios: bool = False):
     servicios = sum((d.costo_mano_obra or 0) for d in detalles)
     refacciones = sum((d.costo_refaccion or 0) for d in detalles)
     extras = sum((d.costo_extra or 0) for d in detalles)
-    partes = [f"Servicios {fmt(servicios)}", f"Refacciones {fmt(refacciones)}"]
+    partes = ([] if sin_servicios else [f"Servicios {fmt(servicios)}"]) + [f"Refacciones {fmt(refacciones)}"]
     if extras:
         partes.append(f"Extras {fmt(extras)}")
     bloque = [
@@ -596,6 +596,11 @@ def generar_recibo(servicio, costos, taller=None, inspeccion=None) -> bytes:
 def generar_nota_remision(servicio, costos, taller=None, inspeccion=None) -> bytes:
     from .recibo_pdf import nombre_refaccion
 
+    # «Nota simple»: diseño elegante, sin estatus de pago (ver nota_elegante.py)
+    if getattr(taller, "nota_simple", False):
+        from .nota_elegante import generar_nota_elegante
+        return generar_nota_elegante(servicio, costos, taller)
+
     buffer = BytesIO()
     entrega = f"{(fecha_mx(servicio.fecha_salida_servicio) or hoy_mx()):%d/%m/%Y}"
     liquidado = costos.saldo_pendiente <= 0
@@ -618,16 +623,25 @@ def generar_nota_remision(servicio, costos, taller=None, inspeccion=None) -> byt
     story.append(tabla_lineas(servicio.detalles, lambda d: _nombre_detalle(d, nombre_refaccion),
                               lambda d: (f"Refacción: {nombre_refaccion(d)}" if nombre_refaccion(d) and nombre_refaccion(d) != d.descripcion and d.descripcion else None)))
     story.append(Spacer(1, 6 * mm))
-    izquierda = resumen_por_tipo(servicio.detalles)
+    simple = bool(getattr(taller, "nota_simple", False))
+    izquierda = resumen_por_tipo(servicio.detalles, sin_servicios=simple)
     if servicio.km_proximo_servicio:
         izquierda += [Spacer(1, 3 * mm), Paragraph(f"Próximo servicio recomendado a los {esc(servicio.km_proximo_servicio)} km.",
                                                    ParagraphStyle("n_prox", parent=_TXT, fontSize=7.8, leading=10.5, textColor=OK, fontName="Helvetica-Bold"))]
-    derecha = totales_lateral(
-        [("Total del servicio", fmt(costos.total)), ("Pagado", fmt(costos.total_abonado)), ("Liquidado" if liquidado else "Saldo restante", fmt(costos.saldo_pendiente))],
-        62 * mm, final_idx=0, saldo_idx=2,
-        saldo_color=OK if liquidado else ACCENT, saldo_fondo=OK_SOFT if liquidado else ACCENT_SOFT,
-    )
+    if simple:
+        # Sin estatus de pago ni saldo: solo el total, con número y letra al final
+        from .factura_pdf import importe_con_letra
+        derecha = totales_lateral([("Total del servicio", fmt(costos.total))], 62 * mm, final_idx=0)
+    else:
+        derecha = totales_lateral(
+            [("Total del servicio", fmt(costos.total)), ("Pagado", fmt(costos.total_abonado)), ("Liquidado" if liquidado else "Saldo restante", fmt(costos.saldo_pendiente))],
+            62 * mm, final_idx=0, saldo_idx=2,
+            saldo_color=OK if liquidado else ACCENT, saldo_fondo=OK_SOFT if liquidado else ACCENT_SOFT,
+        )
     story.append(fila_resumen_totales(izquierda, derecha))
+    if simple:
+        story += [Spacer(1, 2 * mm), Paragraph(f"<b>Total: {fmt(costos.total)}</b> &nbsp;·&nbsp; ({esc(importe_con_letra(costos.total))})",
+                                               ParagraphStyle("n_letra", parent=_TXT, alignment=TA_RIGHT, fontSize=8.4, leading=11))]
     if servicio.comentarios_finales:
         story += [Spacer(1, 6 * mm), motivo("Comentarios", servicio.comentarios_finales)]
     story.append(KeepTogether([

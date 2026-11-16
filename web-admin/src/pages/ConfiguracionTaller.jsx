@@ -69,6 +69,7 @@ export default function ConfiguracionTaller() {
       numero_taller: d.numero_taller, id_estado: d.id_estado || null, id_ciudad: d.id_ciudad || null,
       codigo_taller: d.codigo_taller || null,
       hora_apertura: d.hora_apertura || null, hora_cierre: d.hora_cierre || null, dias_atencion: d.dias_atencion || null, horarios_dia: d.horarios_dia || null,
+      nota_simple: !!d.nota_simple,
     };
   }
 
@@ -296,6 +297,15 @@ export default function ConfiguracionTaller() {
               <select value={data.hora_cierre || "18:00"} onChange={(e) => setData({ ...data, hora_cierre: e.target.value })}>
                 {OPCIONES_HORA.filter((o) => o.v > (data.hora_apertura || "08:00")).map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
               </select>
+            </div>
+          </div>
+          <div className="field" style={{ marginTop: 12 }}>
+            <label className="no-preguntar" style={{ marginTop: 0, fontWeight: 600 }}>
+              <input type="checkbox" checked={!!data.nota_simple} onChange={(e) => setData({ ...data, nota_simple: e.target.checked })} />
+              Nota simple (finalizar en 1 clic)
+            </label>
+            <div className="ayuda" style={{ fontSize: 12, color: "var(--ink-500)" }}>
+              Finalizar cierra la orden con cobro exacto en efectivo, sin capturar pago. La nota no muestra liquidado ni saldo, solo el total con número y letra, y se puede imprimir antes de cerrar la orden.
             </div>
           </div>
           <div className="field" style={{ marginTop: 12 }}>

@@ -689,10 +689,11 @@ def descargar_nota_remision(servicio_id: int, formato: str = Query("carta", patt
     from ..nota_remision_pdf import generar_nota_remision_pdf
 
     servicio = _get_servicio_o_404(db, servicio_id)
-    if servicio.status != "cerrado":
+    taller = db.query(models.ConfiguracionTaller).first()
+    # Con «nota simple» se puede imprimir antes de cerrar (el taller cobra sin volver al sistema)
+    if servicio.status != "cerrado" and not (taller and getattr(taller, "nota_simple", False)):
         raise HTTPException(status_code=400, detail="La nota de remisión solo se genera cuando la orden ya está cerrada (entregada).")
     costos = _calcular_costos(servicio)
-    taller = db.query(models.ConfiguracionTaller).first()
     from ..inspeccion_pdf import inspeccion_de_servicio
     if formato == "ticket":
         from ..ticket_pdf import generar_ticket
@@ -742,7 +743,7 @@ async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn
             if recibido > saldo + 0.005:
                 raise HTTPException(status_code=400, detail="El cargo a tarjeta no puede ser mayor al saldo pendiente.")
         else:
-            recibido = round(payload.monto_recibido or 0, 2)
+            recibido = round(saldo if payload.rapido else (payload.monto_recibido or 0), 2)
         if recibido + 0.005 < saldo:
             raise HTTPException(
                 status_code=400,

@@ -822,6 +822,22 @@ export default function ServicioDetalle() {
     }
   }
 
+  // Nota simple: cierra la orden en 1 clic (cobro exacto, sin capturar pago) y abre la nota
+  async function finalizarRapido() {
+    setCerrando(true);
+    try {
+      const res = await api.post(`/servicios/${id}/finalizar`, { rapido: true, notificar_cliente: true });
+      notify("Orden finalizada.", "success");
+      await load();
+      descargarPdf("remision", "preview");
+      return res;
+    } catch (err) {
+      notify(err.message, "error");
+    } finally {
+      setCerrando(false);
+    }
+  }
+
   async function confirmarCierre() {
     if (textoConfirmar !== "CONFIRMAR") {
       marcarCampo(document.querySelector(".modal-backdrop:last-of-type .modal input"), "Escribe CONFIRMAR, en mayúsculas");
@@ -1507,6 +1523,14 @@ export default function ServicioDetalle() {
                 // Cobrar solo se activa si queda saldo; ya pagada, lo que falta es cerrarla
                 const haySaldo = servicio.costos.saldo_pendiente > 0;
                 const abrir = () => { if (bloquearPorRefaccionSinPrecio()) return; setModalCierre(true); };
+                if (datosTaller?.nota_simple) {
+                  return servicio.costos.total > 0 ? (
+                    <button className="btn btn-cobrar" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; finalizarRapido(); }} disabled={cerrando}
+                      title="Cierra la orden y genera la nota en un solo paso, sin capturar el pago">
+                      <IconoAuto valor="✅" size={20} /> {cerrando ? "Finalizando…" : "Finalizar orden"}
+                    </button>
+                  ) : null;
+                }
                 return haySaldo ? (
                   <button className="btn btn-cobrar" onClick={abrir}
                     title="Cobrar el saldo, cerrar la orden, generar la nota y avisar al cliente">
@@ -1526,12 +1550,12 @@ export default function ServicioDetalle() {
                 );
               })()}
               {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
-                <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo"); }} disabled={descargando} title="Imprimir la nota ahora">
+                <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" || datosTaller?.nota_simple ? "remision" : "recibo"); }} disabled={descargando} title="Imprimir la nota ahora">
                   <IconoAuto valor="🖨️" size={18} /> Imprimir nota
                 </button>
               )}
               {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
-                <button className="btn btn-secondary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" ? "remision" : "recibo", "ticket"); }} disabled={descargando} title="Imprimir la nota en formato ticket (impresora térmica de 80 mm)">
+                <button className="btn btn-secondary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" || datosTaller?.nota_simple ? "remision" : "recibo", "ticket"); }} disabled={descargando} title="Imprimir la nota en formato ticket (impresora térmica de 80 mm)">
                   <IconoAuto valor="🧾" size={18} /> Imprimir ticket
                 </button>
               )}
