@@ -776,7 +776,7 @@ export default function ServicioDetalle() {
       notify("El cliente no tiene un teléfono de 10 dígitos registrado. Corrígelo en su ficha para poder enviar el mensaje.", "error");
       return;
     }
-    const tipo = servicio.status === "cerrado" ? "remision" : "recibo";
+    const tipo = "remision";
     const taller = datosTaller?.nombre_taller;
     const nombre = servicio.cliente?.nombre_cliente || "";
     const texto = (servicio.status === "cerrado"
@@ -961,12 +961,12 @@ export default function ServicioDetalle() {
               </span>
             )}
             <span className="tip-envoltura" title={servicio.detalles.length > 0 ? "Vista previa de la nota (incluye la inspección, si ya se hizo)" : "La vista previa se activa cuando ya se agregó al menos una refacción"}>
-              <button className="icon-btn" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; descargarPdf("recibo", "preview"); }} disabled={descargando || servicio.detalles.length === 0}><IconoAuto valor="🔍" size={18} /></button>
+              <button className="icon-btn" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; descargarPdf("remision", "preview"); }} disabled={descargando || servicio.detalles.length === 0}><IconoAuto valor="🔍" size={18} /></button>
             </span>
             {servicio.status === "cerrado" && (
-            <span className="tip-envoltura" title="Descargar el recibo en PDF">
-              <button className="btn btn-secondary" onClick={() => descargarPdf("recibo")} disabled={descargando}>
-                <IconoAuto valor="🖨️" size={18} /> {descargando ? "Generando…" : "Descargar recibo"}
+            <span className="tip-envoltura" title="Descargar la nota de remisión en PDF">
+              <button className="btn btn-secondary" onClick={() => descargarPdf("remision")} disabled={descargando}>
+                <IconoAuto valor="🖨️" size={18} /> {descargando ? "Generando…" : "Descargar nota"}
               </button>
             </span>
             )}
@@ -1550,12 +1550,12 @@ export default function ServicioDetalle() {
                 );
               })()}
               {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
-                <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" || datosTaller?.nota_simple ? "remision" : "recibo"); }} disabled={descargando} title="Imprimir la nota ahora">
+                <button className="btn btn-primary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota("remision"); }} disabled={descargando} title="Imprimir la nota ahora">
                   <IconoAuto valor="🖨️" size={18} /> Imprimir nota
                 </button>
               )}
               {servicio.detalles.length > 0 && hasPermission("servicios.ver_precios") && (
-                <button className="btn btn-secondary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota(servicio.status === "cerrado" || datosTaller?.nota_simple ? "remision" : "recibo", "ticket"); }} disabled={descargando} title="Imprimir la nota en formato ticket (impresora térmica de 80 mm)">
+                <button className="btn btn-secondary" onClick={() => { if (bloquearPorRefaccionSinPrecio()) return; imprimirNota("remision", "ticket"); }} disabled={descargando} title="Imprimir la nota en formato ticket (impresora térmica de 80 mm)">
                   <IconoAuto valor="🧾" size={18} /> Imprimir ticket
                 </button>
               )}

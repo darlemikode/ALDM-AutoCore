@@ -662,6 +662,8 @@ def _url_nota(tipo: str, servicio, costos):
 
 @router.get("/{servicio_id}/recibo")
 def descargar_recibo(servicio_id: int, formato: str = Query("carta", pattern="^(carta|ticket)$"), db: Session = Depends(get_db), user=Depends(require_permission("servicios.ver_precios"))):
+    # Ya no hay «recibo»: toda nota es «Nota de remisión»
+    return descargar_nota_remision(servicio_id, formato, db, user)
     from ..recibo_pdf import generar_recibo_pdf  # import diferido: evita cargar reportlab si no se usa
 
     servicio = _get_servicio_o_404(db, servicio_id)
@@ -690,9 +692,7 @@ def descargar_nota_remision(servicio_id: int, formato: str = Query("carta", patt
 
     servicio = _get_servicio_o_404(db, servicio_id)
     taller = db.query(models.ConfiguracionTaller).first()
-    # Con «nota simple» se puede imprimir antes de cerrar (el taller cobra sin volver al sistema)
-    if servicio.status != "cerrado" and not (taller and getattr(taller, "nota_simple", False)):
-        raise HTTPException(status_code=400, detail="La nota de remisión solo se genera cuando la orden ya está cerrada (entregada).")
+    # Toda nota se llama «Nota de remisión» y se puede imprimir con la orden abierta o cerrada
     costos = _calcular_costos(servicio)
     from ..inspeccion_pdf import inspeccion_de_servicio
     if formato == "ticket":

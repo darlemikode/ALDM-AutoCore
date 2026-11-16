@@ -547,12 +547,12 @@ def generar_recibo(servicio, costos, taller=None, inspeccion=None) -> bytes:
     km = servicio.km_llegada
     vehiculo, placas = datos_vehiculo(servicio.vehiculo, km=km, extra_km=(f"Próximo servicio: {servicio.km_proximo_servicio} km" if servicio.km_proximo_servicio else None))
     plantilla = PlantillaLateral(
-        taller, "Recibo", "Orden de servicio", f"#{servicio.id_servicio:05d}",
+        taller, "Nota de remisión", "Orden de servicio", f"#{servicio.id_servicio:05d}",
         [f"Entrada {fecha_mx(servicio.fecha_entrada_servicio):%d/%m/%Y}",
          # Si aún no se captura la salida, se toma el día en que se genera la nota
          f"Salida {(fecha_mx(servicio.fecha_salida_servicio) or hoy_mx()):%d/%m/%Y}",
          f"Estado: {(servicio.status or '').capitalize()}"],
-        cliente, vehiculo, placas, TERMINOS_RECIBO, "Recibo",
+        cliente, vehiculo, placas, TERMINOS_RECIBO, "Nota de remisión",
     )
     doc = plantilla.documento(buffer)
     story = []
