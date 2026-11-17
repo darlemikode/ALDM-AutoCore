@@ -84,12 +84,18 @@ function Boton({ texto, onPress, cargando, deshabilitado }) {
 
 function Campo({ etiqueta, icono, derecha, ...props }) {
   const [enfocado, setEnfocado] = useState(false);
+  const ref = useRef(null);
+  const enfocar = () => ref.current?.focus();
+  // Tocar la etiqueta, el ícono o cualquier parte de la caja enfoca el campo (no solo la línea de texto).
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{etiqueta}</Text>
-      <View style={[styles.campo, enfocado && styles.campoEnfocado]}>
+      <TouchableOpacity activeOpacity={1} onPress={enfocar}>
+        <Text style={styles.label}>{etiqueta}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity activeOpacity={1} onPress={enfocar} style={[styles.campo, enfocado && styles.campoEnfocado]}>
         <Ionicons name={icono} size={18} color={enfocado ? C.rojoClaro : C.tenue} />
         <TextInput
+          ref={ref}
           style={styles.input}
           placeholderTextColor="rgba(245,245,247,0.35)"
           selectionColor={C.rojoClaro}
@@ -99,7 +105,7 @@ function Campo({ etiqueta, icono, derecha, ...props }) {
           {...props}
         />
         {derecha}
-      </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -191,7 +197,7 @@ export default function LoginScreen() {
   const E = (children, extra) => <Entra key={`${modo}-${n}`} i={n++} style={extra}>{children}</Entra>;
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <Fondo />
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 28 }]}

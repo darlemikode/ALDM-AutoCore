@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold } from "@expo-google-fonts/inter";
 import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold } from "@expo-google-fonts/barlow-condensed";
 import { View, ActivityIndicator } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { TemaProvider, useTema } from "./src/context/TemaContext";
 import LoginScreen from "./src/screens/LoginScreen";
@@ -79,12 +80,14 @@ export default function App() {
   if (!fontsCargadas) return <View style={{ flex: 1, backgroundColor: "#132a33" }} />;
 
   return (
-    <TemaProvider>
-      <AuthProvider>
-        <OffsetBarraProvider>
-          <Root />
-        </OffsetBarraProvider>
-      </AuthProvider>
-    </TemaProvider>
+    <SafeAreaProvider>
+      <TemaProvider>
+        <AuthProvider>
+          <OffsetBarraProvider>
+            <Root />
+          </OffsetBarraProvider>
+        </AuthProvider>
+      </TemaProvider>
+    </SafeAreaProvider>
   );
 }

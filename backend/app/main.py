@@ -84,6 +84,23 @@ async def limitar_tamano(request: Request, call_next):
 
 
 @app.middleware("http")
+async def medir_salud(request: Request, call_next):
+    """Anota estado y tiempo de cada petición de la API (en memoria) para /api/salud."""
+    import time
+    from . import salud
+    t0 = time.time()
+    try:
+        response = await call_next(request)
+    except Exception:
+        salud.registrar(500, (time.time() - t0) * 1000)
+        raise
+    ruta = request.url.path
+    if ruta.startswith("/api/") and ruta not in ("/api/salud", "/api/health"):
+        salud.registrar(response.status_code, (time.time() - t0) * 1000)
+    return response
+
+
+@app.middleware("http")
 async def cabeceras_seguridad(request: Request, call_next):
     """Cabeceras básicas de seguridad en todas las respuestas: no se puede
     meter el sistema dentro de otra página (clickjacking), el navegador no
@@ -208,6 +225,15 @@ async def iniciar_bus_ws():
 
 
 @app.on_event("startup")
+async def iniciar_vigilante_salud():
+    """Vigilante interno: avisa (WhatsApp por webhook + push al súper admin) si la API se degrada."""
+    if os.getenv("SALUD_KEY") or os.getenv("ALERTA_WEBHOOK_URL"):
+        import asyncio
+        from . import salud
+        asyncio.create_task(salud.vigilar())
+
+
+@app.on_event("startup")
 def on_startup():
     _esperar_base_de_datos()
     seed.run()
@@ -308,6 +334,17 @@ _repo_sitio = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__fil
 SITIO_DIR = next((d for d in (os.getenv("SITIO_DIR"), os.path.join(os.path.dirname(__file__), "sitio"), _repo_sitio) if d and os.path.isdir(d)), None)
 if SITIO_DIR:
     app.mount("/sitio", StaticFiles(directory=SITIO_DIR, html=True), name="sitio")
+
+
+@app.get("/api/salud")
+def salud_detallada(request: Request, bd: int = 1):
+    """Estado detallado para el panel de control y el vigilante externo. Requiere la
+    cabecera X-Salud-Key (variable SALUD_KEY); sin clave configurada el endpoint no existe.
+    ?bd=0 no toca la base (no despierta Azure SQL Serverless)."""
+    from . import salud
+    if not salud.clave_valida(request.headers.get("x-salud-key")):
+        raise HTTPException(status_code=404, detail="No encontrado")
+    return salud.estado(revisar_bd=bool(bd))
 
 
 @app.get("/api/health")

@@ -1202,6 +1202,7 @@ class ConfiguracionTallerIn(BaseModel):
     hora_apertura: Optional[str] = None
     hora_cierre: Optional[str] = None
     dias_atencion: Optional[str] = None
+    nota_simple: bool = False
     horarios_dia: Optional[str] = None
 
     @field_validator("horarios_dia")
@@ -1740,6 +1741,7 @@ class FinalizarServicioIn(BaseModel):
     desglose_mixto_tarjeta: Optional[float] = None
     comentarios_finales: Optional[str] = None
     notificar_cliente: bool = True
+    rapido: bool = False  # 1 clic: si hay saldo se registra cobro exacto en efectivo, sin capturar nada
 
 
 class FinalizarServicioOut(BaseModel):

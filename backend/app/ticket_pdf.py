@@ -321,7 +321,7 @@ def _construir(tipo, servicio, costos, taller, qr_url=None):
     s.append(_corte())
 
     # --- 3. Documento: tipo, folio, fecha y quién atendió
-    s.append(Paragraph("NOTA DE REMISIÓN" if remision else "RECIBO DE SERVICIO", c_doc))
+    s.append(Paragraph("NOTA DE REMISIÓN", c_doc))
     s.append(Paragraph(f"Folio: <b>{servicio.id_servicio:05d}</b>", c_txt))
     if servicio.es_garantia:
         extra = f" · {servicio.motivo_garantia}" if servicio.motivo_garantia else ""
