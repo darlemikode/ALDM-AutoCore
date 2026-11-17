@@ -617,8 +617,6 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     ]);
   }
 
-  // Manda la nota en PDF por WhatsApp: se genera el PDF y se abre el menú de compartir;
-  // al elegir WhatsApp aparece la vista previa del documento para agregar un comentario.
   // Genera (o reutiliza) el enlace público de seguimiento y abre WhatsApp con el mensaje listo.
   async function enviarSeguimientoWhatsApp() {
     if (enviandoSeg) return;
@@ -641,6 +639,8 @@ export default function ServicioDetalleScreen({ route, navigation }) {
     }
   }
 
+  // Manda la nota en PDF por WhatsApp: se genera el PDF y se abre el menú de compartir;
+  // al elegir WhatsApp aparece la vista previa del documento para agregar un comentario.
   async function enviarNotaWhatsApp() {
     const tipo = servicio.status === "cerrado" ? "remision" : "recibo";
     setDescargando("whatsapp");
@@ -1145,14 +1145,16 @@ export default function ServicioDetalleScreen({ route, navigation }) {
               <Text style={styles.cabLlamarTexto}>{cliente.telefono1}</Text>
             </TouchableOpacity>
           ) : null}
+          {/* WhatsApp: manda la nota en PDF (recibo o nota de remisión si la orden ya cerró) */}
+          <TouchableOpacity style={[styles.cabIconoBtn, { backgroundColor: "#25D366", borderColor: "#25D366", opacity: detalles.length === 0 ? 0.45 : 1 }]} disabled={detalles.length === 0 || !!descargando} onPress={enviarNotaWhatsApp} accessibilityLabel="Enviar nota en PDF por WhatsApp" hitSlop={6}>
+            {descargando === "whatsapp" ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="logo-whatsapp" size={18} color="#fff" />}
+          </TouchableOpacity>
+          {/* Enlace: manda por WhatsApp el link de seguimiento en tiempo real (solo mientras la orden está abierta) */}
           {puedeCompartirSeguimiento && (
-            <TouchableOpacity style={[styles.cabIconoBtn, { backgroundColor: "#25D366" }]} onPress={enviarSeguimientoWhatsApp} disabled={enviandoSeg} accessibilityLabel="Enviar seguimiento por WhatsApp" hitSlop={6}>
-              {enviandoSeg ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="logo-whatsapp" size={18} color="#fff" />}
+            <TouchableOpacity style={styles.cabIconoBtn} onPress={enviarSeguimientoWhatsApp} disabled={enviandoSeg} accessibilityLabel="Enviar enlace de seguimiento por WhatsApp" hitSlop={6}>
+              {enviandoSeg ? <ActivityIndicator size="small" color={colors.petrol600} /> : <Ionicons name="link-outline" size={18} color={colors.petrol600} />}
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.cabIconoBtn} disabled={detalles.length === 0 || !!descargando} onPress={() => descargarPdf(servicio.status === "cerrado" ? "remision" : "recibo")} accessibilityLabel="Vista previa de la nota" hitSlop={6}>
-            {descargando === "recibo" || descargando === "remision" ? <ActivityIndicator size="small" color={colors.petrol600} /> : <Ionicons name="eye-outline" size={18} color={detalles.length === 0 ? colors.ink300 : colors.petrol600} />}
-          </TouchableOpacity>
         </View>
 
         <View style={styles.pestanas}>
