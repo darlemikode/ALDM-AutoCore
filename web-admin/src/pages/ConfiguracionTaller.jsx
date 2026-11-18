@@ -305,7 +305,7 @@ export default function ConfiguracionTaller() {
               Nota simple (finalizar en 1 clic)
             </label>
             <div className="ayuda" style={{ fontSize: 12, color: "var(--ink-500)" }}>
-              Finalizar cierra la orden con cobro exacto en efectivo, sin capturar pago. La nota no muestra liquidado ni saldo, solo el total con número y letra, y se puede imprimir antes de cerrar la orden.
+              Finalizar cierra la orden en 1 clic con cobro exacto en efectivo, sin capturar el pago. La nota no muestra abonado ni saldo, solo subtotal, IVA y el total con número y letra.
             </div>
           </div>
           <div className="field" style={{ marginTop: 12 }}>

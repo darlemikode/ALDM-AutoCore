@@ -596,10 +596,9 @@ def generar_recibo(servicio, costos, taller=None, inspeccion=None) -> bytes:
 def generar_nota_remision(servicio, costos, taller=None, inspeccion=None) -> bytes:
     from .recibo_pdf import nombre_refaccion
 
-    # «Nota simple»: diseño elegante, sin estatus de pago (ver nota_elegante.py)
-    if getattr(taller, "nota_simple", False):
-        from .nota_elegante import generar_nota_elegante
-        return generar_nota_elegante(servicio, costos, taller)
+    # Diseño elegante para todos los talleres (ver nota_elegante.py); «Nota simple» solo oculta abonado y saldo
+    from .nota_elegante import generar_nota_elegante
+    return generar_nota_elegante(servicio, costos, taller, inspeccion)
 
     buffer = BytesIO()
     entrega = f"{(fecha_mx(servicio.fecha_salida_servicio) or hoy_mx()):%d/%m/%Y}"

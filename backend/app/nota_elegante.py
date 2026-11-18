@@ -250,16 +250,22 @@ def _tabla_items(servicio, nombre_det):
     return t
 
 
-def _bloque_pie(servicio, costos):
+def _bloque_pie(servicio, costos, simple=False):
     from .factura_pdf import importe_con_letra
     comentarios = (servicio.comentarios_finales or "").strip() or "Sin comentarios."
     w1 = w2 = ANCHO * 0.29
     w3 = ANCHO - w1 - w2
     com = [_Esp("COMENTARIOS", 6.2, MUTED, True, 2.6), Spacer(1, 2.4 * mm), Paragraph(esc(comentarios), P_COM)]
-    filas = [[Paragraph("Subtotal", _est("ne_d1", fontSize=8.4, textColor=MUTED)), Paragraph(f"<b>{fmt(costos.subtotal)}</b>", _est("ne_d2", fontSize=8.6, textColor=INK, alignment=TA_RIGHT))],
-             [Paragraph("IVA", _est("ne_d3", fontSize=8.4, textColor=MUTED)), Paragraph(f"<b>{fmt(costos.iva)}</b>", _est("ne_d4", fontSize=8.6, textColor=INK, alignment=TA_RIGHT))]]
-    det_t = Table(filas, colWidths=[(w2 - 20) * 0.45, (w2 - 20) * 0.55])
-    det_t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, 0), 0.4, LINEA), ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    # «Nota simple»: solo subtotal e IVA. Sin ella, también abonado y saldo / liquidado.
+    datos_det = [("Subtotal", fmt(costos.subtotal), INK), ("IVA", fmt(costos.iva), INK)]
+    if not simple:
+        liquidado = costos.saldo_pendiente <= 0
+        datos_det += [("(-) Abonado", fmt(costos.total_abonado), INK),
+                      ("Liquidado" if liquidado else "Saldo restante", fmt(costos.saldo_pendiente), INK if liquidado else ACCENT)]
+    filas = [[Paragraph(e, _est(f"ne_dl{i}", fontSize=8.4, textColor=MUTED if col == INK else col)),
+              Paragraph(f"<b>{v}</b>", _est(f"ne_dv{i}", fontSize=8.6, textColor=col, alignment=TA_RIGHT))] for i, (e, v, col) in enumerate(datos_det)]
+    det_t = Table(filas, colWidths=[(w2 - 20) * 0.5, (w2 - 20) * 0.5])
+    det_t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -2), 0.4, LINEA), ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
                                ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
     det = [_Esp("DETALLE", 6.2, MUTED, True, 2.6), Spacer(1, 2.4 * mm), det_t]
     tot = [_Esp("TOTAL", 6.2, MUTED, True, 3.6), Spacer(1, 1.2 * mm),
@@ -278,8 +284,12 @@ def _bloque_pie(servicio, costos):
     return cont
 
 
-def generar_nota_elegante(servicio, costos, taller=None) -> bytes:
-    from .pdf_nota import _nombre_detalle
+def generar_nota_elegante(servicio, costos, taller=None, inspeccion=None) -> bytes:
+    from types import SimpleNamespace
+
+    from reportlab.platypus import NextPageTemplate
+
+    from .pdf_nota import ALTO_COMPLETA, ANCHO_COMPLETA, MARGEN_COMPLETA, MARGEN_INF, PlantillaLateral, _nombre_detalle
     from .recibo_pdf import nombre_refaccion
 
     d = datos_taller(taller)
@@ -287,7 +297,14 @@ def generar_nota_elegante(servicio, costos, taller=None) -> bytes:
     buffer = BytesIO()
     doc = BaseDocTemplate(buffer, pagesize=letter, leftMargin=MARGEN, rightMargin=MARGEN, topMargin=12 * mm, bottomMargin=12 * mm,
                           title=f"Nota de remisión #{servicio.id_servicio:05d}")
-    doc.addPageTemplates([PageTemplate(id="n", frames=[Frame(MARGEN, 12 * mm, ANCHO, letter[1] - 24 * mm, leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)])])
+    simple = bool(getattr(taller, "nota_simple", False))
+    # Página extra de inspección (misma de siempre): reutiliza el encabezado/pie de PlantillaLateral
+    sombra = SimpleNamespace(t=d, nombre_doc="Nota de remisión", folio=f"#{servicio.id_servicio:05d}")
+    doc.addPageTemplates([
+        PageTemplate(id="n", frames=[Frame(MARGEN, 12 * mm, ANCHO, letter[1] - 24 * mm, leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)]),
+        PageTemplate(id="completa", frames=[Frame(MARGEN_COMPLETA, MARGEN_INF, ANCHO_COMPLETA, ALTO_COMPLETA, leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)],
+                     onPage=lambda c, dc: PlantillaLateral.pagina_completa(sombra, c, dc)),
+    ])
     story = []
 
     # Franja superior: nota · número · fecha de emisión
@@ -308,6 +325,10 @@ def generar_nota_elegante(servicio, costos, taller=None) -> bytes:
 
     story.append(_bloque_info(servicio))
     story += [Spacer(1, 7 * mm), _Seccion("REFACCIONES"), _tabla_items(servicio, lambda x: _nombre_detalle(x, nombre_refaccion)), Spacer(1, 6 * mm)]
-    story.append(_AlPie(_bloque_pie(servicio, costos)))
+    story.append(_AlPie(_bloque_pie(servicio, costos, simple)))
+    from .inspeccion_auto_pdf import hoja_inspeccion_auto
+    bloques = hoja_inspeccion_auto(inspeccion, ANCHO_COMPLETA, ALTO_COMPLETA - 2)
+    if bloques:
+        story += [NextPageTemplate("completa"), *bloques]
     doc.build(story)
     return buffer.getvalue()
