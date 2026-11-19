@@ -233,7 +233,7 @@ def _bloque_info(servicio):
             if ln:
                 cont.append(Paragraph(esc(ln), P_TXT))
         if placa:
-            pl = Table([[Paragraph(f"<b>{esc(placa)}</b>", _est("ne_pl", fontName="Helvetica-Bold", fontSize=9, leading=11, textColor=INK, alignment=TA_CENTER))]], colWidths=[30 * mm])
+            pl = Table([[Paragraph(f"<b>{esc(placa)}</b>", _est("ne_pl", fontName="Helvetica-Bold", fontSize=9, leading=11, textColor=INK, alignment=TA_CENTER))]], colWidths=[30 * mm], hAlign="CENTER")
             pl.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.7, INK), ("ROUNDEDCORNERS", [2, 2, 2, 2]), ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5)]))
             cont += [Spacer(1, 1.6 * mm), pl]
         return cont
@@ -283,9 +283,7 @@ def _bloque_pie(servicio, costos, simple=False):
     # Los abonos siempre se reflejan; «Nota simple» solo omite el saldo / liquidado
     if (costos.total_abonado or 0) > 0:
         datos_det.append(("(-) Abonos", fmt(costos.total_abonado), INK))
-    if not simple:
-        liquidado = costos.saldo_pendiente <= 0
-        datos_det.append(("Liquidado" if liquidado else "Saldo restante", fmt(costos.saldo_pendiente), INK if liquidado else ACCENT))
+    # La nota ya no muestra saldo restante ni «Liquidado» (el cobro se lleva en el sistema)
     filas = [[Paragraph(e, _est(f"ne_dl{i}", fontSize=8.4, textColor=MUTED if col == INK else col)),
               Paragraph(f"<b>{v}</b>", _est(f"ne_dv{i}", fontSize=8.6, textColor=col, alignment=TA_RIGHT))] for i, (e, v, col) in enumerate(datos_det)]
     det_t = Table(filas, colWidths=[(w2 - 20) * 0.5, (w2 - 20) * 0.5])
