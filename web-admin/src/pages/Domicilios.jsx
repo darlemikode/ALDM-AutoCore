@@ -68,7 +68,8 @@ export default function Domicilios() {
           <div className="subtitle">{lista ? `${abiertos.length} abierto(s) · ${conteo("pend")} esperando código` : "Cargando…"}</div>
         </div>
         {hasPermission("servicios.crear") && (
-          <button className="btn btn-primary" onClick={() => navigate("/servicios/nueva?domicilio=1")}>＋ Nuevo a domicilio</button>
+          <button className="btn btn-primary btn-nuevo" onClick={() => navigate("/servicios/nueva?domicilio=1")}>
+            <span className="btn-nuevo-icono"><Icono nombre="doc-add" size={22} /><span className="btn-nuevo-mas">+</span></span>Nuevo a domicilio</button>
         )}
       </div>
 

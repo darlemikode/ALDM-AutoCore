@@ -43,7 +43,7 @@ export default function Usuarios() {
           {talleres.map(([id, nombre]) => <option key={id} value={id}>{nombre}</option>)}
           <option value="sin">Sin taller</option>
         </select>
-        <button className="btn btn-primary" onClick={() => setNuevo(true)}>+ Nuevo usuario</button>
+        <button className="btn btn-primary btn-nuevo" onClick={() => setNuevo(true)}>+ Nuevo usuario</button>
       </div>
       {!datos ? <Cargando error={error} /> : (
         <>

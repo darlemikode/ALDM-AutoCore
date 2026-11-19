@@ -951,13 +951,13 @@ export default function ServicioDetalle() {
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9.5h7" /><path d="M18.5 12.5c-2 0-3.5 1.5-3.5 3.4 0 2.4 3.5 5.6 3.5 5.6s3.5-3.2 3.5-5.6c0-1.9-1.5-3.4-3.5-3.4z" transform="translate(-0.5 -2)" /><circle cx="18" cy="13.7" r="1.2" />
                   </svg>
-                  <span>{domicilio?.existe ? "A domicilio" : "Servicio a domicilio"}</span>
+                  <span>{domicilio?.existe ? "A domicilio" : "Convertir a servicio a domicilio"}</span>
                 </button>
               </span>
             )}
             {servicio.status === "abierto" && tieneMod("seguimiento_qr") && hasPermission("servicios.editar") && hasPermission("servicios.ver_precios") && (
               <span className="tip-envoltura" title="Enlace y QR para que el cliente vea el avance, las refacciones y el monto">
-                <button className="btn btn-primary" onClick={() => setVerSeguimiento(true)}><IconoAuto valor="📱" size={18} /> Seguimiento al cliente (QR)</button>
+                <button className="btn btn-primary" onClick={() => setVerSeguimiento(true)}><Icono nombre="link" size={18} /><Icono nombre="car" size={18} /> Envío de link a cliente (seguimiento)</button>
               </span>
             )}
             <span className="tip-envoltura" title={servicio.detalles.length > 0 ? "Vista previa de la nota (incluye la inspección, si ya se hizo)" : "La vista previa se activa cuando ya se agregó al menos una refacción"}>
@@ -1306,9 +1306,11 @@ export default function ServicioDetalle() {
         titulo="Mano de obra"
         accion={
           puedeEditarOrden && (
-            <button className="btn btn-agregar" onClick={() => setAddingManoObra(true)} disabled={!abierta}>
-              <Icono nombre="add" size={18} /> Agregar mano de obra
-            </button>
+            <div className="mo-acciones">
+              <button className="btn btn-agregar" onClick={() => setAddingManoObra(true)} disabled={!abierta}>
+                <Icono nombre="add" size={18} /> Agregar mano de obra
+              </button>
+            </div>
           )
         }
       >
@@ -1383,7 +1385,7 @@ export default function ServicioDetalle() {
       {(() => {
         // Ya cobrada: no queda saldo que mostrar, así que la barra muestra el total
         const cobrada = servicio.costos.saldo_pendiente <= 0 && servicio.costos.total > 0;
-        const detalleVisible = detalleCostosAbierto && servicio.costos.total > 0;
+        const detalleVisible = servicio.costos.total > 0; // siempre visible: el total y el detalle no dependen del scroll
         return (
       <div className={`saldo-flotante ${detalleVisible ? "saldo-flotante-abierta" : "atenuada"}`} key={servicio.costos.saldo_pendiente} title="Desliza hasta el final de la orden para ver el detalle de costos">
         {!detalleVisible && (
@@ -1406,31 +1408,37 @@ export default function ServicioDetalle() {
                 <span className="saldo-flotante-detalle-val mono">{fmt(servicio.costos.subtotal)}</span>
               </div>
               <div className="saldo-flotante-detalle-item">
-                <span className="saldo-flotante-detalle-etq">IVA ({servicio.iva_porcentaje}%)</span>
+                <span className="saldo-flotante-detalle-etq saldo-iva-titulo">
+                  IVA
+                  {hasPermission("servicios.editar") && abierta && (
+                    <label className="saldo-iva-check" title="Aplicar IVA (16%)">
+                      <span className="switch-moderno">
+                        <input type="checkbox" checked={servicio.iva_porcentaje > 0} onChange={(e) => cambiarIva(e.target.checked)} />
+                        <span className="switch-moderno-track" />
+                        <span className="switch-moderno-thumb" />
+                      </span>
+                    </label>
+                  )}
+                </span>
                 <span className="saldo-flotante-detalle-val mono">{fmt(servicio.costos.iva)}</span>
               </div>
-              <div className="saldo-flotante-detalle-item">
-                <span className="saldo-flotante-detalle-etq">Total</span>
-                <span className="saldo-flotante-detalle-val mono">{fmt(servicio.costos.total)}</span>
-              </div>
-            </div>
-            <div className="saldo-flotante-iva-zona">
-              {hasPermission("servicios.editar") && abierta && (
-                <label className="saldo-flotante-iva">
-                  <span className="switch-moderno">
-                    <input
-                      type="checkbox"
-                      checked={servicio.iva_porcentaje > 0}
-                      onChange={(e) => cambiarIva(e.target.checked)}
-                    />
-                    <span className="switch-moderno-track" />
-                    <span className="switch-moderno-thumb" />
-                  </span>
-                  <span>Aplicar IVA (16%)</span>
-                </label>
+              {servicio.costos.total_abonado > 0 && (
+                <div className="saldo-flotante-detalle-item">
+                  <span className="saldo-flotante-detalle-etq">{(servicio.abonos || []).length > 1 ? `Abonos (${servicio.abonos.length})` : "Abono"}</span>
+                  <span className="saldo-flotante-detalle-val mono">{fmt(servicio.costos.total_abonado)}</span>
+                </div>
               )}
             </div>
-            <span className="saldo-flotante-monto mono">{fmt(servicio.costos.saldo_pendiente)}</span>
+            <div className="saldo-flotante-totales">
+              <div className="saldo-flotante-total">
+                <span className={`saldo-flotante-estado ${cobrada ? "pagado" : "restante"}`}>{cobrada ? "PAGADO" : "RESTANTE"}</span>
+                <span className="saldo-flotante-monto saldo-restante mono">{fmt(servicio.costos.saldo_pendiente)}</span>
+              </div>
+              <div className="saldo-flotante-total">
+                <span className="saldo-flotante-estado total">TOTAL</span>
+                <span className="saldo-flotante-monto saldo-total-orig mono">{fmt(servicio.costos.total)}</span>
+              </div>
+            </div>
           </div>
         )}
       </div>

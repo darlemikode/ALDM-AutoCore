@@ -78,7 +78,7 @@ export default function Talleres() {
     <>
       <div className="toolbar">
         <input className="search-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre, código, contacto o ciudad" />
-        <button className="btn btn-primary" onClick={abrirAlta}>+ Nuevo taller</button>
+        <button className="btn btn-primary btn-nuevo" onClick={abrirAlta}>+ Nuevo taller</button>
       </div>
       <div className="chips-select" style={{ marginBottom: 14 }}>
         {FILTROS.map(([v, texto]) => (

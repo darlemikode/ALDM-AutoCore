@@ -202,8 +202,30 @@ def _bloque_info(servicio):
     km = servicio.km_llegada
     entrada = fecha_mx(servicio.fecha_entrada_servicio)
     salida = fecha_mx(servicio.fecha_salida_servicio) or hoy_mx()
-    lin_ser = [f"Entrada {_fecha_corta(entrada)}" if entrada else None, f"Salida {_fecha_corta(salida)}",
-               f"Próximo: {servicio.km_proximo_servicio} km" if servicio.km_proximo_servicio else None]
+    def celda_servicio():
+        """SERVICIO: filas alineadas (etiqueta izq. / valor der.); el único énfasis es el km del próximo servicio."""
+        ancho = ANCHO / 3 - 12
+        e_lbl = _est("ne_sl", fontSize=8.6, leading=11, textColor=MUTED)
+        e_val = _est("ne_sv", fontSize=8.6, leading=11, textColor=TEXTO, alignment=TA_RIGHT)
+        filas = [[Paragraph("Entrada", e_lbl), Paragraph(_fecha_corta(entrada) if entrada else "—", e_val)],
+                 [Paragraph("Salida", e_lbl), Paragraph(_fecha_corta(salida), e_val)],
+                 [Paragraph("Km servicio", e_lbl), Paragraph(f"{int(km):,} km" if km else "—", e_val)]]
+        t = Table(filas, colWidths=[ancho * 0.45, ancho * 0.55], hAlign="LEFT")
+        t.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                               ("TOPPADDING", (0, 0), (-1, -1), 1.2), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.2), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+        cont = [_Esp("SERVICIO", 6.4, MUTED, True, 2.6), Spacer(1, 2.6 * mm), t]
+        if servicio.km_proximo_servicio:
+            try:
+                prox = f"{int(float(servicio.km_proximo_servicio)):,}"
+            except (TypeError, ValueError):
+                prox = esc(str(servicio.km_proximo_servicio))
+            p_lbl = _est("ne_pl2", fontName="Helvetica-Bold", fontSize=7, leading=9, textColor=MUTED)
+            p_val = _est("ne_pv2", fontName="Helvetica-Bold", fontSize=13, leading=15, textColor=INK, alignment=TA_RIGHT)
+            tp = Table([[Paragraph("PRÓXIMO SERVICIO", p_lbl), Paragraph(f"{prox} km", p_val)]], colWidths=[ancho * 0.45, ancho * 0.55], hAlign="LEFT")
+            tp.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 0.5, LINEA), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                                    ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 0), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+            cont += [Spacer(1, 2.2 * mm), tp]
+        return cont
 
     def celda(etiqueta, principal, lineas, placa=None):
         cont = [_Esp(etiqueta, 6.4, MUTED, True, 2.6), Spacer(1, 2.6 * mm), Paragraph(esc(principal), P_NOM), Spacer(1, 1 * mm)]
@@ -218,7 +240,7 @@ def _bloque_info(servicio):
 
     w = ANCHO / 3
     return _caja(
-        [celda("CLIENTE", nombre, lin_cli), celda("VEHÍCULO", desc, lin_veh, placas), celda("SERVICIO", f"{int(km):,} km" if km else "—", lin_ser)],
+        [celda("CLIENTE", nombre, lin_cli), celda("VEHÍCULO", desc, lin_veh, placas), celda_servicio()],
         [w, w, w], pad=(10, 6),
     )
 
@@ -255,24 +277,26 @@ def _bloque_pie(servicio, costos, simple=False):
     comentarios = (servicio.comentarios_finales or "").strip() or "Sin comentarios."
     w1 = w2 = ANCHO * 0.29
     w3 = ANCHO - w1 - w2
-    com = [_Esp("COMENTARIOS", 6.2, MUTED, True, 2.6), Spacer(1, 2.4 * mm), Paragraph(esc(comentarios), P_COM)]
+    com = [_Esp("COMENTARIOS", 6.2, MUTED, True, 2.6, "center"), Spacer(1, 2.4 * mm), Paragraph(esc(comentarios), ParagraphStyle("ne_com_c", parent=P_COM, alignment=TA_CENTER))]
     # «Nota simple»: solo subtotal e IVA. Sin ella, también abonado y saldo / liquidado.
     datos_det = [("Subtotal", fmt(costos.subtotal), INK), ("IVA", fmt(costos.iva), INK)]
+    # Los abonos siempre se reflejan; «Nota simple» solo omite el saldo / liquidado
+    if (costos.total_abonado or 0) > 0:
+        datos_det.append(("(-) Abonos", fmt(costos.total_abonado), INK))
     if not simple:
         liquidado = costos.saldo_pendiente <= 0
-        datos_det += [("(-) Abonado", fmt(costos.total_abonado), INK),
-                      ("Liquidado" if liquidado else "Saldo restante", fmt(costos.saldo_pendiente), INK if liquidado else ACCENT)]
+        datos_det.append(("Liquidado" if liquidado else "Saldo restante", fmt(costos.saldo_pendiente), INK if liquidado else ACCENT))
     filas = [[Paragraph(e, _est(f"ne_dl{i}", fontSize=8.4, textColor=MUTED if col == INK else col)),
               Paragraph(f"<b>{v}</b>", _est(f"ne_dv{i}", fontSize=8.6, textColor=col, alignment=TA_RIGHT))] for i, (e, v, col) in enumerate(datos_det)]
     det_t = Table(filas, colWidths=[(w2 - 20) * 0.5, (w2 - 20) * 0.5])
     det_t.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -2), 0.4, LINEA), ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
                                ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
-    det = [_Esp("DETALLE", 6.2, MUTED, True, 2.6), Spacer(1, 2.4 * mm), det_t]
-    tot = [_Esp("TOTAL", 6.2, MUTED, True, 3.6), Spacer(1, 1.2 * mm),
+    det = [_Esp("DETALLE", 6.2, MUTED, True, 2.6, "center"), Spacer(1, 2.4 * mm), det_t]
+    tot = [_Esp("TOTAL", 6.2, MUTED, True, 2.6, "center"), Spacer(1, 5 * mm),
            Paragraph(f"<b>{fmt(costos.total)}</b>", _est("ne_tot", fontName="Helvetica-Bold", fontSize=21, leading=25, textColor=INK, alignment=TA_CENTER)),
            Spacer(1, 1 * mm), Paragraph(esc(importe_con_letra(costos.total)), _est("ne_let", fontSize=6.4, leading=8.4, textColor=TEXTO, alignment=TA_CENTER)),
            Spacer(1, 2 * mm), _Regla(ACCENT, 0.9, False, 3)]
-    caja = _caja([com, det, tot], [w1, w2, w3], pad=(9, 10))
+    caja = _caja([com, det, tot], [w1, w2, w3], estilo_extra=[("VALIGN", (0, 0), (-1, -1), "TOP")], pad=(9, 10))  # el total siempre más abajo, centrado en su columna
     firmas = Table([[_Regla(INK, 0.5, False, 4), "", _Regla(INK, 0.5, False, 4)],
                     [_Esp("NOMBRE Y FIRMA DEL CLIENTE", 6.2, MUTED, False, 1.6), "", _Esp("FIRMA / SELLO DEL TALLER", 6.2, MUTED, False, 1.6)]],
                    colWidths=[ANCHO * 0.4, ANCHO * 0.2, ANCHO * 0.4])
@@ -310,8 +334,8 @@ def generar_nota_elegante(servicio, costos, taller=None, inspeccion=None) -> byt
     # Franja superior: nota · número · fecha de emisión
     fr = Table([[_Esp("NOTA DE REMISIÓN", 7.2, INK, True, 2.8, "left"),
                  _Esp(f"N.º #{servicio.id_servicio:05d}", 9.2, ACCENT, True, 2.8, "center"),
-                 _Esp(f"FECHA DE EMISIÓN · {emision.day:02d} {MESES[emision.month - 1].upper()} {emision.year}", 7.2, MUTED, False, 2.4, "right")]],
-               colWidths=[ANCHO * 0.34, ANCHO * 0.32, ANCHO * 0.34])
+                 _Esp(f"FECHA DE EMISIÓN · {emision.day:02d} {MESES[emision.month - 1].upper()} {emision.year}", 7.6, INK, True, 1.4, "right")]],
+               colWidths=[ANCHO * 0.30, ANCHO * 0.25, ANCHO * 0.45])
     fr.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
     story += [fr, _Regla(SUAVE, 0.5, False, 4), Spacer(1, 4 * mm)]
 

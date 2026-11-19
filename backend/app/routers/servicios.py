@@ -501,6 +501,14 @@ def agregar_detalle(servicio_id: int, payload: schemas.ServicioDetalleIn, db: Se
     detalle = models.ServicioDetalle(id_servicio=servicio_id, **data)
     db.add(detalle)
     db.flush()
+    # Al agregar una refacción, la orden pasa a «Espera refacciones» (solo desde etapas iniciales;
+    # no se retrocede una orden que ya está en reparación o lista para entrega).
+    if (payload.id_refaccion or (payload.costo_refaccion or 0) > 0) and (servicio.etapa or "en_proceso") in ("en_proceso", "abierto", "pendiente"):
+        servicio.etapa = "espera_refacciones"
+        db.add(models.ServicioEtapaHistorial(
+            id_servicio=servicio_id, etapa="espera_refacciones",
+            comentario="Se agregaron refacciones a la orden", actualizado_por=user.username,
+        ))
     consolidar_refacciones_repetidas(db, servicio_id)
     db.commit()
     _sincronizar_pagado(db, servicio_id)
