@@ -1,4 +1,4 @@
-# ALDM Panel (barra de menú de macOS)
+# Stream Deck (barra de menú de macOS)
 
 Controla tus ambientes y monitorea la salud de la API y la base sin abrir nada más.
 
@@ -7,7 +7,7 @@ Controla tus ambientes y monitorea la salud de la API y la base sin abrir nada m
 cd ~/Documents/sistema-mecanico/tools/panel-mac
 chmod +x build.sh
 ./build.sh
-open "ALDM Panel.app"
+open "Stream Deck.app"
 ```
 Requiere macOS 13+ y las herramientas de línea de comandos (`xcode-select --install`).
 La primera vez macOS pedirá permiso para notificaciones: acéptalo.

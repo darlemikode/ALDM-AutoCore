@@ -93,6 +93,12 @@ final class Servicios: ObservableObject {
 
     func detenerAPI() { detener(8000); mensaje = "API detenida." }
 
+    /// Reset: detiene la API y la vuelve a iniciar (todo en segundo plano, sin bloquear el hilo principal).
+    func reiniciarAPI(config: Configuracion) {
+        mensaje = "Reiniciando API…"
+        Task { await matar(8000); iniciarAPI(config: config) }
+    }
+
     // MARK: Web admin (:5173)
 
     func iniciarWeb(config: Configuracion) {
@@ -105,6 +111,12 @@ final class Servicios: ObservableObject {
     }
 
     func detenerWeb() { detener(5173); mensaje = "Web detenida." }
+
+    /// Reset: detiene la web admin y la vuelve a iniciar.
+    func reiniciarWeb(config: Configuracion) {
+        mensaje = "Reiniciando web…"
+        Task { await matar(5173); iniciarWeb(config: config) }
+    }
 
     // MARK: QA (:8001 sobre una copia de la base local; nunca toca la base de desarrollo ni producción)
 
