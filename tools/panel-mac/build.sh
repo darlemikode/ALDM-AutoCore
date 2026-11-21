@@ -1,13 +1,13 @@
 #!/bin/bash
-# Compila el panel y arma "Stream Deck.app" (barra de menú, sin ícono en el Dock).
+# Compila el panel y arma "ALDM AutoCore.app" (barra de menú, sin ícono en el Dock).
 set -e
 cd "$(dirname "$0")"
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 command -v swift >/dev/null || { echo "Falta Swift. Instala las herramientas con:  xcode-select --install"; exit 1; }
 swift build -c release
 BIN="$(swift build -c release --show-bin-path)/PanelALDM"
-APP="Stream Deck.app"
-rm -rf "ALDM Panel.app"  # nombre anterior
+APP="ALDM AutoCore.app"
+rm -rf "ALDM Panel.app" "Stream Deck.app"  # nombres anteriores
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$BIN" "$APP/Contents/MacOS/PanelALDM"
@@ -15,7 +15,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>Stream Deck</string>
+  <key>CFBundleName</key><string>ALDM AutoCore</string>
   <key>CFBundleIdentifier</key><string>com.aldm.panel</string>
   <key>CFBundleExecutable</key><string>PanelALDM</string>
   <key>CFBundlePackageType</key><string>APPL</string>

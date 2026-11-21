@@ -386,7 +386,7 @@ struct VistaPanel: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                Text("Stream Deck").font(.system(size: 15, weight: .bold))
+                Text("ALDM AutoCore").font(.system(size: 15, weight: .bold))
                 Spacer()
                 HStack(spacing: 5) {
                     Punto(nivel: nivelTotal)
@@ -421,7 +421,7 @@ struct VistaPanel: View {
                 FilaMenu(titulo: "Configuración…", atajo: "⌘,") { NSWorkspace.shared.open(Configuracion.archivo) }
                     .keyboardShortcut(",")
                 FilaMenu(titulo: "Recargar configuración", atajo: "") { monitor.recargarConfig(); azure.arrancar() }
-                FilaMenu(titulo: "Salir de Stream Deck", atajo: "⌘Q") { NSApplication.shared.terminate(nil) }
+                FilaMenu(titulo: "Salir de ALDM AutoCore", atajo: "⌘Q") { NSApplication.shared.terminate(nil) }
                     .keyboardShortcut("q")
             }
         }
