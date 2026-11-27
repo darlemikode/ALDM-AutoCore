@@ -27,7 +27,7 @@ def definidos(arbol):
             d.add(n.name)
         if isinstance(n, (ast.Global, ast.Nonlocal)):
             d.update(n.names)
-        if isinstance(n, ast.MatchAs) and n.name:
+        if hasattr(ast, "MatchAs") and isinstance(n, ast.MatchAs) and n.name:
             d.add(n.name)
     return d
 
