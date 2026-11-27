@@ -5549,3 +5549,49 @@ table { border-spacing: 0 10px; }
 .tabla-refacciones td.celda-total { font-size: 27px !important; font-weight: 800 !important; }
 :root:not([data-theme="dark"]) .tabla-refacciones td.celda-total { color: #06703f !important; }
 :root[data-theme="dark"] .tabla-refacciones td.celda-total { color: #3fd690 !important; }
+
+/* ===== Tema blanco: mensajes y ventanas emergentes legibles ===== */
+/* Diálogos de confirmación: texto oscuro sobre fondo claro (antes quedaba blanco sobre blanco) */
+:root:not([data-theme="dark"]) .dialogo-confirmar { background: #f6f6f8 !important; }
+:root:not([data-theme="dark"]) .dialogo-confirmar .dialogo-titulo { color: #15161a !important; }
+:root:not([data-theme="dark"]) .dialogo-confirmar .dialogo-mensaje { color: #33363d !important; font-weight: 500; }
+:root:not([data-theme="dark"]) .dialogo-confirmar .no-preguntar, :root:not([data-theme="dark"]) .dialogo-confirmar .no-preguntar span { color: #26262b !important; }
+:root:not([data-theme="dark"]) .dialogo-confirmar .dialogo-icono { color: var(--petrol-600); background: color-mix(in srgb, var(--petrol-500) 16%, #fff); box-shadow: inset 0 0 0 2px var(--petrol-500); }
+:root:not([data-theme="dark"]) .dialogo-confirmar .btn.btn-primary:not(.btn-danger) {
+  background: linear-gradient(135deg, var(--petrol-500), var(--petrol-600)) !important; color: #fff !important; border: 1px solid var(--petrol-600) !important;
+}
+:root:not([data-theme="dark"]) .dialogo-confirmar .btn.btn-secondary { background: #e4e4e8 !important; color: #26262b !important; border: 1.5px solid #8a8a92 !important; }
+:root:not([data-theme="dark"]) .dialogo-confirmar .btn.btn-secondary:hover { background: #d6d6da !important; }
+:root:not([data-theme="dark"]) .dialogo-confirmar .btn.btn-danger { background: var(--warn-600) !important; color: #fff !important; }
+/* Textos dentro de cualquier ventana emergente */
+:root:not([data-theme="dark"]) .modal h1, :root:not([data-theme="dark"]) .modal h2, :root:not([data-theme="dark"]) .modal h3, :root:not([data-theme="dark"]) .modal h4 { color: #15161a; }
+:root:not([data-theme="dark"]) .modal p, :root:not([data-theme="dark"]) .modal .subtitle, :root:not([data-theme="dark"]) .modal .hint, :root:not([data-theme="dark"]) .modal small { color: #33363d; }
+/* Avisos tipo toast: fondo oscuro sólido y letra blanca (antes translúcido: se perdía sobre fondo claro) */
+:root:not([data-theme="dark"]) .toast { background: #1f2227 !important; color: #fff !important; text-shadow: none; box-shadow: 0 12px 32px rgba(0,0,0,.35) !important; }
+
+/* Skeletons de carga */
+.skeleton-zona { display: flex; flex-direction: column; gap: 12px; padding: 8px 0; }
+.skeleton { background: linear-gradient(90deg, color-mix(in srgb, var(--ink-500) 14%, transparent) 25%, color-mix(in srgb, var(--ink-500) 26%, transparent) 37%, color-mix(in srgb, var(--ink-500) 14%, transparent) 63%); background-size: 400% 100%; animation: skeleton-brillo 1.3s ease-in-out infinite; border-radius: 10px; }
+@keyframes skeleton-brillo { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+.skeleton-fila { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--ink-500) 14%, transparent); }
+.skeleton-avatar { width: 44px; height: 44px; border-radius: 50%; flex: none; }
+.skeleton-textos { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.skeleton-linea { height: 14px; }
+.skeleton-linea-corta { height: 11px; }
+.skeleton-pill { width: 84px; height: 30px; border-radius: 99px; flex: none; }
+.skeleton-bloques { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.skeleton-bloque { height: 96px; border-radius: 16px; }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* Listas largas: el navegador no pinta las filas fuera de pantalla (virtualización ligera) */
+.tabla-refacciones tbody tr, .skeleton-fila { content-visibility: auto; contain-intrinsic-size: auto 72px; }
+
+/* Edición rápida del nombre de una refacción en el selector */
+.add-ref-tarjeta { position: relative; }
+.add-ref-editar { position: absolute; bottom: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer; display: grid; place-items: center; font-size: 15px; line-height: 1; font-family: inherit;
+  background: color-mix(in srgb, var(--ink-500) 22%, transparent); color: var(--ink-500); opacity: 0; transition: opacity .12s, background .12s, color .12s; }
+.add-ref-tarjeta:hover .add-ref-editar, .add-ref-editar:focus-visible { opacity: 1; }
+.add-ref-editar:hover { background: var(--petrol-500); color: #ffffff; }
+@media (hover: none) { .add-ref-editar { opacity: 1; } }
+.add-ref-nombre-input { width: 100%; box-sizing: border-box; padding: 6px 8px; font: inherit; font-size: 17px; font-weight: 800; border-radius: 8px; border: 2px solid var(--petrol-500); background: var(--surface-1, transparent); color: inherit; }
+:root:not([data-theme="dark"]) .add-ref-nombre-input { background: #ffffff !important; color: #141418 !important; }

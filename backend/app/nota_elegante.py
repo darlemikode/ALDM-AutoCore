@@ -266,7 +266,7 @@ def _tabla_items(servicio, nombre_det):
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [SOMBRA, colors.white]),
         ("LINEBELOW", (0, -1), (-1, -1), 0.4, SUAVE),
         ("TOPPADDING", (0, 0), (-1, 0), 2), ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-        ("TOPPADDING", (0, 1), (-1, -1), 6), ("BOTTOMPADDING", (0, 1), (-1, -1), 7),
+        ("TOPPADDING", (0, 1), (-1, -1), 2.5), ("BOTTOMPADDING", (0, 1), (-1, -1), 3.5),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     return t
