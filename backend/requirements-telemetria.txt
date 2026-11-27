@@ -1,0 +1,4 @@
+# Opcional: pip install -r requirements-telemetria.txt y definir APPLICATIONINSIGHTS_CONNECTION_STRING (Azure) u OTEL_EXPORTER_OTLP_ENDPOINT
+azure-monitor-opentelemetry==1.6.4
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-sqlalchemy

@@ -14,6 +14,7 @@ import IconoModulo from "../components/IconoModulo";
 import { Icono } from "../components/Icono";
 import { contiene } from "../lib/texto";
 
+import { Skeleton } from "../components/Skeleton";
 const STATUS_BADGE = {
   abierto: "badge-petrol",
   cerrado: "badge-teal",
@@ -542,7 +543,7 @@ export default function Servicios() {
         </div>
 
         {loading ? (
-          <div className="loading-text">Cargando…</div>
+          <Skeleton filas={6} />
         ) : (vista === "kanban" ? filtradosKanban : filtrados).length === 0 ? (
           <div className="empty-state">{q.trim() ? "Ninguna orden coincide con la búsqueda." : "No hay órdenes de servicio con este filtro."}</div>
         ) : vista === "kanban" ? (

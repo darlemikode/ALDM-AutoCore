@@ -15,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import IconoModulo from "../components/IconoModulo";
 import { Icono } from "../components/Icono";
 
+import { Skeleton } from "../components/Skeleton";
 // Catálogo unificado de estatus — mismo catálogo que ETAPAS_SERVICIO en el backend
 const ETIQUETAS_ETAPA = {
   en_proceso: "Recibido",
@@ -281,7 +282,7 @@ export default function Vehiculos() {
         </div>
         <FiltrosVehiculos resumen={resumen} marcas={marcas} modelos={modelos} colores={colores} filtros={filtros} setFiltros={setFiltros} mostrados={visibles.length} total={total} />
         {loading ? (
-          <div className="loading-text">Cargando…</div>
+          <Skeleton filas={6} />
         ) : vista === "clientes" ? (
           <div className="ordenes-lista">
             {visibles.length === 0 && <div className="empty-state">{(resumen?.total ?? total) ? "Ningún vehículo coincide con los filtros." : "No hay vehículos registrados todavía."}</div>}

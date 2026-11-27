@@ -7,6 +7,7 @@ import { UIProvider } from "./context/UIContext.jsx";
 import "./styles.css";
 import "./capturaNumerica";
 import "./tooltips";
+import "./metricasWeb";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

@@ -13,7 +13,7 @@ import { escucharSidebar, escucharTema, setSidebarCompacta, sidebarCompactaActiv
 import CampanaNotificaciones from "./CampanaNotificaciones";
 import Atajos from "./Atajos";
 import Tour from "./Tour";
-import logoAldm from "../assets/logo-aldm.png";
+import logoAldm from "../assets/logo-aldm.webp";
 import { tutorialPorClave, vistosSesion } from "../tutoriales/catalogo";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 

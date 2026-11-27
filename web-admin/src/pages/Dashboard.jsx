@@ -13,6 +13,7 @@ import IconoModulo from "../components/IconoModulo";
 import SelectorFecha from "../components/SelectorFecha";
 import { Icono } from "../components/Icono";
 
+import { Skeleton } from "../components/Skeleton";
 const COLORS = {
   petrol: "#2563EB",
   petrolDark: "#17191D",
@@ -189,7 +190,7 @@ export default function Dashboard() {
     }
   }
 
-  if (!data) return <div className="loading-text">Cargando panel…</div>;
+  if (!data) return <Skeleton filas={4} bloques />;
 
   const fmt = (n) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
   const fmtCorto = (n) => `$${Math.round(n).toLocaleString("es-MX")}`;

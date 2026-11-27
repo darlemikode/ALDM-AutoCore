@@ -12,6 +12,7 @@ import { useAuth } from "../context/AuthContext";
 import { useActualizacionGlobal } from "../useActualizacionGlobal";
 import IconoModulo from "../components/IconoModulo";
 
+import { Skeleton } from "../components/Skeleton";
 // Dato que se edita con un toque: texto, número o lista
 function Editable({ valor, mostrar, tipo = "text", opciones, puede, onGuardar }) {
   const [editando, setEditando] = useState(false);
@@ -356,7 +357,7 @@ export default function Refacciones() {
         <FiltroChips multiple items={conteoCat} valor={catSel} onChange={setCatSel} total={totalGeneral} />
 
         {loading ? (
-          <div className="loading-text">Cargando…</div>
+          <Skeleton filas={6} />
         ) : visibles.length === 0 ? (
           <div className="empty-state">No hay refacciones registradas.</div>
         ) : vista === "cuadros" ? (

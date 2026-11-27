@@ -131,7 +131,7 @@ export default function ElegirClienteVehiculo({ idCliente: cli0, idVehiculo: veh
     setIdVehiculo("");
     setVehiculos([]);
     irAPaso(2);
-    if (hasPermission("vehiculos.crear")) setNuevoVehiculo(true);
+    if (hasPermission("vehiculos.crear")) { asegurarCatalogos(); setNuevoVehiculo(true); }
   }
 
   async function guardarVehiculo(values) {

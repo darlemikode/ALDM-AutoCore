@@ -48,6 +48,7 @@ Thumbs.db
 *.log
 npm-debug.log*
 tokenwhastapp.txt
+n8n/X-API-KEY.txt
 *.token.txt
 
 # Panel de barra de menú (macOS)

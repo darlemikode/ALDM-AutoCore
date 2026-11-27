@@ -18,6 +18,7 @@ import Etiquetas from "../components/inventario/Etiquetas";
 import EntradaMercancia from "../components/inventario/EntradaMercancia";
 import { ubicacionTexto } from "../components/inventario/pdf";
 
+import { Skeleton } from "../components/Skeleton";
 /**
  * Inventario — cada renglón es un registro de stock/precio para una
  * refacción del catálogo (Refaccion), con su marca de refacción y
@@ -398,7 +399,7 @@ export default function Inventario() {
         </div>
         <FiltroChips items={contarPor(filas, (r) => r.refaccion?.categoria || "Sin categoría")} valor={filtroCategoria} onChange={setFiltroCategoria} total={filas.length} />
         {loading ? (
-          <div className="loading-text">Cargando…</div>
+          <Skeleton filas={6} />
         ) : filasFiltradas.length === 0 ? (
           <div className="empty-state">Aún no hay refacciones en el inventario — da de alta la primera.</div>
         ) : vista === "cuadros" ? (

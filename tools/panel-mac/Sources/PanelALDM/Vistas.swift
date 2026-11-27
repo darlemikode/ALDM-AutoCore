@@ -20,7 +20,7 @@ struct Modulo<Contenido: View>: View {
         }
         .padding(.horizontal, 11).padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Color.white.opacity(0.075)))
+        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Color(red: 0.19, green: 0.195, blue: 0.21)))
     }
 }
 
@@ -221,6 +221,7 @@ struct FilaInterruptor: View {
     let detener: () -> Void
     var log: (() -> Void)? = nil
     var abrir: (() -> Void)? = nil
+    var reiniciar: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 9) {
@@ -231,6 +232,7 @@ struct FilaInterruptor: View {
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             Spacer()
+            if let reiniciar, corriendo || iniciando { Button { reiniciar() } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless).help("Reset: detener y volver a iniciar") }
             if let log { Button { log() } label: { Image(systemName: "doc.text") }.buttonStyle(.borderless).help("Ver log") }
             if let abrir, corriendo { Button { abrir() } label: { Image(systemName: "arrow.up.right.square") }.buttonStyle(.borderless).help("Abrir en el navegador") }
             Toggle("", isOn: Binding(get: { corriendo || iniciando }, set: { $0 ? iniciar() : detener() }))
@@ -290,7 +292,8 @@ struct PestanaDev: View {
                             corriendo: servicios.apiCorriendo, iniciando: servicios.iniciando(8000),
                             iniciar: { servicios.iniciarAPI(config: monitor.config) },
                             detener: { servicios.detenerAPI() },
-                            log: { servicios.abrirLog("api.log") })
+                            log: { servicios.abrirLog("api.log") },
+                            reiniciar: { servicios.reiniciarAPI(config: monitor.config) })
             Picker("Base de datos", selection: Binding(
                 get: { monitor.config.ambienteAPILocal },
                 set: { monitor.config.ambienteAPILocal = $0; monitor.config.guardar() })) {
@@ -309,7 +312,8 @@ struct PestanaDev: View {
                             iniciar: { servicios.iniciarWeb(config: monitor.config) },
                             detener: { servicios.detenerWeb() },
                             log: { servicios.abrirLog("web.log") },
-                            abrir: { servicios.abrirURL("http://localhost:5173") })
+                            abrir: { servicios.abrirURL("http://localhost:5173") },
+                            reiniciar: { servicios.reiniciarWeb(config: monitor.config) })
         }
         ModuloApps(produccion: false)
     }
@@ -382,7 +386,7 @@ struct VistaPanel: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                Text("ALDM").font(.system(size: 15, weight: .bold))
+                Text("ALDM AutoCore").font(.system(size: 15, weight: .bold))
                 Spacer()
                 HStack(spacing: 5) {
                     Punto(nivel: nivelTotal)
@@ -417,11 +421,13 @@ struct VistaPanel: View {
                 FilaMenu(titulo: "Configuración…", atajo: "⌘,") { NSWorkspace.shared.open(Configuracion.archivo) }
                     .keyboardShortcut(",")
                 FilaMenu(titulo: "Recargar configuración", atajo: "") { monitor.recargarConfig(); azure.arrancar() }
-                FilaMenu(titulo: "Salir de ALDM Panel", atajo: "⌘Q") { NSApplication.shared.terminate(nil) }
+                FilaMenu(titulo: "Salir de ALDM AutoCore", atajo: "⌘Q") { NSApplication.shared.terminate(nil) }
                     .keyboardShortcut("q")
             }
         }
         .padding(10)
         .frame(width: 356)
+        // Fondo oscuro sólido (el material translúcido dejaba el texto con poco contraste)
+        .background(Color(red: 0.105, green: 0.11, blue: 0.125).ignoresSafeArea())
     }
 }

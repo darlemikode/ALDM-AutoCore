@@ -24,7 +24,7 @@ from . import models
 from .sesion_taller import SECRET_KEY, ALGORITHM
 
 SETUP_TOKEN_HOURS = int(os.getenv("SETUP_TOKEN_HOURS", "72"))
-RESET_TOKEN_HOURS = int(os.getenv("RESET_TOKEN_HOURS", "24"))
+RESET_TOKEN_HOURS = int(os.getenv("RESET_TOKEN_HOURS", "2"))  # enlace de recuperación: 2 h (antes 24); el de alta de taller sigue en 72 h
 
 TIPO_SETUP = "setup"
 TIPO_RESET = "reset"

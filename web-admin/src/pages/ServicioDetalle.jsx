@@ -23,6 +23,7 @@ import IconoModulo from "../components/IconoModulo";
 import ElegirClienteVehiculo from "../components/ElegirClienteVehiculo";
 import { Icono, IconoAuto } from "../components/Icono";
 
+import { Skeleton } from "../components/Skeleton";
 // Un renglón es «mano de obra» cuando solo lleva importe de mano de obra (sin refacción ni precio de refacción).
 const esManoObra = (d) => (d.costo_mano_obra || 0) > 0 && !d.id_refaccion && !d.id_inventario_refaccion && !((d.costo_refaccion || 0) > 0);
 
@@ -119,6 +120,7 @@ export default function ServicioDetalle() {
   const [creandoRefaccion, setCreandoRefaccion] = useState(null); // {} para abrir el form de "Nueva refacción" (acceso rápido desde Agregar refacciones)
   const [modoMultiple, setModoMultiple] = useState(false);
   const [seleccionMultiple, setSeleccionMultiple] = useState({});
+  const [renombrando, setRenombrando] = useState(null); // { id, texto } edición rápida del nombre en el catálogo
   const [filtroCategoriaMulti, setFiltroCategoriaMulti] = useState([]);
   const [busquedaMulti, setBusquedaMulti] = useState("");
   const [verAutoRef, setVerAutoRef] = useState(false); // elegir refacciones tocando el auto
@@ -296,6 +298,8 @@ export default function ServicioDetalle() {
   }
 
   async function load() {
+    // Peticiones independientes en paralelo: la inspección no espera a la orden
+    const pInspecciones = api.get(`/inspecciones/?id_servicio=${id}`);
     const s = await api.get(`/servicios/${id}`);
     setServicio(s);
     setComentariosFinales(s.comentarios_finales || "");
@@ -305,7 +309,7 @@ export default function ServicioDetalle() {
     } else {
       setReclamaciones([]);
     }
-    const inspecciones = await api.get(`/inspecciones/?id_servicio=${id}`);
+    const inspecciones = await pInspecciones;
     setInspeccionActual(inspecciones[0] || null);
     if (s.vehiculo?.id_marca_vehiculo) {
       // Solo las filas de inventario que tengan, entre sus compatibilidades,
@@ -365,7 +369,7 @@ export default function ServicioDetalle() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comentariosFinales, comentariosGuardados, servicio]);
 
-  if (!servicio) return <div className="loading-text">Cargando orden…</div>;
+  if (!servicio) return <Skeleton filas={5} bloques />;
 
   const fmt = (n) => `$${(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
   const abierta = servicio.status === "abierto";
@@ -569,6 +573,31 @@ export default function ServicioDetalle() {
     setSeleccionMultiple((prev) => ({ ...prev, [nueva.id_refaccion]: { cantidad: 1 } }));
     setCreandoRefaccion(null);
     notify(`"${nueva.nombre_refaccion}" se creó y quedó seleccionada — ajusta cantidad y precio o sigue agregando.`, "success");
+  }
+
+  // Cambia solo el nombre de la refacción en el catálogo (el API pide la refacción completa)
+  async function guardarNombreRefaccion() {
+    if (!renombrando) return;
+    const r = refacciones.find((x) => x.id_refaccion === renombrando.id);
+    const nombre = renombrando.texto.trim();
+    setRenombrando(null);
+    if (!r || !nombre || nombre === r.nombre_refaccion) return;
+    try {
+      const nueva = await api.put(`/refacciones/${r.id_refaccion}`, {
+        id_marca_refaccion: r.id_marca_refaccion, id_proveedor: r.id_proveedor, nombre_refaccion: nombre,
+        numero_refaccion: r.numero_refaccion, categoria: r.categoria, subcategoria: r.subcategoria,
+        preciopropio_refaccion: r.preciopropio_refaccion, preciocliente_refaccion: r.preciocliente_refaccion,
+        cantidad_refaccion: r.cantidad_refaccion, umbral_naranja: r.umbral_naranja, umbral_rojo: r.umbral_rojo,
+        posicion: r.posicion, id_marca_vehiculo_compatible: r.id_marca_vehiculo_compatible,
+        id_modelo_vehiculo_compatible: r.id_modelo_vehiculo_compatible, sku_interno: r.sku_interno,
+        codigo_barras: r.codigo_barras, ubicacion_fisica: r.ubicacion_fisica, zona_abc: r.zona_abc,
+        proveedores_ids: (r.proveedores_ids || []).filter((x) => x !== r.id_proveedor),
+      });
+      setRefacciones((prev) => prev.map((x) => (x.id_refaccion === r.id_refaccion ? { ...x, ...nueva } : x)));
+      notify("Nombre actualizado.", "success");
+    } catch (err) {
+      notify(err.message, "error");
+    }
   }
 
   async function handleUpdateDetalle(detalleId, cambios) {
@@ -856,11 +885,19 @@ export default function ServicioDetalle() {
   }
 
   async function cambiarIva(aplicar) {
+    // Interfaz optimista: la barra de totales se actualiza al instante y se corrige si el servidor falla
+    const anterior = servicio;
+    const pct = aplicar ? 16 : 0;
+    const c = servicio.costos || {};
+    const iva = Math.round((c.subtotal || 0) * pct) / 100;
+    const total = Math.round(((c.subtotal || 0) + iva) * 100) / 100;
+    setServicio({ ...servicio, iva_porcentaje: pct, costos: { ...c, iva, total, saldo_pendiente: Math.round((total - (c.total_abonado || 0)) * 100) / 100 } });
     try {
       const actualizado = await api.put(`/servicios/${id}`, { iva_porcentaje: aplicar ? 16 : 0 });
       setServicio(actualizado);
       notify(aplicar ? "Se aplicará IVA (16%) a esta orden." : "Se quitó el IVA de esta orden.", "success");
     } catch (err) {
+      setServicio(anterior);
       notify(err.message, "error");
     }
   }
@@ -1802,7 +1839,30 @@ export default function ServicioDetalle() {
                               ) : (
                                 <span className="add-ref-check" title="Sin stock — captura la cantidad para agregarla de todos modos">+</span>
                               )}
-                              <div className="add-ref-nombre">{r.nombre_refaccion}</div>
+                              {renombrando?.id === r.id_refaccion ? (
+                                <input
+                                  className="add-ref-nombre-input"
+                                  autoFocus
+                                  value={renombrando.texto}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => setRenombrando({ id: r.id_refaccion, texto: e.target.value })}
+                                  onBlur={guardarNombreRefaccion}
+                                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setRenombrando(null); }}
+                                />
+                              ) : (
+                                <div className="add-ref-nombre">{r.nombre_refaccion}</div>
+                              )}
+                              {hasPermission("refacciones.editar") && renombrando?.id !== r.id_refaccion && (
+                                <button
+                                  type="button"
+                                  className="add-ref-editar"
+                                  title="Editar el nombre de esta refacción"
+                                  aria-label="Editar nombre"
+                                  onClick={(e) => { e.stopPropagation(); setRenombrando({ id: r.id_refaccion, texto: r.nombre_refaccion }); }}
+                                >
+                                  ✎
+                                </button>
+                              )}
                               <div className="add-ref-meta">
                                 <span className={`add-ref-stock ${stock <= 0 ? "cero" : ""}`}>Stock {stock}</span>
                                 {precio > 0 && <span className="add-ref-precio">${precio}</span>}
