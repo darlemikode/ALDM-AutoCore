@@ -2,7 +2,7 @@ import io
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import String, cast, func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -162,7 +162,9 @@ def _get_servicio_o_404(db: Session, servicio_id: int) -> models.Servicio:
             joinedload(models.Servicio.detalles),
             joinedload(models.Servicio.abonos),
             joinedload(models.Servicio.cliente),
-            joinedload(models.Servicio.vehiculo),
+            joinedload(models.Servicio.vehiculo).joinedload(models.Vehiculo.marca),
+            joinedload(models.Servicio.vehiculo).joinedload(models.Vehiculo.modelo),
+            joinedload(models.Servicio.vehiculo).joinedload(models.Vehiculo.color),
             joinedload(models.Servicio.historial_etapas),
             joinedload(models.Servicio.tipos_mantenimiento),
         )
@@ -224,7 +226,10 @@ def listar(
         selectinload(models.Servicio.detalles),
         selectinload(models.Servicio.abonos),
         joinedload(models.Servicio.cliente),
-        joinedload(models.Servicio.vehiculo),
+        # marca/modelo/color del vehículo se serializan en cada orden: se traen juntos (evita N+1)
+        joinedload(models.Servicio.vehiculo).joinedload(models.Vehiculo.marca),
+        joinedload(models.Servicio.vehiculo).joinedload(models.Vehiculo.modelo),
+        joinedload(models.Servicio.vehiculo).joinedload(models.Vehiculo.color),
     )
     if status:
         query = query.filter(models.Servicio.status == status)
@@ -717,7 +722,7 @@ def descargar_nota_remision(servicio_id: int, formato: str = Query("carta", patt
 
 # --- Finalizar orden: cobro + cierre + nota de remisión + aviso al cliente -----
 @router.post("/{servicio_id}/finalizar", response_model=schemas.FinalizarServicioOut)
-async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn, db: Session = Depends(get_db), user=Depends(require_permission("servicios.editar"))):
+async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn, segundo_plano: BackgroundTasks, db: Session = Depends(get_db), user=Depends(require_permission("servicios.editar"))):
     """Todo el cierre en un solo paso, para que no se quede nada a medias:
     1) si hay saldo, registra el pago (forma de pago, monto recibido y cambio),
     2) cierra la orden (status 'cerrado', fecha de entrega, etapa final),
@@ -798,9 +803,11 @@ async def finalizar_orden(servicio_id: int, payload: schemas.FinalizarServicioIn
             from ..nota_remision_pdf import generar_nota_remision_pdf
             from ..inspeccion_pdf import inspeccion_de_servicio
             pdf = generar_nota_remision_pdf(servicio, costos, taller, inspeccion_de_servicio(db, models, servicio_id))
-            correo_enviado = await run_in_threadpool(
+            # El PDF se arma aquí (necesita la base), pero el envío SMTP, que es lo lento, sale en segundo plano
+            segundo_plano.add_task(
                 enviar_nota_al_cliente, cliente.correo_cliente, cliente.nombre_cliente, nombre_taller, servicio_id, costos.total, pdf,
             )
+            correo_enviado = True  # en cola
         notificaciones["correo"] = correo_enviado
 
         texto = (

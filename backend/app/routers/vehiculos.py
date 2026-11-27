@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, aliased, joinedload
 
 from .. import models, schemas
 from ..database import get_db
+from .. import cache
 from ..security import get_current_user, require_permission
 
 router = APIRouter(prefix="/api/vehiculos", tags=["vehículos"])
@@ -77,15 +78,29 @@ class CatalogosVehiculoOut(BaseModel):
     colores: list[schemas.ColorVehiculoOut]
 
 
+CLAVE_CATALOGOS = "vehiculos:catalogos"
+cache.invalidar_al_guardar(CLAVE_CATALOGOS, models.VehiculoMarca, models.VehiculoModelo, models.ColorVehiculo)
+
+
 @router.get("/catalogos", response_model=CatalogosVehiculoOut)
 def catalogos(db: Session = Depends(get_db), user=Depends(require_permission("vehiculos.ver"))):
     """Marcas, modelos y colores en UNA petición (la pantalla los pedía en
     tres, y cada petición paga su validación de sesión)."""
-    return {
+    # Catálogos compartidos (iguales para todos los talleres): caché de 10 min, se borra al guardar cualquier marca/modelo/color
+    from ..tenancy import tenant_de
+
+    clave = CLAVE_CATALOGOS + ":" + "-".join(str(x) for x in tenant_de(db))  # por taller: algunos registros del catálogo son propios de cada taller
+    guardado = cache.leer(clave)
+    if guardado is not None:
+        return guardado
+    datos = {
         "marcas": db.query(models.VehiculoMarca).order_by(models.VehiculoMarca.id_marca_vehiculo).all(),
         "modelos": db.query(models.VehiculoModelo).order_by(models.VehiculoModelo.id_modelo_vehiculo).all(),
         "colores": db.query(models.ColorVehiculo).order_by(models.ColorVehiculo.id_color).all(),
     }
+    salida = CatalogosVehiculoOut.model_validate(datos, from_attributes=True).model_dump(mode="json")
+    cache.guardar(clave, salida, 600)
+    return salida
 
 
 # ---------------------------------------------------------------------------
@@ -315,7 +330,7 @@ def listar(
     db: Session = Depends(get_db),
     user=Depends(require_permission("vehiculos.ver")),
 ):
-    query = db.query(models.Vehiculo).options(joinedload(models.Vehiculo.cliente))
+    query = db.query(models.Vehiculo).options(joinedload(models.Vehiculo.cliente), joinedload(models.Vehiculo.marca), joinedload(models.Vehiculo.modelo), joinedload(models.Vehiculo.color))
     if id_cliente:
         query = query.filter(models.Vehiculo.id_cliente == id_cliente)
     if q:

@@ -10,7 +10,7 @@ import os
 
 from .rate_limit import limiter
 
-from .routers import auth, catalogos, catalogos_admin, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, inventario, seguimiento, nota_publica, domicilio, recepcion, notificaciones, paquetes_servicio, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router, auditoria as auditoria_router
+from .routers import auth, catalogos, catalogos_admin, clientes, vehiculos, proveedores, refacciones, herramientas, servicios, dashboard, codigos_postales, fotos, portal_cliente, citas, chatbot, inspecciones, promociones, empleados, configuracion_taller, comisiones, roles, usuarios, cotizaciones, errores as errores_router, superadmin, facturacion, inventario, seguimiento, nota_publica, domicilio, recepcion, notificaciones, paquetes_servicio, nomina, pagos_en_linea, contacto, diagnostico, integracion, consumo as consumo_router, auditoria as auditoria_router, metricas_web
 from . import seed
 from . import seed_codigos_postales
 from . import seed_marcas_modelos
@@ -59,7 +59,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_origenes_permitidos,
     allow_credentials=False,  # usamos JWT Bearer, no cookies — no se necesitan credenciales de CORS
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -243,7 +243,15 @@ def on_startup():
     indices.migrar_estatus_empleados()
 
 
+try:
+    from .database import engine as _engine
+    from .telemetria import activar as _activar_telemetria
+
+    _activar_telemetria(app, _engine)
+except Exception:  # noqa: BLE001 — opcional
+    pass
 app.include_router(auth.router)
+app.include_router(metricas_web.router, prefix="/api")
 app.include_router(dashboard.router)
 app.include_router(clientes.router)
 app.include_router(vehiculos.router)
@@ -381,7 +389,15 @@ if os.path.isfile(_WEB_INDEX):
         archivo = os.path.realpath(os.path.join(_WEB_RAIZ, ruta))
         # Nunca salir de la carpeta web (evita ../../ en la URL)
         if ruta and archivo.startswith(_WEB_RAIZ + os.sep) and os.path.isfile(archivo):
-            return FileResponse(archivo)
+            # Los archivos de /assets llevan hash en el nombre (cambian si cambia el contenido): el navegador los guarda un año.
+            # Fuentes e imágenes propias: una semana. Lo demás se revalida siempre.
+            if ruta.startswith("assets/"):
+                cache = "public, max-age=31536000, immutable"
+            elif ruta.startswith("fuentes/") or ruta.endswith((".webp", ".png", ".ico", ".svg", ".woff2")):
+                cache = "public, max-age=604800"
+            else:
+                cache = "no-cache"
+            return FileResponse(archivo, headers={"Cache-Control": cache})
         # Rutas de React Router (/clientes, /servicios/5...) -> index.html
         return FileResponse(_WEB_INDEX, headers={"Cache-Control": "no-cache"})
 else:
