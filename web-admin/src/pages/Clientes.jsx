@@ -10,6 +10,7 @@ import { useActualizacionGlobal } from "../useActualizacionGlobal";
 import IconoModulo from "../components/IconoModulo";
 import { Icono } from "../components/Icono";
 
+import { Skeleton } from "../components/Skeleton";
 // Mismo ciclo de acentos que Roles y permisos, para que el avatar de cada
 // cliente tenga color propio sin salirse de la paleta de la app.
 const COLORES = ["petrol", "teal", "warn", "violet", "blue"];
@@ -196,7 +197,7 @@ export default function Clientes() {
         </div>
 
         {loading ? (
-          <div className="loading-text">Cargando…</div>
+          <Skeleton filas={6} />
         ) : clientes.length === 0 ? (
           <div className="empty-state">No hay clientes registrados todavía. Crea el primero.</div>
         ) : (

@@ -16,6 +16,7 @@ export function setToken(token) {
 // ya está en vuelo, se reutiliza en lugar de repetirla.
 const CATALOGOS = ["/vehiculos-marcas/", "/vehiculos-modelos/", "/refacciones-marcas/", "/refacciones-categorias/", "/colores-vehiculos/", "/vehiculos/catalogos", "/tipos-servicio/", "/estados/", "/ciudades/", "/paises/"];
 const VIGENCIA_MS = 5 * 60 * 1000;
+const enVueloGet = new Map(); // GET sin caché: solo evita duplicados simultáneos
 const cacheGet = new Map(); // ruta -> { t, datos } | { enVuelo }
 const base = (path) => path.split("?")[0];
 const esCatalogo = (path) => CATALOGOS.includes(base(path));
@@ -68,7 +69,15 @@ async function request(path, { method = "GET", body, isForm = false } = {}) {
 
 function pedirConCache(path) {
   // Solo los catálogos (listas chicas) pasan por el caché; todo lo demás va directo, sin copiar nada
-  if (!esCatalogo(path)) return request(path);
+  if (!esCatalogo(path)) {
+    // Misma consulta ya en vuelo (p. ej. dos componentes pidiendo lo mismo a la vez): se comparte la respuesta
+    const vuelo = enVueloGet.get(path);
+    if (vuelo) return vuelo.then(copia);
+    const p = request(path);
+    enVueloGet.set(path, p);
+    p.then(() => enVueloGet.delete(path), () => enVueloGet.delete(path));
+    return p.then(copia);
+  }
   const guardado = cacheGet.get(path);
   if (guardado?.enVuelo) return guardado.enVuelo.then(copia);
   if (guardado && Date.now() - guardado.t < VIGENCIA_MS) return Promise.resolve(copia(guardado.datos));
